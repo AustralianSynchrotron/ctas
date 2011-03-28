@@ -1,0 +1,19 @@
+/**
+
+\dir src/common
+\brief Common headers and libraries.
+\details This subdirectory includes all sources for libraries and header files which are used in most of the binary programs.
+
+\dir src/executables
+\brief Sources for the executable binary files
+\details All sources for the executables are stored in this directory. The binaries would be installed into the libexec directory and then can be called either directly or via the main 'ctas' script.
+
+\dir src/blitz-long
+\brief Sources for Blitz++ library
+\details This is my own, seriously patched and castrate version of the Blitz++ library. First of all this version uses long int instead of int for the array sizes, what allows larger arrays (more than 2^32 elements) whoat is critiacal for the modern CT systems. Secondary I removed all components of the library not used in the code. Finally, this version will not install any files into your system - it is used as a self-contained unit within the package.
+
+For the documentation on the Blitz++ library read the original <a href="http://www.oonumerics.org/blitz/docs/blitz.html">Blitz++ manual</a>.
+
+
+*/
+

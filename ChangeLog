@@ -1,0 +1,211 @@
+2010-07-29  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* * : Ported the package for the MacOS X (using MacPorts) and MS Windows (what a pain-in-ass!). Porting resulted to the mass of small changes and bug fixes. Upgrade version to 0.5.0.
+
+2010-07-20  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* src/common/common.h : One more bug in "operator==( const blitz::TinyVector<long int,N1> & v1, const blitz::TinyVector<long int,N2> & v2)" and "operator!=( const blitz::TinyVector<long int,N1> & v1, const blitz::TinyVector<long int,N2> & v2)" which rose time to time on different platforms when comparing two objects of class Shape. Chenged those operators into "operator==(const Shape & sh1, const Shape & sh2)" and "operator!=(const Shape & sh1, const Shape & sh2)" respectively.
+
+	* src/common/common.cpp (SaveImageFP): Found workaround the bug which caused TIFFOpen to fail on some systems (in my case it happened on CentOS 5.2). Reed more in the comments to the function.
+
+2010-07-19  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* * : Considering the implementation of the IPC as a major feature, the project version jumps to 0.4.9. It will hit 0.5 after serious cleaning in the CTrec class and major documentation revision.
+
+	* src/common/ipc.h, src/common/lipc.cpp, src/executables/ipc.cpp, src/executables/sino_ipc.cpp src/executables/ct_ipc.cpp: Added full support for the Inline Phase Contrast (IPC) to the package. The contrast is treated using the Modified Bronnikov Algorithm (phase component) and Bronnikov-Aided Correction (absorption component). Three new modules do the IPC processing: "ipc" - extraction of the phase/absorption component from a single projection, "sino-ipc" forming sinograms from the set of acquired projections and "ct-ipc" - all-in-one processing (from raw experimental images to ct'ed slices). Also the IPC support includes non-installed binary "src/executables/simulate-ipc" which does what it is called after.
+
+2010-06-10  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* src/common/common.cpp: Switch from using FreeImagePlus to FreeImage library. FreeImagePlus was reported to have build problem on MacOS X.
+
+2010-03-16  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* *: Updated Doxygen and HTML documentation.
+
+2010-03-12  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* src/executables/bg: The utility "bg" is renamed to "ff" (standing for the "flatfield"). Corresponding source file "bg.cpp" renamed to "ff.cpp". The <output> argument of the ff (ex-bg) utility is no the option invoked using -o or --output flag. Added multi-argument for the dark field file(s).
+
+	* src/common/background.h : Renamed into "flatfield.h". The function rmbckg is renamed into flatfield.
+
+	* src/executables/all-in-one.* : Renamed the internal library "allinone" into "experiment". All source files are renamed appropriately as well as corresponding entries in Makefile.am and #include derictives in the *.h.
+
+	* src/common/common.*, src/common/all-in-one.* : Renamed the FgBg class into AqSeries adding some features into it (now the image I/O and flat-field correction is done within this class). Added abstract class Experiment which serves as the parent for the classes doing image processing. The SinoS class now has only one constructor using the class derived from the Experiment class. All image processing taken out of SinoS into Experiment-derived classes.
+
+2010-03-03  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* src/common/*dei.*, src/executables/*dei.* : Separated DEI and EDEI processing. The options of the dei, ct-dei and sino-dei executables now take only the parameters for the DEI processing, added edei, ct-edei and sino-edei tool to do the EDEI processing.
+
+	* src/executables/bg.cpp: added options for the dark current removal. Will later rename the file and the utility to the ff.cpp and ff respectively.
+
+	* src/common/background.h: added the dark current removal. Will later rename to flatfield.h.
+
+2010-03-01  antonmx  <antonmx@amx-mac.synchrotron.org.au>
+
+	* *.cpp *.h: Changed type "ArrI" -> "Map" and "Arr3" -> "Volume".
+
+	* src/executables/Makefile.am, src/executables/ct-line.cpp : Added this program as the prototype of the reconstruct-as-acquired approach. In this approach you don't need to wait until all projections are acquired, then form sinogram and reconstruct it. The projections are added to the reconstructed array as they come from the detector.
+
+	* *: Returning back to (life) work on the project! First one good news. Seems the Open MPI and GPU support is coming soon: VPAC is working on it. I am planning to add the Inline Phase Contrast in coming two-three months after will finish rework of some parts which I do not like in their current form. Once it is done, will concentrate on the GUI - spent half a year on Qt - now ready to use this for this project.
+
+2009-05-29  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/common/poptmx.cpp, src/common/poptmx.h, src/common/dei.h, src/common/libdei.cpp: Spent last two weeks trying to find the bug in which crashes Windows version 90% of time. Did not find it and resigned. However, while doing that seriously cleaned up and restructured the source code of poptmx and deilib.
+
+2009-05-08  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* msvs: This is the new directory in the package distribution. It contains the solution for the MS Visual Studio (I used 2008's version in my work). Please note that you will have to install all needed libraries (fftw, FreeImage, ImageMagick, libtiff, pthreads and gsl) and link the project to them if you want to compile the code.
+
+	* *: Ported the package to MS Windows. WARNING!!! I just made the code compilable on the platform and ran some very basic tests. I.e. the code may or may not work, may or may not provide correct results. I have zero experience in programming for the MS Windows and therefore cannot guarantee anything. Just consider this my attempt as the point which you can start from if you want to develop for the platform.
+
+2009-04-22  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* *: Changed the code to compile with no OMP support and GCC 3 branch.
+
+	* *.cpp, *.h: The "center" (both option and the variable in the code) is now of type float, rather than integer.
+
+	* configure.in: Excuded check for the OpenMP features in the GCC.
+
+	* kernel.cpp: Rewrote nof_threads function to exclude usage of the OpenMP features: use sysconf instead.
+
+2009-04-20  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* configure.in: Added check for the gslcblas library (thanks to the bug report from AC).
+
+2009-04-06  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* example: Updated the existing examples, added more examples and included the downsized version of them into the distribution.
+
+	* *: Wrote some very basic website for the project.
+
+	* src/common/*: Thanks to the popmx library now I have the manual pages for all tools. The great thing is that i do not need to update the manual pages: they are generated automatically.
+
+	* *: Code reorganization. I made the libraries from the EDEI and all-in-one modules which earlier where statically linked to. Also I moved them into the src/common directory. Also I renamed the source files for the tools in accordance with the tools names.
+
+	* src/blitz-long : Finally I found time and power to adopt the original version of the Blitz++ library into the project. Now you do not have to have it in your system. Here I have seriously patched and castrated version. First of all this version uses long int instead of int for the array sizes, what allows larger arrays (more than 2^32 elements) what is critical for the modern CT systems. Secondary I removed all components of the library not used in the code. Finally, this version will not install any files into your system - it is used as a self-contained unit within the package.
+
+	* src/common/common.cpp : I splited the Image input/output functions into several semi-independent ones: now some of them are based on the ImageMagick library, some on the FreeImage library and one on the libtiff. Basically the code structure became more complex, but I wanted to do this because the efficiency of the ImageMagick did not satisfy me (it takes too-o-o-o-o long to read/write a huge amount of large images, what is a common situation in the CT reconstruction). On the other hand libtiff, which now I use only for writing the 32-bit float-point images cannot operate any other image formats, thus I have three different libraries. In the future I will try to get rid of some of them.
+
+	* src/executables/*.cpp : I completely rewrote the command line parsing module. First of all get rid of the libpopt I used before and replaced it with the my own "poptmx". The libpopt had some (minor) features which I missed a lot. When 11-th tool appeared in the package I decided that it is worth spending some time for writing the library.
+
+	* * : Too much to describe everything. Again I was too lazy to track all changes in the ChangeLog since the version 0.4 was released. Now let me point out just the main of them: see entries above.
+	
+
+2008-12-19  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* * : Last month was too lazy to log the changes here. Most important of them are below:
+
+	* src/common/kernel.* : Added discrete corrections into the filtering function (see Filter::fill()).
+
+	* src/common/kernel.* : Added zero-padding into the sinogram filtering (see CTrec::zPad and related).
+
+	* src/common/kernel.* : Logarithmization of the absorption data (see CTrec::reconstruct_uni()).
+
+	* src/common/kernel.* : Redesigned the access to the reconstruction from the CTrec class: now all reconstruction is performed inside the universal function CTrec::reconstruct_uni() while other reconstruction functions ( CTrec::reconstruct_*() ) are in their place to allow possible future branching of the reconstruction methods/algorithms. Currently all of them just call above mentioned universal reconstruction function.
+
+	* src/executable/Makefile.am, src/executable/f2i.cpp : Added "f2i" binary which can convert float-point images into the integer ones.
+
+
+2008-11-19  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/Makefile.am: Added sino-abs and sino-dei tools, renamed cta and ctr to ct-abs and ct-dei respectively.
+
+2008-11-18  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/*.cpp: Changed all clargs_* to clargs*.
+
+2008-10-27  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* *: Decided that the milestone "0.3" has reached.
+
+2008-10-24  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* *.h: Moved Doxygen comments from the definitions of classes to where the corresponding methods are determined. It makes the definitions readable "from a glance".
+
+2008-10-23  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/common/common.h, src/common/common.cc, src/common/kernel.cpp: Added support for the case insensitive arguments to options --contrast and --filter.
+
+2008-10-22  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/ctas.1: Added description of I/O formats (duplicates "Input/Output formats" section in the main documentation).
+
+	* src/*, doc/suppl/Mainpage.dox: Updated all documentation in accordance with the previous changes.
+
+	* src/executables/*.cpp: Updated the option tables in accordance with previous changes in Contrast, Filter and CTrec classes. Now programs (except dei) do not accept -r, --refraction, -a, --absorption options. Use option -C, --contrast <name> instead.
+
+	* src/common/common.*: Changed the Contrast enumeration into the class with the same name: easier to add new contrast type.
+
+	* src/common/kernel.*: Rewritten the reconstruction kernel in order to make the inclusion of new algorithms/contrasts easier: replaced Reconstruction class with the CTrec. All reconstruction functions are moved into the CTrec class.
+
+	* src/common/kernel.*: Rewritten the Filter enumerator as the class: easy to add new filters.
+
+2008-10-13  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* *.h, *.cpp, *.cc: Updated all documentation and documented new modules (all-in-one.*, all-in-one.cpp, ctabs.cpp, ctref.cpp).
+
+	* doc/suppl/Mainpage.dox: Wrote the description of the I/O data file formats and arguments of special form. Removed large pieces of text from the --help output and placed the note where to find them instead.
+
+2008-10-08  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/ctabs.cpp, src/executables/all-in-one.cpp, src/executables/tomo.cpp: Added CLI progress bar. Will add it to the reconstruction functions later.
+
+	* src/common/common.h, src/common/common.cc, src/common/common.cpp: Realized the idea of the progress bar in the CLI. See class "ProgressBar". 
+
+2008-10-06  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/ctabs.cpp: Finished full test with the memory map to file. Works well. Input data: 4008(pixels) x 2671(slices) x 644(projections). Runtime: real 1058m13.801s, user 788m6.023s, sys 95m53.052s. Very close to the results with the swap file in use.
+
+
+2008-10-03  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/background.h, src/executables/background.cpp: Added option "idealworld" as the standard for all programs which deals with the background removal. Updated cpp code in accordance.
+
+	* src/executables/reconstruct.cpp: Reworked in accordance with the previous change. The interface to the --filter option changed, but compatible with the old version.
+
+	* src/kernel/kernel.h: Added some options typical to the reconstruction process: filter, center.
+
+	* src/executables/ctabs.cpp: Finished first full test. Input data: 4008(pixels) x 2671(slices) x 644(projections). Runtime: real 1103m12.355s, user 770m27.119s, sys 96m27.533s. I.e. approximately 18 hours including 1h10m for image reading into memory. Expect much faster operation if no memory is swapped.
+
+
+2008-10-02  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/common/common.h, src/executables/*.cpp: Removed global variables help_trg, use_trg, verb_trg, SaveInt. Added dynamic option tables includeStandartTable(), includeIntOption() instead. Added options helpme and useme into exit_if_help_use() function. Added corresponding local variables into all executable files.
+
+	* src/common/common.h, src/common/common.cc: Moved all definitions of the inline functions from the header to the cc file.
+
+
+2008-09-29  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/ctabs.cpp: Finished writing. Compiled. First successful run.
+
+	* src/common/common.h, src/common/common.cpp: Moved fmt2s function from source to header file because it is used directly in the all-in-one.h.
+
+	* src/executables/background.cpp, src/executables/background.h: Moved some portion of background.cpp to the background.h which is expected to be used in the all-in-one binaries.
+
+
+2008-09-25  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/dei.cpp, src/executables/rc2fd.cpp: Reworked based on the changes in the class RCstaff (see previous log). Changed CLI options -E, -C, -D, --data into -d, -c, -f, --fd respectively in the "dei" tool. Changed CLI options -E, -C into arguments <RC file>, <FD file> in the "rc2fd" tool.
+
+	* src/executables/dei.h, src/executables/dei_common.cpp: Seriously reworked the RCstaff class to improve the logic and allow it to be constant while capable of loading RC or FD data. Removed any linkage to the RC or FD data file names in the class: now the names are needed only for loading/saving the files.
+
+	* src/common/kernel.cpp, src/executables/tomo.cpp, src/executables/reconstruct.cpp: Removed the check of the rotation center from the executables (tomo.cpp, reconstruct.cpp) and added it into the init_reconstruct function in the kernel.
+
+
+2008-09-24  antonmx  <antonmx@asw062.synchrotron.org.au>
+
+	* src/executables/Makefile.am , src/executables/ctabs.cpp: Added new executable 'cta' which is the all-in-one absorption-based CT reconstruction. Started to work on it.
+
+	* reconstruct.cpp: Removed short version of option --alha-sigma (-s).
+
+
+2008-09-23  antonmx  <antonmx@gmail.com>
+
+	* doc/suppl/Mainpage.dox: added subsection "Input/Output image formats" to the documentation main page. Some cosmetic changes in the main page.
+
+	* configure.in: added check for the libtiff library and header into the configuration script.
+
+	* src/common/common.h: Changed fmt2s() function to the template n2s() in all source files. For easier code reading.
+
+	* src/, *.cpp, *.h: Checked spelling in the comments and strings (thnx 2 flyspell-prog-mode)

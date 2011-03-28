@@ -1,0 +1,91 @@
+<html><head><title>CTAS Package Homepage</title></head>
+
+<h1>User documentation for CTAS Package</h1>
+
+As it was mentioned on the main page, the package has advanced command line interface with the main executable called <a href="ctas.1.html">ctas</a>. It is used as the interface to all tools from the package with the following syntax:
+<TABLE BORDER="0" BGCOLOR="#E0E0E0" WIDTH="100%">
+  <TR><TD> @ <B> ctas &lt;tool&gt; </B> </TD></TR>
+</TABLE>
+
+<p>
+Here is the list of all tools in the package:
+<TABLE BORDER="1" BGCOLOR="#E0E0E0">
+<TR><TH>tool</TH> <TH>description</TH></TR>
+<TR><TD> <a href="ctas-ff.1.html">ff</a></TD> <TD>Flat field correction.</TD></TR>
+<TR><TD> <a href="ctas-ct.1.html">ct</a></TD> <TD>CT reconstruction of one sinogram.</TD></TR>
+<TR><TD> <a href="ctas-ct-abs.1.html">ct-abs</a></TD> <TD>All-in-one absorption-based CT reconstruction.</TD></TR>
+<TR><TD> <a href="ctas-ct-dei.1.html">ct-dei</a></TD> <TD>All-in-one DEI-based CT reconstruction.</TD></TR>
+<TR><TD> <a href="ctas-ct-edei.1.html">ct-edei</a></TD> <TD>All-in-one EDEI-based CT reconstruction.</TD></TR>
+<TR><TD> <a href="ctas-ct-ipc.1.html">ct-ipc</a></TD> <TD>All-in-one IPC-based CT reconstruction.</TD></TR>
+<TR><TD> <a href="ctas-ct-line.1.html">ct-line</a></TD> <TD>Prototype of the reconstruct-as-acquired approach.</TD></TR>
+<TR><TD> <a href="ctas-dei.1.html">dei</a></TD> <TD>DEI contrast processing.</TD></TR>
+<TR><TD> <a href="ctas-edei.1.html">edei</a></TD> <TD>EDEI contrast processing.</TD></TR>
+<TR><TD> <a href="ctas-ipc.1.html">ipc</a></TD> <TD>IPC contrast processing.</TD></TR>
+<TR><TD> <a href="ctas-f2i.1.html">f2i</a></TD> <TD>Converts float-point image to the integer one.</TD></TR>
+<TR><TD> <a href="ctas-rc2fd.1.html">rc2fd</a></TD> <TD>Converts the rocking curve of the analyzer to the function used in the EDEI.</TD></TR>
+<TR><TD> <a href="ctas-sino.1.html">sino</a></TD> <TD>Prepares sinogram from the stack of files.</TD></TR>
+<TR><TD> <a href="ctas-sino-abs.1.html">sino-abs</a></TD> <TD>Forms absorption-based sinogram(s) using describing file.</TD></TR>
+<TR><TD> <a href="ctas-sino-dei.1.html">sino-dei</a></TD> <TD>Forms DEI-based sinogram(s) using describing file.</TD></TR>
+<TR><TD> <a href="ctas-sino-edei.1.html">sino-edei</a></TD> <TD>Forms EDEI-based sinogram(s) using describing file.</TD></TR>
+<TR><TD> <a href="ctas-sino-ipc.1.html">sino-ipc</a></TD> <TD>Forms IPC-based sinogram(s) using describing file.</TD></TR>
+<TR><TD> <a href="ctas-ts.1.html">ts</a></TD> <TD>Tomosynthesis reconstruction.</TD></TR>
+<TR><TD> list </TD> <TD> Lists all existing commands. </TD></TR>
+<TR><TD> help </TD> <TD> Prints brief help message including the list of all tools with short description of each. </TD></TR>
+<TR><TD> usage </TD> <TD> Outputs brief usage message </TD></TR>
+</TABLE>
+
+
+
+<h3><a name="ioformats">Notes on input/output file formats</a></h3>
+
+The programs from the ctas package use several file formats for the input/otput operations. Basically they are recorded or reconstructed images and text data files which may include strings, numbers, etc. Each file format is described in the manual page of each tool which makes use of it. The package does not use any structured information on it's input and therefore usage of complicated formats (xml, etc.) sounds to be redundant.
+
+<p>
+Many of the tools included into the package read the images as the input data, process them and output other images. The input images can be of any type supported by the <a href="http://www.imagemagick.org">ImageMagick</a> library (see <a href="http://www.imagemagick.org/script/formats.php">this page</a> for the list). Note that the <a href="http://www.imagemagick.org">ImageMagick</a> MUST be compiled with <b>NO</b> HDRI support (details <a href="http://www.imagemagick.org/script/high-dynamic-range.php">here</a>) because the HDRI support in the <a href="http://www.imagemagick.org">ImageMagick</a> is very experimental and writing HDRI images is not reliable for the current moment. Moreover the HDRI support mixes up the write procedure for integer images. I use <a href="http://www.remotesensing.org/libtiff/">LibTIFF</a> for writing 32-bit float point images in TIFF format (what may change in future versions if the <a href="http://www.imagemagick.org">ImageMagick</a> stabilizes the HDRI support). The data processing in most of the algorithms is performed in the float numbers space and saving the results as an integer value causes the loss of the accuracy. Therefore the results, by default, are always saved as the 32-bit float point TIFF file (regardless of the file extension ot the output file). However, quite a few of the image viewers/editors can work correctly with the HDRI images (I can advice <a href="http://rsbweb.nih.gov/ij/">ImageJ</a>). Therefore all the tools which have image output can understand option
+<table border="1" bgcolor="#E0E0E0" cellspacing="3" cellpadding="3">
+<tr>
+<th>short option </th><th>long option </th><th>description  </th></tr>
+<tr>
+<td>-i </td><td>--int </td><td>output image in the 16-bit integer format  </td></tr>
+</table>
+which forces the output image to be saved in the integer numbers. In this case the format of the image is defined by the extension of the output file (defaulting to TIFF if the extension does not correspond to any output format). The color depth of the image is 16-bit if the format supports it and 8-bit otherwise. The values of the black and white are respectively defined by the minimum and maximum values of the array to be exported to the image. All output images are greyscale, while the input images can be colorful (the value of each pixel is taken into account). The alpha channel (transparency) of the input images is always ignored.
+
+<p>
+Another disadvantage the <a href="http://www.imagemagick.org">ImageMagick</a> is it's low efficiency. The library was developed to support as many formats as possible, providing unified interface to all formats, but the other side of this approach is quite low speed of the I/O operations. It may turn to the strong problem when using lage stacks of the high-resolution images. For example preparing the sinogram of 644 images with the resolution 4008(w) x 2671(h) pixels took approximately 15 minutes on the high-end MacPro workstation (2x QuadCore Xeons + 16Gb DDR2 memory + 15k RPM HDD) under Linux OS. Therefore, when possible I make use of LibTiff and FreeImage projects.
+
+
+<h3>Terminology and abbreviations used in the documentation</h3>
+<table border="1" bgcolor="#E0E0E0" cellspacing="3" cellpadding="3">
+<tr>
+<th>term </th><th>description  </th></tr>
+<tr>
+<td>CT </td><td><a href="http://en.wikipedia.org/wiki/Computed_tomography">Computed Tomography</a>.  </td></tr>
+<tr>
+<td>TS </td><td><a href="http://en.wikipedia.org/wiki/Tomosynthesis#Tomosynthesis">Tomosynthesis</a>.  </td></tr>
+<tr>
+<td>RC </td><td>Rocking curve. In most cases refers to the RC of the analyzing crystall in the DEI/EDEI experimental setup.  </td></tr>
+<tr>
+<td>FD </td><td>Function derived from the RC used for the EDEI data processing (see function <img class="formulaInl" alt="$ F^{-1} $" src="form_16.png"> defined in eq.(3) in <a href="../suppl/ApplPhysLett_90_154106.pdf">[3]</a>).  </td></tr>
+<tr>
+<td>DEI </td><td><a href="http://www.iop.org/EJ/article/0031-9155/42/11/001/m71101.pdf">Diffraction Enhanced Imaging</a>. A method in the X-ray imaging which can separate the apparent absorption and refraction components of the analyzer-based contrast.  </td></tr>
+<tr>
+<td>EDEI </td><td><a href="../suppl/ApplPhysLett_90_154106.pdf">Extended Diffraction Enhanced Imaging</a>: nonlinear extension of the <a href="http://www.iop.org/EJ/article/0031-9155/42/11/001/m71101.pdf">Diffraction Enhanced Imaging</a>.  </td></tr>
+<tr>
+<td>ROI </td><td>Region of interest.  </td></tr>
+<tr>
+<td>CLI </td><td>Command line interface.  </td></tr>
+<tr>
+<td>DC </td><td>Dark current of the detector.  </td></tr>
+<tr>
+<td>IPC </td><td><a href="http://www.opticsinfobase.org/abstract.cfm?id=68135">Inline Phase Contrast</a>.  </td></tr>
+<tr>
+<td>MBA </td><td><a href="http://www.opticsinfobase.org/abstract.cfm?URI=oe-14-18-8103">Modified Bronnikov Algorithm</a>.  </td></tr>
+<tr>
+<td>BAC </td><td><a href="http://www.opticsinfobase.org/abstract.cfm?uri=josaa-26-4-890">Bronnikov Aided Correction</a>.  </td></tr>
+<tr>
+<td>... </td><td>... to add more ...  </td></tr>
+</table>
+
+
+
+</body></html>

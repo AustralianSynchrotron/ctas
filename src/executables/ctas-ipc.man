@@ -1,0 +1,150 @@
+.TH IPC "1" "" "ipc" "User Commands"
+.SH NAME
+ipc \- IPC contrast processing
+.SH SYNOPSIS
+.br
+.B ipc [OPTIONS...] <far-intensity> <0-intensity>
+.SH DESCRIPTION
+.PP
+Extracts the phase and/or absorption contrast from the input image(s). Depending on the input parameters utilizes BA, MBA or BAC algorithms.
+./ START OPTION
+.RS
+.SH ARGUMENTS:
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB<far-intensity>\fR
+.RS
+Contrast taken at the distance.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB<0-intensity>\fR
+.RS
+Contrast taken in the contact print plane (clean absorption contrast).
+.RE
+./ END OPTION
+./
+./ START OPTION
+.RS
+.SH OPTIONS:
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-p\fR, \fB\-\-phase\fR=\fIPATH\fR
+.RS
+Image name to output the phase component
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-a\fR, \fB\-\-absorption\fR=\fIPATH\fR
+.RS
+Image name to output the absorption component
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-z\fR, \fB\-\-distance\fR=\fIFLOAT\fR
+.RS
+Object-to-detector distance (mm)
+.br
+More correctly the distance from the contact print plane and the detector plane where the image given by the argument <far-intensity> was taken. The value is required only to produce the physically correct output. If not set the results are qualitative rather than quantitative.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-r\fR, \fB\-\-resolution\fR=\fIFLOAT\fR
+.RS
+Pixel size of the detector (micron)
+.br
+The value is required only to produce the physically correct output. If not set the results are qualitative rather than quantitative.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-l\fR, \fB\-\-alpha\fR=\fIFLOAT\fR
+.RS
+The alpha-parameter of the MBA.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-w\fR, \fB\-\-wavelength\fR=\fIFLOAT\fR
+.RS
+Wavelength of the X-Ray (Angstrom)
+.br
+Only needed together with -l, --alpha.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-g\fR, \fB\-\-gamma\fR=\fIFLOAT\fR
+.RS
+Gamma coefficient of the BAC.
+.br
+Must be a value around 1.0 (theoretical).
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-i\fR, \fB\-\-int\fR
+.RS
+Output image(s) as integer.
+.br
+If this option is not set, the output format defaults to the 32-bit float-point TIFF (regardless of the extension). If it is set, the image format is derived from the output file extension (TIFF if the extension does not correspond to any format).
+.RE
+./ END OPTION
+./
+./ START OPTION
+.RS
+.SH Standard options.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+.RS
+Verbose output.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-?\fR, \fB\-\-usage\fR
+.RS
+Outputs brief usage message.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.RS
+Outputs help message.
+.br
+When combined with the "-v|--verbose" option may output more detailed message.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.br
+.SH SEE ALSO:
+.br
+ctas(1), ctas-bg(1), ctas-ct(1), ctas-ct-abs(1), ctas-ct-dei(1), ctas-ct-edei(1), ctas-ct-ipc(1), ctas-dei(1), ctas-edei(1), ctas-ipc(1), ctas-f2i(1), ctas-ff(1), ctas-sino(1), ctas-sino-abs(1), ctas-sino-dei(1), ctas-sino-ipc(1), ctas-ts(1), ctas-ct-line(1)
+./ END OPTION
+./

@@ -1,0 +1,49 @@
+/** \file Mainpage.dox
+    \brief The main page of the doxygen generated %API Documentation
+*/
+
+/**
+
+
+\mainpage The Developer's documentation for the CTAS package.
+
+When writing the code of the package I always had in mind possible co-developers so I documented each function, class, members, global variable. I used <a href="http://www.doxygen.org">Doxygen</a> tags for comments to generate the developer documentation automatically.
+
+\section intro Introduction.
+
+This package is written more than 99% in the C++ with smal inclusions of C (where external libraries needed it) and one file in the Shell-script. Why did I use C++ for the high load calculations instead of C? I checked the performance of the same reconstruction algorithm written in clean C, and found no difference at all. In the code I use the Object-oriented approach very intensively. Sometimes it can be even redunadant and makes the code more difficult to understand. However, it saves a lot of time and minimizes the text which I have to type.
+
+\section struct Structure.
+
+The source files in the "src/executables" directory are for the tools. Each cpp file in this directory represents one particular tool. It makes use of the "clargs" structure holding all variables which are defined through the command-line interface of the tool and the CLI parser in form of the clargs::clargs constructor. The manual pages of the tools are also made within clargs::clargs parser using the feature from the poptmx library. Note that each tool has it's own local clargs structure, what is not processed by the Doxygen correctly and therefore read the code itself when you need to hack it. The main function of each tool usually just combines certain classes and/or functions from the libraries which do the actual work.
+
+All tools made in the "src/executables" directory are installed into the "PKGLIBEXECDIR" directory which is usually "$PREFIX/libexec/ctas" (if not rewritten during the configuration). The main executable (source "src/ctas.in") which is actually just a small shell script knows about the path to the tools and executes them as requested. I decided to use this trick in order to avoid installing a number of tools into the bin directory.
+
+The directory "src/common" includes all libraries required for the package. All actual calculations, data processing, CLI parsing etc are performed within these libraries what allows me to keep the size of the code for the tools as short as possible.
+
+The directory "src/blitz-long" contains my own version of the Blitz++ library. Seriously patched and castrated version. First of all this version uses long int instead of int for the array sizes, what allows larger arrays (more than 2^32 elements) what is critical for the modern CT systems. Secondary I removed all components of the library not used in the code. Finally, this version will not install any files into your system - it is used as a self-contained unit within the package.
+
+
+\section algo How to add new reconstruction algorithm.
+
+If you want to play with new CT algorithm (for example you want to implement reconstruction on the GPU or FPGA or whatever), but have no time to write code for the whole infrastructure (sinogram formation, flat field subtraction, filtering windows, etc.) you can plug in your algorithm into the source code (see detailed description for the ::CTrec class) and reconstruct real experimental data using your algorithm.
+
+\section contrast How to add new type of contrast.
+
+If you want to develop / implement some additional contrast(s) (f.e. X-ray inline, phase, etc), but do not want to write the whole infrastructure, you can do with this package: include your type of contrast into ::Contrast class, and use one of the CT algorithms from the ::CTrec class (or include your own one: see section \ref algo). After that you can build your own all-in-one reconstruction program adding your contrast into the ::SinoS class, and looking at the examples in sino_abs.cpp, sino_dei.cpp, ct_abs.cpp and ct_dei.cpp. It is also likely that you want to add a single-projection processing, similar to the "dei" tool (see dei.cpp for example).
+
+
+\section lic License
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU Free %Documentation License, Version 2 or any later
+version published by the Free Software Foundation; For details see
+http://www.gnu.org/copyleft/fdl.html.
+
+
+
+
+
+
+
+*/

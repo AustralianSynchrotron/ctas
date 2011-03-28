@@ -1,0 +1,106 @@
+#!/bin/bash
+# bashscript - Copyright (C) 2008 Anton Maksimenko <antonmx@gmail.com>
+
+
+# /// \file   ctas
+# /// \brief Main executable
+# /// \details Small shell script which invokes one of the executables
+# /// belonging to the package. All executables should (but not must)
+# /// be invoked via the interface provided by this script. Actually it
+# /// should be the obly executable installed into the bin directory.
+# /// This file is created by the ./configure scrupt from input file
+# /// 'ctas.in' and therefore doxygen command should be run after the
+# /// configuration.
+# /// Unfortunately the doxygen does not support bash shell script
+# /// language. Therefore this file is not documented as it should be.
+
+
+
+# /// \cond
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+lib_prefix=@libdir@/ctas
+PKGLIBEXECDIR=@PKGLIBEXECDIR@
+PACKAGE=@PACKAGE@
+
+
+description="Interface to all tools in the '${PACKAGE}' package."
+command=$(basename $0)
+
+listcom() {
+    for execom in $(ls ${PKGLIBEXECDIR}) ; do
+        echo $(basename $execom);
+    done
+}
+
+longestname=0
+for com in $(listcom) ; do
+    if [ "${#com}" -gt "$longestname" ] ; then
+        longestname=${#com}
+    fi
+done
+let "longestname += 2"
+
+checkcom() {
+    ls -a ${PKGLIBEXECDIR} | grep -q "^$1\$"
+}
+
+execom() {
+    LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
+    LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
+    exec ${PKGLIBEXECDIR}/$@
+}
+
+showusage() {
+    echo "$description"
+	echo "Use '-h | --help' option for more information."
+}
+
+# I assume that each command in the package, if invoked with no arguments,
+# briefly describes itself in the first string of the output.
+describeself() {
+    if checkcom $1 ; then
+        execom $1 | head -n 1
+    fi
+}
+
+showhelp() {
+	echo "$description"
+	echo "Usage: $command <tool> [TOOL SPECIFIC ... ]"
+    echo "TOOLS:"
+    for com in $(listcom) ; do
+        printf "    %-${longestname}s%s\n" "$com" "$(describeself ${com})"
+    done
+    printf "    %-${longestname}s%s\n" "list"  "Lists all tools."
+    printf "    %-${longestname}s%s\n" "help"  "Prints this help message."
+    printf "    %-${longestname}s%s\n" "usage" "Outputs brief usage message."
+    echo "TOOL SPECIFIC:"
+    echo "    Use command's help or usage for specific information:"
+    echo "    $command <command> -h | --help | -? | --usage"
+}
+
+
+
+if [ "$#" -eq "0" ] ; then
+    showusage >&2
+    exit 1;
+else
+    comm=$1
+fi
+
+case "$comm" in
+	"-h"|"h"|"help"|"--help")  showhelp ; exit 0 ;;
+	"-?"|"u"|"usage"|"--usage") showusage ; exit 0 ;;
+    "-l"|"l"|"list"|"--list")  listcom ; exit 0 ;;
+	*) shift ;;
+esac
+
+if checkcom $comm  ; then
+    execom $comm $@
+else
+    echo "The packege does not provide command '$comm'."
+    exit 1;
+fi
+
+# /// \endcond

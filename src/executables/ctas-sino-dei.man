@@ -1,0 +1,230 @@
+.TH SINO-DEI "1" "" "sino-dei" "User Commands"
+.SH NAME
+sino-dei \- Forms DEI-based sinogram(s).
+.SH SYNOPSIS
+.br
+.B sino-dei [OPTIONS...] <minus list> <plus list> <result mask>
+.SH DESCRIPTION
+.PP
+Performs following procedures:
+.br
+1) reads two text files describing the arrays of input files (foreground-background pairs) in minus and plus position of the analyzer crystal.
+.br
+2) removes the backgrounds in accordance with these files.
+.br
+3) performs the DEI extraction of the requested contrast component.
+.br
+4) constructs the sinograms of the slices requested in the slice string.
+./ START OPTION
+.RS
+.SH ARGUMENTS:
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB<minus list>\fR
+.RS
+List of the input images in the minus position.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB<plus list>\fR
+.RS
+List of the input images in the plus position.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.RS
+Arguments "<minus list>" and "<plus list>". Text file which describes the stack of input images: foregrounds and (optionally) background(s). The strings in the file can be one of the following forms:
+.br
+    #BACKGROUND# <background filename>
+.br
+The string prefixed with the "#BACKGROUND# " gives the name of the background file right after the prefix. This background file contains the background contrast for all foregrounds below it until the next background string is met. No background removal is performed for all foregrounds given in the strings above the first background. If the string starting with the prefix does not contain any background name then all following foregrounds are considered as is ( i.e. no background removal is performed).
+.br
+    #DARKCURRENT# <dark current filename>
+.br
+The string prefixed with the "#DARKCURRENT# " gives the name of the dark current file right after the prefix. If more than one DC file is given, then the average of all are used.
+.br
+    <foreground filename>
+.br
+The foreground string gives the name of the actual contrast of the sample.
+.br
+    # <comment>
+.br
+The string starting with '#' sign, is treated as a comment.
+.br
+    <empty string>
+.br
+Empty strings can be used for grouping and have no influence.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB<result mask>\fR
+.RS
+Output result mask.
+.br
+Used when there is a need to describe a stack of output files. In this case the special character represents the number of the output file in the stack. The result mask is a string which forms the names of the processed slices. The mask should (but not must) contain the '@' character which denotes the position where the slice number will be inserted:
+.br
+    If there is no '@' in the mask, it is inserted together with the '-' prefix right before the file extension (if any) or at the end of the mask (if no extension).
+.br
+    If there are more than one '@' character in the mask, only the last of them is replaced by the slice number.
+.br
+For example the mask
+.br
+    ../path/to/@/result/rec-@-@@.png
+.br
+produces file names similar to this (for the 13th slice):
+.br
+    ../path/to/@/result/rec-@-@013.png
+.br
+Note that the path(s) to the files must exist: the program will not create any directory.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.RS
+.SH OPTIONS:
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-C\fR, \fB\-\-component\fR=\fISTRING\fR
+.RS
+Type of the contrast component.
+.br
+The component of the contrast to extract via the DEI method. Must be one of the following strings (case insensitive):
+.br
+A, ABS, ABSORPTION - for the absorption component
+.br
+R, REF, REFRACTION - for the refraction component
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-s\fR, \fB\-\-slice\fR=\fISTRING\fR
+.RS
+Slices to be processed.
+.br
+The string describing the slices in the image stack which are to be processed. Must be a string consisting only of numbers, commas ',' minus signs '-' and the character 'n'. First the string is divided into the substrings separated by comas and each substring is processed on it's own:
+.br
+    The string consisting only of numbers is read as the integer and added to the list of the reconstructed slices.
+.br
+    The string with the minus sign surrounded by the numbers adds all slices in the range into the list.
+.br
+    If the string starts with the minus then the range start is assumed to be 1.
+.br
+    If minus is the last character in the string then the range finishes at the maximum slice number.
+.br
+    If the string has negation prefix 'n' then the slice(s) are excluded from the previously formed list.
+.br
+    If all substrings have 'n' prefix or the first substring contains only it, then the meaning of the whole string is "all except ...".
+.br
+    Two and more negations are interpreted as a single one.
+.br
+    If no slice string is given then all slices are reconstructed.
+.br
+For example the following string:
+.br
+    9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915
+.br
+requests processing of the slices with numbers 1, 2, 4, 6, 9, 20 to 400, 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-i\fR, \fB\-\-int\fR
+.RS
+Output image(s) as integer.
+.br
+If this option is not set, the output format defaults to the 32-bit float-point TIFF (regardless of the extension). If it is set, the image format is derived from the output file extension (TIFF if the extension does not correspond to any format).
+.RE
+./ END OPTION
+./
+./ START OPTION
+.RS
+.SS DEI input parameters.
+.br
+Options required for the DEI processing.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-m\fR, \fB\-\-minus-rc\fR=\fIFLOAT\fR
+.RS
+Reflectivity in the minus position.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-p\fR, \fB\-\-plus-rc\fR=\fIFLOAT\fR
+.RS
+Reflectivity in the plus position.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-M\fR, \fB\-\-minus-drv\fR=\fIFLOAT\fR
+.RS
+Derivative of the RC in the minus position.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-P\fR, \fB\-\-plus-drv\fR=\fIFLOAT\fR
+.RS
+Derivative of the RC in the plus position.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.RS
+.SH Standard options.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+.RS
+Verbose output.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-?\fR, \fB\-\-usage\fR
+.RS
+Outputs brief usage message.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.RS
+Outputs help message.
+.br
+When combined with the "-v|--verbose" option may output more detailed message.
+.RE
+./ END OPTION
+./
+./ START OPTION
+.br
+.SH SEE ALSO:
+.br
+ctas(1), ctas-bg(1), ctas-ct(1), ctas-ct-abs(1), ctas-ct-dei(1), ctas-ct-edei(1), ctas-ct-ipc(1), ctas-dei(1), ctas-edei(1), ctas-ipc(1), ctas-f2i(1), ctas-ff(1), ctas-sino(1), ctas-sino-abs(1), ctas-sino-dei(1), ctas-sino-ipc(1), ctas-ts(1), ctas-ct-line(1)
+./ END OPTION
+./

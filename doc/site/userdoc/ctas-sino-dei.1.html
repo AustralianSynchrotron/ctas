@@ -1,0 +1,334 @@
+Content-type: text/html
+
+<HTML><HEAD><TITLE>Manpage of SINO-DEI</TITLE>
+</HEAD><BODY>
+<H1>SINO-DEI</H1>
+Section: User Commands (1)<BR>Updated: <BR><A HREF="#index">Index</A>
+<A HREF="../index.html">Return to Main Contents</A><HR>
+
+<A NAME="lbAB">&nbsp;</A>
+<H2>NAME</H2>
+
+sino-dei - Forms DEI-based sinogram(s).
+<A NAME="lbAC">&nbsp;</A>
+<H2>SYNOPSIS</H2>
+
+<BR>
+
+<B>sino-dei [OPTIONS...] &lt;minus list&gt; &lt;plus list&gt; &lt;result mask&gt;</B>
+
+<A NAME="lbAD">&nbsp;</A>
+<H2>DESCRIPTION</H2>
+
+<P>
+
+Performs following procedures:
+<BR>
+
+1) reads two text files describing the arrays of input files (foreground-background pairs) in minus and plus position of the analyzer crystal.
+<BR>
+
+2) removes the backgrounds in accordance with these files.
+<BR>
+
+3) performs the DEI extraction of the requested contrast component.
+<BR>
+
+4) constructs the sinograms of the slices requested in the slice string.
+
+<DL COMPACT><DT><DD>
+</DL>
+<A NAME="lbAE">&nbsp;</A>
+<H2>ARGUMENTS:</H2>
+
+
+
+
+
+<DL COMPACT>
+<DT><B>&lt;minus list&gt;</B><DD>
+<DL COMPACT><DT><DD>
+List of the input images in the minus position.
+</DL>
+
+
+
+
+<DT><B>&lt;plus list&gt;</B><DD>
+<DL COMPACT><DT><DD>
+List of the input images in the plus position.
+</DL>
+
+
+
+
+<DL COMPACT><DT><DD>
+Arguments &quot;&lt;minus list&gt;&quot; and &quot;&lt;plus list&gt;&quot;. Text file which describes the stack of input images: foregrounds and (optionally) background(s). The strings in the file can be one of the following forms:
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;#BACKGROUND#&nbsp;&lt;background&nbsp;filename&gt;
+<BR>
+
+The string prefixed with the &quot;#BACKGROUND# &quot; gives the name of the background file right after the prefix. This background file contains the background contrast for all foregrounds below it until the next background string is met. No background removal is performed for all foregrounds given in the strings above the first background. If the string starting with the prefix does not contain any background name then all following foregrounds are considered as is ( i.e. no background removal is performed).
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;#DARKCURRENT#&nbsp;&lt;dark&nbsp;current&nbsp;filename&gt;
+<BR>
+
+The string prefixed with the &quot;#DARKCURRENT# &quot; gives the name of the dark current file right after the prefix. If more than one DC file is given, then the average of all are used.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&lt;foreground&nbsp;filename&gt;
+<BR>
+
+The foreground string gives the name of the actual contrast of the sample.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;&lt;comment&gt;
+<BR>
+
+The string starting with '#' sign, is treated as a comment.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&lt;empty&nbsp;string&gt;
+<BR>
+
+Empty strings can be used for grouping and have no influence.
+</DL>
+
+
+
+
+<DT><B>&lt;result mask&gt;</B><DD>
+<DL COMPACT><DT><DD>
+Output result mask.
+<BR>
+
+Used when there is a need to describe a stack of output files. In this case the special character represents the number of the output file in the stack. The result mask is a string which forms the names of the processed slices. The mask should (but not must) contain the '@' character which denotes the position where the slice number will be inserted:
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;there&nbsp;is&nbsp;no&nbsp;'@'&nbsp;in&nbsp;the&nbsp;mask,&nbsp;it&nbsp;is&nbsp;inserted&nbsp;together&nbsp;with&nbsp;the&nbsp;'-'&nbsp;prefix&nbsp;right&nbsp;before&nbsp;the&nbsp;file&nbsp;extension&nbsp;(if&nbsp;any)&nbsp;or&nbsp;at&nbsp;the&nbsp;end&nbsp;of&nbsp;the&nbsp;mask&nbsp;(if&nbsp;no&nbsp;extension).
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;there&nbsp;are&nbsp;more&nbsp;than&nbsp;one&nbsp;'@'&nbsp;character&nbsp;in&nbsp;the&nbsp;mask,&nbsp;only&nbsp;the&nbsp;last&nbsp;of&nbsp;them&nbsp;is&nbsp;replaced&nbsp;by&nbsp;the&nbsp;slice&nbsp;number.
+<BR>
+
+For example the mask
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;../path/to/@/result/rec-@-@@.png
+<BR>
+
+produces file names similar to this (for the 13th slice):
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;../path/to/@/result/rec-@-@013.png
+<BR>
+
+Note that the path(s) to the files must exist: the program will not create any directory.
+</DL>
+
+
+
+
+<DL COMPACT><DT><DD>
+</DL>
+</DL>
+<A NAME="lbAF">&nbsp;</A>
+<H2>OPTIONS:</H2>
+
+
+
+
+
+<DL COMPACT>
+<DT><B>-C</B>, <B>--component</B>=<I>STRING</I><DD>
+<DL COMPACT><DT><DD>
+Type of the contrast component.
+<BR>
+
+The component of the contrast to extract via the DEI method. Must be one of the following strings (case insensitive):
+<BR>
+
+A, ABS, ABSORPTION - for the absorption component
+<BR>
+
+R, REF, REFRACTION - for the refraction component
+</DL>
+
+
+
+
+<DT><B>-s</B>, <B>--slice</B>=<I>STRING</I><DD>
+<DL COMPACT><DT><DD>
+Slices to be processed.
+<BR>
+
+The string describing the slices in the image stack which are to be processed. Must be a string consisting only of numbers, commas ',' minus signs '-' and the character 'n'. First the string is divided into the substrings separated by comas and each substring is processed on it's own:
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;string&nbsp;consisting&nbsp;only&nbsp;of&nbsp;numbers&nbsp;is&nbsp;read&nbsp;as&nbsp;the&nbsp;integer&nbsp;and&nbsp;added&nbsp;to&nbsp;the&nbsp;list&nbsp;of&nbsp;the&nbsp;reconstructed&nbsp;slices.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;string&nbsp;with&nbsp;the&nbsp;minus&nbsp;sign&nbsp;surrounded&nbsp;by&nbsp;the&nbsp;numbers&nbsp;adds&nbsp;all&nbsp;slices&nbsp;in&nbsp;the&nbsp;range&nbsp;into&nbsp;the&nbsp;list.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;the&nbsp;string&nbsp;starts&nbsp;with&nbsp;the&nbsp;minus&nbsp;then&nbsp;the&nbsp;range&nbsp;start&nbsp;is&nbsp;assumed&nbsp;to&nbsp;be&nbsp;1.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;minus&nbsp;is&nbsp;the&nbsp;last&nbsp;character&nbsp;in&nbsp;the&nbsp;string&nbsp;then&nbsp;the&nbsp;range&nbsp;finishes&nbsp;at&nbsp;the&nbsp;maximum&nbsp;slice&nbsp;number.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;the&nbsp;string&nbsp;has&nbsp;negation&nbsp;prefix&nbsp;'n'&nbsp;then&nbsp;the&nbsp;slice(s)&nbsp;are&nbsp;excluded&nbsp;from&nbsp;the&nbsp;previously&nbsp;formed&nbsp;list.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;all&nbsp;substrings&nbsp;have&nbsp;'n'&nbsp;prefix&nbsp;or&nbsp;the&nbsp;first&nbsp;substring&nbsp;contains&nbsp;only&nbsp;it,&nbsp;then&nbsp;the&nbsp;meaning&nbsp;of&nbsp;the&nbsp;whole&nbsp;string&nbsp;is&nbsp;&quot;all&nbsp;except&nbsp;...&quot;.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;Two&nbsp;and&nbsp;more&nbsp;negations&nbsp;are&nbsp;interpreted&nbsp;as&nbsp;a&nbsp;single&nbsp;one.
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;If&nbsp;no&nbsp;slice&nbsp;string&nbsp;is&nbsp;given&nbsp;then&nbsp;all&nbsp;slices&nbsp;are&nbsp;reconstructed.
+<BR>
+
+For example the following string:
+<BR>
+
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915
+<BR>
+
+requests processing of the slices with numbers 1, 2, 4, 6, 9, 20 to 400, 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.
+</DL>
+
+
+
+
+<DT><B>-i</B>, <B>--int</B><DD>
+<DL COMPACT><DT><DD>
+Output image(s) as integer.
+<BR>
+
+If this option is not set, the output format defaults to the 32-bit float-point TIFF (regardless of the extension). If it is set, the image format is derived from the output file extension (TIFF if the extension does not correspond to any format).
+</DL>
+
+
+
+
+<DL COMPACT><DT><DD>
+</DL>
+</DL>
+<A NAME="lbAG">&nbsp;</A>
+<H3>DEI input parameters.</H3>
+
+<BR>
+
+Options required for the DEI processing.
+
+
+
+
+<DL COMPACT>
+<DT><B>-m</B>, <B>--minus-rc</B>=<I>FLOAT</I><DD>
+<DL COMPACT><DT><DD>
+Reflectivity in the minus position.
+</DL>
+
+
+
+
+<DT><B>-p</B>, <B>--plus-rc</B>=<I>FLOAT</I><DD>
+<DL COMPACT><DT><DD>
+Reflectivity in the plus position.
+</DL>
+
+
+
+
+<DT><B>-M</B>, <B>--minus-drv</B>=<I>FLOAT</I><DD>
+<DL COMPACT><DT><DD>
+Derivative of the RC in the minus position.
+</DL>
+
+
+
+
+<DT><B>-P</B>, <B>--plus-drv</B>=<I>FLOAT</I><DD>
+<DL COMPACT><DT><DD>
+Derivative of the RC in the plus position.
+</DL>
+
+
+
+
+<DL COMPACT><DT><DD>
+</DL>
+</DL>
+<A NAME="lbAH">&nbsp;</A>
+<H2>Standard options.</H2>
+
+
+
+
+
+<DL COMPACT>
+<DT><B>-v</B>, <B>--verbose</B><DD>
+<DL COMPACT><DT><DD>
+Verbose output.
+</DL>
+
+
+
+
+<DT><B>-?</B>, <B>--usage</B><DD>
+<DL COMPACT><DT><DD>
+Outputs brief usage message.
+</DL>
+
+
+
+
+<DT><B>-h</B>, <B>--help</B><DD>
+<DL COMPACT><DT><DD>
+Outputs help message.
+<BR>
+
+When combined with the &quot;-v|--verbose&quot; option may output more detailed message.
+</DL>
+
+
+
+
+<BR>
+
+</DL>
+<A NAME="lbAI">&nbsp;</A>
+<H2>SEE ALSO:</H2>
+
+<BR>
+
+<A HREF="ctas.1.html">ctas</A>(1), <A HREF="ctas-bg.1.html">ctas-bg</A>(1), <A HREF="ctas-ct.1.html">ctas-ct</A>(1), <A HREF="ctas-ct-abs.1.html">ctas-ct-abs</A>(1), <A HREF="ctas-ct-dei.1.html">ctas-ct-dei</A>(1), <A HREF="ctas-ct-edei.1.html">ctas-ct-edei</A>(1), <A HREF="ctas-ct-ipc.1.html">ctas-ct-ipc</A>(1), <A HREF="ctas-dei.1.html">ctas-dei</A>(1), <A HREF="ctas-edei.1.html">ctas-edei</A>(1), <A HREF="ctas-ipc.1.html">ctas-ipc</A>(1), <A HREF="ctas-f2i.1.html">ctas-f2i</A>(1), <A HREF="ctas-ff.1.html">ctas-ff</A>(1), <A HREF="ctas-sino.1.html">ctas-sino</A>(1), <A HREF="ctas-sino-abs.1.html">ctas-sino-abs</A>(1), <A HREF="ctas-sino-dei.1.html">ctas-sino-dei</A>(1), <A HREF="ctas-sino-ipc.1.html">ctas-sino-ipc</A>(1), <A HREF="ctas-ts.1.html">ctas-ts</A>(1), <A HREF="ctas-ct-line.1.html">ctas-ct-line</A>(1)
+
+
+<P>
+
+<HR>
+<A NAME="index">&nbsp;</A><H2>Index</H2>
+<DL>
+<DT><A HREF="#lbAB">NAME</A><DD>
+<DT><A HREF="#lbAC">SYNOPSIS</A><DD>
+<DT><A HREF="#lbAD">DESCRIPTION</A><DD>
+<DT><A HREF="#lbAE">ARGUMENTS:</A><DD>
+<DT><A HREF="#lbAF">OPTIONS:</A><DD>
+<DL>
+<DT><A HREF="#lbAG">DEI input parameters.</A><DD>
+</DL>
+<DT><A HREF="#lbAH">Standard options.</A><DD>
+<DT><A HREF="#lbAI">SEE ALSO:</A><DD>
+</DL>
+<HR>
+This document was created by
+<A HREF="http://localhost/cgi-bin/man/man2html">man2html</A>,
+using the manual pages.<BR>
+Time: 01:19:33 GMT, March 29, 2011
+</BODY>
+</HTML>

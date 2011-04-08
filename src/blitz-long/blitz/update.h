@@ -27,7 +27,7 @@
 #ifndef BZ_UPDATE_H
 #define BZ_UPDATE_H
 
-#include "blitz.h"
+#include <blitz/blitz.h>
 
 BZ_NAMESPACE(blitz)
 

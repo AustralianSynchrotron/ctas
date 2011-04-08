@@ -28,14 +28,14 @@
 #define BZ_RANGE_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz.h"
+ #include <blitz/blitz.h>
 #endif
 
 #ifndef BZ_VECEXPRWRAP_H
- #include "vecexprwrap.h"      // _bz_VecExpr wrapper
+ #include <blitz/vecexprwrap.h>      // _bz_VecExpr wrapper
 #endif
 
-#include "wrap-climits.h"                  // for INT_MIN,INT_MAX
+#include <blitz/wrap-climits.h>                  // for INT_MIN,INT_MAX
 
 BZ_NAMESPACE(blitz)
 

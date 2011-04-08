@@ -31,11 +31,11 @@
 #define BZ_TRAVERSAL_H
 
 #ifndef BZ_TINYVEC_H
- #include "tinyvec.h"
+ #include <blitz/tinyvec.h>
 #endif
 
 #ifndef BZ_VECTOR_H
- #include "vector.h"
+ #include <blitz/vector.h>
 #endif
 
 #include <set>
@@ -157,7 +157,7 @@ public:
 
 BZ_NAMESPACE_END
 
-#include "traversal.cc"
+#include <blitz/traversal.cc>
 
 #endif // BZ_TRAVERSAL_H
 

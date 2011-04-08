@@ -28,7 +28,7 @@
 #endif
 
 #ifndef BZ_ARRAYSHAPE_H
- #include "shape.h"
+ #include <blitz/array/shape.h>
 #endif
 
 BZ_NAMESPACE(blitz)

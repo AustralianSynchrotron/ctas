@@ -46,7 +46,7 @@
 
 #else
 
-#  include "../../config.h"
+//#  include "../../config.h"
 #  define KERNEL_API
 
 #endif

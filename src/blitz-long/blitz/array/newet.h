@@ -25,11 +25,11 @@
 
 // Gang include of new expression templates implementation.
 
-#include "ops.h"
-#include "funcs.h"
+#include <blitz/array/ops.h>
+#include <blitz/array/funcs.h>
 
 // ET support for functors acting on Arrays
 
-#include "functorExpr.h"
+#include <blitz/array/functorExpr.h>
 
 #endif

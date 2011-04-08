@@ -31,7 +31,7 @@
 #define BZ_TIMER_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz.h"
+ #include <blitz/blitz.h>
 #endif
 
 #ifdef BZ_HAVE_RUSAGE

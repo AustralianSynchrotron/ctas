@@ -25,8 +25,8 @@
 #ifndef BZ_BENCH_H
 #define BZ_BENCH_H
 
-#include "matrix.h"
-#include "timer.h"
+#include <blitz/matrix.h>
+#include <blitz/timer.h>
 
 #if defined(BZ_HAVE_STD)
 #include <cmath>
@@ -130,6 +130,6 @@ public:
 
 BZ_NAMESPACE_END
 
-#include "bench.cc"  
+#include <blitz/bench.cc>  
 
 #endif // BZ_BENCH_H

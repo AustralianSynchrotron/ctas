@@ -30,16 +30,16 @@
 /*
  * <blitz/array.h> used to include most of the Blitz++ library
  * functionality, totally ~ 120000 lines of source code.  This
- * made for extremely slow compile times; processing #include "array.h"
+ * made for extremely slow compile times; processing #include <blitz/array.h>
  * took gcc about 25 seconds on a 500 MHz pentium box.
  *
  * Much of this compile time was due to the old vector expression templates
  * implementation.  Since this is not really needed for the Array<T,N>
  * class, the headers were redesigned so that:
  *
- * #include "array-old.h"   is the old-style include, pulls in most
+ * #include <blitz/array-old.h>   is the old-style include, pulls in most
  *                                of Blitz++ including vector e.t. 
- * #include "array.h"       pulls in much less of the library, and
+ * #include <blitz/array.h>       pulls in much less of the library, and
  *                                in particular excludes the vector e.t. code
  *
  * With <blitz/array-old.h>, one gets TinyVector expressions automatically.
@@ -49,8 +49,8 @@
  * The implementation of Array<T,N> has been moved to <blitz/array-impl.h>.
  */
 
-#include "tinyvec-et.h"
-#include "array-impl.h"
+#include <blitz/tinyvec-et.h>
+#include <blitz/array-impl.h>
 
 #endif // BZ_ARRAY_OLD_H
 

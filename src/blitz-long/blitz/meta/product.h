@@ -28,11 +28,11 @@
 #define BZ_META_PRODUCT_H
 
 #ifndef BZ_PROMOTE_H
- #include "../promote.h"
+ #include <blitz/promote.h>
 #endif
 
 #ifndef BZ_METAPROG_H
- #include "metaprog.h"
+ #include <blitz/meta/metaprog.h>
 #endif
 
 BZ_NAMESPACE(blitz)

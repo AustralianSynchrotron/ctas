@@ -18,18 +18,17 @@
 
 # /// \cond
 
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-lib_prefix=@libdir@/ctas
-PKGLIBEXECDIR=@PKGLIBEXECDIR@
-PACKAGE=@PACKAGE@
+prefix="@CMAKE_INSTALL_PREFIX@"
+exec_prefix="@CMAKE_INSTALL_PREFIX@/@LIBEXEC_DESTINATION@"
+lib_prefix="@CMAKE_INSTALL_PREFIX@/@LIB_DESTINATION@"
+PACKAGE="@PROJECT_NAME@"
 
 
 description="Interface to all tools in the '${PACKAGE}' package."
 command=$(basename $0)
 
 listcom() {
-    for execom in $(ls ${PKGLIBEXECDIR}) ; do
+    for execom in $(ls ${exec_prefix}) ; do
         echo $(basename $execom);
     done
 }
@@ -43,18 +42,18 @@ done
 let "longestname += 2"
 
 checkcom() {
-    ls -a ${PKGLIBEXECDIR} | grep -q "^$1\$"
+    ls -a ${exec_prefix} | grep -q "^$1\$"
 }
 
 execom() {
     LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
     LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
-    exec ${PKGLIBEXECDIR}/$@
+    exec ${exec_prefix}/$@
 }
 
 showusage() {
     echo "$description"
-	echo "Use '-h | --help' option for more information."
+    echo "Use '-h | --help' option for more information."
 }
 
 # I assume that each command in the package, if invoked with no arguments,
@@ -66,8 +65,8 @@ describeself() {
 }
 
 showhelp() {
-	echo "$description"
-	echo "Usage: $command <tool> [TOOL SPECIFIC ... ]"
+    echo "$description"
+    echo "Usage: $command <tool> [TOOL SPECIFIC ... ]"
     echo "TOOLS:"
     for com in $(listcom) ; do
         printf "    %-${longestname}s%s\n" "$com" "$(describeself ${com})"
@@ -90,10 +89,10 @@ else
 fi
 
 case "$comm" in
-	"-h"|"h"|"help"|"--help")  showhelp ; exit 0 ;;
-	"-?"|"u"|"usage"|"--usage") showusage ; exit 0 ;;
+    "-h"|"h"|"help"|"--help")  showhelp ; exit 0 ;;
+    "-?"|"u"|"usage"|"--usage") showusage ; exit 0 ;;
     "-l"|"l"|"list"|"--list")  listcom ; exit 0 ;;
-	*) shift ;;
+    *) shift ;;
 esac
 
 if checkcom $comm  ; then

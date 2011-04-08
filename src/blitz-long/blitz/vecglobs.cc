@@ -11,20 +11,20 @@
 #define BZ_VECGLOBS_CC
 
 #ifndef BZ_VECGLOBS_H
- #include "vecglobs.h"
+ #include <blitz/vecglobs.h>
 #endif
 
-#include "vecaccum.cc"    // accumulate()
-#include "vecdelta.cc"    // delta()
-#include "vecmin.cc"      // min(), minValue(), minIndex()
-#include "vecmax.cc"      // max(), maxValue(), maxIndex()
-#include "vecsum.cc"      // sum(), mean()
-#include "vecproduct.cc"  // product()
-#include "vecdot.cc"      // dot()
-#include "vecnorm.cc"     // norm()
-#include "vecnorm1.cc"    // norm1()
-#include "vecany.cc"      // any()
-#include "vecall.cc"      // all()
-#include "veccount.cc"    // count()
+#include <blitz/vecaccum.cc>    // accumulate()
+#include <blitz/vecdelta.cc>    // delta()
+#include <blitz/vecmin.cc>      // min(), minValue(), minIndex()
+#include <blitz/vecmax.cc>      // max(), maxValue(), maxIndex()
+#include <blitz/vecsum.cc>      // sum(), mean()
+#include <blitz/vecproduct.cc>  // product()
+#include <blitz/vecdot.cc>      // dot()
+#include <blitz/vecnorm.cc>     // norm()
+#include <blitz/vecnorm1.cc>    // norm1()
+#include <blitz/vecany.cc>      // any()
+#include <blitz/vecall.cc>      // all()
+#include <blitz/veccount.cc>    // count()
 
 #endif // BZ_VECGLOBS_CC

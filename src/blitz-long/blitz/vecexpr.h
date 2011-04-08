@@ -28,10 +28,10 @@
 #ifndef BZ_VECEXPR_H
 #define BZ_VECEXPR_H
 
-#include "vector.h"
-#include "applics.h"
-#include "meta/metaprog.h"
-#include "vecexprwrap.h"           // _bz_VecExpr wrapper class
+#include <blitz/vector.h>
+#include <blitz/applics.h>
+#include <blitz/meta/metaprog.h>
+#include <blitz/vecexprwrap.h>           // _bz_VecExpr wrapper class
 
 BZ_NAMESPACE(blitz)
 
@@ -213,7 +213,7 @@ BZ_NAMESPACE_END
 
 
 #ifndef BZ_TINYVEC_H
- #include "tinyvec.h"
+ #include <blitz/tinyvec.h>
 #endif
 
 

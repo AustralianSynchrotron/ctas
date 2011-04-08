@@ -7,7 +7,7 @@ generatedir = ../generate
 
 genheaders = bops.cc uops.cc
 
-noinst_HEADERS = asexpr.h cartesian.h cgsolve.h complex.cc \
+array_HEADERS = asexpr.h cartesian.h cgsolve.h complex.cc \
 convolve.cc convolve.h cycle.cc domain.h et.h eval.cc expr.h fastiter.h \
 funcs.h functorExpr.h geometry.h indirect.h interlace.cc io.cc iter.h map.h \
 methods.cc misc.cc multi.h newet-macros.h \

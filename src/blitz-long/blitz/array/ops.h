@@ -24,8 +24,8 @@
 #ifndef BZ_ARRAY_OPS_H
 #define BZ_ARRAY_OPS_H
 
-#include "../ops.h"
-#include "newet-macros.h"
+#include <blitz/ops.h>
+#include <blitz/array/newet-macros.h>
 
 BZ_NAMESPACE(blitz)
     

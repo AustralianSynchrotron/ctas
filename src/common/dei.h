@@ -125,7 +125,7 @@ public:
 /// \brief Prints type name.
 /// To be used in the CLI parsing via "poptmx" library
 /// @return type name.
-std::string
+inline std::string
 type_desc (DEIprocess::Component*){
   return "STRING";
 }
@@ -136,7 +136,7 @@ type_desc (DEIprocess::Component*){
 /// @param in string to be parsed.
 ///
 /// @return \c true if success, \c false otherwise.
-bool
+inline bool
 _conversion (DEIprocess::Component* _val, const std::string & in) {
   std::string _in = upper(in);
   if (_in == "A" || _in == "ABS" || _in == "ABSORPTION" )

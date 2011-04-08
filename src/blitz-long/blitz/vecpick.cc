@@ -10,10 +10,10 @@
 #ifndef BZ_VECPICK_CC
 #define BZ_VECPICK_CC
 
-#include "vecpick.h"
-#include "update.h"
-#include "random.h"
-#include "vecexpr.h"
+#include <blitz/vecpick.h>
+#include <blitz/update.h>
+#include <blitz/random.h>
+#include <blitz/vecexpr.h>
 
 BZ_NAMESPACE(blitz)
 

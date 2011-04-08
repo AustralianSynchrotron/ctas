@@ -1,0 +1,1 @@
+cmd='/home/antonmx/work/projects/ctascmake/src/blitz-long/configure'

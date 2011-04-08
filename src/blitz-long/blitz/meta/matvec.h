@@ -28,15 +28,15 @@
 #define BZ_META_MATVEC_H
 
 #ifndef BZ_BLITZ_H
- #include "../blitz.h"
+ #include <blitz/blitz.h>
 #endif
 
 #ifndef BZ_VECEXPRWRAP_H
- #include "../vecexprwrap.h"
+ #include <blitz/vecexprwrap.h>
 #endif
 
 #ifndef BZ_METAPROG_H
- #include "metaprog.h"
+ #include <blitz/meta/metaprog.h>
 #endif
 
 BZ_NAMESPACE(blitz)

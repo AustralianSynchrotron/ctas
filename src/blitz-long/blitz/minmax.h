@@ -26,7 +26,7 @@
 #ifndef BZ_MINMAX_H
 #define BZ_MINMAX_H
 
-#include "promote.h"
+#include <blitz/promote.h>
 
 BZ_NAMESPACE(blitz)
 

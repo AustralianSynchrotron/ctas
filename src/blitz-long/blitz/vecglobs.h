@@ -27,19 +27,19 @@
 #define BZ_VECGLOBS_H
 
 #ifndef BZ_VECTOR_H
- #include "vector.h"
+ #include <blitz/vector.h>
 #endif
 
 #ifndef BZ_NUMTRAIT_H
- #include "numtrait.h"
+ #include <blitz/numtrait.h>
 #endif
 
 #ifndef BZ_PROMOTE_H
- #include "promote.h"
+ #include <blitz/promote.h>
 #endif
 
 #ifndef BZ_EXTREMUM_H
- #include "extremum.h"
+ #include <blitz/extremum.h>
 #endif
 
 
@@ -47,6 +47,6 @@ BZ_NAMESPACE(blitz)
 
 BZ_NAMESPACE_END
 
-#include "vecglobs.cc"
+#include <blitz/vecglobs.cc>
 
 #endif // BZ_VECGLOBS_H

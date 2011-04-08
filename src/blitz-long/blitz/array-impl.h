@@ -38,23 +38,23 @@
 #ifndef BZ_ARRAY_H
 #define BZ_ARRAY_H
 
-#include "blitz.h"
-#include "memblock.h"
-#include "range.h"
-#include "tinyvec.h"
+#include <blitz/blitz.h>
+#include <blitz/memblock.h>
+#include <blitz/range.h>
+#include <blitz/tinyvec.h>
 
 #ifdef BZ_ARRAY_SPACE_FILLING_TRAVERSAL
-#include "traversal.h"
+#include <blitz/traversal.h>
 #endif
 
-#include "indexexpr.h"
-#include "prettyprint.h"
+#include <blitz/indexexpr.h>
+#include <blitz/prettyprint.h>
 
-#include "array/slice.h"     // Subarrays and slicing
-#include "array/map.h"       // Tensor index notation
-#include "array/multi.h"     // Multicomponent arrays
-#include "array/domain.h"    // RectDomain class
-#include "array/storage.h"   // GeneralArrayStorage
+#include <blitz/array/slice.h>     // Subarrays and slicing
+#include <blitz/array/map.h>       // Tensor index notation
+#include <blitz/array/multi.h>     // Multicomponent arrays
+#include <blitz/array/domain.h>    // RectDomain class
+#include <blitz/array/storage.h>   // GeneralArrayStorage
 
 
 BZ_NAMESPACE(blitz)
@@ -2801,23 +2801,23 @@ BZ_NAMESPACE_END
  * global functions.
  */
 
-#include "array/iter.h"       // Array iterators
-#include "array/fastiter.h"   // Fast Array iterators (for et)
-#include "array/expr.h"       // Array expression objects
-#include "array/methods.cc"   // Member functions
-#include "array/eval.cc"      // Array expression evaluation
-#include "array/ops.cc"       // Assignment operators
-#include "array/io.cc"        // Output formatting
-#include "array/et.h"         // Expression templates
-#include "array/reduce.h"     // Array reduction expression templates
-#include "array/interlace.cc" // Allocation of interlaced arrays
-#include "array/resize.cc"    // Array resize, resizeAndPreserve
-#include "array/slicing.cc"   // Slicing and subarrays
-#include "array/cycle.cc"     // Cycling arrays
-#include "array/complex.cc"   // Special support for complex arrays
-#include "array/zip.h"        // Zipping multicomponent types
-#include "array/where.h"      // where(X,Y,Z)
-#include "array/indirect.h"   // Indirection
-#include "array/stencils.h"   // Stencil objects
+#include <blitz/array/iter.h>       // Array iterators
+#include <blitz/array/fastiter.h>   // Fast Array iterators (for et)
+#include <blitz/array/expr.h>       // Array expression objects
+#include <blitz/array/methods.cc>   // Member functions
+#include <blitz/array/eval.cc>      // Array expression evaluation
+#include <blitz/array/ops.cc>       // Assignment operators
+#include <blitz/array/io.cc>        // Output formatting
+#include <blitz/array/et.h>         // Expression templates
+#include <blitz/array/reduce.h>     // Array reduction expression templates
+#include <blitz/array/interlace.cc> // Allocation of interlaced arrays
+#include <blitz/array/resize.cc>    // Array resize, resizeAndPreserve
+#include <blitz/array/slicing.cc>   // Slicing and subarrays
+#include <blitz/array/cycle.cc>     // Cycling arrays
+#include <blitz/array/complex.cc>   // Special support for complex arrays
+#include <blitz/array/zip.h>        // Zipping multicomponent types
+#include <blitz/array/where.h>      // where(X,Y,Z)
+#include <blitz/array/indirect.h>   // Indirection
+#include <blitz/array/stencils.h>   // Stencil objects
 
 #endif // BZ_ARRAY_H

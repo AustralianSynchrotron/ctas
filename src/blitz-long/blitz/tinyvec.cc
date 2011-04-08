@@ -26,10 +26,10 @@
 #ifndef BZ_TINYVEC_CC
 #define BZ_TINYVEC_CC
 
-#include "tinyvec.h"
-#include "vector.h"
-#include "range.h"
-#include "meta/vecassign.h"
+#include <blitz/tinyvec.h>
+#include <blitz/vector.h>
+#include <blitz/range.h>
+#include <blitz/meta/vecassign.h>
 
 BZ_NAMESPACE(blitz)
 

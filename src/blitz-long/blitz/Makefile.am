@@ -9,8 +9,7 @@ generatedir = ./generate
 
 genheaders = matbops.h mathfunc.h matuops.h promote-old.h vecbops.cc vecuops.cc vecwhere.cc
 
-### blitz_HEADERS =
-noinst_HEADERS = applics.h array-impl.h array-old.h array.h bench.cc bench.h \
+blitz_HEADERS = applics.h array-impl.h array-old.h array.h bench.cc bench.h \
 benchext.cc benchext.h blitz.h bzconfig.h bzdebug.h compiler.h \
 etbase.h extremum.h funcs.h indexexpr.h limits-hack.h listinit.h \
 matdiag.h matexpr.h matgen.h mathf2.h matltri.h matref.h matrix.cc \
@@ -31,8 +30,7 @@ EXTRA_HEADERS = apple/bzconfig.h intel/bzconfig.h ibm/bzconfig.h \
 compaq/bzconfig.h hp/bzconfig.h sgi/bzconfig.h gnu/bzconfig.h \
 pgi/bzconfig.h pathscale/bzconfig.h kai/bzconfig.h fujitsu/bzconfig.h
 
-#nobase_blitz_HEADERS = $(COMPILER_SPECIFIC_HEADER)
-nobase_noinst_HEADERS = $(COMPILER_SPECIFIC_HEADER)
+nobase_blitz_HEADERS = $(COMPILER_SPECIFIC_HEADER)
 
 DISTCLEANFILES = apple/bzconfig.h intel/bzconfig.h ibm/bzconfig.h \
 compaq/bzconfig.h hp/bzconfig.h sgi/bzconfig.h gnu/bzconfig.h \

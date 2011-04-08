@@ -333,7 +333,7 @@ int main()
 "#endif\n\n"
 "\n"
 "#ifndef BZ_PRETTYPRINT_H\n"
-" #include \"../../blitz/prettyprint.h\"\n"
+" #include <blitz/prettyprint.h>\n"
 "#endif\n\n"
 "BZ_NAMESPACE(blitz)\n\n";
 

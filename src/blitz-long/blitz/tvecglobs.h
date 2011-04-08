@@ -25,17 +25,17 @@
 #define BZ_TVECGLOBS_H
 
 #ifndef BZ_META_METAPROG_H
- #include "meta/metaprog.h"
+ #include <blitz/meta/metaprog.h>
 #endif
 
 #ifndef BZ_NUMTRAIT_H
- #include "numtrait.h"
+ #include <blitz/numtrait.h>
 #endif
 
-#include "tvcross.h"       // Cross products
-#include "meta/dot.h"
-#include "meta/product.h"
-#include "meta/sum.h"
+#include <blitz/tvcross.h>       // Cross products
+#include <blitz/meta/dot.h>
+#include <blitz/meta/product.h>
+#include <blitz/meta/sum.h>
 
 BZ_NAMESPACE(blitz)
 

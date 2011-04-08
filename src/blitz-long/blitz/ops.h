@@ -27,9 +27,9 @@
 #ifndef BZ_OPS_H
 #define BZ_OPS_H
 
-#include "blitz.h"
-#include "promote.h"
-#include "prettyprint.h"
+#include <blitz/blitz.h>
+#include <blitz/promote.h>
+#include <blitz/prettyprint.h>
 
 BZ_NAMESPACE(blitz)
 

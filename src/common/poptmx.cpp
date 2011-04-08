@@ -104,9 +104,9 @@ Err::report() const {
 ///
 static inline Err
 warn_parse(const string & type_name, const string & in,
-		   const string &msg){
+           const string &msg){
   return warn("parsing "+type_name, "String \""+in+"\": " +
-			  ( msg.empty() ? string("<no info>") : msg ) + ".");
+              ( msg.empty() ? string("<no info>") : msg ) + ".");
 }
 
 
@@ -123,7 +123,7 @@ get_terminal_width(){
   CONSOLE_SCREEN_BUFFER_INFO info;
   HANDLE fd = GetStdHandle(STD_OUTPUT_HANDLE);
   if (fd == INVALID_HANDLE_VALUE)
-	return 0;
+    return 0;
   return GetConsoleScreenBufferInfo (fd, &info) ? info.dwSize.X - 1 : 0;
 #else
   winsize size;
@@ -149,34 +149,34 @@ get_terminal_width(){
 ///
 static string
 print_table(const string & instr,
-			string::size_type space=string::npos) {
+            string::size_type space=string::npos) {
 
   if( space == string::npos)
-	space=get_terminal_width();
+    space=get_terminal_width();
 
   string out;
   string::size_type idx=0, nidx=0, togo=0;
 
   if ( instr.empty() )
-	return out;
+    return out;
 
   while (idx != string::npos) {
 
-	if ( nidx = instr.find('\n', idx),
-		 nidx != string::npos && nidx < idx+space )  {
-	  out += instr.substr(idx, nidx-idx) + "\n";
-	  idx = nidx+1;
-	} else if ( idx+space > instr.length() ) { // end reached
-	  out += instr.substr(idx);
-	  idx = string::npos;
-	} else if ( nidx = instr.rfind(' ', idx+space),
-				nidx != string::npos && nidx > idx ) {
-	  out += instr.substr(idx, nidx-idx) + "\n";
-	  idx = nidx+1;
-	} else {
-	  out += instr.substr(idx, space-1) + "\n";
-	  idx += space-1;
-	}
+    if ( nidx = instr.find('\n', idx),
+         nidx != string::npos && nidx < idx+space )  {
+      out += instr.substr(idx, nidx-idx) + "\n";
+      idx = nidx+1;
+    } else if ( idx+space > instr.length() ) { // end reached
+      out += instr.substr(idx);
+      idx = string::npos;
+    } else if ( nidx = instr.rfind(' ', idx+space),
+                nidx != string::npos && nidx > idx ) {
+      out += instr.substr(idx, nidx-idx) + "\n";
+      idx = nidx+1;
+    } else {
+      out += instr.substr(idx, space-1) + "\n";
+      idx += space-1;
+    }
 
   }
 
@@ -196,20 +196,20 @@ print_table(const string & instr,
 ///
 void
 prefix_out(const string & original, const string & prefix = "",
-		   bool firstline=true){
+           bool firstline=true){
   if(original.empty())
-	return;
+    return;
 
   if (firstline)
-	cout << prefix;
+    cout << prefix;
 
   string::size_type idx=0, nidx=0;
 
   while ( nidx = original.find('\n', idx),
-		  nidx != string::npos && nidx != original.length()-1 ) {
-	cout << original.substr(idx,nidx-idx) << endl
-		 <<  prefix;
-	idx=nidx+1;
+          nidx != string::npos && nidx != original.length()-1 ) {
+    cout << original.substr(idx,nidx-idx) << endl
+         <<  prefix;
+    idx=nidx+1;
   }
   cout << original.substr(idx);
 
@@ -266,16 +266,16 @@ Option::Option
   counter(0)
 {
   if ( ( kind == ARGUMENT || kind == OPTION ) && ( !val || !convert )  )
-	throw_error("construct option",
-				"Arguments and options must always have non-zero value"
-				" and conversion function.");
+    throw_error("construct option",
+                "Arguments and options must always have non-zero value"
+                " and conversion function.");
   if ( kind == ARGUMENT && ( short_desc.empty() || long_name.empty() ) )
-	throw_error("construct option",
-				"Arguments must always have \"short description\" and"
-				" name fields filled.");
+    throw_error("construct option",
+                "Arguments must always have \"short description\" and"
+                " name fields filled.");
   if ( kind == OPTION && short_desc.empty() )
-	throw_error("construct option",
-				"Options must always have \"short description\" field.");
+    throw_error("construct option",
+                "Options must always have \"short description\" field.");
 }
 
 
@@ -292,22 +292,22 @@ std::string
 Option::delim_opt(const std::string & delim, bool keep_format) const {
   if (kind == OPTION) {
 
-	string ret;
+    string ret;
 
-	if (char_name) ret += string("-") + string(1, char_name);
-	else if (keep_format) ret += "  ";
+    if (char_name) ret += string("-") + string(1, char_name);
+    else if (keep_format) ret += "  ";
 
-	if ( char_name && ! long_name.empty() ) ret += delim;
-	else if (keep_format) ret += string(delim.length(), ' ');
+    if ( char_name && ! long_name.empty() ) ret += delim;
+    else if (keep_format) ret += string(delim.length(), ' ');
 
-	ret += "--" + long_name;
+    ret += "--" + long_name;
 
-	return ret;
+    return ret;
 
   } else if (kind == ARGUMENT) {
-	return "<" + long_name + ">";
+    return "<" + long_name + ">";
   } else {
-	return "";
+    return "";
   }
 }
 
@@ -326,20 +326,20 @@ Option::desc(bool keep_format) const {
 void
 Option::usage() const {
   if (kind == OPTION)
-	cout << delim_opt(" ");
+    cout << delim_opt(" ");
   else if (kind == ARGUMENT)
-	cout << "<" << long_name << (isarray ? "..." : "")  << ">";
+    cout << "<" << long_name << (isarray ? "..." : "")  << ">";
 }
 
 
 void
 Option::Usage() const {
   if (kind == OPTION) {
-	cout << "[" << delim_opt("|");
-	if ( ! arg_desc.empty() ) cout << "=" << arg_desc;
-	cout << "]";
+    cout << "[" << delim_opt("|");
+    if ( ! arg_desc.empty() ) cout << "=" << arg_desc;
+    cout << "]";
   } else if (kind == ARGUMENT) {
-	cout << "<" << long_name << " (" << arg_desc << ")" << ">";
+    cout << "<" << long_name << " (" << arg_desc << ")" << ">";
   }
 }
 
@@ -356,55 +356,55 @@ Option::help(const int descwidth, const int argwidth) const {
   int const_part = indent + descwidth + indent + argwidth + indent;
 
   if (kind == OPTION || kind == ARGUMENT) {
-	cout << sindent << descs << string(descwidth-descs.length(),' ')
-		 << sindent << arg_desc << string(argwidth-arg_desc.length(),' ')
-		 << sindent;
-	prefix_out
-	  ( print_table(short_desc, get_terminal_width()-const_part),
-		string(const_part, ' '), false);
-	cout << endl;
+    cout << sindent << descs << string(descwidth-descs.length(),' ')
+         << sindent << arg_desc << string(argwidth-arg_desc.length(),' ')
+         << sindent;
+    prefix_out
+      ( print_table(short_desc, get_terminal_width()-const_part),
+        string(const_part, ' '), false);
+    cout << endl;
   } else if (kind == NOTE) {
-	prefix_out(short_desc, sindent, false);
-	if ( ! short_desc.empty() ) cout << endl;
+    prefix_out(short_desc, sindent, false);
+    if ( ! short_desc.empty() ) cout << endl;
   }
 
 }
 
- 
+
 void
 Option::Help() const {
 
   const int width = get_terminal_width();
 
   if (kind == OPTION) {
-	cout << sindent << delim_opt(", ") << sindent << arg_desc << endl;
-	if ( ! short_desc.empty()) {
-	  prefix_out( print_table(short_desc, width-2*indent), sindent+sindent);
-	  cout << endl;
-	}
-	if ( ! long_desc.empty()) {
-	  prefix_out( print_table(long_desc, width-2*indent), sindent+sindent);
-	  cout << endl;
-	}
+    cout << sindent << delim_opt(", ") << sindent << arg_desc << endl;
+    if ( ! short_desc.empty()) {
+      prefix_out( print_table(short_desc, width-2*indent), sindent+sindent);
+      cout << endl;
+    }
+    if ( ! long_desc.empty()) {
+      prefix_out( print_table(long_desc, width-2*indent), sindent+sindent);
+      cout << endl;
+    }
   } else if (kind == ARGUMENT) {
-	cout << sindent << "<" << long_name << sindent << "(" << arg_desc << ")>" << endl;
-	if ( ! short_desc.empty()) {
-	  prefix_out( print_table(short_desc, width-2*indent), sindent+sindent);
-	  cout << endl;
-	}
-	if ( ! long_desc.empty()) {
-	  prefix_out( print_table(long_desc, width-2*indent), sindent+sindent);
-	  cout << endl;
-	}
+    cout << sindent << "<" << long_name << sindent << "(" << arg_desc << ")>" << endl;
+    if ( ! short_desc.empty()) {
+      prefix_out( print_table(short_desc, width-2*indent), sindent+sindent);
+      cout << endl;
+    }
+    if ( ! long_desc.empty()) {
+      prefix_out( print_table(long_desc, width-2*indent), sindent+sindent);
+      cout << endl;
+    }
   } else if (kind == NOTE) {
-	if ( ! short_desc.empty()) {
-	  cout << print_table(short_desc, width);
-	  cout << endl;
-	}
-	if ( ! long_desc.empty()) {
-	  prefix_out( print_table(long_desc, width-2*indent), sindent+sindent);
-	  cout << endl;
-	}
+    if ( ! short_desc.empty()) {
+      cout << print_table(short_desc, width);
+      cout << endl;
+    }
+    if ( ! long_desc.empty()) {
+      prefix_out( print_table(long_desc, width-2*indent), sindent+sindent);
+      cout << endl;
+    }
   }
 
 }
@@ -418,68 +418,68 @@ Option::man() const {
 
   case OPTION :
 
-	cout << ".TP" << endl;
-	if (char_name) cout << "\\fB\\-" << char_name << "\\fR";
-	if ( char_name && ! long_name.empty() ) cout << ", ";
-	if ( ! long_name.empty() ) cout << "\\fB\\-\\-" << long_name << "\\fR";
-	if ( ! arg_desc.empty() ) cout << "=\\fI" << arg_desc << "\\fR";
-	cout << endl;
+    cout << ".TP" << endl;
+    if (char_name) cout << "\\fB\\-" << char_name << "\\fR";
+    if ( char_name && ! long_name.empty() ) cout << ", ";
+    if ( ! long_name.empty() ) cout << "\\fB\\-\\-" << long_name << "\\fR";
+    if ( ! arg_desc.empty() ) cout << "=\\fI" << arg_desc << "\\fR";
+    cout << endl;
 
-	if ( ! short_desc.empty() || ! long_desc.empty() ) {
-	  cout << ".RS" << endl;
-	  cout << short_desc;
-	  if ( ! short_desc.empty() ) cout << endl;
-	  if ( ! short_desc.empty() && ! long_desc.empty() ) cout << ".br" << endl;
-	  prefix_out(long_desc, ".br\n",false);
-	  if ( ! long_desc.empty() ) cout << endl;
-	  cout << ".RE" << endl;
-	}
+    if ( ! short_desc.empty() || ! long_desc.empty() ) {
+      cout << ".RS" << endl;
+      cout << short_desc;
+      if ( ! short_desc.empty() ) cout << endl;
+      if ( ! short_desc.empty() && ! long_desc.empty() ) cout << ".br" << endl;
+      prefix_out(long_desc, ".br\n",false);
+      if ( ! long_desc.empty() ) cout << endl;
+      cout << ".RE" << endl;
+    }
 
-	break;
+    break;
 
   case ARGUMENT :
 
-	cout << ".TP" << endl;
-	cout << "\\fB<" << long_name << ">\\fR" << endl;
+    cout << ".TP" << endl;
+    cout << "\\fB<" << long_name << ">\\fR" << endl;
 
-	if ( ! short_desc.empty() || ! long_desc.empty() ) {
-	  cout << ".RS" << endl;
-	  cout << short_desc;
-	  if ( ! short_desc.empty() ) cout << endl;
-	  if ( ! short_desc.empty() && ! long_desc.empty() ) cout << ".br" << endl;
-	  prefix_out(long_desc, ".br\n",false);
-	  if ( ! long_desc.empty() ) cout << endl;
-	  cout << ".RE" << endl;
-	}
+    if ( ! short_desc.empty() || ! long_desc.empty() ) {
+      cout << ".RS" << endl;
+      cout << short_desc;
+      if ( ! short_desc.empty() ) cout << endl;
+      if ( ! short_desc.empty() && ! long_desc.empty() ) cout << ".br" << endl;
+      prefix_out(long_desc, ".br\n",false);
+      if ( ! long_desc.empty() ) cout << endl;
+      cout << ".RE" << endl;
+    }
 
-	break;
+    break;
 
   case NOTE:
-	cout << ".RS" << endl;
-	if ( short_desc.empty() ) {
-	  prefix_out(long_desc, ".br\n",false);
-	  cout << endl;
-	} else if ( long_desc.empty() ) {
-	  cout << ".SH " << short_desc << endl;
-	} else {
-	  cout << ".SS " << short_desc << endl
-		   << ".br" << endl;
-	  prefix_out(long_desc, ".br\n",false);
-	  cout << endl;
-	}
-	cout << ".RE" << endl;
-	break;
+    cout << ".RS" << endl;
+    if ( short_desc.empty() ) {
+      prefix_out(long_desc, ".br\n",false);
+      cout << endl;
+    } else if ( long_desc.empty() ) {
+      cout << ".SH " << short_desc << endl;
+    } else {
+      cout << ".SS " << short_desc << endl
+           << ".br" << endl;
+      prefix_out(long_desc, ".br\n",false);
+      cout << endl;
+    }
+    cout << ".RE" << endl;
+    break;
 
   case MAN:
-	if ( ! short_desc.empty() )
-	  cout << ".br" << endl
-		   << ".SH " << short_desc << endl
-		   << ".br" << endl;
-	cout << long_desc << endl;
-	break;
+    if ( ! short_desc.empty() )
+      cout << ".br" << endl
+           << ".SH " << short_desc << endl
+           << ".br" << endl;
+    cout << long_desc << endl;
+    break;
 
   default:
-	break;
+    break;
 
   }
 
@@ -501,22 +501,22 @@ Option::require_arg() const {
 bool
 Option::parse(const string & acquire){
   if ( !val || !convert )
-	throw_error("parse entry", "Attempt to perform conversion on the entry"
-				" which has no converter. Looks like a bug in the code.");
+    throw_error("parse entry", "Attempt to perform conversion on the entry"
+                " which has no converter. Looks like a bug in the code.");
  if (counter && ! isarray)
    throw_error("parse entry", "Option \"" + delim_opt("|") + "\""
-			   " cannot be used more than one time.");
+               " cannot be used more than one time.");
   int words = convert(val, acquire);
   if ( words < 0 ) {
-	string errmsg;
-	errmsg += "Failed to convert the string \"";
-	errmsg += acquire;
-	errmsg += "\" to the value of the parameter \"";
-	errmsg += delim_opt("|");
-	if ( ! arg_desc.empty() )
-	  errmsg += string(" of type \"") + arg_desc + string("\"");
-	errmsg += ".";
-	throw_error("parse entry", errmsg);
+    string errmsg;
+    errmsg += "Failed to convert the string \"";
+    errmsg += acquire;
+    errmsg += "\" to the value of the parameter \"";
+    errmsg += delim_opt("|");
+    if ( ! arg_desc.empty() )
+      errmsg += string(" of type \"") + arg_desc + string("\"");
+    errmsg += ".";
+    throw_error("parse entry", errmsg);
   }
   ++counter;
   return words != 0;
@@ -557,8 +557,8 @@ const string OptionTable::pntrMark = "##PNTR##";
 /// @param _general_synopsis Synopsis of the program.
 ///
 OptionTable::OptionTable(const string & _general_desc,
-						 const string & _general_long_desc,
-						 const string & _general_synopsis) :
+                         const string & _general_long_desc,
+                         const string & _general_synopsis) :
   general_desc(_general_desc), general_long_desc(_general_long_desc),
   general_synopsis(_general_synopsis) {
 
@@ -589,8 +589,8 @@ OptionTable::size() const {
 OptionTable::ListO
 OptionTable::find(const void * _val) const {
   for (ListO icur = options.begin() ; icur != options.end() ; icur++)
-	if ( icur->val == _val)
-	  return icur;
+    if ( icur->val == _val)
+      return icur;
   return options.end();
 }
 
@@ -603,11 +603,11 @@ OptionTable::find(const void * _val) const {
 OptionTable::ListO
 OptionTable::find(char _char_name) const {
   if ( ! _char_name )
-	return options.end();
+    return options.end();
   for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	if ( icur->char_name == _char_name &&
-		 ( icur->kind == ARGUMENT || icur->kind == OPTION ) )
-	  return icur;
+    if ( icur->char_name == _char_name &&
+         ( icur->kind == ARGUMENT || icur->kind == OPTION ) )
+      return icur;
   return options.end();
 }
 
@@ -620,11 +620,11 @@ OptionTable::find(char _char_name) const {
 OptionTable::ListO
 OptionTable::find(const string & _long_name) const {
   if ( _long_name.empty() )
-	return options.end();
+    return options.end();
   for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	if ( icur->long_name == _long_name &&
-		 ( icur->kind == ARGUMENT || icur->kind == OPTION ) )
-	  return icur;
+    if ( icur->long_name == _long_name &&
+         ( icur->kind == ARGUMENT || icur->kind == OPTION ) )
+      return icur;
   return options.end();
 }
 
@@ -637,8 +637,8 @@ OptionTable::find(const string & _long_name) const {
 OptionTable::ListO
 OptionTable::find() const {
   for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	if ( icur->kind == ARGUMENT && ( icur->isarray || ! icur->counter ) )
-	  return icur;
+    if ( icur->kind == ARGUMENT && ( icur->isarray || ! icur->counter ) )
+      return icur;
   return options.end();
 }
 
@@ -652,8 +652,8 @@ OptionTable::find() const {
 OptionTable::ListO
 OptionTable::has_array() const {
   for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	if ( icur->kind == ARGUMENT && icur->isarray )
-	  return icur;
+    if ( icur->kind == ARGUMENT && icur->isarray )
+      return icur;
   return options.end();
 }
 
@@ -673,9 +673,9 @@ OptionTable::parse(int argc, char *argv[]){
   }
 
   if ( !argv )
-	throw_error("parse parameters", "Zero-pointer to the parameters' array.");
+    throw_error("parse parameters", "Zero-pointer to the parameters' array.");
   if ( argc < 1 )
-	throw_error("parse parameters", "argc is not what it is meant to be.");
+    throw_error("parse parameters", "argc is not what it is meant to be.");
 
   const std::list<std::string> Argv(argv, argv+argc);
   const ListS cliend = Argv.end();
@@ -683,26 +683,26 @@ OptionTable::parse(int argc, char *argv[]){
 
   // Prepares general information.
   if (general_name.empty())
-	name(Argv.front());
+    name(Argv.front());
   if ( general_synopsis.empty() ) {
-	general_synopsis = name() + " [OPTIONS...]";
-	for (ListO icur=options.begin() ; icur != options.end() ; ++icur)
-	  if ( icur->kind == ARGUMENT)
-		general_synopsis += " <" + icur->long_name + (icur->isarray ? "..." : "") + ">";
+    general_synopsis = name() + " [OPTIONS...]";
+    for (ListO icur=options.begin() ; icur != options.end() ; ++icur)
+      if ( icur->kind == ARGUMENT)
+        general_synopsis += " <" + icur->long_name + (icur->isarray ? "..." : "") + ">";
   }
 
   // Triggers man if needed.
   ListS clicur = Argv.begin();
   while ( ++clicur != cliend)
-	if ( *clicur == manLN ) {
-	  man();
-	  return false;
-	}
+    if ( *clicur == manLN ) {
+      man();
+      return false;
+    }
 
   // Empty options
   if (options.empty()) {
-	unused = list<string>(++(Argv.begin()),cliend);
-	return true;
+    unused = list<string>(++(Argv.begin()),cliend);
+    return true;
   }
 
   // Parses CLI phrase.
@@ -710,64 +710,64 @@ OptionTable::parse(int argc, char *argv[]){
   clicur = ++(Argv.begin());
   while ( clicur != cliend) {
 
-	const ListO tblend = options.end();
+    const ListO tblend = options.end();
 
-	if ( clicur->empty() ) {
-	  warn("parse parameters", "Empty string as the parameter. Will skip.");
-	  ++clicur;
+    if ( clicur->empty() ) {
+      warn("parse parameters", "Empty string as the parameter. Will skip.");
+      ++clicur;
 
-	} else if ( clicur->at(0) != '-' || no_more_options ) {   // argument
-	  ListO tblarg = find();
-	  if (tblarg==tblend)
-		unused.push_back(*clicur);
-	  else
-		tblarg->parse(*clicur);
-	  ++clicur;
-	 
-	} else if ( *clicur == "-" ) { // special case
-	  ++clicur;
+    } else if ( clicur->at(0) != '-' || no_more_options ) {   // argument
+      ListO tblarg = find();
+      if (tblarg==tblend)
+        unused.push_back(*clicur);
+      else
+        tblarg->parse(*clicur);
+      ++clicur;
 
-	} else if ( *clicur == "--" ) { // end of options
-	  no_more_options = true;
-	  ++clicur;
+    } else if ( *clicur == "-" ) { // special case
+      ++clicur;
 
-	} else if ( ! clicur->compare(0,2,"--") ) { // long option
-	  ListO tblopt = find(clicur->substr(2));
-	  if (tblopt==tblend)
-		throw_error("parse CLI", "Unknown option \"" + *clicur + "\".");
-	  ++clicur;
-	  if ( tblopt->require_arg() && clicur == cliend )
-		throw_error("parse option", "Option \"" + tblopt->delim_opt("|") +"\""
-					" is missing required argument.");
-	  tblopt->parse ( clicur == cliend ? string("") : *clicur );
-	  if ( tblopt->require_arg() )
-		++clicur;
+    } else if ( *clicur == "--" ) { // end of options
+      no_more_options = true;
+      ++clicur;
+
+    } else if ( ! clicur->compare(0,2,"--") ) { // long option
+      ListO tblopt = find(clicur->substr(2));
+      if (tblopt==tblend)
+        throw_error("parse CLI", "Unknown option \"" + *clicur + "\".");
+      ++clicur;
+      if ( tblopt->require_arg() && clicur == cliend )
+        throw_error("parse option", "Option \"" + tblopt->delim_opt("|") +"\""
+                    " is missing required argument.");
+      tblopt->parse ( clicur == cliend ? string("") : *clicur );
+      if ( tblopt->require_arg() )
+        ++clicur;
 
 
-	} else { // short option
-	  string elements=*clicur++;
-	  for (unsigned el = 1 ; el < elements.length() ; ++el) {
-		char short_name=elements[el];
-		ListO tblopt = find(short_name);
-		if (tblopt==tblend)
-		  throw_error("parse CLI", "Unknown option \"-" + string(1,short_name) + "\".");
-		if ( tblopt->require_arg() && clicur == cliend )
-		  throw_error("parse option", "Option \"" + tblopt->delim_opt("|") +"\""
-					  " is missing required argument.");
-		tblopt->parse ( clicur == cliend ? string("") : *clicur );
-		if ( tblopt->require_arg() )
-		  ++clicur;
-	  }
-	}
+    } else { // short option
+      string elements=*clicur++;
+      for (unsigned el = 1 ; el < elements.length() ; ++el) {
+        char short_name=elements[el];
+        ListO tblopt = find(short_name);
+        if (tblopt==tblend)
+          throw_error("parse CLI", "Unknown option \"-" + string(1,short_name) + "\".");
+        if ( tblopt->require_arg() && clicur == cliend )
+          throw_error("parse option", "Option \"" + tblopt->delim_opt("|") +"\""
+                      " is missing required argument.");
+        tblopt->parse ( clicur == cliend ? string("") : *clicur );
+        if ( tblopt->require_arg() )
+          ++clicur;
+      }
+    }
 
   }
 
   if ( auto_help && *auto_help ) {
-	auto_verb && *auto_verb   ?  Help() : help() ;
-	return false;
+    auto_verb && *auto_verb   ?  Help() : help() ;
+    return false;
   } else if ( auto_use && *auto_use ) {
-	auto_verb && *auto_verb  ?  Usage() : usage() ;
-	return false;
+    auto_verb && *auto_verb  ?  Usage() : usage() ;
+    return false;
   }
   return true;
 
@@ -786,21 +786,21 @@ void
 OptionTable::usage() const {
 
   cout << general_desc << endl
-	   << name();
+       << name();
 
 
   for (ListO icur=options.begin() ; icur != options.end() ; ++icur) {
-	cout << " ";
-	icur->usage();
+    cout << " ";
+    icur->usage();
   }
   cout << endl;
 
   if ( auto_help || auto_verb ) {
-	cout << "Use options ";
-	if (auto_help) cout << find(auto_help)->delim_opt("|");
-	if (auto_help && auto_verb) cout << " ";
-	if (auto_verb) cout << find(auto_verb)->delim_opt("|");
-	cout << " for more info." << endl;
+    cout << "Use options ";
+    if (auto_help) cout << find(auto_help)->delim_opt("|");
+    if (auto_help && auto_verb) cout << " ";
+    if (auto_verb) cout << find(auto_verb)->delim_opt("|");
+    cout << " for more info." << endl;
   }
 
 }
@@ -808,24 +808,24 @@ OptionTable::usage() const {
 void
 OptionTable::Usage() const {
   cout << general_desc << endl
-	   << print_table(general_long_desc) << endl
-	   << "USAGE:" << endl;
+       << print_table(general_long_desc) << endl
+       << "USAGE:" << endl;
   prefix_out(general_synopsis, sindent);
   cout << endl
-	   << "All parameters:" << endl;
+       << "All parameters:" << endl;
   for (ListO icur=options.begin() ; icur != options.end() ; ++icur){
-	cout << " ";
-	icur->Usage();
+    cout << " ";
+    icur->Usage();
   }
   cout << endl;
 
   if ( auto_help || auto_verb ) {
-	cout << "Use options ";
-	if (auto_use)  cout << find(auto_use)->delim_opt("|") << " ";
-	if (auto_help) cout << find(auto_help)->delim_opt("|") << " ";
-	if (auto_verb) cout << find(auto_verb)->delim_opt("|");
-	if (auto_help && auto_verb) cout << " and their combinations";
-	cout << " for more info." << endl;
+    cout << "Use options ";
+    if (auto_use)  cout << find(auto_use)->delim_opt("|") << " ";
+    if (auto_help) cout << find(auto_help)->delim_opt("|") << " ";
+    if (auto_verb) cout << find(auto_verb)->delim_opt("|");
+    if (auto_help && auto_verb) cout << " and their combinations";
+    cout << " for more info." << endl;
   }
 
 }
@@ -834,20 +834,20 @@ void
 OptionTable::help() const {
 
   cout << general_desc << endl
-	   << "USAGE:" << endl;
+       << "USAGE:" << endl;
   prefix_out(general_synopsis, sindent);
   cout << endl;
 
   int descwidth=0, argwidth=0, curlen;
   for (ListO icur=options.begin() ; icur != options.end() ; icur++) {
-	if ( descwidth < (curlen = icur->desc(true).length() ) )
-	  descwidth = curlen;
-	if ( argwidth  < (curlen = icur->arg_desc.length() ) )
-	  argwidth = curlen;
+    if ( descwidth < (curlen = icur->desc(true).length() ) )
+      descwidth = curlen;
+    if ( argwidth  < (curlen = icur->arg_desc.length() ) )
+      argwidth = curlen;
   }
 
   for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	icur->help(descwidth, argwidth);
+    icur->help(descwidth, argwidth);
 
 }
 
@@ -855,13 +855,13 @@ void
 OptionTable::Help() const {
 
   cout << print_table(general_desc) << endl
-	   << print_table(general_long_desc) << endl
-	   << "USAGE:" << endl;
+       << print_table(general_long_desc) << endl
+       << "USAGE:" << endl;
   prefix_out(print_table(general_synopsis), sindent, true);
   cout << endl;
 
   for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	icur->Help();
+    icur->Help();
 
 }
 
@@ -891,22 +891,22 @@ OptionTable::man() const {
 #endif
 
   cout << ".TH " << upper(name()) << " \"1\" \"" << date << "\" \""
-	   << package << "\" \"User Commands\"" << endl
-	   << ".SH NAME" << endl
-	   << name() << " \\- " << general_desc << endl
-	   << ".SH SYNOPSIS" << endl;
+       << package << "\" \"User Commands\"" << endl
+       << ".SH NAME" << endl
+       << name() << " \\- " << general_desc << endl
+       << ".SH SYNOPSIS" << endl;
   prefix_out(general_synopsis, ".br\n.B ");
   cout << endl
-	   << ".SH DESCRIPTION" << endl
-	   << ".PP" << endl;
+       << ".SH DESCRIPTION" << endl
+       << ".PP" << endl;
   prefix_out(general_long_desc, ".br\n",false);
   cout << endl;
 
   for (ListO icur=options.begin() ; icur != options.end() ; icur++) {
-	cout << "./ START OPTION" << endl;
-	icur->man();
-	cout << "./ END OPTION" << endl
-		 << "./" << endl;
+    cout << "./ START OPTION" << endl;
+    icur->man();
+    cout << "./ END OPTION" << endl
+         << "./" << endl;
   }
 
 }
@@ -926,20 +926,20 @@ OptionTable &
 OptionTable::add(const Option &opt){
 
   if ( has(opt.char_name) )
-	throw_error("add option", (string)
-				"Option with the char name '" + opt.char_name +
-				"' already exists in the table (description: \"" +
-				find(opt.char_name)->short_desc + "\").");
+    throw_error("add option", (string)
+                "Option with the char name '" + opt.char_name +
+                "' already exists in the table (description: \"" +
+                find(opt.char_name)->short_desc + "\").");
   if ( has(opt.long_name ) )
-	throw_error("add option",
-				"Option with the long name \"" + opt.long_name +
-				"\" already exists in the table (description: \"" +
-				find(opt.long_name)->short_desc + "\").");
+    throw_error("add option",
+                "Option with the long name \"" + opt.long_name +
+                "\" already exists in the table (description: \"" +
+                find(opt.long_name)->short_desc + "\").");
   if ( opt.kind == ARGUMENT && opt.isarray && has_array() != options.end() )
-	  throw_error("add option", "Cannot add the argument \"" + opt.desc() + "\""
-				  " to the table because it already has the array-argument "
-				  " \"" + has_array()->desc() + "\".");
-  
+      throw_error("add option", "Cannot add the argument \"" + opt.desc() + "\""
+                  " to the table because it already has the array-argument "
+                  " \"" + has_array()->desc() + "\".");
+
   options.push_back(opt);
   return *this;
 
@@ -992,7 +992,7 @@ OptionTable::add(Kind _kind, void * _val, int (*_convert)(void*, const string &)
                  const string & _arg_desc, const std::string & _dflt,
                  bool _is_array){
   if ( _kind != ARGUMENT )
-	throw_error("add argument", "You've got the wrong add function for your kind.");
+    throw_error("add argument", "You've got the wrong add function for your kind.");
   return add ( Option(_kind, _val, _convert, 0, _long_name,
                       _short_desc, _long_desc, _arg_desc, _dflt, _is_array) );
 }
@@ -1003,7 +1003,7 @@ OptionTable::add(Kind _kind, void * _val, int (*_convert)(void*, const string &)
 /// If adding man-page then behaviour is more complex:
 ///   If the long description is empty then adds the short description would appear
 ///   in the man file as is, without any changes. Otherwise will add the
-///   short description as the section header and long description as the 
+///   short description as the section header and long description as the
 ///   section's text.
 ///
 /// @param _kind Kind of entry to add. In this context can be ::NOTE or ::MAN
@@ -1014,15 +1014,15 @@ OptionTable::add(Kind _kind, void * _val, int (*_convert)(void*, const string &)
 OptionTable &
 OptionTable::add(Kind _kind, const string & _short_desc, const string & _long_desc){
   if ( _kind == NOTE )
-	return add(_kind, 0, 0, 0, "", _short_desc, _long_desc, "", "", false);
+    return add(_kind, 0, 0, 0, "", _short_desc, _long_desc, "", "", false);
   else if ( _kind == MAN ) {
-	if ( _long_desc.empty() )
-	  return add(_kind, 0, 0, 0, "", "", _short_desc, "", "", false);
-	else 
-	  return add(_kind, 0, 0, 0, "", _short_desc, _long_desc, "", "", false);
+    if ( _long_desc.empty() )
+      return add(_kind, 0, 0, 0, "", "", _short_desc, "", "", false);
+    else
+      return add(_kind, 0, 0, 0, "", _short_desc, _long_desc, "", "", false);
   } else {
-	throw_error("add description", "You've got the wrong add function for your kind.");
-	return *this;
+    throw_error("add description", "You've got the wrong add function for your kind.");
+    return *this;
   }
 }
 
@@ -1035,11 +1035,11 @@ OptionTable::add(Kind _kind, const string & _short_desc, const string & _long_de
 OptionTable &
 OptionTable::add( const OptionTable & _val ){
   if ( ! _val.general_desc.empty() || ! _val.general_long_desc.empty() )
-	add( NOTE, _val.general_desc, _val.general_long_desc);
+    add( NOTE, _val.general_desc, _val.general_long_desc);
   if ( ! _val.options.size() )
-	warn("add table", "Empty table to add.");
+    warn("add table", "Empty table to add.");
   for (ListO icur=_val.options.begin() ; icur != _val.options.end() ; icur++)
-	add(*icur);
+    add(*icur);
   return *this;
 }
 
@@ -1050,7 +1050,7 @@ OptionTable::add( const OptionTable & _val ){
 OptionTable &
 OptionTable::add_verbose(bool *_beverb){
   if ( ! _beverb )
-	_beverb=&beverb;
+    _beverb=&beverb;
   add( OPTION, _beverb, 'v', "verbose", "Verbose output.", "");
   auto_verb = _beverb;
   return *this;
@@ -1061,7 +1061,7 @@ OptionTable::add_verbose(bool *_beverb){
 OptionTable &
 OptionTable::add_usage(bool *_useme){
   if ( ! _useme )
-	_useme = &useme;
+    _useme = &useme;
   add( OPTION, _useme, '?', "usage", "Outputs brief usage message.", "");
   auto_use = _useme;
   return *this;
@@ -1072,7 +1072,7 @@ OptionTable::add_usage(bool *_useme){
 OptionTable &
 OptionTable::add_help(bool *_helpme){
   if ( ! _helpme )
-	_helpme = &helpme;
+    _helpme = &helpme;
   add( OPTION, _helpme, 'h', "help", "Outputs help message.", "");
   auto_help = _helpme;
   return *this;
@@ -1092,9 +1092,9 @@ OptionTable::add_standard_options(bool *_beverb, bool *_helpme, bool *_useme){
   add_usage(_useme);
   add_help(_helpme);
   find(auto_help)->long_desc=
-	"When combined with the "
-	"\"" + find(auto_verb)->delim_opt("|") + "\""
-	" option may output more detailed message.";
+    "When combined with the "
+    "\"" + find(auto_verb)->delim_opt("|") + "\""
+    " option may output more detailed message.";
   return *this;
 }
 
@@ -1145,14 +1145,14 @@ int
 OptionTable::count(const void * _val) const {
 
   if ( ! _val ) {
-	int ret = 0;
-	for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-	  ret += icur->counter;
-	return ret;
+    int ret = 0;
+    for (ListO icur=options.begin() ; icur != options.end() ; icur++)
+      ret += icur->counter;
+    return ret;
   }
 
   if (!has(_val))
-	throw_error("check option", "Could not find the option in the table.");
+    throw_error("check option", "Could not find the option in the table.");
   return find(_val)->counter;
 }
 
@@ -1171,7 +1171,7 @@ OptionTable::desc(const void * _val) const {
   if ( ! has(_val) ) {
     char s[128];
     //snprintf (s, 128, "%p", _val); // does not work on WIN32
-	sprintf (s, "%p", _val);
+    sprintf (s, "%p", _val);
     return pntrMark + s + pntrMark;
   }
   return find(_val)->desc();
@@ -1298,8 +1298,8 @@ type_desc (string*){
 int
 _conversion(char * _val, const string & in){
   if (in.length() != 1) {
-	warn_parse("char", in, "the string is not single-char");
-	return -1;
+    warn_parse("char", in, "the string is not single-char");
+    return -1;
   }
   *_val = in[0];
   return 1;
@@ -1326,8 +1326,8 @@ type_desc(char*){
 int
 _conversion(unsigned char * _val, const string & in){
   if (in.length() != 1) {
-	warn_parse("unsigned char", in, "the string is not single-char");
-	return -1;
+    warn_parse("unsigned char", in, "the string is not single-char");
+    return -1;
   }
   *_val = in[0];
   return 1;
@@ -1344,28 +1344,28 @@ type_desc(unsigned char*){
 
 template<class BClass> static inline int
 _int_conversion(BClass * _val, const string & in) {
-	
+
   char * tail = 0 ;
 
   errno = 0;
   long int inval = strtol(in.c_str(), &tail, 0);
   if (errno) {
-	warn_parse(type_desc(_val), in, "value overflow");
-	return -1;
+    warn_parse(type_desc(_val), in, "value overflow");
+    return -1;
   }
   if (tail == in.c_str()) {
-	warn_parse(type_desc(_val), in, "does not represent a short value");
-	return -1;
+    warn_parse(type_desc(_val), in, "does not represent a short value");
+    return -1;
   }
 
   if (*tail != 0)
-	warn_parse(type_desc(_val), in, "contains tail \"" + string(tail) + "\"");
+    warn_parse(type_desc(_val), in, "contains tail \"" + string(tail) + "\"");
 
   if (inval < (numeric_limits<BClass>::min)() ||
-	  inval > (numeric_limits<BClass>::max)() ) {
-	warn_parse(type_desc(_val), in,
-			   "parsed integer value is out of the type range");
-	return -1;
+      inval > (numeric_limits<BClass>::max)() ) {
+    warn_parse(type_desc(_val), in,
+               "parsed integer value is out of the type range");
+    return -1;
   }
 
   *_val = (BClass) inval;
@@ -1375,28 +1375,28 @@ _int_conversion(BClass * _val, const string & in) {
 
 template<class BClass> static inline int
 _uint_conversion(BClass * _val, const string & in) {
-	
+
   char * tail = 0 ;
 
   errno = 0;
   unsigned long int inval = strtoul(in.c_str(), &tail, 0);
   if (errno) {
-	warn_parse(type_desc(_val), in, "value overflow");
-	return -1;
+    warn_parse(type_desc(_val), in, "value overflow");
+    return -1;
   }
   if (tail == in.c_str()) {
-	warn_parse(type_desc(_val), in, "does not represent a short value");
-	return -1;
+    warn_parse(type_desc(_val), in, "does not represent a short value");
+    return -1;
   }
 
   if (*tail != 0)
-	warn_parse(type_desc(_val), in, "contains tail \"" + string(tail) + "\"");
+    warn_parse(type_desc(_val), in, "contains tail \"" + string(tail) + "\"");
 
   if (inval < (numeric_limits<BClass>::min)() ||
-	  inval > (numeric_limits<BClass>::max)() ) {
-	warn_parse(type_desc(_val), in,
-			   "parsed integer value is out of the type range");
-	return -1;
+      inval > (numeric_limits<BClass>::max)() ) {
+    warn_parse(type_desc(_val), in,
+               "parsed integer value is out of the type range");
+    return -1;
   }
 
   *_val = (BClass) inval;
@@ -1415,7 +1415,7 @@ _uint_conversion(BClass * _val, const string & in) {
 /// @return \c true if success, \c false otherwise.
 ///
 int
-_conversion(short * _val, const string & in){	
+_conversion(short * _val, const string & in){
   return _int_conversion(_val,in);
 }
 
@@ -1549,28 +1549,28 @@ type_desc(unsigned long*){
 ///
 int
 _conversion(long long* _val, const string & in){
-	
+
   char * tail = 0 ;
 
   errno = 0;
   long long int inval = strtoll(in.c_str(), &tail, 0);
   if (errno) {
-	warn_parse("long long", in, "value overflow");
-	return -1;
+    warn_parse("long long", in, "value overflow");
+    return -1;
   }
   if (tail == in.c_str()) {
-	warn_parse("long long", in, "does not represent an integer");
-	return -1;
+    warn_parse("long long", in, "does not represent an integer");
+    return -1;
   }
 
   if (*tail != 0)
-	warn_parse("long long", in, "contains tail \"" + string(tail) + "\"");
+    warn_parse("long long", in, "contains tail \"" + string(tail) + "\"");
 
   if (inval < numeric_limits<long long>::min() ||
-	  inval > numeric_limits<long long>::max() ) {
-	warn_parse("long long", in,
-			   "parsed integer _value is out of the type range");
-	return -1;
+      inval > numeric_limits<long long>::max() ) {
+    warn_parse("long long", in,
+               "parsed integer _value is out of the type range");
+    return -1;
   }
 
   *_val = (long long) inval;
@@ -1597,28 +1597,28 @@ type_desc(long long*){
 ///
 int
 _conversion(unsigned long long* _val, const string & in){
-	
+
   char * tail = 0 ;
 
   errno = 0;
   unsigned long long int inval = strtoull(in.c_str(), &tail, 0);
   if (errno) {
-	warn_parse("unsigned long long", in, "value overflow");
-	return -1;
+    warn_parse("unsigned long long", in, "value overflow");
+    return -1;
   }
   if (tail == in.c_str()) {
-	warn_parse("unsigned long long", in, "does not represent an integer");
-	return -1;
+    warn_parse("unsigned long long", in, "does not represent an integer");
+    return -1;
   }
 
   if (*tail != 0)
-	warn_parse("unsigned long long", in, "contains tail \"" + string(tail) + "\"");
+    warn_parse("unsigned long long", in, "contains tail \"" + string(tail) + "\"");
 
   if (inval < numeric_limits<unsigned long long>::min() ||
-	  inval > numeric_limits<unsigned long long>::max() ) {
-	warn_parse("unsigned long long", in,
-			   "parsed integer _value is out of the type range");
-	return -1;
+      inval > numeric_limits<unsigned long long>::max() ) {
+    warn_parse("unsigned long long", in,
+               "parsed integer _value is out of the type range");
+    return -1;
   }
 
   *_val = (unsigned long long) inval;
@@ -1652,16 +1652,16 @@ _conversion(float* _val, const string & in){
   errno = 0;
   double inval = strtod (in.c_str(), &tail);
   if (errno) {
-	warn_parse("float", in, "value overflow");
-	return -1;
+    warn_parse("float", in, "value overflow");
+    return -1;
   }
   if (tail == in.c_str()) {
-	warn_parse("float", in, "does not represent a float number");
-	return -1;
+    warn_parse("float", in, "does not represent a float number");
+    return -1;
   }
 
   if (*tail != 0)
-	warn_parse("float", in, "contains tail \"" + string(tail) + "\"");
+    warn_parse("float", in, "contains tail \"" + string(tail) + "\"");
 
   *_val = (float) inval;
   return 1;
@@ -1692,16 +1692,16 @@ _conversion(double* _val, const string & in){
   errno = 0;
   double inval = strtod (in.c_str(), &tail);
   if (errno) {
-	warn_parse("double", in, "value overflow");
-	return -1;
+    warn_parse("double", in, "value overflow");
+    return -1;
   }
   if (tail == in.c_str()) {
-	warn_parse("double", in, "does not represent a double number");
-	return -1;
+    warn_parse("double", in, "does not represent a double number");
+    return -1;
   }
 
   if (*tail != 0)
-	warn_parse("double", in, "contains tail \"" + string(tail) + "\"");
+    warn_parse("double", in, "contains tail \"" + string(tail) + "\"");
 
   *_val = (double) inval;
   return 1;

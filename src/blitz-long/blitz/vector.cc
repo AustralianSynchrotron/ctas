@@ -10,8 +10,8 @@
 #ifndef BZ_VECTOR_CC
 #define BZ_VECTOR_CC
 
-#include "vector.h"
-#include "update.h"
+#include <blitz/vector.h>
+#include <blitz/update.h>
 
 BZ_NAMESPACE(blitz)
 

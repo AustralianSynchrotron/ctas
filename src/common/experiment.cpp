@@ -560,6 +560,8 @@ const string SinoS::modname = "sinogram array";
 #include <sys/mman.h>
 #endif
 
+#include <string.h>
+
 
 /// \brief Prepares the temporary file to map the memory to.
 ///

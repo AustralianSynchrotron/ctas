@@ -28,19 +28,19 @@
 #define BZ_TINYMAT_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz.h"
+ #include <blitz/blitz.h>
 #endif
 
 #ifndef BZ_TINYVEC_H
- #include "tinyvec.h"
+ #include <blitz/tinyvec.h>
 #endif
 
 #ifndef BZ_LISTINIT_H
- #include "listinit.h"
+ #include <blitz/listinit.h>
 #endif
 
-#include "tinymatexpr.h"
-#include "meta/matassign.h"
+#include <blitz/tinymatexpr.h>
+#include <blitz/meta/matassign.h>
 
 BZ_NAMESPACE(blitz)
 
@@ -152,9 +152,9 @@ protected:
 
 BZ_NAMESPACE_END
 
-#include "meta/matvec.h"     // Matrix-vector product metaprogram
-#include "meta/matmat.h"     // Matrix-matrix products
-#include "tinymatio.cc"      // I/O operations
+#include <blitz/meta/matvec.h>     // Matrix-vector product metaprogram
+#include <blitz/meta/matmat.h>     // Matrix-matrix products
+#include <blitz/tinymatio.cc>      // I/O operations
 
 #endif // BZ_TINYMAT_H
 

@@ -39,8 +39,8 @@
 #ifndef BZ_RAND_NORMAL_H
 #define BZ_RAND_NORMAL_H
 
-#include "random.h"
-#include "rand-uniform.h"
+#include <blitz/random.h>
+#include <blitz/rand-uniform.h>
 
 #if defined(BZ_HAVE_STD)
 #include <cmath>

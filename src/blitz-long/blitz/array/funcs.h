@@ -26,8 +26,8 @@
 #ifndef BZ_ARRAY_FUNCS_H
 #define BZ_ARRAY_FUNCS_H
 
-#include "../funcs.h"
-#include "newet-macros.h"
+#include <blitz/funcs.h>
+#include <blitz/array/newet-macros.h>
 
 BZ_NAMESPACE(blitz)
     

@@ -27,7 +27,7 @@
 #ifndef BZ_MEMBLOCK_H
 #define BZ_MEMBLOCK_H
 
-#include "blitz.h"
+#include <blitz/blitz.h>
 
 #include <stddef.h>     // ptrdiff_t
 
@@ -388,6 +388,6 @@ private:
 
 BZ_NAMESPACE_END
 
-#include "memblock.cc"
+#include <blitz/memblock.cc>
 
 #endif // BZ_MEMBLOCK_H

@@ -229,7 +229,7 @@ public:
 /// \brief Prints type name.
 /// To be used in the CLI parsing via "poptmx" library
 /// @return type name.
-std::string
+inline std::string
 type_desc (EDEIprocess::Component*){
   return "STRING";
 }

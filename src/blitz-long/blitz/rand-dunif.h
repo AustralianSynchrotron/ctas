@@ -27,11 +27,11 @@
 #define BZ_RAND_DUNIF_H
 
 #ifndef BZ_RANDOM_H
- #include "random.h"
+ #include <blitz/random.h>
 #endif
 
 #ifndef BZ_RAND_UNIFORM_H
- #include "rand-uniform.h"
+ #include <blitz/rand-uniform.h>
 #endif
 
 #include <math.h>

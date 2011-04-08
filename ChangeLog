@@ -1,3 +1,8 @@
+2011-04-02  antonmx <antonmx@gmail.com>
+
+	* * : Changed the build system to cmake.
+
+
 2010-07-29  antonmx  <antonmx@amx-mac.synchrotron.org.au>
 
 	* * : Ported the package for the MacOS X (using MacPorts) and MS Windows (what a pain-in-ass!). Porting resulted to the mass of small changes and bug fixes. Upgrade version to 0.5.0.

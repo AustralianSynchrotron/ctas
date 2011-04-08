@@ -26,11 +26,11 @@
 #define BZ_BENCHEXT_H
 
 #ifndef BZ_MATRIX_H
- #include "matrix.h"
+ #include <blitz/matrix.h>
 #endif
 
 #ifndef BZ_TIMER_H
- #include "timer.h"
+ #include <blitz/timer.h>
 #endif
 
 #include <math.h>
@@ -116,6 +116,6 @@ protected:
 
 BZ_NAMESPACE_END
 
-#include "benchext.cc"  
+#include <blitz/benchext.cc>  
 
 #endif // BZ_BENCHEXT_H

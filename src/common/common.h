@@ -45,7 +45,7 @@
 
 #else
 
-#  include "../../config.h"
+#  include "config.h"
 #  define COMMON_API
 
 #endif

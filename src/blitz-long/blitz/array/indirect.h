@@ -24,8 +24,8 @@
 #ifndef BZ_ARRAY_INDIRECT_H
 #define BZ_ARRAY_INDIRECT_H
 
-#include "asexpr.h"
-#include "cartesian.h"
+#include <blitz/array/asexpr.h>
+#include <blitz/array/cartesian.h>
 
 BZ_NAMESPACE(blitz)
 

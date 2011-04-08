@@ -28,7 +28,7 @@
 #define BZ_TINY_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz.h"
+ #include <blitz/blitz.h>
 #endif
 
 BZ_NAMESPACE(blitz)

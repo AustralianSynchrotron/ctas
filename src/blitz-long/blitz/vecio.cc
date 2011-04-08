@@ -11,7 +11,7 @@
 #define BZ_VECIO_CC
 
 #ifndef BZ_VECTOR_H
- #include "vector.h"
+ #include <blitz/vector.h>
 #endif
 
 BZ_NAMESPACE(blitz)

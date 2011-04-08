@@ -26,7 +26,7 @@
 #ifndef BZ_PROMOTE_H
 #define BZ_PROMOTE_H
 
-#include "blitz.h"
+#include <blitz/blitz.h>
 
 BZ_NAMESPACE(blitz)
 
@@ -157,7 +157,7 @@ struct promote_trait {
 #else  // !BZ_HAVE_PARTIAL_SPECIALIZATION
 
   // No partial specialization -- have to do it the ugly way.
-  #include "promote-old.h"
+  #include <blitz/promote-old.h>
 
 #endif // !BZ_HAVE_PARTIAL_SPECIALIZATION
 

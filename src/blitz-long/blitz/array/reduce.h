@@ -30,7 +30,7 @@
  #error <blitz/array/reduce.h> must be included after <blitz/array/expr.h>
 #endif
 
-#include "../reduce.h"
+#include <blitz/reduce.h>
 
 BZ_NAMESPACE(blitz)
 
@@ -379,6 +379,6 @@ BZ_DECL_ARRAY_FULL_REDUCE_INDEXVECTOR(maxIndex, ReduceMaxIndexVector)
 
 BZ_NAMESPACE_END
 
-#include "reduce.cc"
+#include <blitz/array/reduce.cc>
 
 #endif // BZ_ARRAYREDUCE_H

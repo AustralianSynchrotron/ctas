@@ -1,0 +1,242 @@
+\hypertarget{group__experiment}{
+\subsection{Experiment.}
+\label{group__experiment}\index{Experiment.@{Experiment.}}
+}
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classABSexp}{ABSexp}
+\begin{DoxyCompactList}\small\item\em Class which projections from the input data of the absorption-\/based experiment. \item\end{DoxyCompactList}\item 
+class \hyperlink{classDEIexp}{DEIexp}
+\begin{DoxyCompactList}\small\item\em Class which extracts DEI-\/processed projections from the input data. \item\end{DoxyCompactList}\item 
+class \hyperlink{classEDEIexp}{EDEIexp}
+\begin{DoxyCompactList}\small\item\em Class which extracts EDEI-\/processed projections from the input data. \item\end{DoxyCompactList}\item 
+class \hyperlink{classAqSeries}{AqSeries}
+\begin{DoxyCompactList}\small\item\em Parsing file of the acquisition series. \item\end{DoxyCompactList}\item 
+class \hyperlink{classExperiment}{Experiment}
+\begin{DoxyCompactList}\small\item\em Parent abstract class for various experimental techniques. \item\end{DoxyCompactList}\item 
+class \hyperlink{classSinoS}{SinoS}
+\begin{DoxyCompactList}\small\item\em Projections storage. \item\end{DoxyCompactList}\item 
+class \hyperlink{classDcenter}{Dcenter}
+\begin{DoxyCompactList}\small\item\em Class to deal with the rotation center (read \hyperlink{group__experiment_gae4e896096ce7a0b4cbfbdd88b7e56286}{DcenterOptionDesc}). \item\end{DoxyCompactList}\item 
+class \hyperlink{classIPCexp}{IPCexp}
+\begin{DoxyCompactList}\small\item\em Class which extracts IPC-\/processed projections from the input data. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+std::string EXPERIMENT\_\-API \hyperlink{group__experiment_ga3a6c6c808d7fc4dbc4e4b0f4e8ff5c95}{mask2format} (const std::string \&mask, int maxslice)
+\begin{DoxyCompactList}\small\item\em Converts the mask string to the format string. \item\end{DoxyCompactList}\item 
+std::vector$<$ int $>$ EXPERIMENT\_\-API \hyperlink{group__experiment_ga3e81bacd588a1037f17bcd2fbd5be14a}{slice\_\-str2vec} (const std::string \&sliceS, int hight)
+\begin{DoxyCompactList}\small\item\em Constructs the array of slices. \item\end{DoxyCompactList}\item 
+std::string EXPERIMENT\_\-API \hyperlink{group__experiment_gab0797bda4347712a932686619a6fa8dd}{type\_\-desc} (\hyperlink{classDcenter}{Dcenter} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool EXPERIMENT\_\-API \hyperlink{group__experiment_ga24b39e79e97ba4be39d0e53db377f8a7}{\_\-conversion} (\hyperlink{classDcenter}{Dcenter} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classDcenter}{Dcenter} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+EXPERIMENT\_\-API const std::string \hyperlink{group__experiment_ga49fc44d3138ced27aa1b626e71399cef}{MaskDesc}
+\begin{DoxyCompactList}\small\item\em Description of the output result mask. \item\end{DoxyCompactList}\item 
+EXPERIMENT\_\-API const std::string \hyperlink{group__experiment_gab69c6d9d77c300fbbfcbde4a0c28eb14}{SliceOptionDesc}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the string of slices. \item\end{DoxyCompactList}\item 
+EXPERIMENT\_\-API const std::string \hyperlink{group__experiment_gae4e896096ce7a0b4cbfbdd88b7e56286}{DcenterOptionDesc}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the \hyperlink{classDcenter}{Dcenter} type. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__experiment_gaabf3821c42c07421c350466c50fca270}{ABSexp::modname} = \char`\"{}ABS experiment\char`\"{}
+\begin{DoxyCompactList}\small\item\em Name of the module. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Functions and classes responsible for the processing a series of images .
+
+\#ifdef \_\-H\_\-EXPERIMENT\_\-H\_\- 
+
+\subsubsection{Function Documentation}
+\hypertarget{group__experiment_ga24b39e79e97ba4be39d0e53db377f8a7}{
+\index{experiment@{experiment}!\_\-conversion@{\_\-conversion}}
+\index{\_\-conversion@{\_\-conversion}!experiment@{experiment}}
+\paragraph[{\_\-conversion}]{\setlength{\rightskip}{0pt plus 5cm}bool EXPERIMENT\_\-API \_\-conversion (
+\begin{DoxyParamCaption}
+\item[{{\bf Dcenter} $\ast$}]{\_\-val, }
+\item[{const std::string \&}]{in}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__experiment_ga24b39e79e97ba4be39d0e53db377f8a7}
+
+
+Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classDcenter}{Dcenter} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & value to be updated. \\
+\hline
+{\em in} & string to be parsed.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if success, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 810 of file experiment.cpp.
+
+\hypertarget{group__experiment_ga3a6c6c808d7fc4dbc4e4b0f4e8ff5c95}{
+\index{experiment@{experiment}!mask2format@{mask2format}}
+\index{mask2format@{mask2format}!experiment@{experiment}}
+\paragraph[{mask2format}]{\setlength{\rightskip}{0pt plus 5cm}std::string EXPERIMENT\_\-API mask2format (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{mask, }
+\item[{int}]{maxslice}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__experiment_ga3a6c6c808d7fc4dbc4e4b0f4e8ff5c95}
+
+
+Converts the mask string to the format string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mask} & Mask string (read \hyperlink{group__experiment_ga49fc44d3138ced27aa1b626e71399cef}{MaskDesc}). \\
+\hline
+{\em maxslice} & Maximum allowed slice (total number of slices).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The format string which ready to be used with the fmt2s() function. 
+\end{DoxyReturn}
+
+
+Definition at line 315 of file experiment.cpp.
+
+
+
+References toString().
+
+
+
+Referenced by main().
+
+\hypertarget{group__experiment_ga3e81bacd588a1037f17bcd2fbd5be14a}{
+\index{experiment@{experiment}!slice\_\-str2vec@{slice\_\-str2vec}}
+\index{slice\_\-str2vec@{slice\_\-str2vec}!experiment@{experiment}}
+\paragraph[{slice\_\-str2vec}]{\setlength{\rightskip}{0pt plus 5cm}std::vector$<$int$>$ EXPERIMENT\_\-API slice\_\-str2vec (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{sliceS, }
+\item[{int}]{hight}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__experiment_ga3e81bacd588a1037f17bcd2fbd5be14a}
+
+
+Constructs the array of slices. 
+
+Constructs the array of slices to be processed from the slice string (read \hyperlink{group__experiment_gab69c6d9d77c300fbbfcbde4a0c28eb14}{SliceOptionDesc} for more details).
+
+
+\begin{DoxyParams}{Parameters}
+{\em sliceS} & Input \hyperlink{group__experiment_gab69c6d9d77c300fbbfcbde4a0c28eb14}{SliceOptionDesc} \char`\"{}slice string\char`\"{}. \\
+\hline
+{\em hight} & Height of the input projection(s).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The vector consisting of the numbers of slices to be processed. The vector is sorted and duplicates are removed. 
+\end{DoxyReturn}
+
+
+Definition at line 392 of file experiment.cpp.
+
+
+
+References rmadd(), str2n(), toString(), and warn().
+
+
+
+Referenced by main().
+
+\hypertarget{group__experiment_gab0797bda4347712a932686619a6fa8dd}{
+\index{experiment@{experiment}!type\_\-desc@{type\_\-desc}}
+\index{type\_\-desc@{type\_\-desc}!experiment@{experiment}}
+\paragraph[{type\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string EXPERIMENT\_\-API type\_\-desc (
+\begin{DoxyParamCaption}
+\item[{{\bf Dcenter} $\ast$}]{}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__experiment_gab0797bda4347712a932686619a6fa8dd}
+
+
+Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. 
+
+\begin{DoxyReturn}{Returns}
+type name. 
+\end{DoxyReturn}
+
+
+Definition at line 805 of file experiment.cpp.
+
+
+
+\subsubsection{Variable Documentation}
+\hypertarget{group__experiment_gae4e896096ce7a0b4cbfbdd88b7e56286}{
+\index{experiment@{experiment}!DcenterOptionDesc@{DcenterOptionDesc}}
+\index{DcenterOptionDesc@{DcenterOptionDesc}!experiment@{experiment}}
+\paragraph[{DcenterOptionDesc}]{\setlength{\rightskip}{0pt plus 5cm}EXPERIMENT\_\-API const std::string {\bf DcenterOptionDesc}}\hfill}
+\label{group__experiment_gae4e896096ce7a0b4cbfbdd88b7e56286}
+
+
+Description of the option giving the \hyperlink{classDcenter}{Dcenter} type. 
+
+
+
+Definition at line 785 of file experiment.cpp.
+
+
+
+Referenced by clargs::clargs().
+
+\hypertarget{group__experiment_ga49fc44d3138ced27aa1b626e71399cef}{
+\index{experiment@{experiment}!MaskDesc@{MaskDesc}}
+\index{MaskDesc@{MaskDesc}!experiment@{experiment}}
+\paragraph[{MaskDesc}]{\setlength{\rightskip}{0pt plus 5cm}EXPERIMENT\_\-API const std::string {\bf MaskDesc}}\hfill}
+\label{group__experiment_ga49fc44d3138ced27aa1b626e71399cef}
+
+
+Description of the output result mask. 
+
+
+
+Definition at line 296 of file experiment.cpp.
+
+
+
+Referenced by clargs::clargs().
+
+\hypertarget{group__experiment_gaabf3821c42c07421c350466c50fca270}{
+\index{experiment@{experiment}!modname@{modname}}
+\index{modname@{modname}!experiment@{experiment}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf ABSexp::modname} = \char`\"{}ABS experiment\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private, inherited\mbox{]}}}\hfill}
+\label{group__experiment_gaabf3821c42c07421c350466c50fca270}
+
+
+Name of the module. 
+
+
+
+Definition at line 45 of file abs.h.
+
+\hypertarget{group__experiment_gab69c6d9d77c300fbbfcbde4a0c28eb14}{
+\index{experiment@{experiment}!SliceOptionDesc@{SliceOptionDesc}}
+\index{SliceOptionDesc@{SliceOptionDesc}!experiment@{experiment}}
+\paragraph[{SliceOptionDesc}]{\setlength{\rightskip}{0pt plus 5cm}EXPERIMENT\_\-API const std::string {\bf SliceOptionDesc}}\hfill}
+\label{group__experiment_gab69c6d9d77c300fbbfcbde4a0c28eb14}
+
+
+Description of the option giving the string of slices. 
+
+
+
+Definition at line 333 of file experiment.cpp.
+
+
+
+Referenced by clargs::clargs().
+

@@ -1,0 +1,71 @@
+\hypertarget{sino-edei_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/sino-\/edei.cpp File Reference}
+\label{sino-edei_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/sino-\/edei.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/sino-\/edei.cpp}}
+}
+
+
+Makes sinograms from the EDEI input contrasts.  
+
+
+{\ttfamily \#include $<$vector$>$}\par
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/experiment.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/edei.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{sino-edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'sinr'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Makes sinograms from the EDEI input contrasts. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@asw062.synchrotron.org.au}{\tt antonmx@asw062.synchrotron.org.au}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Apr 6 12:46:41 2009 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{sino-edei_8cpp_source}{sino-\/edei.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{sino-edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{sino-\/edei.cpp@{sino-\/edei.cpp}!main@{main}}
+\index{main@{main}!sino-edei.cpp@{sino-\/edei.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{sino-edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'sinr'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 131 of file sino-\/edei.cpp.
+
+
+
+References EDEIoptions::acof, clargs::beverbose, clargs::contrast, clargs::edeiopt, EDEIoptions::Gm, EDEIoptions::Gp, mask2format(), clargs::Mlistname, EDEIoptions::mpinter, clargs::outmask, Experiment::pixels(), clargs::Plistname, EDEIoptions::RCname, SaveImage(), clargs::SaveInt, SinoS::sino(), slice\_\-str2vec(), clargs::slicedesc, Experiment::slices(), EDEIoptions::smooth, Experiment::thetas(), and toString().
+

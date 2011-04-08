@@ -1,0 +1,39 @@
+\hypertarget{flatfield_8h}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/common/flatfield.h File Reference}
+\label{flatfield_8h}\index{/home/antonmx/work/projects/ctascmake/src/common/flatfield.h@{/home/antonmx/work/projects/ctascmake/src/common/flatfield.h}}
+}
+
+
+Functions needed for flatfield correction.  
+
+
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+static float \hyperlink{group__ff_ga27e9065a4a811a23bacb7e7d9dde8833}{flatfield} (float fg, float bg, float dc=0.0)
+\item 
+static void \hyperlink{group__ff_ga59a639014f022e0ec1f975a574c3a109}{flatfield} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&fg, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&bg)
+\item 
+static void \hyperlink{group__ff_ga361ea4cde4043cfc1646e3eefc57b726}{flatfield} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&fg, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&bg, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&dc)
+\item 
+static float \hyperlink{namespaceblitz_a55456952b688e04d03d1c9893d88a90c}{blitz::cutone} (float x)
+\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const std::string \hyperlink{group__ff_ga0d67745bbe69566dd469dfbd1966a87b}{IdealWorldOptionDesc} = \char`\"{} points where the ratio exceeds 1, are set to 1.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the -\/-\/idealworld option. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Functions needed for flatfield correction. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Thu Jul 17 12:58:59 2008 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{flatfield_8h_source}{flatfield.h}.
+

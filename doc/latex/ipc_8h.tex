@@ -1,0 +1,69 @@
+\hypertarget{ipc_8h}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/common/ipc.h File Reference}
+\label{ipc_8h}\index{/home/antonmx/work/projects/ctascmake/src/common/ipc.h@{/home/antonmx/work/projects/ctascmake/src/common/ipc.h}}
+}
+
+
+Inline phase contrast.  
+
+
+{\ttfamily \#include \char`\"{}common.h\char`\"{}}\par
+{\ttfamily \#include $<$complex$>$}\par
+{\ttfamily \#include $<$fftw3.h$>$}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classIPCprocess}{IPCprocess}
+\item 
+class \hyperlink{classIPCexp}{IPCexp}
+\begin{DoxyCompactList}\small\item\em Class which extracts IPC-\/processed projections from the input data. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef blitz::Array$<$ std::complex$<$ float $>$,2 $>$ \hyperlink{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{CMap}
+\begin{DoxyCompactList}\small\item\em 2D Array with complex data. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void IPC\_\-API \hyperlink{group__IPC_ga4868925f354fbd59c75fa1f4e6d22430}{propagate} (const \hyperlink{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{CMap} \&tif, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&out, float dd, float lambda, float dist)
+\item 
+void IPC\_\-API \hyperlink{group__IPC_ga257d85bf85edd61aed82ddf5f5e5afc8}{simulateTif} (\hyperlink{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{CMap} \&tif, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&sh, float bd, float theta, float dd, float lambda)
+\item 
+std::string \hyperlink{group__IPC_ga8740636aa1e412e806ab104023700a5b}{type\_\-desc} (\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool IPC\_\-API \hyperlink{group__IPC_ga414708530452511476cc1186276308d7}{\_\-conversion} (\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+\hypertarget{group__IPC_ga20d4ad3e193277fdff7652bef35fa57b}{
+std::string {\bfseries toString} (\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} comp)}
+\label{group__IPC_ga20d4ad3e193277fdff7652bef35fa57b}
+
+\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Inline phase contrast. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@amx-mac.synchrotron.org.au}{\tt antonmx@amx-\/mac.synchrotron.org.au}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Wed Jun 16 10:40:11 2010 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{ipc_8h_source}{ipc.h}.
+
+
+
+\subsubsection{Typedef Documentation}
+\hypertarget{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{
+\index{ipc.h@{ipc.h}!CMap@{CMap}}
+\index{CMap@{CMap}!ipc.h@{ipc.h}}
+\paragraph[{CMap}]{\setlength{\rightskip}{0pt plus 5cm}typedef blitz::Array$<$ std::complex$<$float$>$ ,2 $>$ {\bf CMap}}\hfill}
+\label{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}
+
+
+2D Array with complex data. 
+
+Two dimensional array of the std::complex$<$float$>$ elements. 
+
+Definition at line 56 of file ipc.h.
+

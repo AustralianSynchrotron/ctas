@@ -1,0 +1,118 @@
+\hypertarget{classInterp}{
+\subsection{Interp Class Reference}
+\label{classInterp}\index{Interp@{Interp}}
+}
+
+
+Auxiliary class: just wrap around inter\_\-tp enumeration.  
+
+
+
+
+{\ttfamily \#include $<$edei.h$>$}
+
+\subsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87}{inter\_\-tp} \{ \par
+\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87ac3491d178c3b4d99946346d29aa1a278}{ALPHA}, 
+\par
+\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87ad059eb3ed702d77d4a397615966abe49}{NUMBER}, 
+\par
+\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87addb4fb6c1edaa033ac3bd54e0f79f297}{REFLECT}, 
+\par
+\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87aaaeebe62ae30762d4708f741e206fe91}{INTENS}
+ \}
+\begin{DoxyCompactList}\small\item\em Determines the meaning of the input +/-\/ points in the \hyperlink{classEDEIprocess_a1de13d8e88dc94c8627098298bc87667}{EDEIprocess::mpinter}. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+std::string \hyperlink{group__edeiedei_ga9473b5ac52a3b4d72a1569eb3719ee4c}{name} () const 
+\begin{DoxyCompactList}\small\item\em Prints name. \item\end{DoxyCompactList}\item 
+\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87}{inter\_\-tp} \hyperlink{group__edeiedei_ga0fb3fe592af6060f4d27b7e59e864808}{type} () const 
+\begin{DoxyCompactList}\small\item\em The interpretation type. \item\end{DoxyCompactList}\item 
+\hyperlink{group__edeiedei_ga039d1a049fa99eb2238712041637945e}{Interp} (\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87}{inter\_\-tp} \_\-mpinter=REFLECT)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{group__edeiedei_ga3d8b610ff638db6518ab5f538bbbae07}{Interp} (const std::string \&\_\-name)
+\begin{DoxyCompactList}\small\item\em Constructor from name. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{group__edeiedei_gad0a1bf1abf92a9db8a77c55470a31027}{optionDesc} = \char`\"{} intensities and interprets the values as the normalized ones.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the type. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classInterp_a48f7a943f951c25a9717d1849cf7cd87}{inter\_\-tp} \hyperlink{classInterp_af2350a967b89741ad75e3c8725d32a56}{mpinter}
+\begin{DoxyCompactList}\small\item\em The interpretation. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Auxiliary class: just wrap around inter\_\-tp enumeration. 
+
+Definition at line 68 of file edei.h.
+
+
+
+\subsubsection{Member Enumeration Documentation}
+\hypertarget{classInterp_a48f7a943f951c25a9717d1849cf7cd87}{
+\index{Interp@{Interp}!inter\_\-tp@{inter\_\-tp}}
+\index{inter\_\-tp@{inter\_\-tp}!Interp@{Interp}}
+\paragraph[{inter\_\-tp}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf Interp::inter\_\-tp}}\hfill}
+\label{classInterp_a48f7a943f951c25a9717d1849cf7cd87}
+
+
+Determines the meaning of the input +/-\/ points in the \hyperlink{classEDEIprocess_a1de13d8e88dc94c8627098298bc87667}{EDEIprocess::mpinter}. 
+
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{ALPHA@{ALPHA}!Interp@{Interp}}\index{Interp@{Interp}!ALPHA@{ALPHA}}\item[{\em 
+\hypertarget{classInterp_a48f7a943f951c25a9717d1849cf7cd87ac3491d178c3b4d99946346d29aa1a278}{
+ALPHA}
+\label{classInterp_a48f7a943f951c25a9717d1849cf7cd87ac3491d178c3b4d99946346d29aa1a278}
+}]Angle $\alpha$ (x-\/axis). \index{NUMBER@{NUMBER}!Interp@{Interp}}\index{Interp@{Interp}!NUMBER@{NUMBER}}\item[{\em 
+\hypertarget{classInterp_a48f7a943f951c25a9717d1849cf7cd87ad059eb3ed702d77d4a397615966abe49}{
+NUMBER}
+\label{classInterp_a48f7a943f951c25a9717d1849cf7cd87ad059eb3ed702d77d4a397615966abe49}
+}]Number of the string in the read RCstaff::RCoption() \char`\"{}RC\char`\"{} file. \index{REFLECT@{REFLECT}!Interp@{Interp}}\index{Interp@{Interp}!REFLECT@{REFLECT}}\item[{\em 
+\hypertarget{classInterp_a48f7a943f951c25a9717d1849cf7cd87addb4fb6c1edaa033ac3bd54e0f79f297}{
+REFLECT}
+\label{classInterp_a48f7a943f951c25a9717d1849cf7cd87addb4fb6c1edaa033ac3bd54e0f79f297}
+}]Reflectivity (y-\/axis). \index{INTENS@{INTENS}!Interp@{Interp}}\index{Interp@{Interp}!INTENS@{INTENS}}\item[{\em 
+\hypertarget{classInterp_a48f7a943f951c25a9717d1849cf7cd87aaaeebe62ae30762d4708f741e206fe91}{
+INTENS}
+\label{classInterp_a48f7a943f951c25a9717d1849cf7cd87aaaeebe62ae30762d4708f741e206fe91}
+}]Intensity (y-\/axis). \end{description}
+\end{Desc}
+
+
+
+Definition at line 73 of file edei.h.
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classInterp_af2350a967b89741ad75e3c8725d32a56}{
+\index{Interp@{Interp}!mpinter@{mpinter}}
+\index{mpinter@{mpinter}!Interp@{Interp}}
+\paragraph[{mpinter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf inter\_\-tp} {\bf Interp::mpinter}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classInterp_af2350a967b89741ad75e3c8725d32a56}
+
+
+The interpretation. 
+
+
+
+Definition at line 81 of file edei.h.
+
+
+
+Referenced by Interp().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{edei_8h}{edei.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{ledei_8cpp}{ledei.cpp}\end{DoxyCompactItemize}

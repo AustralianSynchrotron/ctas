@@ -1,0 +1,592 @@
+\hypertarget{common_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/common/common.cpp File Reference}
+\label{common_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/common/common.cpp@{/home/antonmx/work/projects/ctascmake/src/common/common.cpp}}
+}
+
+
+Definitions of function declared in \hyperlink{common_8h}{common.h}.  
+
+
+{\ttfamily \#include $<$algorithm$>$}\par
+{\ttfamily \#include $<$stdarg.h$>$}\par
+{\ttfamily \#include $<$string.h$>$}\par
+{\ttfamily \#include \char`\"{}common.h\char`\"{}}\par
+{\ttfamily \#include $<$termios.h$>$}\par
+{\ttfamily \#include $<$sys/ioctl.h$>$}\par
+{\ttfamily \#include $<$Magick++.h$>$}\par
+{\ttfamily \#include $<$FreeImage.h$>$}\par
+{\ttfamily \#include $<$climits$>$}\par
+{\ttfamily \#include $<$tiffio.h$>$}\par
+{\ttfamily \#include $<$fcntl.h$>$}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structToUpper}{ToUpper}
+\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{group__Error_gaad605c8e899cb915d214127c18a12157}{throw\_\-error} (const string \&mod, const string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructs the error, reports and then throws it. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__Error_gacb8a74cf255f5788357a30ce8b4f80db}{throw\_\-bug} (const string \&mod)
+\begin{DoxyCompactList}\small\item\em Reports and throws the bug. \item\end{DoxyCompactList}\item 
+\hyperlink{classCtasErr}{CtasErr} \hyperlink{group__Error_gafc17a83d686f911fcbed38f9b4b4fda4}{warn} (const string \&mod, const string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructs the warning and reports it. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__Error_ga9ddf0cafadd98ea5e8558558b8d6dfb5}{exit\_\-on\_\-error} (const string \&mod, const string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructs the error, reports and then exits. \item\end{DoxyCompactList}\item 
+\hyperlink{classPath}{Path} \hyperlink{group__Types_gad3c78ff20aae27d0ada01a8ec7c33512}{upgrade} (const \hyperlink{classPath}{Path} \&path, const string \&addthis)
+\begin{DoxyCompactList}\small\item\em Upgrades the filename with an addition. \item\end{DoxyCompactList}\item 
+\hyperlink{classPath}{Path} \hyperlink{group__Types_ga4de1e55e650dc8f387cbccfcf26fe51f}{cdpath} (const \hyperlink{classPath}{Path} \&dir, const \hyperlink{classPath}{Path} \&file)
+\begin{DoxyCompactList}\small\item\em Adds the path to the filename. \item\end{DoxyCompactList}\item 
+string \hyperlink{group__Types_ga8fd2857cd3b4a7006c31dd06af0f3e78}{type\_\-desc} (\hyperlink{classPath}{Path} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool \hyperlink{group__Types_ga4e0eee1b7fdba3969d084be434981931}{\_\-conversion} (\hyperlink{classPath}{Path} $\ast$\_\-val, const string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classPath}{Path} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool \hyperlink{group__Types_ga9e64a10e0cc4fff11763fa59660ec038}{operator==} (const \hyperlink{classContrast}{Contrast} \&a, const \hyperlink{classContrast}{Contrast} \&b)
+\begin{DoxyCompactList}\small\item\em Compare contrasts. \item\end{DoxyCompactList}\item 
+bool \hyperlink{group__Types_gaebd775321a5c08374eaed2b227b83552}{operator!=} (const \hyperlink{classContrast}{Contrast} \&a, const \hyperlink{classContrast}{Contrast} \&b)
+\begin{DoxyCompactList}\small\item\em Compare contrasts. \item\end{DoxyCompactList}\item 
+string \hyperlink{group__Types_ga53ad0d300f418a34031d5efe90bc135f}{type\_\-desc} (\hyperlink{classContrast}{Contrast} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool \hyperlink{group__Types_gaae619afb669156b36cccf8fff2fef8e7}{\_\-conversion} (\hyperlink{classContrast}{Contrast} $\ast$\_\-val, const string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classContrast}{Contrast} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+string \hyperlink{group__CommonFunctions_gafb844ea13cbc3a3596026448ace0a808}{upper} (string str)
+\begin{DoxyCompactList}\small\item\em Convert string to upper case. \item\end{DoxyCompactList}\item 
+string \hyperlink{group__CommonFunctions_ga2f5c59584246fec7dff2208f6ec04fa9}{lower} (string str)
+\begin{DoxyCompactList}\small\item\em Convert string to lower case. \item\end{DoxyCompactList}\item 
+string \hyperlink{group__CommonFunctions_ga0c99deaa2f9c487d645d3d6807fe899c}{toString} (const string fmt,...)
+\begin{DoxyCompactList}\small\item\em Prints formatted message to string. \item\end{DoxyCompactList}\item 
+static void \hyperlink{common_8cpp_a9651b9551f69a53bf268eba5e9ba7d14}{initMagick} ()
+\begin{DoxyCompactList}\small\item\em initializes ImageMagick library \item\end{DoxyCompactList}\item 
+static FIBITMAP $\ast$ \hyperlink{common_8cpp_a6b373a5c6e99492cd50f72460b6788f5}{FImageLoader} (const \hyperlink{classPath}{Path} \&filename)
+\item 
+float \hyperlink{group__IO_ga8e86fe71ec349e7de8ae5dd380ab2cab}{PixelSize} (const \hyperlink{classPath}{Path} \&filename)
+\begin{DoxyCompactList}\small\item\em Pixel size of the image. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \hyperlink{group__IO_ga5ae888c778c04a7a8afa74e19ad636e2}{ImageSizes} (const \hyperlink{classPath}{Path} \&filename)
+\begin{DoxyCompactList}\small\item\em Image sizes. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga7a0fd640fb3c44bdd8f1b86a644d5f33}{ImageSizes} (const \hyperlink{classPath}{Path} \&filename, int $\ast$width, int $\ast$hight)
+\begin{DoxyCompactList}\small\item\em Image sizes. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_gaa67e9a34c63f309de5eeb303063ee230}{BadShape} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Check the shape of the image. \item\end{DoxyCompactList}\item 
+{\footnotesize template$<$class StClass $>$ }\\static void \hyperlink{common_8cpp_aabbf0512d55472beec655d28b60d27f5}{fip2arr} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, FIBITMAP $\ast$dib)
+\item 
+static void \hyperlink{common_8cpp_a9c10ce3e389293607f9c7c1c0fd12ae5}{ReadImage\_\-FI} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\item 
+static void \hyperlink{common_8cpp_a07f361bdf2fb022f2957c761546a820d}{ReadImage\_\-IM} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\item 
+void \hyperlink{group__IO_gae0c550c8fca773f133499e990ebe70b6}{ReadImage} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\begin{DoxyCompactList}\small\item\em Load image from preopened object. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga90ec574d8eb47c429f7c9f0aeb84278e}{ReadImage} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Load image checking the shape. \item\end{DoxyCompactList}\item 
+{\footnotesize template$<$class StClass $>$ }\\static void \hyperlink{common_8cpp_a796ff81f03d071ccd114d8f3adfee3cd}{fip2ln} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, FIBITMAP $\ast$dib, int idx)
+\item 
+static void \hyperlink{common_8cpp_af18866a2cf00026ae8f5f4d8812183dd}{ReadImageLine\_\-FI} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, int idx)
+\begin{DoxyCompactList}\small\item\em Reads one line of the image using FreeImage library. \item\end{DoxyCompactList}\item 
+static void \hyperlink{common_8cpp_a0c6112a49ef44b8c7ffa5cddc23bc20f}{ReadImageLine\_\-IM} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, int idx)
+\begin{DoxyCompactList}\small\item\em Reads one line of the image using ImageMagick library. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga5703869a92557ac281a47e5e39a82a08}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, int idx)
+\begin{DoxyCompactList}\small\item\em Load one line of the image. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga01e36107c55681c281619701e500251b}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, int idx, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Load one line of the image. \item\end{DoxyCompactList}\item 
+static void \hyperlink{common_8cpp_a8925b86fecbb81659f1becd8880e4b48}{ReadImageLine\_\-FI} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const vector$<$ int $>$ \&idxs)
+\begin{DoxyCompactList}\small\item\em Reads many lines of the image using FreeImage library. \item\end{DoxyCompactList}\item 
+static void \hyperlink{common_8cpp_a1d75290b61c1ac6073c027f98156652a}{ReadImageLine\_\-IM} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const vector$<$ int $>$ \&idxs)
+\begin{DoxyCompactList}\small\item\em Reads many line of the image using ImageMagick library. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_gad641a5bc8bbcb5e32e89f6b7f3e500cf}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const vector$<$ int $>$ \&idxs)
+\begin{DoxyCompactList}\small\item\em Load several lines of the image. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga7a36a289f1fc8b8cede62888cc27a962}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const vector$<$ int $>$ \&idxs, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Load several lines of the image. \item\end{DoxyCompactList}\item 
+static void \hyperlink{common_8cpp_a2401e8ef10e2ec067cd29ed6be7ebf6d}{SaveImageINT\_\-FI} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\item 
+static void \hyperlink{common_8cpp_abee2969d2cd661ee0f014952dd9f99ea}{SaveImageINT\_\-IM} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\item 
+float \hyperlink{namespaceblitz_a643534ac46d0468b25889fa2117962df}{blitz::limit01} (float x)
+\item 
+static void \hyperlink{common_8cpp_a5dcd081a40acd1eff338f9c4a3b1f4e7}{SaveImageINT} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, float minval=0, float maxval=0)
+\begin{DoxyCompactList}\small\item\em Save the array into integer image. \item\end{DoxyCompactList}\item 
+void \hyperlink{common_8cpp_afa4d600a6131fa61f7540324f912f831}{SaveImageFP} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\begin{DoxyCompactList}\small\item\em Save the array into float point TIFF image. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_gae45e74b44be3e797bcf1f2ae84d211ef}{SaveImage} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, bool saveint)
+\begin{DoxyCompactList}\small\item\em Save the array into image. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_gada3965acc5403b0ac1816014b6d079c0}{SaveImage} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, float minval, float maxval)
+\begin{DoxyCompactList}\small\item\em Save the array into integer image. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga0f88c53b648824e6db8e2dc716d273f0}{SaveData} (const \hyperlink{classPath}{Path} filename,...)
+\begin{DoxyCompactList}\small\item\em Save any amount of lines into data file. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IO_ga02288ddbc5eb5144a7a92eb0a06ee1b6}{LoadData} (const \hyperlink{classPath}{Path} filename,...)
+\begin{DoxyCompactList}\small\item\em Loads any amount of lines from data file. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const std::string \hyperlink{group__CommonFunctions_ga74d5dcc9d3050f0a8230fc00606fa9a3}{IntOptionDesc} = \char`\"{} to any format).\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the -\/i, -\/-\/int option used in many modules. \item\end{DoxyCompactList}\item 
+const std::string \hyperlink{group__CommonFunctions_ga5e3460d8e3eb92dd0ed0e19b21e183ce}{NeedForQuant} = \char`\"{} If not set the results are qualitative rather than quantitative.\char`\"{}
+\begin{DoxyCompactList}\small\item\em The note added to many options. \item\end{DoxyCompactList}\item 
+const std::string \hyperlink{group__CommonFunctions_gab3b95945319d230e7acf62cff169017c}{ResolutionOptionDesc} = \char`\"{} to calculate it from the image dpi.\char`\"{} + NeedForQuant
+\begin{DoxyCompactList}\small\item\em Description of the -\/-\/resolution option used in many modules. \item\end{DoxyCompactList}\item 
+const std::string \hyperlink{group__CommonFunctions_gaf35a6e67bb37a3f948d1f01bc7a0c80b}{SeeAlsoList} = \char`\"{} ctas-\/ts(1), ctas-\/ct-\/line(1)\char`\"{}
+\item 
+static bool \hyperlink{common_8cpp_af50fe4d3b1afbac12a77bf376c3d9f78}{CtasMagickInited} = false
+\begin{DoxyCompactList}\small\item\em {\ttfamily true} if ImageMagick has been initialized. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Definitions of function declared in \hyperlink{common_8h}{common.h}. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@synchrotron.org.au}{\tt antonmx@synchrotron.org.au}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Thu Jul 17 12:51:00 2008
+\end{DoxyDate}
+Here the functions declared in \hyperlink{common_8h}{common.h} are defined. 
+
+Definition in file \hyperlink{common_8cpp_source}{common.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{common_8cpp_a6b373a5c6e99492cd50f72460b6788f5}{
+\index{common.cpp@{common.cpp}!FImageLoader@{FImageLoader}}
+\index{FImageLoader@{FImageLoader}!common.cpp@{common.cpp}}
+\paragraph[{FImageLoader}]{\setlength{\rightskip}{0pt plus 5cm}static FIBITMAP$\ast$ FImageLoader (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a6b373a5c6e99492cd50f72460b6788f5}
+Loads the FreeImage image.
+
+For further use with FreeImage library's functions. Do not forget to unload image afterwards.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Name of the image.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\end{DoxyReturn}
+
+
+Definition at line 600 of file common.cpp.
+
+
+
+References warn().
+
+
+
+Referenced by ReadImage\_\-FI(), and ReadImageLine\_\-FI().
+
+\hypertarget{common_8cpp_aabbf0512d55472beec655d28b60d27f5}{
+\index{common.cpp@{common.cpp}!fip2arr@{fip2arr}}
+\index{fip2arr@{fip2arr}!common.cpp@{common.cpp}}
+\paragraph[{fip2arr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class StClass $>$ static void fip2arr (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{storage, }
+\item[{FIBITMAP $\ast$}]{dib}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{common_8cpp_aabbf0512d55472beec655d28b60d27f5}
+Reads FreeImage image into the array.
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & The array to read into. \\
+\hline
+{\em dib} & Image to read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 694 of file common.cpp.
+
+\hypertarget{common_8cpp_a796ff81f03d071ccd114d8f3adfee3cd}{
+\index{common.cpp@{common.cpp}!fip2ln@{fip2ln}}
+\index{fip2ln@{fip2ln}!common.cpp@{common.cpp}}
+\paragraph[{fip2ln}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class StClass $>$ static void fip2ln (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{storage, }
+\item[{FIBITMAP $\ast$}]{dib, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{common_8cpp_a796ff81f03d071ccd114d8f3adfee3cd}
+Reads one line of the FreeImage image.
+
+
+\begin{DoxyParams}{Parameters}
+{\em storage} & The array to store the line \\
+\hline
+{\em dib} & The image to read from. \\
+\hline
+{\em idx} & The index of the line to read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 819 of file common.cpp.
+
+\hypertarget{common_8cpp_a9651b9551f69a53bf268eba5e9ba7d14}{
+\index{common.cpp@{common.cpp}!initMagick@{initMagick}}
+\index{initMagick@{initMagick}!common.cpp@{common.cpp}}
+\paragraph[{initMagick}]{\setlength{\rightskip}{0pt plus 5cm}static void initMagick (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{common_8cpp_a9651b9551f69a53bf268eba5e9ba7d14}
+
+
+initializes ImageMagick library 
+
+Use it in all binaries to allow reading up to 10k x 10k into memory, not HDD. 
+
+Definition at line 566 of file common.cpp.
+
+
+
+References CtasMagickInited.
+
+
+
+Referenced by ReadImage\_\-IM(), ReadImageLine\_\-IM(), and SaveImageINT\_\-IM().
+
+\hypertarget{common_8cpp_a9c10ce3e389293607f9c7c1c0fd12ae5}{
+\index{common.cpp@{common.cpp}!ReadImage\_\-FI@{ReadImage\_\-FI}}
+\index{ReadImage\_\-FI@{ReadImage\_\-FI}!common.cpp@{common.cpp}}
+\paragraph[{ReadImage\_\-FI}]{\setlength{\rightskip}{0pt plus 5cm}static void ReadImage\_\-FI (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a9c10ce3e389293607f9c7c1c0fd12ae5}
+Loads an image using FreeImage library.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Name of the image \\
+\hline
+{\em storage} & The array to store the image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 720 of file common.cpp.
+
+
+
+References FImageLoader(), and warn().
+
+
+
+Referenced by ReadImage().
+
+\hypertarget{common_8cpp_a07f361bdf2fb022f2957c761546a820d}{
+\index{common.cpp@{common.cpp}!ReadImage\_\-IM@{ReadImage\_\-IM}}
+\index{ReadImage\_\-IM@{ReadImage\_\-IM}!common.cpp@{common.cpp}}
+\paragraph[{ReadImage\_\-IM}]{\setlength{\rightskip}{0pt plus 5cm}static void ReadImage\_\-IM (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a07f361bdf2fb022f2957c761546a820d}
+Loads an image using ImageMagick library.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Name of the image \\
+\hline
+{\em storage} & The array to store the image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 759 of file common.cpp.
+
+
+
+References initMagick(), throw\_\-error(), and warn().
+
+
+
+Referenced by ReadImage().
+
+\hypertarget{common_8cpp_a8925b86fecbb81659f1becd8880e4b48}{
+\index{common.cpp@{common.cpp}!ReadImageLine\_\-FI@{ReadImageLine\_\-FI}}
+\index{ReadImageLine\_\-FI@{ReadImageLine\_\-FI}!common.cpp@{common.cpp}}
+\paragraph[{ReadImageLine\_\-FI}]{\setlength{\rightskip}{0pt plus 5cm}static void ReadImageLine\_\-FI (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage, }
+\item[{const vector$<$ int $>$ \&}]{idxs}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a8925b86fecbb81659f1becd8880e4b48}
+
+
+Reads many lines of the image using FreeImage library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & The name of the file with the image. \\
+\hline
+{\em storage} & Array to read into. \\
+\hline
+{\em idxs} & The indexes of the line to read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 952 of file common.cpp.
+
+
+
+References FImageLoader(), toString(), and warn().
+
+\hypertarget{common_8cpp_af18866a2cf00026ae8f5f4d8812183dd}{
+\index{common.cpp@{common.cpp}!ReadImageLine\_\-FI@{ReadImageLine\_\-FI}}
+\index{ReadImageLine\_\-FI@{ReadImageLine\_\-FI}!common.cpp@{common.cpp}}
+\paragraph[{ReadImageLine\_\-FI}]{\setlength{\rightskip}{0pt plus 5cm}static void ReadImageLine\_\-FI (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Line} \&}]{storage, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_af18866a2cf00026ae8f5f4d8812183dd}
+
+
+Reads one line of the image using FreeImage library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & The name of the file with the image. \\
+\hline
+{\em storage} & Line to read into. \\
+\hline
+{\em idx} & The index of the line to read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 846 of file common.cpp.
+
+
+
+References FImageLoader(), throw\_\-error(), toString(), and warn().
+
+
+
+Referenced by ReadImageLine().
+
+\hypertarget{common_8cpp_a0c6112a49ef44b8c7ffa5cddc23bc20f}{
+\index{common.cpp@{common.cpp}!ReadImageLine\_\-IM@{ReadImageLine\_\-IM}}
+\index{ReadImageLine\_\-IM@{ReadImageLine\_\-IM}!common.cpp@{common.cpp}}
+\paragraph[{ReadImageLine\_\-IM}]{\setlength{\rightskip}{0pt plus 5cm}static void ReadImageLine\_\-IM (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Line} \&}]{storage, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a0c6112a49ef44b8c7ffa5cddc23bc20f}
+
+
+Reads one line of the image using ImageMagick library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & The name of the file with the image. \\
+\hline
+{\em storage} & Line to read into. \\
+\hline
+{\em idx} & The index of the line to read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 897 of file common.cpp.
+
+
+
+References initMagick(), throw\_\-error(), toString(), and warn().
+
+
+
+Referenced by ReadImageLine().
+
+\hypertarget{common_8cpp_a1d75290b61c1ac6073c027f98156652a}{
+\index{common.cpp@{common.cpp}!ReadImageLine\_\-IM@{ReadImageLine\_\-IM}}
+\index{ReadImageLine\_\-IM@{ReadImageLine\_\-IM}!common.cpp@{common.cpp}}
+\paragraph[{ReadImageLine\_\-IM}]{\setlength{\rightskip}{0pt plus 5cm}static void ReadImageLine\_\-IM (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage, }
+\item[{const vector$<$ int $>$ \&}]{idxs}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a1d75290b61c1ac6073c027f98156652a}
+
+
+Reads many line of the image using ImageMagick library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & The name of the file with the image. \\
+\hline
+{\em storage} & Array to read into. \\
+\hline
+{\em idxs} & The indexes of the line to read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1007 of file common.cpp.
+
+
+
+References initMagick(), toString(), and warn().
+
+\hypertarget{common_8cpp_afa4d600a6131fa61f7540324f912f831}{
+\index{common.cpp@{common.cpp}!SaveImageFP@{SaveImageFP}}
+\index{SaveImageFP@{SaveImageFP}!common.cpp@{common.cpp}}
+\paragraph[{SaveImageFP}]{\setlength{\rightskip}{0pt plus 5cm}void SaveImageFP (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{common_8cpp_afa4d600a6131fa61f7540324f912f831}
+
+
+Save the array into float point TIFF image. 
+
+Stores the array in the float-\/point TIFF file. Be careful: limited number of editors/viewers/analyzers support float point format.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & the name of the image file image. \\
+\hline
+{\em storage} & the array to be written to the image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1235 of file common.cpp.
+
+
+
+Referenced by SaveImage().
+
+\hypertarget{common_8cpp_a5dcd081a40acd1eff338f9c4a3b1f4e7}{
+\index{common.cpp@{common.cpp}!SaveImageINT@{SaveImageINT}}
+\index{SaveImageINT@{SaveImageINT}!common.cpp@{common.cpp}}
+\paragraph[{SaveImageINT}]{\setlength{\rightskip}{0pt plus 5cm}static void SaveImageINT (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Map} \&}]{storage, }
+\item[{float}]{minval = {\ttfamily 0}, }
+\item[{float}]{maxval = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a5dcd081a40acd1eff338f9c4a3b1f4e7}
+
+
+Save the array into integer image. 
+
+Stores the array in the integer-\/based image. If minval is equal to maxval then the minimum and maximum values of the array data corresponds to black and white respectively.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & the name of the image file image. \\
+\hline
+{\em storage} & the array to be written to the image. \\
+\hline
+{\em minval} & the value corresponding to black. \\
+\hline
+{\em maxval} & the value corresponding to white. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1186 of file common.cpp.
+
+
+
+Referenced by SaveImage().
+
+\hypertarget{common_8cpp_a2401e8ef10e2ec067cd29ed6be7ebf6d}{
+\index{common.cpp@{common.cpp}!SaveImageINT\_\-FI@{SaveImageINT\_\-FI}}
+\index{SaveImageINT\_\-FI@{SaveImageINT\_\-FI}!common.cpp@{common.cpp}}
+\paragraph[{SaveImageINT\_\-FI}]{\setlength{\rightskip}{0pt plus 5cm}static void SaveImageINT\_\-FI (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_a2401e8ef10e2ec067cd29ed6be7ebf6d}
+Saves image in integer format using FreeImage library.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & file to save image into. \\
+\hline
+{\em storage} & array with the image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1078 of file common.cpp.
+
+
+
+References warn().
+
+\hypertarget{common_8cpp_abee2969d2cd661ee0f014952dd9f99ea}{
+\index{common.cpp@{common.cpp}!SaveImageINT\_\-IM@{SaveImageINT\_\-IM}}
+\index{SaveImageINT\_\-IM@{SaveImageINT\_\-IM}!common.cpp@{common.cpp}}
+\paragraph[{SaveImageINT\_\-IM}]{\setlength{\rightskip}{0pt plus 5cm}static void SaveImageINT\_\-IM (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_abee2969d2cd661ee0f014952dd9f99ea}
+Saves image in integer format using ImageMagick library.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & file to save image into. \\
+\hline
+{\em storage} & array with the image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1120 of file common.cpp.
+
+
+
+References initMagick(), and throw\_\-error().
+
+
+
+\subsubsection{Variable Documentation}
+\hypertarget{common_8cpp_af50fe4d3b1afbac12a77bf376c3d9f78}{
+\index{common.cpp@{common.cpp}!CtasMagickInited@{CtasMagickInited}}
+\index{CtasMagickInited@{CtasMagickInited}!common.cpp@{common.cpp}}
+\paragraph[{CtasMagickInited}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf CtasMagickInited} = false\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{common_8cpp_af50fe4d3b1afbac12a77bf376c3d9f78}
+
+
+{\ttfamily true} if ImageMagick has been initialized. 
+
+
+
+Definition at line 560 of file common.cpp.
+
+
+
+Referenced by initMagick().
+

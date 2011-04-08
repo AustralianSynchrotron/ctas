@@ -1,0 +1,69 @@
+\hypertarget{edei_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/edei.cpp File Reference}
+\label{edei_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/edei.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/edei.cpp}}
+}
+
+
+Extracts refraction and/or absorption components of two contrasts taken on the either sides of the analyzers RC. Uses DEI or EDEI methods.  
+
+
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/edei.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'dei'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Extracts refraction and/or absorption components of two contrasts taken on the either sides of the analyzers RC. Uses DEI or EDEI methods. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@synchrotron.org.au}{\tt antonmx@synchrotron.org.au}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Thu Sep 11 18:55:53 2008 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{edei_8cpp_source}{edei.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{edei.cpp@{edei.cpp}!main@{main}}
+\index{main@{main}!edei.cpp@{edei.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'dei'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 117 of file edei.cpp.
+
+
+
+References EDEIprocess::ABS, clargs::abs\_\-name, EDEIoptions::acof, clargs::command, clargs::edeiopt, exit\_\-on\_\-error(), EDEIprocess::extract(), EDEIoptions::Gm, EDEIoptions::Gp, clargs::minus\_\-name, EDEIoptions::mpinter, clargs::plus\_\-name, EDEIoptions::RCname, ReadImage(), EDEIprocess::REF, clargs::ref\_\-name, SaveImage(), clargs::SaveInt, and EDEIoptions::smooth.
+

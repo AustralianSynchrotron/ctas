@@ -1,0 +1,331 @@
+\hypertarget{classIPCexp}{
+\subsection{IPCexp Class Reference}
+\label{classIPCexp}\index{IPCexp@{IPCexp}}
+}
+
+
+Class which extracts IPC-\/processed projections from the input data.  
+
+
+
+
+{\ttfamily \#include $<$ipc.h$>$}
+
+Inheritance diagram for IPCexp:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classIPCexp}
+\end{center}
+\end{figure}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classIPCexp_a70b3e376a918f904afdc021b4f2e592c}{IPCexp} (const \hyperlink{classAqSeries}{AqSeries} \&\_\-listD, const \hyperlink{classAqSeries}{AqSeries} \&\_\-list0, const \hyperlink{classIPCprocess}{IPCprocess} \&\_\-proc, \hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} \_\-comp)
+\item 
+void \hyperlink{classIPCexp_a0367f181f0d59e3504167c931a3c872e}{projection} (int itheta, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&proj, const std::vector$<$ int $>$ \&sliceV=std::vector$<$ int $>$()) const 
+\begin{DoxyCompactList}\small\item\em Constructs processed projection. \item\end{DoxyCompactList}\item 
+void \hyperlink{classIPCexp_a5c88b5dbb87cd1601d097ddebf6e78ef}{component} (\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} \_\-comp)
+\item 
+void \hyperlink{classIPCexp_ab8e7b35780ae83affccf1b960deff098}{gamma} (float \_\-dgamma)
+\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classAqSeries}{AqSeries} \hyperlink{classIPCexp_ae4dd5b05e0043fced323a7c82482241b}{list0}
+\begin{DoxyCompactList}\small\item\em Data acquired in the contact print plane. \item\end{DoxyCompactList}\item 
+\hyperlink{classAqSeries}{AqSeries} \hyperlink{classIPCexp_a2de69c106bac7e655eff375d837db93f}{listD}
+\begin{DoxyCompactList}\small\item\em Data acquired at the distance. \item\end{DoxyCompactList}\item 
+const \hyperlink{classIPCprocess}{IPCprocess} \& \hyperlink{classIPCexp_af58ae99f8445d3dfc9e116314a2dc1c6}{proc}
+\begin{DoxyCompactList}\small\item\em IPC processing. \item\end{DoxyCompactList}\item 
+\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} \hyperlink{classIPCexp_a621664c85d0c48010d21b89b7b688e81}{comp}
+\begin{DoxyCompactList}\small\item\em Component to be extracted by the ::projection. \item\end{DoxyCompactList}\item 
+float \hyperlink{classIPCexp_a3fdffdc3857421b3e001e3f8e69a24b7}{dd}
+\begin{DoxyCompactList}\small\item\em Pixel size. \item\end{DoxyCompactList}\item 
+float \hyperlink{classIPCexp_ad564518ff232c38ac771849736022fd1}{dist}
+\begin{DoxyCompactList}\small\item\em Object-\/to-\/detector distance. \item\end{DoxyCompactList}\item 
+float \hyperlink{classIPCexp_ad58a19e293a3d6aeb46ec7c9b5d7ac3d}{dgamma}
+\begin{DoxyCompactList}\small\item\em $\gamma$ parameter of the BAC \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \hyperlink{classIPCexp_a0ea33fdf3c3f295d399cee5a4cdc7a61}{pr0}
+\begin{DoxyCompactList}\small\item\em Some internal array used for the extraction. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \hyperlink{classIPCexp_ae5330aaaf27f34de4c2924d1b48f24f4}{prD}
+\begin{DoxyCompactList}\small\item\em Some internal array used for the extraction. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{group__IPC_ga88026640c1911d43674d75fba7439adf}{modname} = \char`\"{}IPC experiment\char`\"{}
+\begin{DoxyCompactList}\small\item\em Name of the module. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Class which extracts IPC-\/processed projections from the input data. \#ifdef \_\-H\_\-EXPERIMENT\_\-H\_\- 
+
+Definition at line 206 of file ipc.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classIPCexp_a70b3e376a918f904afdc021b4f2e592c}{
+\index{IPCexp@{IPCexp}!IPCexp@{IPCexp}}
+\index{IPCexp@{IPCexp}!IPCexp@{IPCexp}}
+\paragraph[{IPCexp}]{\setlength{\rightskip}{0pt plus 5cm}IPCexp::IPCexp (
+\begin{DoxyParamCaption}
+\item[{const {\bf AqSeries} \&}]{\_\-listD, }
+\item[{const {\bf AqSeries} \&}]{\_\-list0, }
+\item[{const {\bf IPCprocess} \&}]{\_\-proc, }
+\item[{{\bf IPCprocess::Component}}]{\_\-comp}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classIPCexp_a70b3e376a918f904afdc021b4f2e592c}
+Contructor.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-listD} & Data acquired at the distance. \\
+\hline
+{\em \_\-list0} & Data acquired in the contact print plane. Can be left empty. \\
+\hline
+{\em \_\-proc} & The IPC processor. \\
+\hline
+{\em \_\-comp} & Component to be extracted. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 232 of file ipc.h.
+
+
+
+References component(), list0, modname, proc, Experiment::sh, IPCprocess::shape(), AqSeries::shape(), AqSeries::size(), AqSeries::thetas(), throw\_\-error(), and Experiment::thts.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classIPCexp_a5c88b5dbb87cd1601d097ddebf6e78ef}{
+\index{IPCexp@{IPCexp}!component@{component}}
+\index{component@{component}!IPCexp@{IPCexp}}
+\paragraph[{component}]{\setlength{\rightskip}{0pt plus 5cm}void IPCexp::component (
+\begin{DoxyParamCaption}
+\item[{{\bf IPCprocess::Component}}]{\_\-comp}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classIPCexp_a5c88b5dbb87cd1601d097ddebf6e78ef}
+Sets the component to be extracted and the corresponding contrast type.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-comp} & Component to be extracted. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 282 of file ipc.h.
+
+
+
+Referenced by IPCexp().
+
+\hypertarget{classIPCexp_ab8e7b35780ae83affccf1b960deff098}{
+\index{IPCexp@{IPCexp}!gamma@{gamma}}
+\index{gamma@{gamma}!IPCexp@{IPCexp}}
+\paragraph[{gamma}]{\setlength{\rightskip}{0pt plus 5cm}void IPCexp::gamma (
+\begin{DoxyParamCaption}
+\item[{float}]{\_\-dgamma}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classIPCexp_ab8e7b35780ae83affccf1b960deff098}
+Sets the $\gamma$.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-dgamma} & $\gamma$ parameter of the BAC method (theoretically must be 1.0). \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 291 of file ipc.h.
+
+\hypertarget{classIPCexp_a0367f181f0d59e3504167c931a3c872e}{
+\index{IPCexp@{IPCexp}!projection@{projection}}
+\index{projection@{projection}!IPCexp@{IPCexp}}
+\paragraph[{projection}]{\setlength{\rightskip}{0pt plus 5cm}void IPCexp::projection (
+\begin{DoxyParamCaption}
+\item[{int}]{itheta, }
+\item[{{\bf Map} \&}]{proj, }
+\item[{const std::vector$<$ int $>$ \&}]{sliceV = {\ttfamily std::vector$<$~int~$>$()}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline, virtual\mbox{]}}}\hfill}
+\label{classIPCexp_a0367f181f0d59e3504167c931a3c872e}
+
+
+Constructs processed projection. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em itheta} & the number of the projection to be returned. \\
+\hline
+{\em proj} & Array to put the projection into. \\
+\hline
+{\em sliceV} & array of slices to be extracted. \\
+\hline
+\end{DoxyParams}
+
+
+Implements \hyperlink{classExperiment_a154d68b031d0e181295ee2adbd66d8c3}{Experiment}.
+
+
+
+Definition at line 255 of file ipc.h.
+
+
+
+References dgamma, IPCprocess::extract(), list0, listD, pr0, prD, proc, AqSeries::projection(), Experiment::sh, AqSeries::size(), and unzero().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classIPCexp_a621664c85d0c48010d21b89b7b688e81}{
+\index{IPCexp@{IPCexp}!comp@{comp}}
+\index{comp@{comp}!IPCexp@{IPCexp}}
+\paragraph[{comp}]{\setlength{\rightskip}{0pt plus 5cm}{\bf IPCprocess::Component} {\bf IPCexp::comp}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_a621664c85d0c48010d21b89b7b688e81}
+
+
+Component to be extracted by the ::projection. 
+
+
+
+Definition at line 213 of file ipc.h.
+
+\hypertarget{classIPCexp_a3fdffdc3857421b3e001e3f8e69a24b7}{
+\index{IPCexp@{IPCexp}!dd@{dd}}
+\index{dd@{dd}!IPCexp@{IPCexp}}
+\paragraph[{dd}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf IPCexp::dd}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_a3fdffdc3857421b3e001e3f8e69a24b7}
+
+
+Pixel size. 
+
+
+
+Definition at line 215 of file ipc.h.
+
+\hypertarget{classIPCexp_ad58a19e293a3d6aeb46ec7c9b5d7ac3d}{
+\index{IPCexp@{IPCexp}!dgamma@{dgamma}}
+\index{dgamma@{dgamma}!IPCexp@{IPCexp}}
+\paragraph[{dgamma}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf IPCexp::dgamma}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_ad58a19e293a3d6aeb46ec7c9b5d7ac3d}
+
+
+$\gamma$ parameter of the BAC 
+
+
+
+Definition at line 217 of file ipc.h.
+
+
+
+Referenced by projection().
+
+\hypertarget{classIPCexp_ad564518ff232c38ac771849736022fd1}{
+\index{IPCexp@{IPCexp}!dist@{dist}}
+\index{dist@{dist}!IPCexp@{IPCexp}}
+\paragraph[{dist}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf IPCexp::dist}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_ad564518ff232c38ac771849736022fd1}
+
+
+Object-\/to-\/detector distance. 
+
+
+
+Definition at line 216 of file ipc.h.
+
+\hypertarget{classIPCexp_ae4dd5b05e0043fced323a7c82482241b}{
+\index{IPCexp@{IPCexp}!list0@{list0}}
+\index{list0@{list0}!IPCexp@{IPCexp}}
+\paragraph[{list0}]{\setlength{\rightskip}{0pt plus 5cm}{\bf AqSeries} {\bf IPCexp::list0}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_ae4dd5b05e0043fced323a7c82482241b}
+
+
+Data acquired in the contact print plane. 
+
+
+
+Definition at line 210 of file ipc.h.
+
+
+
+Referenced by IPCexp(), and projection().
+
+\hypertarget{classIPCexp_a2de69c106bac7e655eff375d837db93f}{
+\index{IPCexp@{IPCexp}!listD@{listD}}
+\index{listD@{listD}!IPCexp@{IPCexp}}
+\paragraph[{listD}]{\setlength{\rightskip}{0pt plus 5cm}{\bf AqSeries} {\bf IPCexp::listD}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_a2de69c106bac7e655eff375d837db93f}
+
+
+Data acquired at the distance. 
+
+
+
+Definition at line 211 of file ipc.h.
+
+
+
+Referenced by projection().
+
+\hypertarget{classIPCexp_a0ea33fdf3c3f295d399cee5a4cdc7a61}{
+\index{IPCexp@{IPCexp}!pr0@{pr0}}
+\index{pr0@{pr0}!IPCexp@{IPCexp}}
+\paragraph[{pr0}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Map} {\bf IPCexp::pr0}\hspace{0.3cm}{\ttfamily  \mbox{[}mutable, private\mbox{]}}}\hfill}
+\label{classIPCexp_a0ea33fdf3c3f295d399cee5a4cdc7a61}
+
+
+Some internal array used for the extraction. 
+
+
+
+Definition at line 219 of file ipc.h.
+
+
+
+Referenced by projection().
+
+\hypertarget{classIPCexp_ae5330aaaf27f34de4c2924d1b48f24f4}{
+\index{IPCexp@{IPCexp}!prD@{prD}}
+\index{prD@{prD}!IPCexp@{IPCexp}}
+\paragraph[{prD}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Map} {\bf IPCexp::prD}\hspace{0.3cm}{\ttfamily  \mbox{[}mutable, private\mbox{]}}}\hfill}
+\label{classIPCexp_ae5330aaaf27f34de4c2924d1b48f24f4}
+
+
+Some internal array used for the extraction. 
+
+
+
+Definition at line 220 of file ipc.h.
+
+
+
+Referenced by projection().
+
+\hypertarget{classIPCexp_af58ae99f8445d3dfc9e116314a2dc1c6}{
+\index{IPCexp@{IPCexp}!proc@{proc}}
+\index{proc@{proc}!IPCexp@{IPCexp}}
+\paragraph[{proc}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf IPCprocess}\& {\bf IPCexp::proc}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCexp_af58ae99f8445d3dfc9e116314a2dc1c6}
+
+
+IPC processing. 
+
+
+
+Definition at line 212 of file ipc.h.
+
+
+
+Referenced by IPCexp(), and projection().
+
+
+
+The documentation for this class was generated from the following file:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{ipc_8h}{ipc.h}\end{DoxyCompactItemize}

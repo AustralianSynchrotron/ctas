@@ -1,0 +1,547 @@
+\hypertarget{classpoptmx_1_1Option}{
+\subsection{poptmx::Option Class Reference}
+\label{classpoptmx_1_1Option}\index{poptmx::Option@{poptmx::Option}}
+}
+
+
+Single entry in the option table. Represents all types of entries.  
+
+
+
+
+{\ttfamily \#include $<$poptmx.h$>$}
+
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classpoptmx_1_1Option_a1009f4c6ace91c6419f91f53acc9b243}{Option} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, void $\ast$\_\-val, int($\ast$\_\-convert)(void $\ast$, const std::string \&), const char \_\-char\_\-name, const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-arg\_\-desc, const std::string \&\_\-dflt, bool \_\-isarray)
+\item 
+bool \hyperlink{classpoptmx_1_1Option_a6f76ad546a5b2e462d3160780db742ff}{parse} (const std::string \&acquire)
+\item 
+std::string \hyperlink{classpoptmx_1_1Option_a9c2e5a25f4d22431a26dbe24e4d4c57a}{delim\_\-opt} (const std::string \&delim, bool keep\_\-format=false) const 
+\begin{DoxyCompactList}\small\item\em Description of the entry: general form;. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1Option_a140a93bae36cb44428d7558310c058e2}{desc} (bool keep\_\-format=false) const 
+\begin{DoxyCompactList}\small\item\em Prints the description. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1Option_a7c474aec9ff90f3b7860fea4d6e4b08f}{require\_\-arg} () const 
+\begin{DoxyCompactList}\small\item\em Tells if the entry requires an argument for parsing. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1Option_ac23ad9ff646bbe3b58de0ed25a1c5a45}{usage} () const 
+\begin{DoxyCompactList}\small\item\em Usage. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1Option_a612e81161856cd8d78eb43a2940d6cad}{Usage} () const 
+\begin{DoxyCompactList}\small\item\em Verbose usage. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1Option_ac9fb1a8ec22dc1e894eb7cea2bcd8b99}{help} (const int descwidth=0, const int argwidth=0) const 
+\begin{DoxyCompactList}\small\item\em Help. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1Option_a584b4ee29ac8923cced25b45ecf0d612}{Help} () const 
+\begin{DoxyCompactList}\small\item\em Verbose help. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1Option_adb1487175e2002b1b5cacae51144be6e}{man} () const 
+\begin{DoxyCompactList}\small\item\em Manual page. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+void $\ast$ \hyperlink{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{val}
+\begin{DoxyCompactList}\small\item\em Pointer to the value the parser to update. \item\end{DoxyCompactList}\item 
+int \hyperlink{classpoptmx_1_1Option_a00528f25b80ce6f9959418c5ef4c4c44}{counter}
+\begin{DoxyCompactList}\small\item\em Number of parser already invoked. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1Option_ab87e428e65c1d4c16fc8ba9952d950bb}{isarray}
+\begin{DoxyCompactList}\small\item\em Tells if the entry represents the array. \item\end{DoxyCompactList}\item 
+\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \hyperlink{classpoptmx_1_1Option_a5f5719adfad302943da528300914bd8e}{kind}
+\item 
+std::string \hyperlink{classpoptmx_1_1Option_a53c0a40e85e0fb07ed3a368df315f69f}{dflt}
+\begin{DoxyCompactList}\small\item\em Default value of the option/argument. \item\end{DoxyCompactList}\item 
+int($\ast$ \hyperlink{classpoptmx_1_1Option_a2b02579efd2148ce002d0c5833864795}{convert} )(void $\ast$, const std::string \&)
+\begin{DoxyCompactList}\small\item\em Function which converts the Option::acquire into the \hyperlink{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{Option::val}. \item\end{DoxyCompactList}\item 
+char \hyperlink{classpoptmx_1_1Option_ae7e0ca795185ac4b4b20bc6766760a4a}{char\_\-name}
+\begin{DoxyCompactList}\small\item\em Short name of the option. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1Option_ac9b28f10c43af2e3afc9684e0ef19cc6}{long\_\-name}
+\begin{DoxyCompactList}\small\item\em Long name of the option / argument name. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1Option_a424688d1a39f40e5c4e13d98d1dd2e74}{arg\_\-desc}
+\begin{DoxyCompactList}\small\item\em Description of the input type. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1Option_a16b86218d90bf80a07dc6a49aa8afece}{short\_\-desc}
+\begin{DoxyCompactList}\small\item\em Short description. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1Option_a22d0ce433827d2ab6c427ff191fb1e51}{long\_\-desc}
+\begin{DoxyCompactList}\small\item\em Long description. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Single entry in the option table. Represents all types of entries. 
+
+Definition at line 175 of file poptmx.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classpoptmx_1_1Option_a1009f4c6ace91c6419f91f53acc9b243}{
+\index{poptmx::Option@{poptmx::Option}!Option@{Option}}
+\index{Option@{Option}!poptmx::Option@{poptmx::Option}}
+\paragraph[{Option}]{\setlength{\rightskip}{0pt plus 5cm}poptmx::Option::Option (
+\begin{DoxyParamCaption}
+\item[{{\bf Kind}}]{\_\-kind, }
+\item[{void $\ast$}]{\_\-val, }
+\item[{int($\ast$)(void $\ast$, const std::string \&)}]{\_\-convert, }
+\item[{const char}]{\_\-char\_\-name, }
+\item[{const std::string \&}]{\_\-long\_\-name, }
+\item[{const std::string \&}]{\_\-short\_\-desc, }
+\item[{const std::string \&}]{\_\-long\_\-desc, }
+\item[{const std::string \&}]{\_\-arg\_\-desc, }
+\item[{const std::string \&}]{\_\-dflt, }
+\item[{bool}]{\_\-isarray}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1Option_a1009f4c6ace91c6419f91f53acc9b243}
+Constructor
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-kind} & kind \\
+\hline
+{\em \_\-val} & val \\
+\hline
+{\em \_\-convert} & convert \\
+\hline
+{\em \_\-char\_\-name} & char\_\-name \\
+\hline
+{\em \_\-long\_\-name} & long\_\-name \\
+\hline
+{\em \_\-short\_\-desc} & short\_\-desc \\
+\hline
+{\em \_\-long\_\-desc} & long\_\-desc \\
+\hline
+{\em \_\-arg\_\-desc} & arg\_\-desc \\
+\hline
+{\em \_\-dflt} & dflt \\
+\hline
+{\em \_\-isarray} & isarray \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 250 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, convert, kind, long\_\-name, poptmx::OPTION, short\_\-desc, throw\_\-error(), and val.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classpoptmx_1_1Option_a9c2e5a25f4d22431a26dbe24e4d4c57a}{
+\index{poptmx::Option@{poptmx::Option}!delim\_\-opt@{delim\_\-opt}}
+\index{delim\_\-opt@{delim\_\-opt}!poptmx::Option@{poptmx::Option}}
+\paragraph[{delim\_\-opt}]{\setlength{\rightskip}{0pt plus 5cm}std::string poptmx::Option::delim\_\-opt (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{delim, }
+\item[{bool}]{keep\_\-format = {\ttfamily false}}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_a9c2e5a25f4d22431a26dbe24e4d4c57a}
+
+
+Description of the entry: general form;. 
+
+Prints general description of the option: short name (or spaces if keep\_\-format is {\ttfamily true}) plus the delimiter delim plus the long\_\-name
+
+
+\begin{DoxyParams}{Parameters}
+{\em delim} & Delimiter between short and long names of the option \\
+\hline
+{\em keep\_\-format} & Tells if the missing parts (short name or delimiter) should be filled with the spaces.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+General representation of the option. 
+\end{DoxyReturn}
+
+
+Definition at line 291 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, char\_\-name, kind, long\_\-name, and poptmx::OPTION.
+
+
+
+Referenced by desc(), Help(), parse(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1Option_a140a93bae36cb44428d7558310c058e2}{
+\index{poptmx::Option@{poptmx::Option}!desc@{desc}}
+\index{desc@{desc}!poptmx::Option@{poptmx::Option}}
+\paragraph[{desc}]{\setlength{\rightskip}{0pt plus 5cm}string poptmx::Option::desc (
+\begin{DoxyParamCaption}
+\item[{bool}]{keep\_\-format = {\ttfamily false}}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_a140a93bae36cb44428d7558310c058e2}
+
+
+Prints the description. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em keep\_\-format} & Tells if the missing parts (short name or delimiter) should be filled with the spaces.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Short description of the entry. 
+\end{DoxyReturn}
+
+
+Definition at line 320 of file poptmx.cpp.
+
+
+
+References delim\_\-opt().
+
+
+
+Referenced by poptmx::OptionTable::add(), and help().
+
+\hypertarget{classpoptmx_1_1Option_a584b4ee29ac8923cced25b45ecf0d612}{
+\index{poptmx::Option@{poptmx::Option}!Help@{Help}}
+\index{Help@{Help}!poptmx::Option@{poptmx::Option}}
+\paragraph[{Help}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::Option::Help (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_a584b4ee29ac8923cced25b45ecf0d612}
+
+
+Verbose help. 
+
+
+
+Definition at line 374 of file poptmx.cpp.
+
+
+
+References arg\_\-desc, poptmx::ARGUMENT, delim\_\-opt(), kind, long\_\-desc, long\_\-name, poptmx::NOTE, poptmx::OPTION, and short\_\-desc.
+
+\hypertarget{classpoptmx_1_1Option_ac9fb1a8ec22dc1e894eb7cea2bcd8b99}{
+\index{poptmx::Option@{poptmx::Option}!help@{help}}
+\index{help@{help}!poptmx::Option@{poptmx::Option}}
+\paragraph[{help}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::Option::help (
+\begin{DoxyParamCaption}
+\item[{const int}]{descwidth = {\ttfamily 0}, }
+\item[{const int}]{argwidth = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_ac9fb1a8ec22dc1e894eb7cea2bcd8b99}
+
+
+Help. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em descwidth} & The width of the description substring. The description is filled with spaces to match this size. \\
+\hline
+{\em argwidth} & The width of the type description substring. The argument name is filled with spaces to match this size. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 352 of file poptmx.cpp.
+
+
+
+References arg\_\-desc, poptmx::ARGUMENT, desc(), kind, poptmx::NOTE, poptmx::OPTION, and short\_\-desc.
+
+\hypertarget{classpoptmx_1_1Option_adb1487175e2002b1b5cacae51144be6e}{
+\index{poptmx::Option@{poptmx::Option}!man@{man}}
+\index{man@{man}!poptmx::Option@{poptmx::Option}}
+\paragraph[{man}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::Option::man (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_adb1487175e2002b1b5cacae51144be6e}
+
+
+Manual page. 
+
+
+
+Definition at line 414 of file poptmx.cpp.
+
+
+
+References arg\_\-desc, poptmx::ARGUMENT, char\_\-name, kind, long\_\-desc, long\_\-name, poptmx::MAN, poptmx::NOTE, poptmx::OPTION, and short\_\-desc.
+
+\hypertarget{classpoptmx_1_1Option_a6f76ad546a5b2e462d3160780db742ff}{
+\index{poptmx::Option@{poptmx::Option}!parse@{parse}}
+\index{parse@{parse}!poptmx::Option@{poptmx::Option}}
+\paragraph[{parse}]{\setlength{\rightskip}{0pt plus 5cm}bool poptmx::Option::parse (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{acquire}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1Option_a6f76ad546a5b2e462d3160780db742ff}
+Parser: invokes \hyperlink{classpoptmx_1_1Option_a2b02579efd2148ce002d0c5833864795}{Option::convert}.
+
+Converts the input string into the value.
+
+
+\begin{DoxyParams}{Parameters}
+{\em acquire} & string to be converted\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+number of words parsed. 
+\end{DoxyReturn}
+
+
+Definition at line 501 of file poptmx.cpp.
+
+
+
+References arg\_\-desc, convert, counter, delim\_\-opt(), isarray, throw\_\-error(), and val.
+
+\hypertarget{classpoptmx_1_1Option_a7c474aec9ff90f3b7860fea4d6e4b08f}{
+\index{poptmx::Option@{poptmx::Option}!require\_\-arg@{require\_\-arg}}
+\index{require\_\-arg@{require\_\-arg}!poptmx::Option@{poptmx::Option}}
+\paragraph[{require\_\-arg}]{\setlength{\rightskip}{0pt plus 5cm}bool poptmx::Option::require\_\-arg (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_a7c474aec9ff90f3b7860fea4d6e4b08f}
+
+
+Tells if the entry requires an argument for parsing. 
+
+
+
+Definition at line 489 of file poptmx.cpp.
+
+
+
+References arg\_\-desc.
+
+\hypertarget{classpoptmx_1_1Option_ac23ad9ff646bbe3b58de0ed25a1c5a45}{
+\index{poptmx::Option@{poptmx::Option}!usage@{usage}}
+\index{usage@{usage}!poptmx::Option@{poptmx::Option}}
+\paragraph[{usage}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::Option::usage (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_ac23ad9ff646bbe3b58de0ed25a1c5a45}
+
+
+Usage. 
+
+
+
+Definition at line 326 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, delim\_\-opt(), isarray, kind, long\_\-name, and poptmx::OPTION.
+
+\hypertarget{classpoptmx_1_1Option_a612e81161856cd8d78eb43a2940d6cad}{
+\index{poptmx::Option@{poptmx::Option}!Usage@{Usage}}
+\index{Usage@{Usage}!poptmx::Option@{poptmx::Option}}
+\paragraph[{Usage}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::Option::Usage (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Option_a612e81161856cd8d78eb43a2940d6cad}
+
+
+Verbose usage. 
+
+
+
+Definition at line 335 of file poptmx.cpp.
+
+
+
+References arg\_\-desc, poptmx::ARGUMENT, delim\_\-opt(), kind, long\_\-name, and poptmx::OPTION.
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classpoptmx_1_1Option_a424688d1a39f40e5c4e13d98d1dd2e74}{
+\index{poptmx::Option@{poptmx::Option}!arg\_\-desc@{arg\_\-desc}}
+\index{arg\_\-desc@{arg\_\-desc}!poptmx::Option@{poptmx::Option}}
+\paragraph[{arg\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Option::arg\_\-desc}}\hfill}
+\label{classpoptmx_1_1Option_a424688d1a39f40e5c4e13d98d1dd2e74}
+
+
+Description of the input type. 
+
+
+
+Definition at line 192 of file poptmx.h.
+
+
+
+Referenced by Help(), help(), man(), parse(), require\_\-arg(), and Usage().
+
+\hypertarget{classpoptmx_1_1Option_ae7e0ca795185ac4b4b20bc6766760a4a}{
+\index{poptmx::Option@{poptmx::Option}!char\_\-name@{char\_\-name}}
+\index{char\_\-name@{char\_\-name}!poptmx::Option@{poptmx::Option}}
+\paragraph[{char\_\-name}]{\setlength{\rightskip}{0pt plus 5cm}char {\bf poptmx::Option::char\_\-name}}\hfill}
+\label{classpoptmx_1_1Option_ae7e0ca795185ac4b4b20bc6766760a4a}
+
+
+Short name of the option. 
+
+
+
+Definition at line 190 of file poptmx.h.
+
+
+
+Referenced by poptmx::OptionTable::add(), delim\_\-opt(), and man().
+
+\hypertarget{classpoptmx_1_1Option_a2b02579efd2148ce002d0c5833864795}{
+\index{poptmx::Option@{poptmx::Option}!convert@{convert}}
+\index{convert@{convert}!poptmx::Option@{poptmx::Option}}
+\paragraph[{convert}]{\setlength{\rightskip}{0pt plus 5cm}int($\ast$ {\bf poptmx::Option::convert})(void $\ast$, const std::string \&)}\hfill}
+\label{classpoptmx_1_1Option_a2b02579efd2148ce002d0c5833864795}
+
+
+Function which converts the Option::acquire into the \hyperlink{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{Option::val}. 
+
+
+
+Definition at line 188 of file poptmx.h.
+
+
+
+Referenced by Option(), and parse().
+
+\hypertarget{classpoptmx_1_1Option_a00528f25b80ce6f9959418c5ef4c4c44}{
+\index{poptmx::Option@{poptmx::Option}!counter@{counter}}
+\index{counter@{counter}!poptmx::Option@{poptmx::Option}}
+\paragraph[{counter}]{\setlength{\rightskip}{0pt plus 5cm}int {\bf poptmx::Option::counter}}\hfill}
+\label{classpoptmx_1_1Option_a00528f25b80ce6f9959418c5ef4c4c44}
+
+
+Number of parser already invoked. 
+
+
+
+Definition at line 180 of file poptmx.h.
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1Option_a53c0a40e85e0fb07ed3a368df315f69f}{
+\index{poptmx::Option@{poptmx::Option}!dflt@{dflt}}
+\index{dflt@{dflt}!poptmx::Option@{poptmx::Option}}
+\paragraph[{dflt}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Option::dflt}}\hfill}
+\label{classpoptmx_1_1Option_a53c0a40e85e0fb07ed3a368df315f69f}
+
+
+Default value of the option/argument. 
+
+
+
+Definition at line 185 of file poptmx.h.
+
+\hypertarget{classpoptmx_1_1Option_ab87e428e65c1d4c16fc8ba9952d950bb}{
+\index{poptmx::Option@{poptmx::Option}!isarray@{isarray}}
+\index{isarray@{isarray}!poptmx::Option@{poptmx::Option}}
+\paragraph[{isarray}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf poptmx::Option::isarray}}\hfill}
+\label{classpoptmx_1_1Option_ab87e428e65c1d4c16fc8ba9952d950bb}
+
+
+Tells if the entry represents the array. 
+
+
+
+Definition at line 181 of file poptmx.h.
+
+
+
+Referenced by poptmx::OptionTable::add(), parse(), and usage().
+
+\hypertarget{classpoptmx_1_1Option_a5f5719adfad302943da528300914bd8e}{
+\index{poptmx::Option@{poptmx::Option}!kind@{kind}}
+\index{kind@{kind}!poptmx::Option@{poptmx::Option}}
+\paragraph[{kind}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Kind} {\bf poptmx::Option::kind}}\hfill}
+\label{classpoptmx_1_1Option_a5f5719adfad302943da528300914bd8e}
+Type of the entry. 
+
+Definition at line 184 of file poptmx.h.
+
+
+
+Referenced by poptmx::OptionTable::add(), delim\_\-opt(), Help(), help(), man(), Option(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1Option_a22d0ce433827d2ab6c427ff191fb1e51}{
+\index{poptmx::Option@{poptmx::Option}!long\_\-desc@{long\_\-desc}}
+\index{long\_\-desc@{long\_\-desc}!poptmx::Option@{poptmx::Option}}
+\paragraph[{long\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Option::long\_\-desc}}\hfill}
+\label{classpoptmx_1_1Option_a22d0ce433827d2ab6c427ff191fb1e51}
+
+
+Long description. 
+
+
+
+Definition at line 194 of file poptmx.h.
+
+
+
+Referenced by Help(), and man().
+
+\hypertarget{classpoptmx_1_1Option_ac9b28f10c43af2e3afc9684e0ef19cc6}{
+\index{poptmx::Option@{poptmx::Option}!long\_\-name@{long\_\-name}}
+\index{long\_\-name@{long\_\-name}!poptmx::Option@{poptmx::Option}}
+\paragraph[{long\_\-name}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Option::long\_\-name}}\hfill}
+\label{classpoptmx_1_1Option_ac9b28f10c43af2e3afc9684e0ef19cc6}
+
+
+Long name of the option / argument name. 
+
+
+
+Definition at line 191 of file poptmx.h.
+
+
+
+Referenced by poptmx::OptionTable::add(), delim\_\-opt(), Help(), man(), Option(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1Option_a16b86218d90bf80a07dc6a49aa8afece}{
+\index{poptmx::Option@{poptmx::Option}!short\_\-desc@{short\_\-desc}}
+\index{short\_\-desc@{short\_\-desc}!poptmx::Option@{poptmx::Option}}
+\paragraph[{short\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Option::short\_\-desc}}\hfill}
+\label{classpoptmx_1_1Option_a16b86218d90bf80a07dc6a49aa8afece}
+
+
+Short description. 
+
+
+
+Definition at line 193 of file poptmx.h.
+
+
+
+Referenced by Help(), help(), man(), and Option().
+
+\hypertarget{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{
+\index{poptmx::Option@{poptmx::Option}!val@{val}}
+\index{val@{val}!poptmx::Option@{poptmx::Option}}
+\paragraph[{val}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ {\bf poptmx::Option::val}}\hfill}
+\label{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}
+
+
+Pointer to the value the parser to update. 
+
+
+
+Definition at line 179 of file poptmx.h.
+
+
+
+Referenced by Option(), and parse().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{poptmx_8h}{poptmx.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{poptmx_8cpp}{poptmx.cpp}\end{DoxyCompactItemize}

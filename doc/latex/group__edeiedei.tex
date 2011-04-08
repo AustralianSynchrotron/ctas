@@ -1,0 +1,966 @@
+\hypertarget{group__edeiedei}{
+\subsection{EDEI processing.}
+\label{group__edeiedei}\index{EDEI processing.@{EDEI processing.}}
+}
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classInterp}{Interp}
+\begin{DoxyCompactList}\small\item\em Auxiliary class: just wrap around inter\_\-tp enumeration. \item\end{DoxyCompactList}\item 
+struct \hyperlink{structEDEIoptions}{EDEIoptions}
+\begin{DoxyCompactList}\small\item\em Structure with the elements needed for the initialization of the \hyperlink{classEDEIprocess}{EDEIprocess}. \item\end{DoxyCompactList}\item 
+class \hyperlink{classEDEIprocess}{EDEIprocess}
+\begin{DoxyCompactList}\small\item\em Store, process read RCstaff::RCoption() \char`\"{}RC\char`\"{}, read RCstaff::FDoption() \char`\"{}FD\char`\"{}, extract contrasts. \item\end{DoxyCompactList}\item 
+class \hyperlink{classEDEIexp}{EDEIexp}
+\begin{DoxyCompactList}\small\item\em Class which extracts EDEI-\/processed projections from the input data. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool EDEI\_\-API \hyperlink{group__edeiedei_ga3f78c281778943826ca58723ba34544f}{operator==} (const \hyperlink{classInterp}{Interp} \&a, const \hyperlink{classInterp}{Interp} \&b)
+\begin{DoxyCompactList}\small\item\em Compare interpretations. \item\end{DoxyCompactList}\item 
+bool EDEI\_\-API \hyperlink{group__edeiedei_ga0eca9f735bcba12f1dd183c990f9814f}{operator!=} (const \hyperlink{classInterp}{Interp} \&a, const \hyperlink{classInterp}{Interp} \&b)
+\begin{DoxyCompactList}\small\item\em Compare interpretations. \item\end{DoxyCompactList}\item 
+EDEI\_\-API std::string \hyperlink{group__edeiedei_ga516b630e8236082e31aba169d8a5e545}{type\_\-desc} (\hyperlink{classInterp}{Interp} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+EDEI\_\-API bool \hyperlink{group__edeiedei_ga9a8006fafee97e85fd5c0aedcd86f5ef}{\_\-conversion} (\hyperlink{classInterp}{Interp} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classInterp}{Interp} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{group__edeiedei_ga82af3bee7fb3102d94f7b53e89936f77}{type\_\-desc} (\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool EDEI\_\-API \hyperlink{group__edeiedei_gadee6c8302767b3a1728004f89565013c}{\_\-conversion} (\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+\hypertarget{group__edeiedei_ga4ef6a8be61335bdb2faa146459430946}{
+std::string {\bfseries toString} (\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} comp)}
+\label{group__edeiedei_ga4ef6a8be61335bdb2faa146459430946}
+
+\item 
+static int \hyperlink{group__edeiedei_ga7051d1418260969567626bc346f461b6}{find\_\-minus} (float Gm, \hyperlink{classInterp}{Interp} mpinter, const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&alpha, const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&RC)
+\item 
+static int \hyperlink{group__edeiedei_gadd73b548c2e26edb9aa533dc7980bb0c}{find\_\-plus} (float Gp, \hyperlink{classInterp}{Interp} mpinter, const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&alpha, const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&RC)
+\item 
+static bool \hyperlink{group__edeiedei_ga086a5a5bd40fea8c2b44b7bf61794aef}{has\_\-one\_\-peak} (const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&arr)
+\item 
+static int \hyperlink{group__edeiedei_ga0c16a5e954ab6ffa3deadb42f94be89d}{msign} (float val)
+\item 
+static void \hyperlink{group__edeiedei_gac2df424ffcde11ed7514f1ed31434a55}{filterf} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&arr)
+\item 
+static float \hyperlink{group__edeiedei_ga8d28a7beff8f42ab38aaff792b25206d}{findindex} (float val, const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&arr)
+\item 
+static float \hyperlink{group__edeiedei_ga89dee3af9e649add0e1b5db34c7f463b}{findvalue} (float index, const \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&arr)
+\item 
+static int \hyperlink{group__edeiedei_ga6afb620f09765f6c83a3cf4840cc41b9}{imin3} (int a, int b, int c)
+\item 
+{\footnotesize template$<$int N\_\-rank$>$ }\\void \hyperlink{group__edeiedei_gaa8f414bd247177bd9f58be27c716fab9}{EDEIprocess::extract} (const blitz::Array$<$ float, N\_\-rank $>$ \&minus, const blitz::Array$<$ float, N\_\-rank $>$ \&plus, Component comp, blitz::Array$<$ float, N\_\-rank $>$ \&out) const 
+\begin{DoxyCompactList}\small\item\em The same as ::extract, but works on array. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{group__edeiedei_ga9473b5ac52a3b4d72a1569eb3719ee4c}{Interp::name} () const 
+\begin{DoxyCompactList}\small\item\em Prints name. \item\end{DoxyCompactList}\item 
+inter\_\-tp \hyperlink{group__edeiedei_ga0fb3fe592af6060f4d27b7e59e864808}{Interp::type} () const 
+\begin{DoxyCompactList}\small\item\em The interpretation type. \item\end{DoxyCompactList}\item 
+\hyperlink{group__edeiedei_ga039d1a049fa99eb2238712041637945e}{Interp::Interp} (inter\_\-tp \_\-mpinter=REFLECT)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{group__edeiedei_ga3d8b610ff638db6518ab5f538bbbae07}{Interp::Interp} (const std::string \&\_\-name)
+\begin{DoxyCompactList}\small\item\em Constructor from name. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{poptmx::OptionTable} \hyperlink{group__edeiedei_gae31714a01a177e8ada6450dbd5a343cc}{EDEIoptions::options} ()
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{group__edeiedei_ga8516a2db50344f5d80f2a2fb8a870534}{EDEIprocess::EDEIprocess} (const \hyperlink{classPath}{Path} \&RCname, float \_\-Gm, float \_\-Gp, \hyperlink{classInterp}{Interp} \_\-mpinter, bool \_\-smooth, float \_\-acof)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+float \hyperlink{group__edeiedei_gabc1c9c24e29e022479a8e74c8bc7e86a}{EDEIprocess::extract} (float minus, float plus, Component comp) const 
+\item 
+void \hyperlink{group__edeiedei_gafbe3ba880d64b341f6cbe684648479ec}{EDEIprocess::loadRC} (const \hyperlink{classPath}{Path} \&filename) const 
+\begin{DoxyCompactList}\small\item\em Loads RC. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__edeiedei_gae6f313c662a444a4bf5516cf9f83dc8c}{EDEIprocess::saveFD} (const \hyperlink{classPath}{Path} \&filename) const 
+\begin{DoxyCompactList}\small\item\em Save read RCstaff::FDoption() \char`\"{}FD\char`\"{}. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+EDEI\_\-API const std::string \hyperlink{group__edeiedei_ga8937835900a2532f1c8b381e81288b91}{InterpOptionDesc}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the \hyperlink{classInterp}{Interp} type. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga6dfda2e4cb9d61720e2db926b65d6dbe}{EDEIexp::modname} = \char`\"{}EDEI experiment\char`\"{}
+\begin{DoxyCompactList}\small\item\em Name of the module. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_gad0a1bf1abf92a9db8a77c55470a31027}{Interp::optionDesc} = \char`\"{} intensities and interprets the values as the normalized ones.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the type. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga1d5c3f1289ef962d44d52f344e932369}{EDEIoptions::fdOptionDesc} = \char`\"{} \$$\backslash$$\backslash$alpha(x)\$ position.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the FD option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga270b21583b3f075758bd30fd3df8f7fa}{EDEIoptions::fdOptionShortDesc} = \char`\"{}File containing processed RC used inside the EDEI.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Short description of the FD option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga4ca0ca5e3acea8517ed7806eca3b9f71}{EDEIoptions::rcOptionDesc} = \char`\"{} radians and Y-\/axis in reflectivity.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the RC option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_gaf8b9f6e9837dd2d85f8c01071a69b06e}{EDEIoptions::rcOptionShortDesc} = \char`\"{}Input file containing the RC of the analyzer.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Short description of the RC option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga32645490331f1049ac7b8be12b72e9fd}{EDEIprocess::modname} = \char`\"{}RC arguments\char`\"{}
+\begin{DoxyCompactList}\small\item\em Module name. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga6222a7fc19bf117145380f89e64292c8}{EDEIprocess::componentDesc} = \char`\"{}R, REF, REFRACTION -\/ for the refraction component\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the ::Component. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Functions in this group are used to process read RCstaff::RCoption() \char`\"{}RC\char`\"{} and/or read RCstaff::FDoption() \char`\"{}FD\char`\"{} data files and extract the components from two image contrasts via the EDEI method 
+
+\subsubsection{Function Documentation}
+\hypertarget{group__edeiedei_ga9a8006fafee97e85fd5c0aedcd86f5ef}{
+\index{edeiedei@{edeiedei}!\_\-conversion@{\_\-conversion}}
+\index{\_\-conversion@{\_\-conversion}!edeiedei@{edeiedei}}
+\paragraph[{\_\-conversion}]{\setlength{\rightskip}{0pt plus 5cm}bool \_\-conversion (
+\begin{DoxyParamCaption}
+\item[{{\bf Interp} $\ast$}]{\_\-val, }
+\item[{const std::string \&}]{in}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__edeiedei_ga9a8006fafee97e85fd5c0aedcd86f5ef}
+
+
+Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classInterp}{Interp} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & value to be updated. \\
+\hline
+{\em in} & string to be parsed.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if success, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 111 of file ledei.cpp.
+
+\hypertarget{group__edeiedei_gadee6c8302767b3a1728004f89565013c}{
+\index{edeiedei@{edeiedei}!\_\-conversion@{\_\-conversion}}
+\index{\_\-conversion@{\_\-conversion}!edeiedei@{edeiedei}}
+\paragraph[{\_\-conversion}]{\setlength{\rightskip}{0pt plus 5cm}bool \_\-conversion (
+\begin{DoxyParamCaption}
+\item[{{\bf EDEIprocess::Component} $\ast$}]{\_\-val, }
+\item[{const std::string \&}]{in}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__edeiedei_gadee6c8302767b3a1728004f89565013c}
+
+
+Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & value to be updated. \\
+\hline
+{\em in} & string to be parsed.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if success, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 204 of file ledei.cpp.
+
+
+
+References EDEIprocess::ABS, EDEIprocess::REF, throw\_\-error(), and upper().
+
+\hypertarget{group__edeiedei_ga8516a2db50344f5d80f2a2fb8a870534}{
+\index{edeiedei@{edeiedei}!EDEIprocess@{EDEIprocess}}
+\index{EDEIprocess@{EDEIprocess}!edeiedei@{edeiedei}}
+\paragraph[{EDEIprocess}]{\setlength{\rightskip}{0pt plus 5cm}EDEIprocess::EDEIprocess (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{RCname, }
+\item[{float}]{\_\-Gm, }
+\item[{float}]{\_\-Gp, }
+\item[{{\bf Interp}}]{\_\-mpinter, }
+\item[{bool}]{\_\-smooth, }
+\item[{float}]{\_\-acof}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga8516a2db50344f5d80f2a2fb8a870534}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em RCname} & Name of the file containing the read RCstaff::RCoption() \char`\"{}RC\char`\"{} of the analyzer. \\
+\hline
+{\em \_\-Gm} & Value determining the minus position. \\
+\hline
+{\em \_\-Gp} & Value determining the plus position. \\
+\hline
+{\em \_\-mpinter} & Interpretation of the ::\_\-Gm, ::\_\-Gp. \\
+\hline
+{\em \_\-smooth} & Smooth RC to avoid non-\/mono regions. \\
+\hline
+{\em \_\-acof} & X-\/axis (angle) conversion factor. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 504 of file ledei.cpp.
+
+
+
+References EDEIprocess::AL, EDEIprocess::function\_\-size, EDEIprocess::loadRC(), EDEIprocess::modname, EDEIprocess::PM, and throw\_\-error().
+
+\hypertarget{group__edeiedei_gaa8f414bd247177bd9f58be27c716fab9}{
+\index{edeiedei@{edeiedei}!extract@{extract}}
+\index{extract@{extract}!edeiedei@{edeiedei}}
+\paragraph[{extract}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int N\_\-rank$>$ void EDEIprocess::extract (
+\begin{DoxyParamCaption}
+\item[{const blitz::Array$<$ float, N\_\-rank $>$ \&}]{minus, }
+\item[{const blitz::Array$<$ float, N\_\-rank $>$ \&}]{plus, }
+\item[{{\bf Component}}]{comp, }
+\item[{blitz::Array$<$ float, N\_\-rank $>$ \&}]{out}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gaa8f414bd247177bd9f58be27c716fab9}
+
+
+The same as ::extract, but works on array. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em minus} & Array of the minus intensities. \\
+\hline
+{\em plus} & Array of plus intensities. \\
+\hline
+{\em comp} & Component to be extracted. \\
+\hline
+{\em out} & Array of the extracted component depending on the ::comp. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 265 of file edei.h.
+
+
+
+References EDEIprocess::extract(), EDEIprocess::modname, and throw\_\-error().
+
+\hypertarget{group__edeiedei_gabc1c9c24e29e022479a8e74c8bc7e86a}{
+\index{edeiedei@{edeiedei}!extract@{extract}}
+\index{extract@{extract}!edeiedei@{edeiedei}}
+\paragraph[{extract}]{\setlength{\rightskip}{0pt plus 5cm}float EDEIprocess::extract (
+\begin{DoxyParamCaption}
+\item[{float}]{minus, }
+\item[{float}]{plus, }
+\item[{{\bf Component}}]{comp}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gabc1c9c24e29e022479a8e74c8bc7e86a}
+Extracts refraction component from the intensities recorded on both sides of the RC.
+
+
+\begin{DoxyParams}{Parameters}
+{\em minus} & contrast in minus position. \\
+\hline
+{\em plus} & contrast in plus position. \\
+\hline
+{\em comp} & component to be extracted.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+refraction component. 
+\end{DoxyReturn}
+
+
+Definition at line 526 of file ledei.cpp.
+
+
+
+References EDEIprocess::ABS, EDEIprocess::AL, EDEIprocess::function\_\-size, and EDEIprocess::PM.
+
+
+
+Referenced by EDEIprocess::extract(), main(), and EDEIexp::projection().
+
+\hypertarget{group__edeiedei_gac2df424ffcde11ed7514f1ed31434a55}{
+\index{edeiedei@{edeiedei}!filterf@{filterf}}
+\index{filterf@{filterf}!edeiedei@{edeiedei}}
+\paragraph[{filterf}]{\setlength{\rightskip}{0pt plus 5cm}static void filterf (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{arr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{group__edeiedei_gac2df424ffcde11ed7514f1ed31434a55}
+Smooth the array.
+
+Performs very primitive smoothing of the array values.
+
+
+\begin{DoxyParams}{Parameters}
+{\em arr} & array to smooth. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 398 of file ledei.cpp.
+
+
+
+References msign().
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_ga7051d1418260969567626bc346f461b6}{
+\index{edeiedei@{edeiedei}!find\_\-minus@{find\_\-minus}}
+\index{find\_\-minus@{find\_\-minus}!edeiedei@{edeiedei}}
+\paragraph[{find\_\-minus}]{\setlength{\rightskip}{0pt plus 5cm}static int find\_\-minus (
+\begin{DoxyParamCaption}
+\item[{float}]{Gm, }
+\item[{{\bf Interp}}]{mpinter, }
+\item[{const {\bf Line} \&}]{alpha, }
+\item[{const {\bf Line} \&}]{RC}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{group__edeiedei_ga7051d1418260969567626bc346f461b6}
+Determines index of the minus position.
+
+Finds the actual index of the minus position on the RC from the general value ::Gm and it's interpretation method.
+
+
+\begin{DoxyParams}{Parameters}
+{\em Gm} & Value determining the minus position \\
+\hline
+{\em mpinter} & It's interpretation. \\
+\hline
+{\em alpha} & angles $\alpha$ representing X-\/axis of the read RCstaff::RCoption() \char`\"{}RC\char`\"{}. \\
+\hline
+{\em RC} & actual recorded intensities of the read RCstaff::RCoption() \char`\"{}RC\char`\"{} (Y-\/axis).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Index of the minus position in the RC arrays. 
+\end{DoxyReturn}
+
+
+Definition at line 233 of file ledei.cpp.
+
+
+
+References Interp::ALPHA, Interp::INTENS, Interp::NUMBER, Interp::REFLECT, throw\_\-bug(), throw\_\-error(), and toString().
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_gadd73b548c2e26edb9aa533dc7980bb0c}{
+\index{edeiedei@{edeiedei}!find\_\-plus@{find\_\-plus}}
+\index{find\_\-plus@{find\_\-plus}!edeiedei@{edeiedei}}
+\paragraph[{find\_\-plus}]{\setlength{\rightskip}{0pt plus 5cm}static int find\_\-plus (
+\begin{DoxyParamCaption}
+\item[{float}]{Gp, }
+\item[{{\bf Interp}}]{mpinter, }
+\item[{const {\bf Line} \&}]{alpha, }
+\item[{const {\bf Line} \&}]{RC}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{group__edeiedei_gadd73b548c2e26edb9aa533dc7980bb0c}
+Determines index of the plus position.
+
+Finds the actual index of the plus position on the RC from the general value ::Gm and it's Interpretation method.
+
+
+\begin{DoxyParams}{Parameters}
+{\em Gp} & Value determining the plus position \\
+\hline
+{\em mpinter} & It's Interpretation. \\
+\hline
+{\em alpha} & angles $\alpha$ representing X-\/axis of the read RCstaff::RCoption() \char`\"{}RC\char`\"{}. \\
+\hline
+{\em RC} & actual recorded intensities of the read RCstaff::RCoption() \char`\"{}RC\char`\"{} (Y-\/axis).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Index of the plus position in the RC arrays. 
+\end{DoxyReturn}
+
+
+Definition at line 301 of file ledei.cpp.
+
+
+
+References Interp::ALPHA, Interp::INTENS, Interp::NUMBER, Interp::REFLECT, throw\_\-bug(), throw\_\-error(), and toString().
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_ga8d28a7beff8f42ab38aaff792b25206d}{
+\index{edeiedei@{edeiedei}!findindex@{findindex}}
+\index{findindex@{findindex}!edeiedei@{edeiedei}}
+\paragraph[{findindex}]{\setlength{\rightskip}{0pt plus 5cm}static float findindex (
+\begin{DoxyParamCaption}
+\item[{float}]{val, }
+\item[{const {\bf Line} \&}]{arr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{group__edeiedei_ga8d28a7beff8f42ab38aaff792b25206d}
+Finds the index of the value.
+
+Finds the index of the array's value which is closest to the ::val. The arrays values must be monotonously growing. Float part of the returned number tells the relative position of the index between two arrays values.
+
+
+\begin{DoxyParams}{Parameters}
+{\em val} & value who's index to find. \\
+\hline
+{\em arr} & array where to find the index.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+index of the value in the array closest to ::val. 
+\end{DoxyReturn}
+
+
+Definition at line 419 of file ledei.cpp.
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_ga89dee3af9e649add0e1b5db34c7f463b}{
+\index{edeiedei@{edeiedei}!findvalue@{findvalue}}
+\index{findvalue@{findvalue}!edeiedei@{edeiedei}}
+\paragraph[{findvalue}]{\setlength{\rightskip}{0pt plus 5cm}static float findvalue (
+\begin{DoxyParamCaption}
+\item[{float}]{index, }
+\item[{const {\bf Line} \&}]{arr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{group__edeiedei_ga89dee3af9e649add0e1b5db34c7f463b}
+Returns the value of the array.
+
+Returns linear Interpolation of the array value.
+
+
+\begin{DoxyParams}{Parameters}
+{\em index} & index of the value. \\
+\hline
+{\em arr} & array with values.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+array value. 
+\end{DoxyReturn}
+
+
+Definition at line 451 of file ledei.cpp.
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_ga086a5a5bd40fea8c2b44b7bf61794aef}{
+\index{edeiedei@{edeiedei}!has\_\-one\_\-peak@{has\_\-one\_\-peak}}
+\index{has\_\-one\_\-peak@{has\_\-one\_\-peak}!edeiedei@{edeiedei}}
+\paragraph[{has\_\-one\_\-peak}]{\setlength{\rightskip}{0pt plus 5cm}static bool has\_\-one\_\-peak (
+\begin{DoxyParamCaption}
+\item[{const {\bf Line} \&}]{arr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{group__edeiedei_ga086a5a5bd40fea8c2b44b7bf61794aef}
+Tells if the function represented by the array has only one peak.
+
+
+\begin{DoxyParams}{Parameters}
+{\em arr} & -\/ array to find the peak in.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if there is only one peak in the array, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 363 of file ledei.cpp.
+
+
+
+References throw\_\-error().
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_ga6afb620f09765f6c83a3cf4840cc41b9}{
+\index{edeiedei@{edeiedei}!imin3@{imin3}}
+\index{imin3@{imin3}!edeiedei@{edeiedei}}
+\paragraph[{imin3}]{\setlength{\rightskip}{0pt plus 5cm}static int imin3 (
+\begin{DoxyParamCaption}
+\item[{int}]{a, }
+\item[{int}]{b, }
+\item[{int}]{c}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{group__edeiedei_ga6afb620f09765f6c83a3cf4840cc41b9}
+Returns minimum of three integers.
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & In 1 \\
+\hline
+{\em b} & In 2 \\
+\hline
+{\em c} & In 3\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Minimum of a, b and c. 
+\end{DoxyReturn}
+
+
+Definition at line 470 of file ledei.cpp.
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_ga039d1a049fa99eb2238712041637945e}{
+\index{edeiedei@{edeiedei}!Interp@{Interp}}
+\index{Interp@{Interp}!edeiedei@{edeiedei}}
+\paragraph[{Interp}]{\setlength{\rightskip}{0pt plus 5cm}Interp::Interp (
+\begin{DoxyParamCaption}
+\item[{{\bf inter\_\-tp}}]{\_\-mpinter = {\ttfamily REFLECT}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga039d1a049fa99eb2238712041637945e}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-mpinter} & Interpretation type. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 64 of file ledei.cpp.
+
+\hypertarget{group__edeiedei_ga3d8b610ff638db6518ab5f538bbbae07}{
+\index{edeiedei@{edeiedei}!Interp@{Interp}}
+\index{Interp@{Interp}!edeiedei@{edeiedei}}
+\paragraph[{Interp}]{\setlength{\rightskip}{0pt plus 5cm}Interp::Interp (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{\_\-name}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga3d8b610ff638db6518ab5f538bbbae07}
+
+
+Constructor from name. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-name} & The name to be converted to the type. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 69 of file ledei.cpp.
+
+
+
+References Interp::ALPHA, Interp::INTENS, Interp::mpinter, Interp::name(), Interp::NUMBER, Interp::REFLECT, throw\_\-error(), and upper().
+
+\hypertarget{group__edeiedei_gafbe3ba880d64b341f6cbe684648479ec}{
+\index{edeiedei@{edeiedei}!loadRC@{loadRC}}
+\index{loadRC@{loadRC}!edeiedei@{edeiedei}}
+\paragraph[{loadRC}]{\setlength{\rightskip}{0pt plus 5cm}void EDEIprocess::loadRC (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gafbe3ba880d64b341f6cbe684648479ec}
+
+
+Loads RC. 
+
+Loads read RCstaff::RCoption() \char`\"{}RC\char`\"{}, processes it and makes the class ready for the data extraction.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & read RCstaff::RCoption() \char`\"{}RC\char`\"{} file \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 543 of file ledei.cpp.
+
+
+
+References EDEIprocess::acof, EDEIprocess::AL, filterf(), find\_\-minus(), find\_\-plus(), findindex(), findvalue(), EDEIprocess::function\_\-size, EDEIprocess::Gm, EDEIprocess::Gp, has\_\-one\_\-peak(), imin3(), LoadData(), EDEIprocess::modname, EDEIprocess::mpinter, Interp::name(), Interp::NUMBER, EDEIprocess::PM, EDEIprocess::smooth, throw\_\-error(), and warn().
+
+
+
+Referenced by EDEIprocess::EDEIprocess().
+
+\hypertarget{group__edeiedei_ga0c16a5e954ab6ffa3deadb42f94be89d}{
+\index{edeiedei@{edeiedei}!msign@{msign}}
+\index{msign@{msign}!edeiedei@{edeiedei}}
+\paragraph[{msign}]{\setlength{\rightskip}{0pt plus 5cm}static int msign (
+\begin{DoxyParamCaption}
+\item[{float}]{val}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{group__edeiedei_ga0c16a5e954ab6ffa3deadb42f94be89d}
+Returns the sign of the float value.
+
+
+\begin{DoxyParams}{Parameters}
+{\em val} & the value to determine the sign.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+0 if value is 0.0, -\/1 if negative, +1 if positive. 
+\end{DoxyReturn}
+
+
+Definition at line 382 of file ledei.cpp.
+
+
+
+References throw\_\-bug().
+
+
+
+Referenced by filterf().
+
+\hypertarget{group__edeiedei_ga9473b5ac52a3b4d72a1569eb3719ee4c}{
+\index{edeiedei@{edeiedei}!name@{name}}
+\index{name@{name}!edeiedei@{edeiedei}}
+\paragraph[{name}]{\setlength{\rightskip}{0pt plus 5cm}string Interp::name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga9473b5ac52a3b4d72a1569eb3719ee4c}
+
+
+Prints name. 
+
+Prints the name of the interpretation type.
+
+\begin{DoxyReturn}{Returns}
+Printed name of the interpretation. 
+\end{DoxyReturn}
+
+
+Definition at line 44 of file ledei.cpp.
+
+
+
+References throw\_\-bug().
+
+
+
+Referenced by Interp::Interp(), EDEIprocess::loadRC(), and EDEIoptions::options().
+
+\hypertarget{group__edeiedei_ga0eca9f735bcba12f1dd183c990f9814f}{
+\index{edeiedei@{edeiedei}!operator!=@{operator!=}}
+\index{operator!=@{operator!=}!edeiedei@{edeiedei}}
+\paragraph[{operator!=}]{\setlength{\rightskip}{0pt plus 5cm}bool operator!= (
+\begin{DoxyParamCaption}
+\item[{const {\bf Interp} \&}]{a, }
+\item[{const {\bf Interp} \&}]{b}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__edeiedei_ga0eca9f735bcba12f1dd183c990f9814f}
+
+
+Compare interpretations. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & first \hyperlink{classInterp}{Interp}. \\
+\hline
+{\em b} & second \hyperlink{classInterp}{Interp}.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily false} if the interpretations are equal, {\ttfamily true} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 101 of file ledei.cpp.
+
+
+
+References Interp::type().
+
+\hypertarget{group__edeiedei_ga3f78c281778943826ca58723ba34544f}{
+\index{edeiedei@{edeiedei}!operator==@{operator==}}
+\index{operator==@{operator==}!edeiedei@{edeiedei}}
+\paragraph[{operator==}]{\setlength{\rightskip}{0pt plus 5cm}bool operator== (
+\begin{DoxyParamCaption}
+\item[{const {\bf Interp} \&}]{a, }
+\item[{const {\bf Interp} \&}]{b}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__edeiedei_ga3f78c281778943826ca58723ba34544f}
+
+
+Compare interpretations. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em a} & first \hyperlink{classInterp}{Interp}. \\
+\hline
+{\em b} & second \hyperlink{classInterp}{Interp}.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if the interpretations are equal, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 97 of file ledei.cpp.
+
+
+
+References Interp::type().
+
+\hypertarget{group__edeiedei_gae31714a01a177e8ada6450dbd5a343cc}{
+\index{edeiedei@{edeiedei}!options@{options}}
+\index{options@{options}!edeiedei@{edeiedei}}
+\paragraph[{options}]{\setlength{\rightskip}{0pt plus 5cm}{\bf poptmx::OptionTable} EDEIoptions::options (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gae31714a01a177e8ada6450dbd5a343cc}
+
+
+Constructor. 
+
+Option table.
+
+Constructs and returns the option table.
+
+\begin{DoxyReturn}{Returns}
+Option table to be used via the poptmx library. 
+\end{DoxyReturn}
+
+
+Definition at line 127 of file ledei.cpp.
+
+
+
+References EDEIoptions::acof, poptmx::OptionTable::add(), poptmx::OptionTable::desc(), EDEIoptions::Gm, EDEIoptions::Gp, EDEIoptions::mpinter, Interp::name(), poptmx::NOTE, poptmx::OPTION, Interp::optionDesc, and toString().
+
+\hypertarget{group__edeiedei_gae6f313c662a444a4bf5516cf9f83dc8c}{
+\index{edeiedei@{edeiedei}!saveFD@{saveFD}}
+\index{saveFD@{saveFD}!edeiedei@{edeiedei}}
+\paragraph[{saveFD}]{\setlength{\rightskip}{0pt plus 5cm}void EDEIprocess::saveFD (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gae6f313c662a444a4bf5516cf9f83dc8c}
+
+
+Save read RCstaff::FDoption() \char`\"{}FD\char`\"{}. 
+
+Saves processed read RCstaff::FDoption() \char`\"{}FD\char`\"{} to file.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Name for the file to save read RCstaff::FDoption() \char`\"{}FD\char`\"{} to. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 623 of file ledei.cpp.
+
+
+
+References EDEIprocess::AL, EDEIprocess::PM, and SaveData().
+
+
+
+Referenced by main().
+
+\hypertarget{group__edeiedei_ga0fb3fe592af6060f4d27b7e59e864808}{
+\index{edeiedei@{edeiedei}!type@{type}}
+\index{type@{type}!edeiedei@{edeiedei}}
+\paragraph[{type}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Interp::inter\_\-tp} Interp::type (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga0fb3fe592af6060f4d27b7e59e864808}
+
+
+The interpretation type. 
+
+\begin{DoxyReturn}{Returns}
+The interpretation type. 
+\end{DoxyReturn}
+
+
+Definition at line 59 of file ledei.cpp.
+
+
+
+Referenced by operator!=(), and operator==().
+
+\hypertarget{group__edeiedei_ga82af3bee7fb3102d94f7b53e89936f77}{
+\index{edeiedei@{edeiedei}!type\_\-desc@{type\_\-desc}}
+\index{type\_\-desc@{type\_\-desc}!edeiedei@{edeiedei}}
+\paragraph[{type\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string type\_\-desc (
+\begin{DoxyParamCaption}
+\item[{{\bf EDEIprocess::Component} $\ast$}]{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{group__edeiedei_ga82af3bee7fb3102d94f7b53e89936f77}
+
+
+Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. 
+
+\begin{DoxyReturn}{Returns}
+type name. 
+\end{DoxyReturn}
+
+
+Definition at line 233 of file edei.h.
+
+\hypertarget{group__edeiedei_ga516b630e8236082e31aba169d8a5e545}{
+\index{edeiedei@{edeiedei}!type\_\-desc@{type\_\-desc}}
+\index{type\_\-desc@{type\_\-desc}!edeiedei@{edeiedei}}
+\paragraph[{type\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}string type\_\-desc (
+\begin{DoxyParamCaption}
+\item[{{\bf Interp} $\ast$}]{}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__edeiedei_ga516b630e8236082e31aba169d8a5e545}
+
+
+Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. 
+
+\begin{DoxyReturn}{Returns}
+type name. 
+\end{DoxyReturn}
+
+
+Definition at line 106 of file ledei.cpp.
+
+
+
+\subsubsection{Variable Documentation}
+\hypertarget{group__edeiedei_ga6222a7fc19bf117145380f89e64292c8}{
+\index{edeiedei@{edeiedei}!componentDesc@{componentDesc}}
+\index{componentDesc@{componentDesc}!edeiedei@{edeiedei}}
+\paragraph[{componentDesc}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf EDEIprocess::componentDesc} = \char`\"{}R, REF, REFRACTION -\/ for the refraction component\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga6222a7fc19bf117145380f89e64292c8}
+
+
+Description of the ::Component. 
+
+
+
+Definition at line 211 of file edei.h.
+
+\hypertarget{group__edeiedei_ga1d5c3f1289ef962d44d52f344e932369}{
+\index{edeiedei@{edeiedei}!fdOptionDesc@{fdOptionDesc}}
+\index{fdOptionDesc@{fdOptionDesc}!edeiedei@{edeiedei}}
+\paragraph[{fdOptionDesc}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf EDEIoptions::fdOptionDesc} = \char`\"{} \$$\backslash$$\backslash$alpha(x)\$ position.\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga1d5c3f1289ef962d44d52f344e932369}
+
+
+Description of the FD option. 
+
+
+
+Definition at line 153 of file edei.h.
+
+\hypertarget{group__edeiedei_ga270b21583b3f075758bd30fd3df8f7fa}{
+\index{edeiedei@{edeiedei}!fdOptionShortDesc@{fdOptionShortDesc}}
+\index{fdOptionShortDesc@{fdOptionShortDesc}!edeiedei@{edeiedei}}
+\paragraph[{fdOptionShortDesc}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf EDEIoptions::fdOptionShortDesc} = \char`\"{}File containing processed RC used inside the EDEI.\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga270b21583b3f075758bd30fd3df8f7fa}
+
+
+Short description of the FD option. 
+
+
+
+Definition at line 155 of file edei.h.
+
+\hypertarget{group__edeiedei_ga8937835900a2532f1c8b381e81288b91}{
+\index{edeiedei@{edeiedei}!InterpOptionDesc@{InterpOptionDesc}}
+\index{InterpOptionDesc@{InterpOptionDesc}!edeiedei@{edeiedei}}
+\paragraph[{InterpOptionDesc}]{\setlength{\rightskip}{0pt plus 5cm}EDEI\_\-API const std::string {\bf InterpOptionDesc}}\hfill}
+\label{group__edeiedei_ga8937835900a2532f1c8b381e81288b91}
+
+
+Description of the option giving the \hyperlink{classInterp}{Interp} type. 
+
+\hypertarget{group__edeiedei_ga6dfda2e4cb9d61720e2db926b65d6dbe}{
+\index{edeiedei@{edeiedei}!modname@{modname}}
+\index{modname@{modname}!edeiedei@{edeiedei}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf EDEIexp::modname} = \char`\"{}EDEI experiment\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga6dfda2e4cb9d61720e2db926b65d6dbe}
+
+
+Name of the module. 
+
+
+
+Definition at line 297 of file edei.h.
+
+\hypertarget{group__edeiedei_ga32645490331f1049ac7b8be12b72e9fd}{
+\index{edeiedei@{edeiedei}!modname@{modname}}
+\index{modname@{modname}!edeiedei@{edeiedei}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf EDEIprocess::modname} = \char`\"{}RC arguments\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga32645490331f1049ac7b8be12b72e9fd}
+
+
+Module name. 
+
+
+
+Definition at line 187 of file edei.h.
+
+
+
+Referenced by EDEIprocess::EDEIprocess(), EDEIprocess::extract(), and EDEIprocess::loadRC().
+
+\hypertarget{group__edeiedei_gad0a1bf1abf92a9db8a77c55470a31027}{
+\index{edeiedei@{edeiedei}!optionDesc@{optionDesc}}
+\index{optionDesc@{optionDesc}!edeiedei@{edeiedei}}
+\paragraph[{optionDesc}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf Interp::optionDesc} = \char`\"{} intensities and interprets the values as the normalized ones.\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gad0a1bf1abf92a9db8a77c55470a31027}
+
+
+Description of the type. 
+
+
+
+Definition at line 85 of file edei.h.
+
+
+
+Referenced by EDEIoptions::options().
+
+\hypertarget{group__edeiedei_ga4ca0ca5e3acea8517ed7806eca3b9f71}{
+\index{edeiedei@{edeiedei}!rcOptionDesc@{rcOptionDesc}}
+\index{rcOptionDesc@{rcOptionDesc}!edeiedei@{edeiedei}}
+\paragraph[{rcOptionDesc}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf EDEIoptions::rcOptionDesc} = \char`\"{} radians and Y-\/axis in reflectivity.\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_ga4ca0ca5e3acea8517ed7806eca3b9f71}
+
+
+Description of the RC option. 
+
+
+
+Definition at line 152 of file edei.h.
+
+\hypertarget{group__edeiedei_gaf8b9f6e9837dd2d85f8c01071a69b06e}{
+\index{edeiedei@{edeiedei}!rcOptionShortDesc@{rcOptionShortDesc}}
+\index{rcOptionShortDesc@{rcOptionShortDesc}!edeiedei@{edeiedei}}
+\paragraph[{rcOptionShortDesc}]{\setlength{\rightskip}{0pt plus 5cm}const std::string {\bf EDEIoptions::rcOptionShortDesc} = \char`\"{}Input file containing the RC of the analyzer.\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, inherited\mbox{]}}}\hfill}
+\label{group__edeiedei_gaf8b9f6e9837dd2d85f8c01071a69b06e}
+
+
+Short description of the RC option. 
+
+
+
+Definition at line 154 of file edei.h.
+

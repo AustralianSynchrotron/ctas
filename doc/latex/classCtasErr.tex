@@ -1,0 +1,207 @@
+\hypertarget{classCtasErr}{
+\subsection{CtasErr Class Reference}
+\label{classCtasErr}\index{CtasErr@{CtasErr}}
+}
+
+
+Error type.  
+
+
+
+
+{\ttfamily \#include $<$common.h$>$}
+
+\subsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654}{ErrTp} \{ \par
+\hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654a79e18c2e2af3c0b01de4d1b303877697}{WARN}, 
+\par
+\hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654a2730082bed1adb75fea32d2392df3f2b}{ERR}, 
+\par
+\hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654a1f266c6ae424c0012c7507c416d936f1}{FATAL}
+ \}
+\begin{DoxyCompactList}\small\item\em Error severity. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classCtasErr_a0ce2e9de69c0de8528389267c5e139be}{CtasErr} (\hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654}{ErrTp} \_\-terr, const std::string \&mod, const std::string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654}{ErrTp} \hyperlink{classCtasErr_a29e66cdf8ef4dfe224ee287c6cf72d13}{type} () const 
+\begin{DoxyCompactList}\small\item\em Returns error type. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCtasErr_a031589545d4a5c4c2d36913ce1b553c6}{report} () const 
+\begin{DoxyCompactList}\small\item\em Reports the error to the ctderr. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std::string \hyperlink{classCtasErr_a9814f39f8f3c93d77d45209c8808a591}{message}
+\begin{DoxyCompactList}\small\item\em The message which describes the error. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classCtasErr_a9ff7fe473d7b44c9d7e3bace22e24eff}{module}
+\begin{DoxyCompactList}\small\item\em Name of the module where the error happened. \item\end{DoxyCompactList}\item 
+\hyperlink{classCtasErr_af961b70f6bb7cf20075131c79b049654}{ErrTp} \hyperlink{classCtasErr_a316f1b4382d548d47413aff1b57c18e3}{terr}
+\begin{DoxyCompactList}\small\item\em Error severity. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Error type. 
+
+Definition at line 73 of file common.h.
+
+
+
+\subsubsection{Member Enumeration Documentation}
+\hypertarget{classCtasErr_af961b70f6bb7cf20075131c79b049654}{
+\index{CtasErr@{CtasErr}!ErrTp@{ErrTp}}
+\index{ErrTp@{ErrTp}!CtasErr@{CtasErr}}
+\paragraph[{ErrTp}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf CtasErr::ErrTp}}\hfill}
+\label{classCtasErr_af961b70f6bb7cf20075131c79b049654}
+
+
+Error severity. 
+
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{WARN@{WARN}!CtasErr@{CtasErr}}\index{CtasErr@{CtasErr}!WARN@{WARN}}\item[{\em 
+\hypertarget{classCtasErr_af961b70f6bb7cf20075131c79b049654a79e18c2e2af3c0b01de4d1b303877697}{
+WARN}
+\label{classCtasErr_af961b70f6bb7cf20075131c79b049654a79e18c2e2af3c0b01de4d1b303877697}
+}]Warning. \index{ERR@{ERR}!CtasErr@{CtasErr}}\index{CtasErr@{CtasErr}!ERR@{ERR}}\item[{\em 
+\hypertarget{classCtasErr_af961b70f6bb7cf20075131c79b049654a2730082bed1adb75fea32d2392df3f2b}{
+ERR}
+\label{classCtasErr_af961b70f6bb7cf20075131c79b049654a2730082bed1adb75fea32d2392df3f2b}
+}]Error. \index{FATAL@{FATAL}!CtasErr@{CtasErr}}\index{CtasErr@{CtasErr}!FATAL@{FATAL}}\item[{\em 
+\hypertarget{classCtasErr_af961b70f6bb7cf20075131c79b049654a1f266c6ae424c0012c7507c416d936f1}{
+FATAL}
+\label{classCtasErr_af961b70f6bb7cf20075131c79b049654a1f266c6ae424c0012c7507c416d936f1}
+}]Fatal error. \end{description}
+\end{Desc}
+
+
+
+Definition at line 76 of file common.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classCtasErr_a0ce2e9de69c0de8528389267c5e139be}{
+\index{CtasErr@{CtasErr}!CtasErr@{CtasErr}}
+\index{CtasErr@{CtasErr}!CtasErr@{CtasErr}}
+\paragraph[{CtasErr}]{\setlength{\rightskip}{0pt plus 5cm}CtasErr::CtasErr (
+\begin{DoxyParamCaption}
+\item[{{\bf ErrTp}}]{\_\-terr, }
+\item[{const std::string \&}]{mod, }
+\item[{const std::string \&}]{msg}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classCtasErr_a0ce2e9de69c0de8528389267c5e139be}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-terr} & Sets \hyperlink{classCtasErr_a316f1b4382d548d47413aff1b57c18e3}{CtasErr::terr} \\
+\hline
+{\em mod} & Sets \hyperlink{classCtasErr_a9ff7fe473d7b44c9d7e3bace22e24eff}{CtasErr::module} \\
+\hline
+{\em msg} & Sets \hyperlink{classCtasErr_a9814f39f8f3c93d77d45209c8808a591}{CtasErr::message} \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 50 of file common.cpp.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classCtasErr_a031589545d4a5c4c2d36913ce1b553c6}{
+\index{CtasErr@{CtasErr}!report@{report}}
+\index{report@{report}!CtasErr@{CtasErr}}
+\paragraph[{report}]{\setlength{\rightskip}{0pt plus 5cm}void CtasErr::report (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classCtasErr_a031589545d4a5c4c2d36913ce1b553c6}
+
+
+Reports the error to the ctderr. 
+
+Prints the error into the standard error stream. 
+
+Definition at line 58 of file common.cpp.
+
+
+
+Referenced by exit\_\-on\_\-error(), throw\_\-error(), and warn().
+
+\hypertarget{classCtasErr_a29e66cdf8ef4dfe224ee287c6cf72d13}{
+\index{CtasErr@{CtasErr}!type@{type}}
+\index{type@{type}!CtasErr@{CtasErr}}
+\paragraph[{type}]{\setlength{\rightskip}{0pt plus 5cm}{\bf CtasErr::ErrTp} CtasErr::type (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classCtasErr_a29e66cdf8ef4dfe224ee287c6cf72d13}
+
+
+Returns error type. 
+
+
+
+Definition at line 75 of file common.cpp.
+
+
+
+Referenced by ReadImage(), and ReadImageLine().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classCtasErr_a9814f39f8f3c93d77d45209c8808a591}{
+\index{CtasErr@{CtasErr}!message@{message}}
+\index{message@{message}!CtasErr@{CtasErr}}
+\paragraph[{message}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf CtasErr::message}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCtasErr_a9814f39f8f3c93d77d45209c8808a591}
+
+
+The message which describes the error. 
+
+
+
+Definition at line 83 of file common.h.
+
+\hypertarget{classCtasErr_a9ff7fe473d7b44c9d7e3bace22e24eff}{
+\index{CtasErr@{CtasErr}!module@{module}}
+\index{module@{module}!CtasErr@{CtasErr}}
+\paragraph[{module}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf CtasErr::module}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCtasErr_a9ff7fe473d7b44c9d7e3bace22e24eff}
+
+
+Name of the module where the error happened. 
+
+
+
+Definition at line 84 of file common.h.
+
+\hypertarget{classCtasErr_a316f1b4382d548d47413aff1b57c18e3}{
+\index{CtasErr@{CtasErr}!terr@{terr}}
+\index{terr@{terr}!CtasErr@{CtasErr}}
+\paragraph[{terr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf ErrTp} {\bf CtasErr::terr}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCtasErr_a316f1b4382d548d47413aff1b57c18e3}
+
+
+Error severity. 
+
+
+
+Definition at line 85 of file common.h.
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{common_8h}{common.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{common_8cpp}{common.cpp}\end{DoxyCompactItemize}

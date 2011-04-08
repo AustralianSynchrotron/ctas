@@ -1,0 +1,72 @@
+\hypertarget{ct-edei_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/edei.cpp File Reference}
+\label{ct-edei_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/edei.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/edei.cpp}}
+}
+
+
+All-\/in-\/one ct reconstruction of the refraction contrast.  
+
+
+{\ttfamily \#include $<$vector$>$}\par
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/kernel.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/experiment.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/edei.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{ct-edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'ctref'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+All-\/in-\/one ct reconstruction of the refraction contrast. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Jul 21 10:09:31 2008
+\end{DoxyDate}
+Main file for the program which reads the input sinogram from image, performs CT reconstruction of it and stores the result in other image file. 
+
+Definition in file \hyperlink{ct-edei_8cpp_source}{ct-\/edei.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{ct-edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{ct-\/edei.cpp@{ct-\/edei.cpp}!main@{main}}
+\index{main@{main}!ct-edei.cpp@{ct-\/edei.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{ct-edei_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'ctref'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 232 of file ct-\/edei.cpp.
+
+
+
+References EDEIoptions::acof, clargs::beverbose, clargs::center, Experiment::contrast(), clargs::contrast, clargs::edeiopt, clargs::filter\_\-type, EDEIoptions::Gm, EDEIoptions::Gp, mask2format(), clargs::Mlistname, EDEIoptions::mpinter, clargs::nof\_\-threads, clargs::outmask, Experiment::pixels(), clargs::Plistname, EDEIoptions::RCname, SaveImage(), clargs::SaveInt, SinoS::sino(), slice\_\-str2vec(), clargs::slicedesc, Experiment::slices(), EDEIoptions::smooth, Experiment::thetas(), and toString().
+

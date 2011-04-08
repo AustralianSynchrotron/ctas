@@ -1,0 +1,52 @@
+\hypertarget{lipc_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/common/lipc.cpp File Reference}
+\label{lipc_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/common/lipc.cpp@{/home/antonmx/work/projects/ctascmake/src/common/lipc.cpp}}
+}
+{\ttfamily \#include \char`\"{}ipc.h\char`\"{}}\par
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \hyperlink{group__IPC_ga414708530452511476cc1186276308d7}{\_\-conversion} (\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{IPCprocess::Component} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__IPC_ga4868925f354fbd59c75fa1f4e6d22430}{propagate} (const \hyperlink{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{CMap} \&tif, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&out, float dd, float lambda, float dist)
+\item 
+void \hyperlink{group__IPC_ga257d85bf85edd61aed82ddf5f5e5afc8}{simulateTif} (\hyperlink{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{CMap} \&tif, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&sh, float bd, float theta, float dd, float lambda)
+\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+static const complex$<$ float $>$ \hyperlink{lipc_8cpp_a99411da5686812b77cc50e1b55836c1e}{I\_\-C} = complex$<$float$>$(0.0f,-\/1.0f)
+\begin{DoxyCompactList}\small\item\em Complex unity: sqrt(-\/1) \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Jul 12 10:46:57 2010 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{lipc_8cpp_source}{lipc.cpp}.
+
+
+
+\subsubsection{Variable Documentation}
+\hypertarget{lipc_8cpp_a99411da5686812b77cc50e1b55836c1e}{
+\index{lipc.cpp@{lipc.cpp}!I\_\-C@{I\_\-C}}
+\index{I\_\-C@{I\_\-C}!lipc.cpp@{lipc.cpp}}
+\paragraph[{I\_\-C}]{\setlength{\rightskip}{0pt plus 5cm}const complex$<$float$>$ {\bf I\_\-C} = complex$<$float$>$(0.0f,-\/1.0f)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{lipc_8cpp_a99411da5686812b77cc50e1b55836c1e}
+
+
+Complex unity: sqrt(-\/1) 
+
+
+
+Definition at line 126 of file lipc.cpp.
+
+
+
+Referenced by propagate(), and simulateTif().
+

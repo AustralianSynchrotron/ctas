@@ -1,0 +1,74 @@
+\hypertarget{sino_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/sino.cpp File Reference}
+\label{sino_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/sino.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/sino.cpp}}
+}
+
+
+Make the sinogram.  
+
+
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include $<$vector$>$}\par
+{\ttfamily \#include \char`\"{}../common/poptmx.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{sino_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'sino'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Make the sinogram. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Jul 21 10:09:31 2008
+\end{DoxyDate}
+Main file for the program which reads the list of files forming the array of CT projections, picks one specified line from each of the and prepares the sinogram from these lines.
+
+\begin{Desc}
+\item[\hyperlink{todo__todo000001}{Todo}]Add possibility to make vertical sinograms. \end{Desc}
+
+
+Definition in file \hyperlink{sino_8cpp_source}{sino.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{sino_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{sino.cpp@{sino.cpp}!main@{main}}
+\index{main@{main}!sino.cpp@{sino.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{sino_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'sino'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 114 of file sino.cpp.
+
+
+
+References clargs::beverbose, clargs::command, exit\_\-on\_\-error(), ImageSizes(), clargs::index, clargs::inlist, ReadImageLine(), SaveImage(), clargs::SaveInt, clargs::sinogram\_\-name, toString(), and ProgressBar::update().
+

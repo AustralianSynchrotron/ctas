@@ -1,0 +1,72 @@
+\hypertarget{sino-ipc_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/sino-\/ipc.cpp File Reference}
+\label{sino-ipc_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/sino-\/ipc.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/sino-\/ipc.cpp}}
+}
+
+
+Makes sinograms from the EDEI input contrasts.  
+
+
+{\ttfamily \#include $<$vector$>$}\par
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/experiment.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/ipc.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/poptmx.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{sino-ipc_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'sinr'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Makes sinograms from the EDEI input contrasts. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Tue Jul 6 13:45:34 2010 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{sino-ipc_8cpp_source}{sino-\/ipc.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{sino-ipc_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{sino-\/ipc.cpp@{sino-\/ipc.cpp}!main@{main}}
+\index{main@{main}!sino-ipc.cpp@{sino-\/ipc.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{sino-ipc_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'sinr'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 173 of file sino-\/ipc.cpp.
+
+
+
+References clargs::alpha, clargs::beverbose, clargs::contrast, clargs::dd, clargs::dgamma, clargs::dist, clargs::lambda, mask2format(), clargs::outmask, SaveImage(), clargs::SaveInt, AqSeries::shape(), SinoS::sino(), slice\_\-str2vec(), clargs::slicedesc, toString(), clargs::z0\_\-list, and clargs::zD\_\-list.
+

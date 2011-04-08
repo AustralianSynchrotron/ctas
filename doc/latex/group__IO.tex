@@ -1,0 +1,532 @@
+\hypertarget{group__IO}{
+\subsection{Image and data file handling.}
+\label{group__IO}\index{Image and data file handling.@{Image and data file handling.}}
+}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+float COMMON\_\-API \hyperlink{group__IO_ga8e86fe71ec349e7de8ae5dd380ab2cab}{PixelSize} (const \hyperlink{classPath}{Path} \&filename)
+\begin{DoxyCompactList}\small\item\em Pixel size of the image. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} COMMON\_\-API \hyperlink{group__IO_ga5ae888c778c04a7a8afa74e19ad636e2}{ImageSizes} (const \hyperlink{classPath}{Path} \&filename)
+\begin{DoxyCompactList}\small\item\em Image sizes. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga7a0fd640fb3c44bdd8f1b86a644d5f33}{ImageSizes} (const \hyperlink{classPath}{Path} \&filename, int $\ast$width, int $\ast$hight)
+\begin{DoxyCompactList}\small\item\em Image sizes. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_gaa67e9a34c63f309de5eeb303063ee230}{BadShape} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Check the shape of the image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_gae0c550c8fca773f133499e990ebe70b6}{ReadImage} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage)
+\begin{DoxyCompactList}\small\item\em Load image from preopened object. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga90ec574d8eb47c429f7c9f0aeb84278e}{ReadImage} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Load image checking the shape. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga5703869a92557ac281a47e5e39a82a08}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, int idx)
+\begin{DoxyCompactList}\small\item\em Load one line of the image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga01e36107c55681c281619701e500251b}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&storage, int idx, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Load one line of the image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_gad641a5bc8bbcb5e32e89f6b7f3e500cf}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const std::vector$<$ int $>$ \&idxs)
+\begin{DoxyCompactList}\small\item\em Load several lines of the image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga7a36a289f1fc8b8cede62888cc27a962}{ReadImageLine} (const \hyperlink{classPath}{Path} \&filename, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, const std::vector$<$ int $>$ \&idxs, const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&shp)
+\begin{DoxyCompactList}\small\item\em Load several lines of the image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_gae45e74b44be3e797bcf1f2ae84d211ef}{SaveImage} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, bool saveint=false)
+\begin{DoxyCompactList}\small\item\em Save the array into image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_gada3965acc5403b0ac1816014b6d079c0}{SaveImage} (const \hyperlink{classPath}{Path} \&filename, const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage, float minval, float maxval)
+\begin{DoxyCompactList}\small\item\em Save the array into integer image. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga02288ddbc5eb5144a7a92eb0a06ee1b6}{LoadData} (const \hyperlink{classPath}{Path} filename,...)
+\begin{DoxyCompactList}\small\item\em Loads any amount of lines from data file. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__IO_ga0f88c53b648824e6db8e2dc716d273f0}{SaveData} (const \hyperlink{classPath}{Path} filename,...)
+\begin{DoxyCompactList}\small\item\em Save any amount of lines into data file. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Loading, saving and other possible operations with the image/data -\/$>$ array -\/$>$ image/data conversions. 
+
+\subsubsection{Function Documentation}
+\hypertarget{group__IO_gaa67e9a34c63f309de5eeb303063ee230}{
+\index{IO@{IO}!BadShape@{BadShape}}
+\index{BadShape@{BadShape}!IO@{IO}}
+\paragraph[{BadShape}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API BadShape (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Shape} \&}]{shp}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_gaa67e9a34c63f309de5eeb303063ee230}
+
+
+Check the shape of the image. 
+
+Throws error if the shape of the image is not equal to ::shp.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Image filename. \\
+\hline
+{\em shp} & The expected shape. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 675 of file common.cpp.
+
+
+
+References ImageSizes(), throw\_\-error(), and toString().
+
+
+
+Referenced by ReadImage(), and ReadImageLine().
+
+\hypertarget{group__IO_ga5ae888c778c04a7a8afa74e19ad636e2}{
+\index{IO@{IO}!ImageSizes@{ImageSizes}}
+\index{ImageSizes@{ImageSizes}!IO@{IO}}
+\paragraph[{ImageSizes}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Shape} COMMON\_\-API ImageSizes (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga5ae888c778c04a7a8afa74e19ad636e2}
+
+
+Image sizes. 
+
+Reads image size and returns them as the Shape vector.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Image filename.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Image sizes. 
+\end{DoxyReturn}
+
+
+Definition at line 654 of file common.cpp.
+
+
+
+References throw\_\-error().
+
+
+
+Referenced by AqSeries::AqSeries(), BadShape(), getLine(), ImageSizes(), and main().
+
+\hypertarget{group__IO_ga7a0fd640fb3c44bdd8f1b86a644d5f33}{
+\index{IO@{IO}!ImageSizes@{ImageSizes}}
+\index{ImageSizes@{ImageSizes}!IO@{IO}}
+\paragraph[{ImageSizes}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ImageSizes (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{int $\ast$}]{width, }
+\item[{int $\ast$}]{hight}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga7a0fd640fb3c44bdd8f1b86a644d5f33}
+
+
+Image sizes. 
+
+Read image sizes and return them as width and hight.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Image filename. \\
+\hline
+{\em width} & Width of the image. \\
+\hline
+{\em hight} & Height of the image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 667 of file common.cpp.
+
+
+
+References ImageSizes().
+
+\hypertarget{group__IO_ga02288ddbc5eb5144a7a92eb0a06ee1b6}{
+\index{IO@{IO}!LoadData@{LoadData}}
+\index{LoadData@{LoadData}!IO@{IO}}
+\paragraph[{LoadData}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API LoadData (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path}}]{filename, }
+\item[{}]{...}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga02288ddbc5eb5144a7a92eb0a06ee1b6}
+
+
+Loads any amount of lines from data file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & the name of the data file. \\
+\hline
+{\em ...} & Any number of the lines. Be careful: I supposed that all arguments are of type const Line$\ast$, a null pointer must be passed as the last such argument. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1366 of file common.cpp.
+
+
+
+References throw\_\-error(), toString(), and warn().
+
+
+
+Referenced by EDEIprocess::loadRC().
+
+\hypertarget{group__IO_ga8e86fe71ec349e7de8ae5dd380ab2cab}{
+\index{IO@{IO}!PixelSize@{PixelSize}}
+\index{PixelSize@{PixelSize}!IO@{IO}}
+\paragraph[{PixelSize}]{\setlength{\rightskip}{0pt plus 5cm}float COMMON\_\-API PixelSize (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga8e86fe71ec349e7de8ae5dd380ab2cab}
+
+
+Pixel size of the image. 
+
+Calculated from the dpi (dots per inch).
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Image filename.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+pixel size in micron. 
+\end{DoxyReturn}
+
+
+Definition at line 627 of file common.cpp.
+
+
+
+References warn().
+
+\hypertarget{group__IO_gae0c550c8fca773f133499e990ebe70b6}{
+\index{IO@{IO}!ReadImage@{ReadImage}}
+\index{ReadImage@{ReadImage}!IO@{IO}}
+\paragraph[{ReadImage}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ReadImage (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_gae0c550c8fca773f133499e990ebe70b6}
+
+
+Load image from preopened object. 
+
+Similar to \hyperlink{group__IO_gae0c550c8fca773f133499e990ebe70b6}{ReadImage()}, but uses preopened image object to read.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Image filename. \\
+\hline
+{\em storage} & Array to load the image into. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 790 of file common.cpp.
+
+
+
+References ReadImage\_\-FI(), ReadImage\_\-IM(), CtasErr::type(), and CtasErr::WARN.
+
+
+
+Referenced by main(), ReadImage(), and ReadImageLine().
+
+\hypertarget{group__IO_ga90ec574d8eb47c429f7c9f0aeb84278e}{
+\index{IO@{IO}!ReadImage@{ReadImage}}
+\index{ReadImage@{ReadImage}!IO@{IO}}
+\paragraph[{ReadImage}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ReadImage (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage, }
+\item[{const {\bf Shape} \&}]{shp}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga90ec574d8eb47c429f7c9f0aeb84278e}
+
+
+Load image checking the shape. 
+
+Same as \hyperlink{group__IO_gae0c550c8fca773f133499e990ebe70b6}{ReadImage(const Path \& , Map \&)}, but checks the image shape before loading and throws the error if the shape is different from :::shp.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Image filename. \\
+\hline
+{\em storage} & Array to load the image into. \\
+\hline
+{\em shp} & The expected shape. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 802 of file common.cpp.
+
+
+
+References BadShape(), and ReadImage().
+
+\hypertarget{group__IO_ga01e36107c55681c281619701e500251b}{
+\index{IO@{IO}!ReadImageLine@{ReadImageLine}}
+\index{ReadImageLine@{ReadImageLine}!IO@{IO}}
+\paragraph[{ReadImageLine}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ReadImageLine (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Line} \&}]{storage, }
+\item[{int}]{idx, }
+\item[{const {\bf Shape} \&}]{shp}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga01e36107c55681c281619701e500251b}
+
+
+Load one line of the image. 
+
+Same as \hyperlink{group__IO_ga5703869a92557ac281a47e5e39a82a08}{ReadImageLine(const Path \&, Line \&, int)}, but checks the image shape before loading and throws the error if the shape is different from ::shp.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & File to read the image from. \\
+\hline
+{\em storage} & Array to load the image into. \\
+\hline
+{\em idx} & The index of the line to be read. \\
+\hline
+{\em shp} & The expected shape. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 937 of file common.cpp.
+
+
+
+References BadShape(), and ReadImageLine().
+
+\hypertarget{group__IO_gad641a5bc8bbcb5e32e89f6b7f3e500cf}{
+\index{IO@{IO}!ReadImageLine@{ReadImageLine}}
+\index{ReadImageLine@{ReadImageLine}!IO@{IO}}
+\paragraph[{ReadImageLine}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ReadImageLine (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage, }
+\item[{const std::vector$<$ int $>$ \&}]{idxs}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_gad641a5bc8bbcb5e32e89f6b7f3e500cf}
+
+
+Load several lines of the image. 
+
+Reads lines of the image which are found in the ::idxs vector. If a line in the ::idxs is outside the image size then warns and fills the corresponding line with zeros. The lines are stored in the order they found in the ::idx vector. Array ::storage is resized to contain all lines. If the ::idxs array is empty -\/ reads the whole image.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & File to read the image from. \\
+\hline
+{\em storage} & Array to load the image into. \\
+\hline
+{\em idxs} & vector of lines to be read. If empty, reads the whole image. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1041 of file common.cpp.
+
+
+
+References ReadImage(), ReadImageLine\_\-FI(), ReadImageLine\_\-IM(), CtasErr::type(), and CtasErr::WARN.
+
+\hypertarget{group__IO_ga7a36a289f1fc8b8cede62888cc27a962}{
+\index{IO@{IO}!ReadImageLine@{ReadImageLine}}
+\index{ReadImageLine@{ReadImageLine}!IO@{IO}}
+\paragraph[{ReadImageLine}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ReadImageLine (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Map} \&}]{storage, }
+\item[{const std::vector$<$ int $>$ \&}]{idxs, }
+\item[{const {\bf Shape} \&}]{shp}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga7a36a289f1fc8b8cede62888cc27a962}
+
+
+Load several lines of the image. 
+
+Same as \hyperlink{group__IO_gad641a5bc8bbcb5e32e89f6b7f3e500cf}{ReadImageLine(const Path \&, Map \&, const std::vector$<$int$>$ \&)}, but checks the image shape before loading and throws the error if the shape is different from ::shp.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & File to read the image from. \\
+\hline
+{\em storage} & Array to load the image into. \\
+\hline
+{\em idxs} & vector of lines to be read. If empty -\/ reads the whole image. \\
+\hline
+{\em shp} & The expected shape. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1061 of file common.cpp.
+
+
+
+References BadShape(), and ReadImageLine().
+
+\hypertarget{group__IO_ga5703869a92557ac281a47e5e39a82a08}{
+\index{IO@{IO}!ReadImageLine@{ReadImageLine}}
+\index{ReadImageLine@{ReadImageLine}!IO@{IO}}
+\paragraph[{ReadImageLine}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API ReadImageLine (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{{\bf Line} \&}]{storage, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga5703869a92557ac281a47e5e39a82a08}
+
+
+Load one line of the image. 
+
+Reads one line of the image from the file, resizes the array to fit and stores the line into the array.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & File to read the image from. \\
+\hline
+{\em storage} & Array to load the image into. \\
+\hline
+{\em idx} & The index of the line to be read. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 924 of file common.cpp.
+
+
+
+References ReadImageLine\_\-FI(), ReadImageLine\_\-IM(), CtasErr::type(), and CtasErr::WARN.
+
+
+
+Referenced by AqSeries::darkCurrent(), getLine(), main(), AqSeries::projection(), and ReadImageLine().
+
+\hypertarget{group__IO_ga0f88c53b648824e6db8e2dc716d273f0}{
+\index{IO@{IO}!SaveData@{SaveData}}
+\index{SaveData@{SaveData}!IO@{IO}}
+\paragraph[{SaveData}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API SaveData (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path}}]{filename, }
+\item[{}]{...}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_ga0f88c53b648824e6db8e2dc716d273f0}
+
+
+Save any amount of lines into data file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & the name of the data file. \\
+\hline
+{\em ...} & Any number of the lines. Be careful: I supposed that all arguments are of type const Line$\ast$, a null pointer must be passed as the last such argument. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1314 of file common.cpp.
+
+
+
+References throw\_\-error(), toString(), and warn().
+
+
+
+Referenced by EDEIprocess::saveFD().
+
+\hypertarget{group__IO_gae45e74b44be3e797bcf1f2ae84d211ef}{
+\index{IO@{IO}!SaveImage@{SaveImage}}
+\index{SaveImage@{SaveImage}!IO@{IO}}
+\paragraph[{SaveImage}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API SaveImage (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Map} \&}]{storage, }
+\item[{bool}]{saveint = {\ttfamily false}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_gae45e74b44be3e797bcf1f2ae84d211ef}
+
+
+Save the array into image. 
+
+Stores the array in the float-\/point TIFF or integer image depending. on requested type. Be careful: limited number of editors/viewers/analyzers support float-\/point format.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & the name of the image file image. \\
+\hline
+{\em storage} & the array to be written to the image. \\
+\hline
+{\em saveint} & save image as 16-\/bit integer. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1287 of file common.cpp.
+
+
+
+References SaveImageFP(), and SaveImageINT().
+
+
+
+Referenced by main().
+
+\hypertarget{group__IO_gada3965acc5403b0ac1816014b6d079c0}{
+\index{IO@{IO}!SaveImage@{SaveImage}}
+\index{SaveImage@{SaveImage}!IO@{IO}}
+\paragraph[{SaveImage}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API SaveImage (
+\begin{DoxyParamCaption}
+\item[{const {\bf Path} \&}]{filename, }
+\item[{const {\bf Map} \&}]{storage, }
+\item[{float}]{minval, }
+\item[{float}]{maxval}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__IO_gada3965acc5403b0ac1816014b6d079c0}
+
+
+Save the array into integer image. 
+
+Stores the array in the integer-\/based image. If minval is equal to maxval then the minimum and maximum values of the array data corresponds to black and white respectively.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & the name of the image file image. \\
+\hline
+{\em storage} & the array to be written to the image. \\
+\hline
+{\em minval} & the value corresponding to black. \\
+\hline
+{\em maxval} & the value corresponding to white. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1293 of file common.cpp.
+
+
+
+References SaveImageINT().
+

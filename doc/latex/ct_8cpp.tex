@@ -1,0 +1,71 @@
+\hypertarget{ct_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/ct.cpp File Reference}
+\label{ct_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/ct.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/ct.cpp}}
+}
+
+
+Reconstruction of one sinogram.  
+
+
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/kernel.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/poptmx.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}FreeImage.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{ct_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'ct'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Reconstruction of one sinogram. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Jul 21 10:09:31 2008
+\end{DoxyDate}
+Main file for the program which reads the input sinogram from image, performs CT reconstruction of it and stores the result in other image file 
+
+Definition in file \hyperlink{ct_8cpp_source}{ct.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{ct_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{ct.cpp@{ct.cpp}!main@{main}}
+\index{main@{main}!ct.cpp@{ct.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{ct_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'ct'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 129 of file ct.cpp.
+
+
+
+References clargs::center, clargs::contrast, clargs::dd, clargs::filter\_\-type, CTrec::finilize(), clargs::nof\_\-threads, ReadImage(), CTrec::reconstruct(), clargs::result\_\-name, SaveImage(), clargs::SaveInt, and clargs::sinogram\_\-name.
+

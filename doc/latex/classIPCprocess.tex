@@ -1,0 +1,432 @@
+\hypertarget{classIPCprocess}{
+\subsection{IPCprocess Class Reference}
+\label{classIPCprocess}\index{IPCprocess@{IPCprocess}}
+}
+
+
+{\ttfamily \#include $<$ipc.h$>$}
+
+\subsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{Component} \{ \par
+\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418a540b36da226dad86da1395d70355f98c}{ABS}, 
+\par
+\hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418aafcace9e0a0649cf8e5ff4378c6c15bb}{PHS}
+ \}
+\begin{DoxyCompactList}\small\item\em Two contrast components available in the IPC experiment. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classIPCprocess_aece870d357e17745d9eb342f08a84c41}{IPCprocess} (const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&\_\-sh, float alpha, float dist, float dd=1.0, float lambda=1.0)
+\item 
+\hyperlink{classIPCprocess_a40a4264b5978fe7e68d716df8ad9370f}{$\sim$IPCprocess} ()
+\begin{DoxyCompactList}\small\item\em Destructor. \item\end{DoxyCompactList}\item 
+void \hyperlink{classIPCprocess_a72709800e5e016684a23e0ad7538d7fd}{extract} (const \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&in, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&out, \hyperlink{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{Component} comp, float dgamma=0.0) const 
+\item 
+const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \& \hyperlink{classIPCprocess_a33a2bcc7299ba410578e25c963d7cf5b}{shape} () const 
+\end{DoxyCompactItemize}
+\subsubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{classIPCprocess_a7d0959bdc6ab6fb43f1d7d8d0f4ad4ac}{componentDesc} = \char`\"{}P, PHS, PHASE -\/ for the phase contrast\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the ::Component. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \hyperlink{classIPCprocess_a3f789a5d26ee977c7763659d8a4e2e16}{sh}
+\begin{DoxyCompactList}\small\item\em Shape of the input contrasts. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \hyperlink{classIPCprocess_a87d6e0b5e4741d780734724f709c347c}{ish}
+\begin{DoxyCompactList}\small\item\em Shape of the zero-\/padded contrasts. \item\end{DoxyCompactList}\item 
+blitz::Range \hyperlink{classIPCprocess_a76e82f07d77804b10708a20597157eb8}{r0}
+\begin{DoxyCompactList}\small\item\em Y-\/Ranges of the original contrast in the zero-\/padded data. \item\end{DoxyCompactList}\item 
+blitz::Range \hyperlink{classIPCprocess_ac8a99daf63b477302d9eb16a93034b42}{r1}
+\begin{DoxyCompactList}\small\item\em X-\/Ranges of the original contrast in the zero-\/padded data. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \hyperlink{classIPCprocess_ad592cdc7e51918d1c5e255981bdd3091}{phsFilter}
+\begin{DoxyCompactList}\small\item\em FFT filter used for the extraction of the PHS component. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \hyperlink{classIPCprocess_ab459a389e61e45f1531ada8ea2fcb98e}{absFilter}
+\begin{DoxyCompactList}\small\item\em FFT filter used for the extraction of the ABS component. \item\end{DoxyCompactList}\item 
+\hyperlink{ipc_8h_aaf0c91c1c42122a86a1b963a42866c64}{CMap} \hyperlink{classIPCprocess_a14c316de2b5e883defea5c62db959c4a}{mid}
+\begin{DoxyCompactList}\small\item\em Internally used array for the zero-\/padded data. \item\end{DoxyCompactList}\item 
+fftwf\_\-plan \hyperlink{classIPCprocess_a1114cd499fb7ca67753ed2427e829320}{fft\_\-f}
+\begin{DoxyCompactList}\small\item\em Forward 2D FFT plan. \item\end{DoxyCompactList}\item 
+fftwf\_\-plan \hyperlink{classIPCprocess_a4eb21e0faa8cc40e6db4bce50752dec4}{fft\_\-b}
+\begin{DoxyCompactList}\small\item\em Backward 2D FFT plan. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{classIPCprocess_ad63fb78494555bf8dbf32948a8da9759}{modname} = \char`\"{}IPC process\char`\"{}
+\begin{DoxyCompactList}\small\item\em Module name. \item\end{DoxyCompactList}\item 
+static const int \hyperlink{classIPCprocess_a5cb65961fa5a3aa40ae93f67f761ff87}{zPad} = 3
+\begin{DoxyCompactList}\small\item\em Level of the zero-\/padding (ish=zPad$\ast$sh). \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+IPC processing.
+
+This class holds all the information needed for the Inline Phase \hyperlink{classContrast}{Contrast} processing and extracts one of the component (absorption or phase) from the input contrast. The extraction is done utilizing the Modified Bronnikov Algorithm (MBA) for the phase component and the Bronnikov-\/Aided Correction (BAC) for the absorption component. 
+
+Definition at line 105 of file ipc.h.
+
+
+
+\subsubsection{Member Enumeration Documentation}
+\hypertarget{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}{
+\index{IPCprocess@{IPCprocess}!Component@{Component}}
+\index{Component@{Component}!IPCprocess@{IPCprocess}}
+\paragraph[{Component}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf IPCprocess::Component}}\hfill}
+\label{classIPCprocess_a9e159369437f40cc3340171a0f6d3418}
+
+
+Two contrast components available in the IPC experiment. 
+
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{ABS@{ABS}!IPCprocess@{IPCprocess}}\index{IPCprocess@{IPCprocess}!ABS@{ABS}}\item[{\em 
+\hypertarget{classIPCprocess_a9e159369437f40cc3340171a0f6d3418a540b36da226dad86da1395d70355f98c}{
+ABS}
+\label{classIPCprocess_a9e159369437f40cc3340171a0f6d3418a540b36da226dad86da1395d70355f98c}
+}]Absorption. \index{PHS@{PHS}!IPCprocess@{IPCprocess}}\index{IPCprocess@{IPCprocess}!PHS@{PHS}}\item[{\em 
+\hypertarget{classIPCprocess_a9e159369437f40cc3340171a0f6d3418aafcace9e0a0649cf8e5ff4378c6c15bb}{
+PHS}
+\label{classIPCprocess_a9e159369437f40cc3340171a0f6d3418aafcace9e0a0649cf8e5ff4378c6c15bb}
+}]Phase shift. \end{description}
+\end{Desc}
+
+
+
+Definition at line 110 of file ipc.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classIPCprocess_aece870d357e17745d9eb342f08a84c41}{
+\index{IPCprocess@{IPCprocess}!IPCprocess@{IPCprocess}}
+\index{IPCprocess@{IPCprocess}!IPCprocess@{IPCprocess}}
+\paragraph[{IPCprocess}]{\setlength{\rightskip}{0pt plus 5cm}IPCprocess::IPCprocess (
+\begin{DoxyParamCaption}
+\item[{const {\bf Shape} \&}]{\_\-sh, }
+\item[{float}]{alpha, }
+\item[{float}]{dist, }
+\item[{float}]{dd = {\ttfamily 1.0}, }
+\item[{float}]{lambda = {\ttfamily 1.0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classIPCprocess_aece870d357e17745d9eb342f08a84c41}
+Constructor.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-sh} & Shape of the input contrasts. \\
+\hline
+{\em alpha} & $\alpha$ parameter of the MBA. Theoretically of the ( $\beta/\delta$) order. \\
+\hline
+{\em dist} & Object-\/to-\/detector distance. \\
+\hline
+{\em dd} & Pixel size. \\
+\hline
+{\em lambda} & Wavelength (needed only if $\alpha$!=0). \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 43 of file lipc.cpp.
+
+
+
+References absFilter, fft\_\-b, fft\_\-f, ish, mid, modname, phsFilter, r0, r1, sh, throw\_\-error(), toString(), and zPad.
+
+\hypertarget{classIPCprocess_a40a4264b5978fe7e68d716df8ad9370f}{
+\index{IPCprocess@{IPCprocess}!$\sim$IPCprocess@{$\sim$IPCprocess}}
+\index{$\sim$IPCprocess@{$\sim$IPCprocess}!IPCprocess@{IPCprocess}}
+\paragraph[{$\sim$IPCprocess}]{\setlength{\rightskip}{0pt plus 5cm}IPCprocess::$\sim$IPCprocess (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classIPCprocess_a40a4264b5978fe7e68d716df8ad9370f}
+
+
+Destructor. 
+
+
+
+Definition at line 145 of file ipc.h.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classIPCprocess_a72709800e5e016684a23e0ad7538d7fd}{
+\index{IPCprocess@{IPCprocess}!extract@{extract}}
+\index{extract@{extract}!IPCprocess@{IPCprocess}}
+\paragraph[{extract}]{\setlength{\rightskip}{0pt plus 5cm}void IPCprocess::extract (
+\begin{DoxyParamCaption}
+\item[{const {\bf Map} \&}]{in, }
+\item[{{\bf Map} \&}]{out, }
+\item[{{\bf Component}}]{comp, }
+\item[{float}]{dgamma = {\ttfamily 0.0}}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classIPCprocess_a72709800e5e016684a23e0ad7538d7fd}
+The component extraction.
+
+Extracts the requested contrast component using the parameters given at the initialization.
+
+
+\begin{DoxyParams}{Parameters}
+{\em in} & Input array with the intensity distribution. Note: if you want to do the trivial absorption correction (I/I\_\-0) do it in prior. \\
+\hline
+{\em out} & Resulting array. \\
+\hline
+{\em comp} & Component to be extracted. \\
+\hline
+{\em dgamma} & $\gamma$ parameter of the BAC method (theoretically must be 1.0).\\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+the arrays ::in and ::out must not be the same. 
+\end{DoxyNote}
+
+
+Definition at line 96 of file lipc.cpp.
+
+
+
+References ABS, absFilter, fft\_\-b, fft\_\-f, ish, mid, modname, PHS, phsFilter, r0, r1, sh, throw\_\-error(), and toString().
+
+
+
+Referenced by main(), and IPCexp::projection().
+
+\hypertarget{classIPCprocess_a33a2bcc7299ba410578e25c963d7cf5b}{
+\index{IPCprocess@{IPCprocess}!shape@{shape}}
+\index{shape@{shape}!IPCprocess@{IPCprocess}}
+\paragraph[{shape}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Shape}\& IPCprocess::shape (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classIPCprocess_a33a2bcc7299ba410578e25c963d7cf5b}
+Desired shape of the input arrays.
+
+\begin{DoxyReturn}{Returns}
+Predefined shape of the processing algorithm. 
+\end{DoxyReturn}
+
+
+Definition at line 167 of file ipc.h.
+
+
+
+Referenced by IPCexp::IPCexp().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classIPCprocess_ab459a389e61e45f1531ada8ea2fcb98e}{
+\index{IPCprocess@{IPCprocess}!absFilter@{absFilter}}
+\index{absFilter@{absFilter}!IPCprocess@{IPCprocess}}
+\paragraph[{absFilter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Map} {\bf IPCprocess::absFilter}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_ab459a389e61e45f1531ada8ea2fcb98e}
+
+
+FFT filter used for the extraction of the ABS component. 
+
+
+
+Definition at line 128 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a7d0959bdc6ab6fb43f1d7d8d0f4ad4ac}{
+\index{IPCprocess@{IPCprocess}!componentDesc@{componentDesc}}
+\index{componentDesc@{componentDesc}!IPCprocess@{IPCprocess}}
+\paragraph[{componentDesc}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf IPCprocess::componentDesc} = \char`\"{}P, PHS, PHASE -\/ for the phase contrast\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{classIPCprocess_a7d0959bdc6ab6fb43f1d7d8d0f4ad4ac}
+
+
+Description of the ::Component. 
+
+
+
+Definition at line 115 of file ipc.h.
+
+\hypertarget{classIPCprocess_a4eb21e0faa8cc40e6db4bce50752dec4}{
+\index{IPCprocess@{IPCprocess}!fft\_\-b@{fft\_\-b}}
+\index{fft\_\-b@{fft\_\-b}!IPCprocess@{IPCprocess}}
+\paragraph[{fft\_\-b}]{\setlength{\rightskip}{0pt plus 5cm}fftwf\_\-plan {\bf IPCprocess::fft\_\-b}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_a4eb21e0faa8cc40e6db4bce50752dec4}
+
+
+Backward 2D FFT plan. 
+
+
+
+Definition at line 131 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a1114cd499fb7ca67753ed2427e829320}{
+\index{IPCprocess@{IPCprocess}!fft\_\-f@{fft\_\-f}}
+\index{fft\_\-f@{fft\_\-f}!IPCprocess@{IPCprocess}}
+\paragraph[{fft\_\-f}]{\setlength{\rightskip}{0pt plus 5cm}fftwf\_\-plan {\bf IPCprocess::fft\_\-f}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_a1114cd499fb7ca67753ed2427e829320}
+
+
+Forward 2D FFT plan. 
+
+
+
+Definition at line 130 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a87d6e0b5e4741d780734724f709c347c}{
+\index{IPCprocess@{IPCprocess}!ish@{ish}}
+\index{ish@{ish}!IPCprocess@{IPCprocess}}
+\paragraph[{ish}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Shape} {\bf IPCprocess::ish}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_a87d6e0b5e4741d780734724f709c347c}
+
+
+Shape of the zero-\/padded contrasts. 
+
+
+
+Definition at line 122 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a14c316de2b5e883defea5c62db959c4a}{
+\index{IPCprocess@{IPCprocess}!mid@{mid}}
+\index{mid@{mid}!IPCprocess@{IPCprocess}}
+\paragraph[{mid}]{\setlength{\rightskip}{0pt plus 5cm}{\bf CMap} {\bf IPCprocess::mid}\hspace{0.3cm}{\ttfamily  \mbox{[}mutable, private\mbox{]}}}\hfill}
+\label{classIPCprocess_a14c316de2b5e883defea5c62db959c4a}
+
+
+Internally used array for the zero-\/padded data. 
+
+
+
+Definition at line 129 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_ad63fb78494555bf8dbf32948a8da9759}{
+\index{IPCprocess@{IPCprocess}!modname@{modname}}
+\index{modname@{modname}!IPCprocess@{IPCprocess}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf IPCprocess::modname} = \char`\"{}IPC process\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classIPCprocess_ad63fb78494555bf8dbf32948a8da9759}
+
+
+Module name. 
+
+
+
+Definition at line 119 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_ad592cdc7e51918d1c5e255981bdd3091}{
+\index{IPCprocess@{IPCprocess}!phsFilter@{phsFilter}}
+\index{phsFilter@{phsFilter}!IPCprocess@{IPCprocess}}
+\paragraph[{phsFilter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Map} {\bf IPCprocess::phsFilter}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_ad592cdc7e51918d1c5e255981bdd3091}
+
+
+FFT filter used for the extraction of the PHS component. 
+
+
+
+Definition at line 127 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a76e82f07d77804b10708a20597157eb8}{
+\index{IPCprocess@{IPCprocess}!r0@{r0}}
+\index{r0@{r0}!IPCprocess@{IPCprocess}}
+\paragraph[{r0}]{\setlength{\rightskip}{0pt plus 5cm}blitz::Range {\bf IPCprocess::r0}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_a76e82f07d77804b10708a20597157eb8}
+
+
+Y-\/Ranges of the original contrast in the zero-\/padded data. 
+
+
+
+Definition at line 125 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_ac8a99daf63b477302d9eb16a93034b42}{
+\index{IPCprocess@{IPCprocess}!r1@{r1}}
+\index{r1@{r1}!IPCprocess@{IPCprocess}}
+\paragraph[{r1}]{\setlength{\rightskip}{0pt plus 5cm}blitz::Range {\bf IPCprocess::r1}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_ac8a99daf63b477302d9eb16a93034b42}
+
+
+X-\/Ranges of the original contrast in the zero-\/padded data. 
+
+
+
+Definition at line 126 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a3f789a5d26ee977c7763659d8a4e2e16}{
+\index{IPCprocess@{IPCprocess}!sh@{sh}}
+\index{sh@{sh}!IPCprocess@{IPCprocess}}
+\paragraph[{sh}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Shape} {\bf IPCprocess::sh}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classIPCprocess_a3f789a5d26ee977c7763659d8a4e2e16}
+
+
+Shape of the input contrasts. 
+
+
+
+Definition at line 121 of file ipc.h.
+
+
+
+Referenced by extract(), and IPCprocess().
+
+\hypertarget{classIPCprocess_a5cb65961fa5a3aa40ae93f67f761ff87}{
+\index{IPCprocess@{IPCprocess}!zPad@{zPad}}
+\index{zPad@{zPad}!IPCprocess@{IPCprocess}}
+\paragraph[{zPad}]{\setlength{\rightskip}{0pt plus 5cm}const int {\bf IPCprocess::zPad} = 3\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classIPCprocess_a5cb65961fa5a3aa40ae93f67f761ff87}
+
+
+Level of the zero-\/padding (ish=zPad$\ast$sh). 
+
+
+
+Definition at line 124 of file ipc.h.
+
+
+
+Referenced by IPCprocess().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{ipc_8h}{ipc.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{lipc_8cpp}{lipc.cpp}\end{DoxyCompactItemize}

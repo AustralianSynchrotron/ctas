@@ -1,0 +1,170 @@
+\hypertarget{structproj__info}{
+\subsection{proj\_\-info Struct Reference}
+\label{structproj__info}\index{proj\_\-info@{proj\_\-info}}
+}
+
+
+Parses input data file.  
+
+
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{structproj__info_ae2f993e93868efcd230529bcea89484a}{proj\_\-info} (const string \&data\_\-name)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+bool \hyperlink{structproj__info_a8c54298cf18077e22a4ecb3322028876}{advance} ()
+\end{DoxyCompactItemize}
+\subsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+vector$<$ pair$<$ float, string $>$ $>$ \hyperlink{structproj__info_ac314c7bb7162e89f365ff571b8905882}{list}
+\begin{DoxyCompactList}\small\item\em List containing the angle-\/file pairs. \item\end{DoxyCompactList}\item 
+string \hyperlink{structproj__info_aefed04f549ab983feab9e6fe7cd224ca}{name}
+\begin{DoxyCompactList}\small\item\em Last file name met in the file. \item\end{DoxyCompactList}\item 
+float \hyperlink{structproj__info_aa99f2ca1bcc4a59d8ccd12d089ec0157}{angle}
+\begin{DoxyCompactList}\small\item\em Last acquisition angle in the file. \item\end{DoxyCompactList}\item 
+unsigned \hyperlink{structproj__info_a811edc2345575bc4ec481a7d4056ff8f}{icur}
+\begin{DoxyCompactList}\small\item\em Current element. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Parses input data file. This structure parses the strings from the input data file and stores the result in self. 
+
+Definition at line 131 of file ts.cpp.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{structproj__info_ae2f993e93868efcd230529bcea89484a}{
+\index{proj\_\-info@{proj\_\-info}!proj\_\-info@{proj\_\-info}}
+\index{proj\_\-info@{proj\_\-info}!proj_info@{proj\_\-info}}
+\paragraph[{proj\_\-info}]{\setlength{\rightskip}{0pt plus 5cm}proj\_\-info::proj\_\-info (
+\begin{DoxyParamCaption}
+\item[{const string \&}]{data\_\-name}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{structproj__info_ae2f993e93868efcd230529bcea89484a}
+
+
+Constructor. 
+
+Parses the input file and prepares for work
+
+
+\begin{DoxyParams}{Parameters}
+{\em data\_\-name} & The data file to be parsed. Read \hyperlink{ts_8cpp_a70c06786886e56b6ba03c025784a48ed}{TSconfigDesc}. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 143 of file ts.cpp.
+
+
+
+References angle, cdpath(), exit\_\-on\_\-error(), icur, list, name, throw\_\-error(), toString(), and warn().
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{structproj__info_a8c54298cf18077e22a4ecb3322028876}{
+\index{proj\_\-info@{proj\_\-info}!advance@{advance}}
+\index{advance@{advance}!proj_info@{proj\_\-info}}
+\paragraph[{advance}]{\setlength{\rightskip}{0pt plus 5cm}bool proj\_\-info::advance (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{structproj__info_a8c54298cf18077e22a4ecb3322028876}
+Puts the name and angle from the current element into the structure's members and advances icur.
+
+\begin{DoxyReturn}{Returns}
+{\ttfamily false} if the last element was parsed, {\ttfamily true} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 183 of file ts.cpp.
+
+
+
+References angle, icur, list, and name.
+
+
+
+Referenced by main().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{structproj__info_aa99f2ca1bcc4a59d8ccd12d089ec0157}{
+\index{proj\_\-info@{proj\_\-info}!angle@{angle}}
+\index{angle@{angle}!proj_info@{proj\_\-info}}
+\paragraph[{angle}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf proj\_\-info::angle}}\hfill}
+\label{structproj__info_aa99f2ca1bcc4a59d8ccd12d089ec0157}
+
+
+Last acquisition angle in the file. 
+
+
+
+Definition at line 135 of file ts.cpp.
+
+
+
+Referenced by advance(), main(), and proj\_\-info().
+
+\hypertarget{structproj__info_a811edc2345575bc4ec481a7d4056ff8f}{
+\index{proj\_\-info@{proj\_\-info}!icur@{icur}}
+\index{icur@{icur}!proj_info@{proj\_\-info}}
+\paragraph[{icur}]{\setlength{\rightskip}{0pt plus 5cm}unsigned {\bf proj\_\-info::icur}}\hfill}
+\label{structproj__info_a811edc2345575bc4ec481a7d4056ff8f}
+
+
+Current element. 
+
+
+
+Definition at line 136 of file ts.cpp.
+
+
+
+Referenced by advance(), and proj\_\-info().
+
+\hypertarget{structproj__info_ac314c7bb7162e89f365ff571b8905882}{
+\index{proj\_\-info@{proj\_\-info}!list@{list}}
+\index{list@{list}!proj_info@{proj\_\-info}}
+\paragraph[{list}]{\setlength{\rightskip}{0pt plus 5cm}vector$<$ pair$<$float,string$>$ $>$ {\bf proj\_\-info::list}}\hfill}
+\label{structproj__info_ac314c7bb7162e89f365ff571b8905882}
+
+
+List containing the angle-\/file pairs. 
+
+
+
+Definition at line 133 of file ts.cpp.
+
+
+
+Referenced by advance(), main(), and proj\_\-info().
+
+\hypertarget{structproj__info_aefed04f549ab983feab9e6fe7cd224ca}{
+\index{proj\_\-info@{proj\_\-info}!name@{name}}
+\index{name@{name}!proj_info@{proj\_\-info}}
+\paragraph[{name}]{\setlength{\rightskip}{0pt plus 5cm}string {\bf proj\_\-info::name}}\hfill}
+\label{structproj__info_aefed04f549ab983feab9e6fe7cd224ca}
+
+
+Last file name met in the file. 
+
+
+
+Definition at line 134 of file ts.cpp.
+
+
+
+Referenced by advance(), main(), and proj\_\-info().
+
+
+
+The documentation for this struct was generated from the following file:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/executables/\hyperlink{ts_8cpp}{ts.cpp}\end{DoxyCompactItemize}

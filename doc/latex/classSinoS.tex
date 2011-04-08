@@ -1,0 +1,403 @@
+\hypertarget{classSinoS}{
+\subsection{SinoS Class Reference}
+\label{classSinoS}\index{SinoS@{SinoS}}
+}
+
+
+Projections storage.  
+
+
+
+
+{\ttfamily \#include $<$experiment.h$>$}
+
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classSinoS_aced97e9829fc64d373bfc0966b77f117}{SinoS} (const \hyperlink{classExperiment}{Experiment} \&exp, const std::vector$<$ int $>$ \&sliceV, bool \_\-verb=false)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{classSinoS_aef6be4c828951a2fc52dc12a5d219539}{$\sim$SinoS} ()
+\begin{DoxyCompactList}\small\item\em Destructor. \item\end{DoxyCompactList}\item 
+int \hyperlink{classSinoS_a0f91de289d2b60e2836788ddeb27acdb}{pixels} () const 
+\begin{DoxyCompactList}\small\item\em Pixels. \item\end{DoxyCompactList}\item 
+int \hyperlink{classSinoS_aa0dad0ac7153458f7358c98f97a87183}{slices} () const 
+\begin{DoxyCompactList}\small\item\em Slices. \item\end{DoxyCompactList}\item 
+int \hyperlink{classSinoS_a4bba409ea8a4effe932ed0a1a5e34942}{thetas} () const 
+\begin{DoxyCompactList}\small\item\em Thetas. \item\end{DoxyCompactList}\item 
+void \hyperlink{classSinoS_af8c857af0cdbe4c40409035564e99b81}{sino} (int idx, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&storage) const 
+\begin{DoxyCompactList}\small\item\em Prepares the sinogram. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classSinoS_a4126d5ea5282461353ece36da73af13f}{index} (int idx) const 
+\begin{DoxyCompactList}\small\item\em Checks correctness of the index. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+long \hyperlink{classSinoS_ac5305ea20cccd56afff6cf909f3da3d6}{pxls}
+\begin{DoxyCompactList}\small\item\em Number of pixels (width) in the projection. \item\end{DoxyCompactList}\item 
+long \hyperlink{classSinoS_af08e78d111d1fc7862f783274adbd57f}{thts}
+\begin{DoxyCompactList}\small\item\em Number of projections (sinogram height). \item\end{DoxyCompactList}\item 
+long \hyperlink{classSinoS_a6e86c08cdb03820099546867a6d27814}{slcs}
+\begin{DoxyCompactList}\small\item\em Number of slices (projection height). \item\end{DoxyCompactList}\item 
+size\_\-t \hyperlink{classSinoS_a3026a431a66f2b87d6a47378cd115a6b}{allpix}
+\begin{DoxyCompactList}\small\item\em Number of pixels in the 3D array. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga556356a8f294cbe88e8695c7c91cfe08}{Volume} \hyperlink{classSinoS_a3dd5dabaa38f646efc6289bb4caca6c4}{data}
+\begin{DoxyCompactList}\small\item\em 3D array. \item\end{DoxyCompactList}\item 
+int \hyperlink{classSinoS_acd76bc4567a80d9fcd66e936a35a9a17}{mapfile}
+\begin{DoxyCompactList}\small\item\em Map file descriptor (if map memory to file) \item\end{DoxyCompactList}\item 
+bool \hyperlink{classSinoS_aaf5cf61cb386b132028f78310d070569}{verb}
+\begin{DoxyCompactList}\small\item\em Show progress bar. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{classSinoS_a3e55eb24bed80d8217b5afb9df13bc83}{modname} = \char`\"{}sinogram array\char`\"{}
+\begin{DoxyCompactList}\small\item\em Module name. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Projections storage. This class constructs the 3D array of the input data and then can form and output the sinograms.
+
+If you want to build the sinograms from your own type of experiment, Build a class inheriting from the \hyperlink{classExperiment}{Experiment} class. See how it is implemented in the \hyperlink{classDEIexp}{DEIexp}, \hyperlink{classEDEIexp}{EDEIexp} constructors. 
+
+Definition at line 215 of file experiment.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classSinoS_aced97e9829fc64d373bfc0966b77f117}{
+\index{SinoS@{SinoS}!SinoS@{SinoS}}
+\index{SinoS@{SinoS}!SinoS@{SinoS}}
+\paragraph[{SinoS}]{\setlength{\rightskip}{0pt plus 5cm}SinoS::SinoS (
+\begin{DoxyParamCaption}
+\item[{const {\bf Experiment} \&}]{exp, }
+\item[{const std::vector$<$ int $>$ \&}]{sliceV, }
+\item[{bool}]{\_\-verb = {\ttfamily false}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classSinoS_aced97e9829fc64d373bfc0966b77f117}
+
+
+Constructor. 
+
+Constructs the 3D array from the absorption contrast projections.
+
+
+\begin{DoxyParams}{Parameters}
+{\em exp} & The experiment. \\
+\hline
+{\em sliceV} & List of slices of the interest. \\
+\hline
+{\em \_\-verb} & Show progress bar. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 620 of file experiment.cpp.
+
+
+
+References allpix, data, mapfile, modname, Experiment::pixels(), Experiment::projection(), pxls, slcs, Experiment::slices(), tempfile(), Experiment::thetas(), throw\_\-error(), thts, toString(), ProgressBar::update(), verb, and warn().
+
+\hypertarget{classSinoS_aef6be4c828951a2fc52dc12a5d219539}{
+\index{SinoS@{SinoS}!$\sim$SinoS@{$\sim$SinoS}}
+\index{$\sim$SinoS@{$\sim$SinoS}!SinoS@{SinoS}}
+\paragraph[{$\sim$SinoS}]{\setlength{\rightskip}{0pt plus 5cm}SinoS::$\sim$SinoS (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classSinoS_aef6be4c828951a2fc52dc12a5d219539}
+
+
+Destructor. 
+
+
+
+Definition at line 663 of file experiment.cpp.
+
+
+
+References allpix, data, and mapfile.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classSinoS_a4126d5ea5282461353ece36da73af13f}{
+\index{SinoS@{SinoS}!index@{index}}
+\index{index@{index}!SinoS@{SinoS}}
+\paragraph[{index}]{\setlength{\rightskip}{0pt plus 5cm}int SinoS::index (
+\begin{DoxyParamCaption}
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_a4126d5ea5282461353ece36da73af13f}
+
+
+Checks correctness of the index. 
+
+Checks if the index is within the allowed region.
+
+
+\begin{DoxyParams}{Parameters}
+{\em idx} & The index to check.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The index. 
+\end{DoxyReturn}
+
+
+Definition at line 693 of file experiment.cpp.
+
+
+
+References modname, slcs, throw\_\-error(), and toString().
+
+
+
+Referenced by sino().
+
+\hypertarget{classSinoS_a0f91de289d2b60e2836788ddeb27acdb}{
+\index{SinoS@{SinoS}!pixels@{pixels}}
+\index{pixels@{pixels}!SinoS@{SinoS}}
+\paragraph[{pixels}]{\setlength{\rightskip}{0pt plus 5cm}int SinoS::pixels (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classSinoS_a0f91de289d2b60e2836788ddeb27acdb}
+
+
+Pixels. 
+
+
+
+Definition at line 702 of file experiment.cpp.
+
+
+
+References pxls.
+
+\hypertarget{classSinoS_af8c857af0cdbe4c40409035564e99b81}{
+\index{SinoS@{SinoS}!sino@{sino}}
+\index{sino@{sino}!SinoS@{SinoS}}
+\paragraph[{sino}]{\setlength{\rightskip}{0pt plus 5cm}void SinoS::sino (
+\begin{DoxyParamCaption}
+\item[{int}]{idx, }
+\item[{{\bf Map} \&}]{storage}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classSinoS_af8c857af0cdbe4c40409035564e99b81}
+
+
+Prepares the sinogram. 
+
+Forms the sinogram.
+
+
+\begin{DoxyParams}{Parameters}
+{\em idx} & Index of the sinogram to form. \\
+\hline
+{\em storage} & Storage for the sinogram. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 678 of file experiment.cpp.
+
+
+
+References data, index(), pxls, and thts.
+
+
+
+Referenced by main().
+
+\hypertarget{classSinoS_aa0dad0ac7153458f7358c98f97a87183}{
+\index{SinoS@{SinoS}!slices@{slices}}
+\index{slices@{slices}!SinoS@{SinoS}}
+\paragraph[{slices}]{\setlength{\rightskip}{0pt plus 5cm}int SinoS::slices (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classSinoS_aa0dad0ac7153458f7358c98f97a87183}
+
+
+Slices. 
+
+
+
+Definition at line 707 of file experiment.cpp.
+
+
+
+References slcs.
+
+\hypertarget{classSinoS_a4bba409ea8a4effe932ed0a1a5e34942}{
+\index{SinoS@{SinoS}!thetas@{thetas}}
+\index{thetas@{thetas}!SinoS@{SinoS}}
+\paragraph[{thetas}]{\setlength{\rightskip}{0pt plus 5cm}int SinoS::thetas (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classSinoS_a4bba409ea8a4effe932ed0a1a5e34942}
+
+
+Thetas. 
+
+
+
+Definition at line 712 of file experiment.cpp.
+
+
+
+References thts.
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classSinoS_a3026a431a66f2b87d6a47378cd115a6b}{
+\index{SinoS@{SinoS}!allpix@{allpix}}
+\index{allpix@{allpix}!SinoS@{SinoS}}
+\paragraph[{allpix}]{\setlength{\rightskip}{0pt plus 5cm}size\_\-t {\bf SinoS::allpix}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_a3026a431a66f2b87d6a47378cd115a6b}
+
+
+Number of pixels in the 3D array. 
+
+
+
+Definition at line 223 of file experiment.h.
+
+
+
+Referenced by SinoS(), and $\sim$SinoS().
+
+\hypertarget{classSinoS_a3dd5dabaa38f646efc6289bb4caca6c4}{
+\index{SinoS@{SinoS}!data@{data}}
+\index{data@{data}!SinoS@{SinoS}}
+\paragraph[{data}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Volume} {\bf SinoS::data}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_a3dd5dabaa38f646efc6289bb4caca6c4}
+
+
+3D array. 
+
+
+
+Definition at line 224 of file experiment.h.
+
+
+
+Referenced by sino(), SinoS(), and $\sim$SinoS().
+
+\hypertarget{classSinoS_acd76bc4567a80d9fcd66e936a35a9a17}{
+\index{SinoS@{SinoS}!mapfile@{mapfile}}
+\index{mapfile@{mapfile}!SinoS@{SinoS}}
+\paragraph[{mapfile}]{\setlength{\rightskip}{0pt plus 5cm}int {\bf SinoS::mapfile}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_acd76bc4567a80d9fcd66e936a35a9a17}
+
+
+Map file descriptor (if map memory to file) 
+
+
+
+Definition at line 225 of file experiment.h.
+
+
+
+Referenced by SinoS(), and $\sim$SinoS().
+
+\hypertarget{classSinoS_a3e55eb24bed80d8217b5afb9df13bc83}{
+\index{SinoS@{SinoS}!modname@{modname}}
+\index{modname@{modname}!SinoS@{SinoS}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf SinoS::modname} = \char`\"{}sinogram array\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classSinoS_a3e55eb24bed80d8217b5afb9df13bc83}
+
+
+Module name. 
+
+
+
+Definition at line 219 of file experiment.h.
+
+
+
+Referenced by index(), and SinoS().
+
+\hypertarget{classSinoS_ac5305ea20cccd56afff6cf909f3da3d6}{
+\index{SinoS@{SinoS}!pxls@{pxls}}
+\index{pxls@{pxls}!SinoS@{SinoS}}
+\paragraph[{pxls}]{\setlength{\rightskip}{0pt plus 5cm}long {\bf SinoS::pxls}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_ac5305ea20cccd56afff6cf909f3da3d6}
+
+
+Number of pixels (width) in the projection. 
+
+
+
+Definition at line 220 of file experiment.h.
+
+
+
+Referenced by pixels(), sino(), and SinoS().
+
+\hypertarget{classSinoS_a6e86c08cdb03820099546867a6d27814}{
+\index{SinoS@{SinoS}!slcs@{slcs}}
+\index{slcs@{slcs}!SinoS@{SinoS}}
+\paragraph[{slcs}]{\setlength{\rightskip}{0pt plus 5cm}long {\bf SinoS::slcs}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_a6e86c08cdb03820099546867a6d27814}
+
+
+Number of slices (projection height). 
+
+
+
+Definition at line 222 of file experiment.h.
+
+
+
+Referenced by index(), SinoS(), and slices().
+
+\hypertarget{classSinoS_af08e78d111d1fc7862f783274adbd57f}{
+\index{SinoS@{SinoS}!thts@{thts}}
+\index{thts@{thts}!SinoS@{SinoS}}
+\paragraph[{thts}]{\setlength{\rightskip}{0pt plus 5cm}long {\bf SinoS::thts}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_af08e78d111d1fc7862f783274adbd57f}
+
+
+Number of projections (sinogram height). 
+
+
+
+Definition at line 221 of file experiment.h.
+
+
+
+Referenced by sino(), SinoS(), and thetas().
+
+\hypertarget{classSinoS_aaf5cf61cb386b132028f78310d070569}{
+\index{SinoS@{SinoS}!verb@{verb}}
+\index{verb@{verb}!SinoS@{SinoS}}
+\paragraph[{verb}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf SinoS::verb}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classSinoS_aaf5cf61cb386b132028f78310d070569}
+
+
+Show progress bar. 
+
+
+
+Definition at line 226 of file experiment.h.
+
+
+
+Referenced by SinoS().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{experiment_8h}{experiment.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{experiment_8cpp}{experiment.cpp}\end{DoxyCompactItemize}

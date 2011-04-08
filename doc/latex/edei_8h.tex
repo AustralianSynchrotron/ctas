@@ -1,0 +1,60 @@
+\hypertarget{edei_8h}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/common/edei.h File Reference}
+\label{edei_8h}\index{/home/antonmx/work/projects/ctascmake/src/common/edei.h@{/home/antonmx/work/projects/ctascmake/src/common/edei.h}}
+}
+
+
+Header file with common classes needed in the EDEI processing.  
+
+
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/poptmx.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classInterp}{Interp}
+\begin{DoxyCompactList}\small\item\em Auxiliary class: just wrap around inter\_\-tp enumeration. \item\end{DoxyCompactList}\item 
+struct \hyperlink{structEDEIoptions}{EDEIoptions}
+\begin{DoxyCompactList}\small\item\em Structure with the elements needed for the initialization of the \hyperlink{classEDEIprocess}{EDEIprocess}. \item\end{DoxyCompactList}\item 
+class \hyperlink{classEDEIprocess}{EDEIprocess}
+\begin{DoxyCompactList}\small\item\em Store, process read RCstaff::RCoption() \char`\"{}RC\char`\"{}, read RCstaff::FDoption() \char`\"{}FD\char`\"{}, extract contrasts. \item\end{DoxyCompactList}\item 
+class \hyperlink{classEDEIexp}{EDEIexp}
+\begin{DoxyCompactList}\small\item\em Class which extracts EDEI-\/processed projections from the input data. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool EDEI\_\-API \hyperlink{group__edeiedei_ga3f78c281778943826ca58723ba34544f}{operator==} (const \hyperlink{classInterp}{Interp} \&a, const \hyperlink{classInterp}{Interp} \&b)
+\begin{DoxyCompactList}\small\item\em Compare interpretations. \item\end{DoxyCompactList}\item 
+bool EDEI\_\-API \hyperlink{group__edeiedei_ga0eca9f735bcba12f1dd183c990f9814f}{operator!=} (const \hyperlink{classInterp}{Interp} \&a, const \hyperlink{classInterp}{Interp} \&b)
+\begin{DoxyCompactList}\small\item\em Compare interpretations. \item\end{DoxyCompactList}\item 
+EDEI\_\-API std::string \hyperlink{group__edeiedei_ga516b630e8236082e31aba169d8a5e545}{type\_\-desc} (\hyperlink{classInterp}{Interp} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+EDEI\_\-API bool \hyperlink{group__edeiedei_ga9a8006fafee97e85fd5c0aedcd86f5ef}{\_\-conversion} (\hyperlink{classInterp}{Interp} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classInterp}{Interp} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{group__edeiedei_ga82af3bee7fb3102d94f7b53e89936f77}{type\_\-desc} (\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool EDEI\_\-API \hyperlink{group__edeiedei_gadee6c8302767b3a1728004f89565013c}{\_\-conversion} (\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} $\ast$\_\-val, const std::string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+\hypertarget{group__edeiedei_ga4ef6a8be61335bdb2faa146459430946}{
+std::string {\bfseries toString} (\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{EDEIprocess::Component} comp)}
+\label{group__edeiedei_ga4ef6a8be61335bdb2faa146459430946}
+
+\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+EDEI\_\-API const std::string \hyperlink{group__edeiedei_ga8937835900a2532f1c8b381e81288b91}{InterpOptionDesc}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the \hyperlink{classInterp}{Interp} type. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Header file with common classes needed in the EDEI processing. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Thu Jul 17 10:29:40 2008
+\end{DoxyDate}
+Have to say that the module with the EDEI processing (this file and deilib.cpp) is the ugliest in the package. I do not know if it is my fault, or the nature of algorithm, but this is the fact. 
+
+Definition in file \hyperlink{edei_8h_source}{edei.h}.
+

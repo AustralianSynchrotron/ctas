@@ -1,0 +1,160 @@
+\hypertarget{experiment_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/common/experiment.cpp File Reference}
+\label{experiment_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/common/experiment.cpp@{/home/antonmx/work/projects/ctascmake/src/common/experiment.cpp}}
+}
+
+
+Definitions of the functions declared in \hyperlink{experiment_8h}{experiment.h}.  
+
+
+{\ttfamily \#include \char`\"{}experiment.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}flatfield.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}poptmx.h\char`\"{}}\par
+{\ttfamily \#include $<$algorithm$>$}\par
+{\ttfamily \#include $<$sys/mman.h$>$}\par
+{\ttfamily \#include $<$string.h$>$}\par
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+string \hyperlink{group__experiment_ga3a6c6c808d7fc4dbc4e4b0f4e8ff5c95}{mask2format} (const string \&mask, int maxslice)
+\begin{DoxyCompactList}\small\item\em Converts the mask string to the format string. \item\end{DoxyCompactList}\item 
+static vector$<$ int $>$ \& \hyperlink{experiment_8cpp_a4268bc0c460597122884fafb3fd37de4}{rmadd} (vector$<$ int $>$ \&arr, int numb, bool negate)
+\begin{DoxyCompactList}\small\item\em Adds or removes the element into the array. \item\end{DoxyCompactList}\item 
+static int \hyperlink{experiment_8cpp_aac3e82153bbd9c19663fce49d2b6a70f}{str2n} (const string \&str)
+\begin{DoxyCompactList}\small\item\em Parses the string to non-\/negative integer. \item\end{DoxyCompactList}\item 
+vector$<$ int $>$ \hyperlink{group__experiment_ga3e81bacd588a1037f17bcd2fbd5be14a}{slice\_\-str2vec} (const string \&sliceS, int hight)
+\begin{DoxyCompactList}\small\item\em Constructs the array of slices. \item\end{DoxyCompactList}\item 
+static int \hyperlink{experiment_8cpp_a4238936ac7e429ac9baf19d14ff44f2e}{tempfile} (const off\_\-t size)
+\begin{DoxyCompactList}\small\item\em Prepares the temporary file to map the memory to. \item\end{DoxyCompactList}\item 
+string \hyperlink{group__experiment_gab0797bda4347712a932686619a6fa8dd}{type\_\-desc} (\hyperlink{classDcenter}{Dcenter} $\ast$)
+\begin{DoxyCompactList}\small\item\em Prints type name. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\item 
+bool \hyperlink{group__experiment_ga24b39e79e97ba4be39d0e53db377f8a7}{\_\-conversion} (\hyperlink{classDcenter}{Dcenter} $\ast$\_\-val, const string \&in)
+\begin{DoxyCompactList}\small\item\em Converts the string \char`\"{}in\char`\"{} into the \hyperlink{classDcenter}{Dcenter} \_\-val. To be used in the CLI parsing via \char`\"{}poptmx\char`\"{} library. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const string \hyperlink{group__experiment_ga49fc44d3138ced27aa1b626e71399cef}{MaskDesc} = \char`\"{} any directory.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the output result mask. \item\end{DoxyCompactList}\item 
+const string \hyperlink{group__experiment_gab69c6d9d77c300fbbfcbde4a0c28eb14}{SliceOptionDesc} = \char`\"{} 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the string of slices. \item\end{DoxyCompactList}\item 
+const string \hyperlink{group__experiment_gae4e896096ce7a0b4cbfbdd88b7e56286}{DcenterOptionDesc} = \char`\"{} from the ImageMagick package with the -\/rotate option.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the option giving the \hyperlink{classDcenter}{Dcenter} type. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Definitions of the functions declared in \hyperlink{experiment_8h}{experiment.h}. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Jul 21 10:09:31 2008 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{experiment_8cpp_source}{experiment.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{experiment_8cpp_a4268bc0c460597122884fafb3fd37de4}{
+\index{experiment.cpp@{experiment.cpp}!rmadd@{rmadd}}
+\index{rmadd@{rmadd}!experiment.cpp@{experiment.cpp}}
+\paragraph[{rmadd}]{\setlength{\rightskip}{0pt plus 5cm}static vector$<$int$>$\& rmadd (
+\begin{DoxyParamCaption}
+\item[{vector$<$ int $>$ \&}]{arr, }
+\item[{int}]{numb, }
+\item[{bool}]{negate}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{experiment_8cpp_a4268bc0c460597122884fafb3fd37de4}
+
+
+Adds or removes the element into the array. 
+
+Adds or removes the element numb to/from the array depending on negation.
+
+
+\begin{DoxyParams}{Parameters}
+{\em arr} & The array to be updated. \\
+\hline
+{\em numb} & The element to be added/removed to/from the array. \\
+\hline
+{\em negate} & If {\ttfamily true} then removes, if {\ttfamily false} then adds to the array.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Updated array. 
+\end{DoxyReturn}
+
+
+Definition at line 370 of file experiment.cpp.
+
+
+
+Referenced by slice\_\-str2vec().
+
+\hypertarget{experiment_8cpp_aac3e82153bbd9c19663fce49d2b6a70f}{
+\index{experiment.cpp@{experiment.cpp}!str2n@{str2n}}
+\index{str2n@{str2n}!experiment.cpp@{experiment.cpp}}
+\paragraph[{str2n}]{\setlength{\rightskip}{0pt plus 5cm}static int str2n (
+\begin{DoxyParamCaption}
+\item[{const string \&}]{str}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{experiment_8cpp_aac3e82153bbd9c19663fce49d2b6a70f}
+
+
+Parses the string to non-\/negative integer. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em str} & The string to parse.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The result of parsing. 
+\end{DoxyReturn}
+
+
+Definition at line 384 of file experiment.cpp.
+
+
+
+References warn().
+
+
+
+Referenced by slice\_\-str2vec().
+
+\hypertarget{experiment_8cpp_a4238936ac7e429ac9baf19d14ff44f2e}{
+\index{experiment.cpp@{experiment.cpp}!tempfile@{tempfile}}
+\index{tempfile@{tempfile}!experiment.cpp@{experiment.cpp}}
+\paragraph[{tempfile}]{\setlength{\rightskip}{0pt plus 5cm}static int tempfile (
+\begin{DoxyParamCaption}
+\item[{const off\_\-t}]{size}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline, static\mbox{]}}}\hfill}
+\label{experiment_8cpp_a4238936ac7e429ac9baf19d14ff44f2e}
+
+
+Prepares the temporary file to map the memory to. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em size} & Size of the memory region to be mapped.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The file descriptor 
+\end{DoxyReturn}
+
+
+Definition at line 573 of file experiment.cpp.
+
+
+
+References throw\_\-error(), toString(), and warn().
+
+
+
+Referenced by SinoS::SinoS().
+

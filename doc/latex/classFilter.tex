@@ -1,0 +1,376 @@
+\hypertarget{classFilter}{
+\subsection{Filter Class Reference}
+\label{classFilter}\index{Filter@{Filter}}
+}
+
+
+Filtering window function.  
+
+
+
+
+{\ttfamily \#include $<$kernel.h$>$}
+
+\subsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728}{Ftype} \{ \par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728ae19fe54a915de079e6abc4d9b0e14b94}{NONE} = 0, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a4bdd387e7ead67fd82d768908ad67184}{RAMP}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a26a5c04c5f8a3c3f002dc8e6ec7fb4d0}{BARLETT}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728afa286e60366f6a9db4fddacffcbe11d7}{WELCH}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a3fad77b240a2e8d821f010d773013ec8}{PARZEN}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a164fdb296a5ec4fc0b570330ebac3a08}{HANN}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a9e2c221e0d6439d1d9c49b8b8e855524}{HAMMING}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a123ceaf7799f23d23a024357f6f8ddba}{BLACKMAN}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a17015a801ac4706d283005952e96b3f3}{LANCKZOS}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a0cffe76968927f1c27666e20a21bbb95}{KAISER}, 
+\par
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728a5387c69758c56d35e2b4559d6ed634f8}{GAUSS}
+ \}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classFilter}{Filter} types. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classFilter_aa4e9998a49d027efc1217a850867357c}{Filter} (\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728}{Ftype} \_\-tp=RAMP, float \_\-as=0)
+\begin{DoxyCompactList}\small\item\em Trivial constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{classFilter_a1edffffd95e96e1da86f8ec75f807264}{Filter} (const std::string \&\_\-name, float \_\-as=0)
+\begin{DoxyCompactList}\small\item\em Constructor from name. \item\end{DoxyCompactList}\item 
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728}{Ftype} \hyperlink{classFilter_a3245bbada6499568783cb2705a69db04}{filter} () const 
+\begin{DoxyCompactList}\small\item\em \hyperlink{classFilter}{Filter}. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classFilter_a81c6f3de0639b637ab20d4b7b65cb1eb}{name} () const 
+\begin{DoxyCompactList}\small\item\em Returns name. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \& \hyperlink{classFilter_a465df3da231eb2d971f6d34342ed46f1}{fill} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&filt, int pixels=0) const 
+\begin{DoxyCompactList}\small\item\em Fills the window. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728}{Ftype} \hyperlink{classFilter_a61675994b19b6e0a6823e18974dd72bb}{filttp}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classFilter}{Filter} type. \item\end{DoxyCompactList}\item 
+float \hyperlink{classFilter_af2d531fc1caba3f3c9c923a484da3722}{alsig}
+\begin{DoxyCompactList}\small\item\em Additional parameter required by some filters. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{classFilter_af1862c4a04a13844bd9c9caff1e7fd21}{modname} = \char`\"{}filter\char`\"{}
+\begin{DoxyCompactList}\small\item\em Module name. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Filtering window function. This class holds information about filtering window function and can prepare the filtering window.
+
+Known filters: \hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728}{Filter::Ftype} 
+
+If you want to add a new filter:
+\begin{DoxyEnumerate}
+\item Add your filter into the \hyperlink{classFilter_aa61599baec09f1011f80edc1e9118728}{Filter::Ftype} enumeration.
+\item Add your filter to the \hyperlink{classFilter_a1edffffd95e96e1da86f8ec75f807264}{Filter::Filter(const std::string \&, float)} constructor
+\item Add your filter to the \hyperlink{classFilter_a81c6f3de0639b637ab20d4b7b65cb1eb}{Filter::name()} function.
+\item Add your filter to the \hyperlink{classFilter_a465df3da231eb2d971f6d34342ed46f1}{Filter::fill()} function: additional \char`\"{}case\char`\"{} in the switch-\/case construction
+\item Add your filter to the Filter::includeFilterTable() option table
+\item If your new filter requires additional parameter(s) then you can add them using the \hyperlink{classFilter_af2d531fc1caba3f3c9c923a484da3722}{Filter::alsig} as the example. 
+\end{DoxyEnumerate}
+
+Definition at line 79 of file kernel.h.
+
+
+
+\subsubsection{Member Enumeration Documentation}
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728}{
+\index{Filter@{Filter}!Ftype@{Ftype}}
+\index{Ftype@{Ftype}!Filter@{Filter}}
+\paragraph[{Ftype}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf Filter::Ftype}}\hfill}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728}
+
+
+\hyperlink{classFilter}{Filter} types. 
+
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{NONE@{NONE}!Filter@{Filter}}\index{Filter@{Filter}!NONE@{NONE}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728ae19fe54a915de079e6abc4d9b0e14b94}{
+NONE}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728ae19fe54a915de079e6abc4d9b0e14b94}
+}]No filter: 1. \index{RAMP@{RAMP}!Filter@{Filter}}\index{Filter@{Filter}!RAMP@{RAMP}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a4bdd387e7ead67fd82d768908ad67184}{
+RAMP}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a4bdd387e7ead67fd82d768908ad67184}
+}]Ramp: $ |k| $. \index{BARLETT@{BARLETT}!Filter@{Filter}}\index{Filter@{Filter}!BARLETT@{BARLETT}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a26a5c04c5f8a3c3f002dc8e6ec7fb4d0}{
+BARLETT}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a26a5c04c5f8a3c3f002dc8e6ec7fb4d0}
+}]Barlett: $ |k|(1-|k|) $. \index{WELCH@{WELCH}!Filter@{Filter}}\index{Filter@{Filter}!WELCH@{WELCH}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728afa286e60366f6a9db4fddacffcbe11d7}{
+WELCH}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728afa286e60366f6a9db4fddacffcbe11d7}
+}]Welch: $ |k|(1-k^2) $. \index{PARZEN@{PARZEN}!Filter@{Filter}}\index{Filter@{Filter}!PARZEN@{PARZEN}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a3fad77b240a2e8d821f010d773013ec8}{
+PARZEN}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a3fad77b240a2e8d821f010d773013ec8}
+}]Parzen: \[ |k|\times\left\{ \begin{array}{lll} 1-6k^2+3|k|^3 & : & |k|\leq1/2 \cr 2(1+|k|^3) & : & 1/2<|k|\leq1 \end{array} \right. \] \index{HANN@{HANN}!Filter@{Filter}}\index{Filter@{Filter}!HANN@{HANN}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a164fdb296a5ec4fc0b570330ebac3a08}{
+HANN}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a164fdb296a5ec4fc0b570330ebac3a08}
+}]Hann: $ |k|0.5(1+\cos{\pi k}) $. \index{HAMMING@{HAMMING}!Filter@{Filter}}\index{Filter@{Filter}!HAMMING@{HAMMING}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a9e2c221e0d6439d1d9c49b8b8e855524}{
+HAMMING}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a9e2c221e0d6439d1d9c49b8b8e855524}
+}]Hamming: $ |k|(0.54+0.46\cos{\pi k}) $. \index{BLACKMAN@{BLACKMAN}!Filter@{Filter}}\index{Filter@{Filter}!BLACKMAN@{BLACKMAN}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a123ceaf7799f23d23a024357f6f8ddba}{
+BLACKMAN}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a123ceaf7799f23d23a024357f6f8ddba}
+}]Blackman: $ |k|(0.42+0.5\cos{\pi k}+0.08\cos{2\pi k}) $. \index{LANCKZOS@{LANCKZOS}!Filter@{Filter}}\index{Filter@{Filter}!LANCKZOS@{LANCKZOS}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a17015a801ac4706d283005952e96b3f3}{
+LANCKZOS}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a17015a801ac4706d283005952e96b3f3}
+}]Lanckzos: \[ |k|\frac{\sin{\pi k}}{k} \]. \index{KAISER@{KAISER}!Filter@{Filter}}\index{Filter@{Filter}!KAISER@{KAISER}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a0cffe76968927f1c27666e20a21bbb95}{
+KAISER}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a0cffe76968927f1c27666e20a21bbb95}
+}]Kaiser: \[ |k|\frac{I_0(\alpha\sqrt{1-k^2})}{I_0(\alpha)} \]. \index{GAUSS@{GAUSS}!Filter@{Filter}}\index{Filter@{Filter}!GAUSS@{GAUSS}}\item[{\em 
+\hypertarget{classFilter_aa61599baec09f1011f80edc1e9118728a5387c69758c56d35e2b4559d6ed634f8}{
+GAUSS}
+\label{classFilter_aa61599baec09f1011f80edc1e9118728a5387c69758c56d35e2b4559d6ed634f8}
+}]Gauss: \[ |k|2^{-(k/\sigma)^2} \]. \end{description}
+\end{Desc}
+
+
+
+Definition at line 84 of file kernel.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classFilter_aa4e9998a49d027efc1217a850867357c}{
+\index{Filter@{Filter}!Filter@{Filter}}
+\index{Filter@{Filter}!Filter@{Filter}}
+\paragraph[{Filter}]{\setlength{\rightskip}{0pt plus 5cm}Filter::Filter (
+\begin{DoxyParamCaption}
+\item[{{\bf Ftype}}]{\_\-tp = {\ttfamily RAMP}, }
+\item[{float}]{\_\-as = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classFilter_aa4e9998a49d027efc1217a850867357c}
+
+
+Trivial constructor. 
+
+Constructor.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-tp} & \hyperlink{classFilter}{Filter} type. \\
+\hline
+{\em \_\-as} & Additional parameter. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 91 of file kernel.cpp.
+
+\hypertarget{classFilter_a1edffffd95e96e1da86f8ec75f807264}{
+\index{Filter@{Filter}!Filter@{Filter}}
+\index{Filter@{Filter}!Filter@{Filter}}
+\paragraph[{Filter}]{\setlength{\rightskip}{0pt plus 5cm}Filter::Filter (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{\_\-name, }
+\item[{float}]{\_\-as = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classFilter_a1edffffd95e96e1da86f8ec75f807264}
+
+
+Constructor from name. 
+
+Constructor.
+
+Similar to the previous one, but reads the filter type from the string.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-name} & \hyperlink{classFilter}{Filter} name. \\
+\hline
+{\em \_\-as} & Additional parameter. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 103 of file kernel.cpp.
+
+
+
+References BLACKMAN, filttp, GAUSS, HAMMING, HANN, KAISER, LANCKZOS, modname, name(), NONE, PARZEN, RAMP, throw\_\-error(), upper(), and WELCH.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classFilter_a465df3da231eb2d971f6d34342ed46f1}{
+\index{Filter@{Filter}!fill@{fill}}
+\index{fill@{fill}!Filter@{Filter}}
+\paragraph[{fill}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Line} \& Filter::fill (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{filt, }
+\item[{int}]{pixels = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classFilter_a465df3da231eb2d971f6d34342ed46f1}
+
+
+Fills the window. 
+
+Prepares the window function.
+
+Fills the line with the filter function. If pixels is 0 then reads the the width of the window from the line length.Otherwise resizes the line.
+
+
+\begin{DoxyParams}{Parameters}
+{\em filt} & Line to store the window. \\
+\hline
+{\em pixels} & Desired size of the window.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Filled window. 
+\end{DoxyReturn}
+
+
+Definition at line 168 of file kernel.cpp.
+
+
+
+References alsig, BARLETT, BLACKMAN, filttp, GAUSS, HAMMING, HANN, KAISER, LANCKZOS, modname, NONE, PARZEN, RAMP, throw\_\-error(), and WELCH.
+
+
+
+Referenced by CTrec::filter(), and ts\_\-add().
+
+\hypertarget{classFilter_a3245bbada6499568783cb2705a69db04}{
+\index{Filter@{Filter}!filter@{filter}}
+\index{filter@{filter}!Filter@{Filter}}
+\paragraph[{filter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Filter::Ftype} Filter::filter (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classFilter_a3245bbada6499568783cb2705a69db04}
+
+
+\hyperlink{classFilter}{Filter}. 
+
+\hyperlink{classFilter}{Filter} type.
+
+\begin{DoxyReturn}{Returns}
+Type of the filter. 
+\end{DoxyReturn}
+
+
+Definition at line 151 of file kernel.cpp.
+
+
+
+References filttp.
+
+
+
+Referenced by operator!=(), and operator==().
+
+\hypertarget{classFilter_a81c6f3de0639b637ab20d4b7b65cb1eb}{
+\index{Filter@{Filter}!name@{name}}
+\index{name@{name}!Filter@{Filter}}
+\paragraph[{name}]{\setlength{\rightskip}{0pt plus 5cm}string Filter::name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classFilter_a81c6f3de0639b637ab20d4b7b65cb1eb}
+
+
+Returns name. 
+
+Name of the filter type.
+
+\begin{DoxyReturn}{Returns}
+Name of the filter. 
+\end{DoxyReturn}
+
+
+Definition at line 127 of file kernel.cpp.
+
+
+
+References BARLETT, BLACKMAN, filttp, GAUSS, HAMMING, HANN, KAISER, LANCKZOS, NONE, PARZEN, RAMP, throw\_\-bug(), and WELCH.
+
+
+
+Referenced by clargs::clargs(), and Filter().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classFilter_af2d531fc1caba3f3c9c923a484da3722}{
+\index{Filter@{Filter}!alsig@{alsig}}
+\index{alsig@{alsig}!Filter@{Filter}}
+\paragraph[{alsig}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf Filter::alsig}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classFilter_af2d531fc1caba3f3c9c923a484da3722}
+
+
+Additional parameter required by some filters. 
+
+
+
+Definition at line 130 of file kernel.h.
+
+
+
+Referenced by fill().
+
+\hypertarget{classFilter_a61675994b19b6e0a6823e18974dd72bb}{
+\index{Filter@{Filter}!filttp@{filttp}}
+\index{filttp@{filttp}!Filter@{Filter}}
+\paragraph[{filttp}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Ftype} {\bf Filter::filttp}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classFilter_a61675994b19b6e0a6823e18974dd72bb}
+
+
+\hyperlink{classFilter}{Filter} type. 
+
+
+
+Definition at line 129 of file kernel.h.
+
+
+
+Referenced by fill(), filter(), Filter(), and name().
+
+\hypertarget{classFilter_af1862c4a04a13844bd9c9caff1e7fd21}{
+\index{Filter@{Filter}!modname@{modname}}
+\index{modname@{modname}!Filter@{Filter}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf Filter::modname} = \char`\"{}filter\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classFilter_af1862c4a04a13844bd9c9caff1e7fd21}
+
+
+Module name. 
+
+
+
+Definition at line 128 of file kernel.h.
+
+
+
+Referenced by fill(), and Filter().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{kernel_8h}{kernel.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{kernel_8cpp}{kernel.cpp}\end{DoxyCompactItemize}

@@ -1,0 +1,20 @@
+\form#0:$\alpha$
+\form#1:$\alpha(F)$
+\form#2:\[ \alpha = F^{-1}\left( \frac{I_L-I_H}{I_L+I_H} \right) \]
+\form#3:$ I_L+I_H $
+\form#4:$\beta/\delta$
+\form#5:$\gamma$
+\form#6:$\pm1.0$
+\form#7:$ |k| $
+\form#8:$ |k|(1-|k|) $
+\form#9:$ |k|(1-k^2) $
+\form#10:\[ |k|\times\left\{ \begin{array}{lll} 1-6k^2+3|k|^3 & : & |k|\leq1/2 \cr 2(1+|k|^3) & : & 1/2<|k|\leq1 \end{array} \right. \]
+\form#11:$ |k|0.5(1+\cos{\pi k}) $
+\form#12:$ |k|(0.54+0.46\cos{\pi k}) $
+\form#13:$ |k|(0.42+0.5\cos{\pi k}+0.08\cos{2\pi k}) $
+\form#14:\[ |k|\frac{\sin{\pi k}}{k} \]
+\form#15:\[ |k|\frac{I_0(\alpha\sqrt{1-k^2})}{I_0(\alpha)} \]
+\form#16:\[ |k|2^{-(k/\sigma)^2} \]
+\form#17:$\mu$
+\form#18:$\delta$
+\form#19:$ I/I_0$

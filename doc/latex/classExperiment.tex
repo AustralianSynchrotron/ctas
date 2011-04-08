@@ -1,0 +1,272 @@
+\hypertarget{classExperiment}{
+\subsection{Experiment Class Reference}
+\label{classExperiment}\index{Experiment@{Experiment}}
+}
+
+
+Parent abstract class for various experimental techniques.  
+
+
+
+
+{\ttfamily \#include $<$experiment.h$>$}
+
+Inheritance diagram for Experiment:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classExperiment}
+\end{center}
+\end{figure}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classExperiment_a95f36b2bdd0800251a226565a26ee695}{Experiment} (const \hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \&\_\-sh, long \_\-thetas)
+\item 
+virtual void \hyperlink{classExperiment_a154d68b031d0e181295ee2adbd66d8c3}{projection} (int itheta, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&proj, const std::vector$<$ int $>$ \&sliceV=std::vector$<$ int $>$()) const =0
+\begin{DoxyCompactList}\small\item\em Constructs processed projection. \item\end{DoxyCompactList}\item 
+long \hyperlink{classExperiment_a9f0ae164ca27059b854adc8e72f0e66c}{thetas} () const 
+\begin{DoxyCompactList}\small\item\em Total number of projections. \item\end{DoxyCompactList}\item 
+long \hyperlink{classExperiment_aad4d70c42b47f05258f3809bcec72a42}{pixels} () const 
+\begin{DoxyCompactList}\small\item\em Width of the image. \item\end{DoxyCompactList}\item 
+long \hyperlink{classExperiment_a716ab0c38e5db32663b7b5ff7b22d5af}{slices} () const 
+\begin{DoxyCompactList}\small\item\em Number of slices (hight) in the image. \item\end{DoxyCompactList}\item 
+\hyperlink{classContrast}{Contrast} \hyperlink{classExperiment_a60b1d786610409f7e35dbb4e8cc297ea}{contrast} () const 
+\begin{DoxyCompactList}\small\item\em The contrast type of the projection. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+long \hyperlink{classExperiment_a70638a31b46407c2d58ca5c7055e6db4}{thts}
+\begin{DoxyCompactList}\small\item\em Number of projections (sinogram height). \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga777964671cb4315ce8c56c920db031e3}{Shape} \hyperlink{classExperiment_a49f72b0d8d927296de2e048221a87e85}{sh}
+\begin{DoxyCompactList}\small\item\em Shape of the projections. \item\end{DoxyCompactList}\item 
+\hyperlink{classContrast}{Contrast} \hyperlink{classExperiment_a33681f3d1524923e4936daed9ac4bac4}{cntr}
+\begin{DoxyCompactList}\small\item\em The contrast type. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Parent abstract class for various experimental techniques. When you need to create a new type of experiment, just inherit from this class with implementation of the constructor and projection function. See \hyperlink{classDEIexp}{DEIexp}, \hyperlink{classEDEIexp}{EDEIexp} and \hyperlink{classABSexp}{ABSexp} as the examples. 
+
+Definition at line 167 of file experiment.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classExperiment_a95f36b2bdd0800251a226565a26ee695}{
+\index{Experiment@{Experiment}!Experiment@{Experiment}}
+\index{Experiment@{Experiment}!Experiment@{Experiment}}
+\paragraph[{Experiment}]{\setlength{\rightskip}{0pt plus 5cm}Experiment::Experiment (
+\begin{DoxyParamCaption}
+\item[{const {\bf Shape} \&}]{\_\-sh, }
+\item[{long}]{\_\-thetas}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classExperiment_a95f36b2bdd0800251a226565a26ee695}
+Constructor 
+\begin{DoxyParams}{Parameters}
+{\em \_\-sh} & Size of the projection. \\
+\hline
+{\em \_\-thetas} & Number of projections. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 178 of file experiment.h.
+
+
+
+References sh, throw\_\-error(), and thts.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classExperiment_a60b1d786610409f7e35dbb4e8cc297ea}{
+\index{Experiment@{Experiment}!contrast@{contrast}}
+\index{contrast@{contrast}!Experiment@{Experiment}}
+\paragraph[{contrast}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Contrast} Experiment::contrast (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classExperiment_a60b1d786610409f7e35dbb4e8cc297ea}
+
+
+The contrast type of the projection. 
+
+
+
+Definition at line 200 of file experiment.h.
+
+
+
+References cntr.
+
+
+
+Referenced by main().
+
+\hypertarget{classExperiment_aad4d70c42b47f05258f3809bcec72a42}{
+\index{Experiment@{Experiment}!pixels@{pixels}}
+\index{pixels@{pixels}!Experiment@{Experiment}}
+\paragraph[{pixels}]{\setlength{\rightskip}{0pt plus 5cm}long Experiment::pixels (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classExperiment_aad4d70c42b47f05258f3809bcec72a42}
+
+
+Width of the image. 
+
+
+
+Definition at line 198 of file experiment.h.
+
+
+
+References sh.
+
+
+
+Referenced by main(), and SinoS::SinoS().
+
+\hypertarget{classExperiment_a154d68b031d0e181295ee2adbd66d8c3}{
+\index{Experiment@{Experiment}!projection@{projection}}
+\index{projection@{projection}!Experiment@{Experiment}}
+\paragraph[{projection}]{\setlength{\rightskip}{0pt plus 5cm}virtual void Experiment::projection (
+\begin{DoxyParamCaption}
+\item[{int}]{itheta, }
+\item[{{\bf Map} \&}]{proj, }
+\item[{const std::vector$<$ int $>$ \&}]{sliceV = {\ttfamily std::vector$<$~int~$>$()}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}pure virtual\mbox{]}}}\hfill}
+\label{classExperiment_a154d68b031d0e181295ee2adbd66d8c3}
+
+
+Constructs processed projection. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em itheta} & the number of the projection to be returned. \\
+\hline
+{\em proj} & Array to put the projection into. \\
+\hline
+{\em sliceV} & array of slices to be extracted. \\
+\hline
+\end{DoxyParams}
+
+
+Implemented in \hyperlink{classABSexp_a6f784bfb2e5e2ea0b0c51920052407c8}{ABSexp}, \hyperlink{classDEIexp_adf11fec5b7b48bde1253a4548debfd59}{DEIexp}, \hyperlink{classEDEIexp_acf7bbc96978ccbd57b5aad85eb4d4bd8}{EDEIexp}, and \hyperlink{classIPCexp_a0367f181f0d59e3504167c931a3c872e}{IPCexp}.
+
+
+
+Referenced by SinoS::SinoS().
+
+\hypertarget{classExperiment_a716ab0c38e5db32663b7b5ff7b22d5af}{
+\index{Experiment@{Experiment}!slices@{slices}}
+\index{slices@{slices}!Experiment@{Experiment}}
+\paragraph[{slices}]{\setlength{\rightskip}{0pt plus 5cm}long Experiment::slices (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classExperiment_a716ab0c38e5db32663b7b5ff7b22d5af}
+
+
+Number of slices (hight) in the image. 
+
+
+
+Definition at line 199 of file experiment.h.
+
+
+
+References sh.
+
+
+
+Referenced by main(), and SinoS::SinoS().
+
+\hypertarget{classExperiment_a9f0ae164ca27059b854adc8e72f0e66c}{
+\index{Experiment@{Experiment}!thetas@{thetas}}
+\index{thetas@{thetas}!Experiment@{Experiment}}
+\paragraph[{thetas}]{\setlength{\rightskip}{0pt plus 5cm}long Experiment::thetas (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}inline\mbox{]}}}\hfill}
+\label{classExperiment_a9f0ae164ca27059b854adc8e72f0e66c}
+
+
+Total number of projections. 
+
+
+
+Definition at line 197 of file experiment.h.
+
+
+
+References thts.
+
+
+
+Referenced by main(), and SinoS::SinoS().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classExperiment_a33681f3d1524923e4936daed9ac4bac4}{
+\index{Experiment@{Experiment}!cntr@{cntr}}
+\index{cntr@{cntr}!Experiment@{Experiment}}
+\paragraph[{cntr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Contrast} {\bf Experiment::cntr}\hspace{0.3cm}{\ttfamily  \mbox{[}protected\mbox{]}}}\hfill}
+\label{classExperiment_a33681f3d1524923e4936daed9ac4bac4}
+
+
+The contrast type. 
+
+
+
+Definition at line 171 of file experiment.h.
+
+
+
+Referenced by contrast().
+
+\hypertarget{classExperiment_a49f72b0d8d927296de2e048221a87e85}{
+\index{Experiment@{Experiment}!sh@{sh}}
+\index{sh@{sh}!Experiment@{Experiment}}
+\paragraph[{sh}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Shape} {\bf Experiment::sh}\hspace{0.3cm}{\ttfamily  \mbox{[}protected\mbox{]}}}\hfill}
+\label{classExperiment_a49f72b0d8d927296de2e048221a87e85}
+
+
+Shape of the projections. 
+
+
+
+Definition at line 170 of file experiment.h.
+
+
+
+Referenced by Experiment(), IPCexp::IPCexp(), pixels(), IPCexp::projection(), EDEIexp::projection(), DEIexp::projection(), and slices().
+
+\hypertarget{classExperiment_a70638a31b46407c2d58ca5c7055e6db4}{
+\index{Experiment@{Experiment}!thts@{thts}}
+\index{thts@{thts}!Experiment@{Experiment}}
+\paragraph[{thts}]{\setlength{\rightskip}{0pt plus 5cm}long {\bf Experiment::thts}\hspace{0.3cm}{\ttfamily  \mbox{[}protected\mbox{]}}}\hfill}
+\label{classExperiment_a70638a31b46407c2d58ca5c7055e6db4}
+
+
+Number of projections (sinogram height). 
+
+
+
+Definition at line 169 of file experiment.h.
+
+
+
+Referenced by Experiment(), IPCexp::IPCexp(), and thetas().
+
+
+
+The documentation for this class was generated from the following file:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{experiment_8h}{experiment.h}\end{DoxyCompactItemize}

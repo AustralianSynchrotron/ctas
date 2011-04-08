@@ -1,0 +1,1062 @@
+\hypertarget{classCTrec}{
+\subsection{CTrec Class Reference}
+\label{classCTrec}\index{CTrec@{CTrec}}
+}
+
+
+CT reconstruction class.  
+
+
+
+
+{\ttfamily \#include $<$kernel.h$>$}
+
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classCTrec_a600b06fc54845a8bbff34ec2cfe10dc9}{CTrec} (int px, \hyperlink{classContrast}{Contrast} cn, int tr=0, const \hyperlink{classFilter}{Filter} \&ft=\hyperlink{classFilter}{Filter}())
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{classCTrec_a8399e98e0f873fbacd2c19d954d1ee2b}{CTrec} (int px, \hyperlink{classContrast}{Contrast} cn, const \hyperlink{classFilter}{Filter} \&ft)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{classCTrec_aa645497b42cbb9faa801b54e00ab8912}{$\sim$CTrec} ()
+\begin{DoxyCompactList}\small\item\em Destructor. \item\end{DoxyCompactList}\item 
+int \hyperlink{classCTrec_a8035ba4ea418a79cba3f56e42a85cfb1}{pixels} () const 
+\begin{DoxyCompactList}\small\item\em Width of the reconstructed image. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_ab0bda30e0ff6585f13cfefe00cf1ee5e}{contrast} (\hyperlink{classContrast}{Contrast} cn)
+\begin{DoxyCompactList}\small\item\em Changes type of the contrast. \item\end{DoxyCompactList}\item 
+\hyperlink{classContrast}{Contrast} \hyperlink{classCTrec_a2b6d5eae79d780394a6cf2f0a7e860a6}{contrast} () const 
+\begin{DoxyCompactList}\small\item\em Type of the contrast. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a56c428df8144213e53cf87029134a3ac}{threads} (int tr)
+\begin{DoxyCompactList}\small\item\em Changes number of threads. \item\end{DoxyCompactList}\item 
+int \hyperlink{classCTrec_af59a5e43cbdc7047ee5da7391d9c0385}{threads} () const 
+\begin{DoxyCompactList}\small\item\em Number of threads. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a3220ac29961577f2070a01612aa609fb}{filter} (const \hyperlink{classFilter}{Filter} \&ft)
+\begin{DoxyCompactList}\small\item\em Changes type of the filter function. \item\end{DoxyCompactList}\item 
+\hyperlink{classFilter}{Filter} \hyperlink{classCTrec_a271d4389ba40526d7c50324f5973365b}{filter} () const 
+\begin{DoxyCompactList}\small\item\em Type of the filter function. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a8a82f56167150e59d38bf831e812c4ea}{reconstruct} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&sinogram, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const float center) const 
+\begin{DoxyCompactList}\small\item\em Actual reconstruction of a single sinogram. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_acb42c0e929a3d2ee57bf9718b00686df}{addLine} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&sinoline, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const float Theta, const float center) const 
+\begin{DoxyCompactList}\small\item\em Adding one sinogram line to the reconstruction. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static void \hyperlink{classCTrec_abc505913072c98451777f51e8f6538e5}{finilize} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, int thetas, float pixelSize=1.0)
+\begin{DoxyCompactList}\small\item\em Finalize the calculations. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classCTrec_a3fe0212cf11d705168bb9c9701d8c818}{pixels} (int px)
+\begin{DoxyCompactList}\small\item\em Pixels. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a8da831c3e57bc8925b67155aa9dc06d7}{reconstruct\_\-uni} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&sinogram, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, float center) const 
+\begin{DoxyCompactList}\small\item\em Core reconstruction (currently universal for all types of contrast). \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a3bb57574704cba563bd6ed4b744744de}{reconstruct\_\-abs} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&sinogram, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, float center) const 
+\begin{DoxyCompactList}\small\item\em Core reconstruction: absorption. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a0d8046125f82d2ccd559cb026b623d7a}{reconstruct\_\-abs\_\-thr} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&sinogram, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, float center) const 
+\begin{DoxyCompactList}\small\item\em Core reconstruction: absorption, parallel approach. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a17eddd671efd6189fd07b541adc4a6ab}{reconstruct\_\-ref} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&sinogram, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, float center) const 
+\begin{DoxyCompactList}\small\item\em Core reconstruction: refraction. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a779c44d7e4d066af17182d18648f58bd}{reconstruct\_\-ref\_\-thr} (\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&sinogram, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, float center) const 
+\begin{DoxyCompactList}\small\item\em Core reconstruction: refraction, parallel approach. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_ac016e9ad52824ecd69bc4ebbba688282}{addLine\_\-ref} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&sinoline, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const float Theta, const float center) const 
+\begin{DoxyCompactList}\small\item\em Core addLine: refraction. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a5e986b37c54a91ee417bb3081bf0cdd3}{addLine\_\-abs} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&sinoline, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const float Theta, const float center) const 
+\begin{DoxyCompactList}\small\item\em Core addLine: absorption. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_ae5cdc2190ad4d7c2da723f95d1a26529}{addLine\_\-uni} (\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&sinoline, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&result, const float Theta, const float center) const 
+\begin{DoxyCompactList}\small\item\em Core function to add a projection line into the reconstruction. \item\end{DoxyCompactList}\item 
+void \hyperlink{classCTrec_a201dd58d6ae65a55ec1fd9f5300f7064}{choose\_\-algorithm} ()
+\begin{DoxyCompactList}\small\item\em Sets \_\-reconstruct. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classCTrec_a91849845389f46350ac0bc79e2e43486}{\_\-pixels}
+\begin{DoxyCompactList}\small\item\em Width of the reconstructed image. \item\end{DoxyCompactList}\item 
+\hyperlink{classContrast}{Contrast} \hyperlink{classCTrec_a4a2c0cea76273f93c7bd69d10b090c1a}{\_\-contrast}
+\begin{DoxyCompactList}\small\item\em Type of the contrast. \item\end{DoxyCompactList}\item 
+int \hyperlink{classCTrec_aff2191f8d346c015b4df15e05d3a0d31}{\_\-threads}
+\begin{DoxyCompactList}\small\item\em Number of threads. \item\end{DoxyCompactList}\item 
+\hyperlink{classFilter}{Filter} \hyperlink{classCTrec_a57ae11bb07c6d1015eab118a8e68cc7f}{\_\-filter}
+\begin{DoxyCompactList}\small\item\em Type of the filter function. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \hyperlink{classCTrec_a68ba6426b5de1fc98b63ff6c88d402f4}{filt\_\-window}
+\begin{DoxyCompactList}\small\item\em The array containing the filter window. \item\end{DoxyCompactList}\item 
+fftwf\_\-plan \hyperlink{classCTrec_a18670a29e97fab9f49e3a0060ddcd071}{planF}
+\begin{DoxyCompactList}\small\item\em Forward FFT transformation. \item\end{DoxyCompactList}\item 
+fftwf\_\-plan \hyperlink{classCTrec_a963a0669b7a3c59119085639f660b154}{planB}
+\begin{DoxyCompactList}\small\item\em Backward FFT transformation. \item\end{DoxyCompactList}\item 
+void(CTrec::$\ast$ \hyperlink{classCTrec_a09c82f115c45c386250a68cd0d8d957b}{\_\-reconstruct} )(\hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&, float) const 
+\begin{DoxyCompactList}\small\item\em Actual reconstruction function. \item\end{DoxyCompactList}\item 
+void(CTrec::$\ast$ \hyperlink{classCTrec_aff1a740cb831c50dceca306fe47c6062}{\_\-addLine} )(\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \&, \hyperlink{group__Types_ga8747378c016fc11d9ecbb98787248c25}{Map} \&, const float, const float) const 
+\begin{DoxyCompactList}\small\item\em Actual function which adds the sinogram line to the result. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{classCTrec_ad29b8e1dff3171ec14f60658204c8de5}{modname} = \char`\"{}reconstruction\char`\"{}
+\begin{DoxyCompactList}\small\item\em Module name. \item\end{DoxyCompactList}\item 
+static const float \hyperlink{classCTrec_ac13bcb5f9e53622aa19d440684fa7273}{zPad} = 2.0
+\begin{DoxyCompactList}\small\item\em Zero-\/padding coefficient. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+CT reconstruction class. This class first collects all information needed for the CT reconstruction (size, contrast type, filter, etc.) and then performs the reconstruction using either \hyperlink{classCTrec_a8a82f56167150e59d38bf831e812c4ea}{CTrec::reconstruct} or \hyperlink{classCTrec_acb42c0e929a3d2ee57bf9718b00686df}{CTrec::addLine} methods I designed the CT as the class not as a function in order to provide easy way to plug in any new contrast and/or algorithm (f.e. GPU-\/, FPGA-\/, bla-\/bla-\/bla-\/based).
+
+In order to include new reconstruction algorithm you should follow these steps:
+\begin{DoxyEnumerate}
+\item Add the method which implements you algorithm. See \hyperlink{classCTrec_a3bb57574704cba563bd6ed4b744744de}{CTrec::reconstruct\_\-abs()} and other CTrec::reconstruct\_\-$\ast$ methods for example (currently all of them just call the universal reconstruction \hyperlink{classCTrec_a8da831c3e57bc8925b67155aa9dc06d7}{CTrec::reconstruct\_\-uni()}, they are added into the class just for the architecture's flexibility).
+\item Set the \hyperlink{classCTrec_a09c82f115c45c386250a68cd0d8d957b}{CTrec::\_\-reconstruct} and \hyperlink{classCTrec_aff1a740cb831c50dceca306fe47c6062}{CTrec::\_\-addLine} pointers to your method from the previous step. Please do it ONLY within \hyperlink{classCTrec_a201dd58d6ae65a55ec1fd9f5300f7064}{CTrec::choose\_\-algorithm()}. The choice of the pointer may depend on any condition you can imagine and any parameter(s) you have added in the first step.
+\item If needed, add new member(s) into the class which are required for the algorithm (see \hyperlink{classCTrec_a57ae11bb07c6d1015eab118a8e68cc7f}{CTrec::\_\-filter} for example). For these new member(s) create set/get methods (see \hyperlink{classCTrec_a3220ac29961577f2070a01612aa609fb}{CTrec::filter()} and \hyperlink{classCTrec_a3220ac29961577f2070a01612aa609fb}{CTrec::filter(const Filter \&)} for example).
+\item If it is needed, add the new constructor, or update existing one.
+\end{DoxyEnumerate}
+
+Voala: you can initialize the reconstruction and reconstruct your sinogram using \hyperlink{classCTrec_a8a82f56167150e59d38bf831e812c4ea}{CTrec::reconstruct()} method (f.e. see \hyperlink{ct_8cpp}{ct.cpp} ). 
+
+Definition at line 213 of file kernel.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classCTrec_a600b06fc54845a8bbff34ec2cfe10dc9}{
+\index{CTrec@{CTrec}!CTrec@{CTrec}}
+\index{CTrec@{CTrec}!CTrec@{CTrec}}
+\paragraph[{CTrec}]{\setlength{\rightskip}{0pt plus 5cm}CTrec::CTrec (
+\begin{DoxyParamCaption}
+\item[{int}]{px, }
+\item[{{\bf Contrast}}]{cn, }
+\item[{int}]{tr = {\ttfamily 0}, }
+\item[{const {\bf Filter} \&}]{ft = {\ttfamily {\bf Filter}()}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classCTrec_a600b06fc54845a8bbff34ec2cfe10dc9}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em px} & Width of the reconstructed image. \\
+\hline
+{\em cn} & Type of the contrast. \\
+\hline
+{\em tr} & Number of threads. \\
+\hline
+{\em ft} & Type of the filter function. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 744 of file kernel.cpp.
+
+
+
+References \_\-contrast, \_\-filter, \_\-pixels, \_\-threads, choose\_\-algorithm(), contrast(), filter(), pixels(), and threads().
+
+\hypertarget{classCTrec_a8399e98e0f873fbacd2c19d954d1ee2b}{
+\index{CTrec@{CTrec}!CTrec@{CTrec}}
+\index{CTrec@{CTrec}!CTrec@{CTrec}}
+\paragraph[{CTrec}]{\setlength{\rightskip}{0pt plus 5cm}CTrec::CTrec (
+\begin{DoxyParamCaption}
+\item[{int}]{px, }
+\item[{{\bf Contrast}}]{cn, }
+\item[{const {\bf Filter} \&}]{ft}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classCTrec_a8399e98e0f873fbacd2c19d954d1ee2b}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em px} & Width of the reconstructed image. \\
+\hline
+{\em cn} & Type of the contrast. \\
+\hline
+{\em ft} & Type of the filter function. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 759 of file kernel.cpp.
+
+
+
+References \_\-contrast, \_\-filter, \_\-pixels, \_\-threads, choose\_\-algorithm(), contrast(), filter(), pixels(), and threads().
+
+\hypertarget{classCTrec_aa645497b42cbb9faa801b54e00ab8912}{
+\index{CTrec@{CTrec}!$\sim$CTrec@{$\sim$CTrec}}
+\index{$\sim$CTrec@{$\sim$CTrec}!CTrec@{CTrec}}
+\paragraph[{$\sim$CTrec}]{\setlength{\rightskip}{0pt plus 5cm}CTrec::$\sim$CTrec (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classCTrec_aa645497b42cbb9faa801b54e00ab8912}
+
+
+Destructor. 
+
+
+
+Definition at line 696 of file kernel.cpp.
+
+
+
+References planB, and planF.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classCTrec_acb42c0e929a3d2ee57bf9718b00686df}{
+\index{CTrec@{CTrec}!addLine@{addLine}}
+\index{addLine@{addLine}!CTrec@{CTrec}}
+\paragraph[{addLine}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::addLine (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{sinoline, }
+\item[{{\bf Map} \&}]{result, }
+\item[{const float}]{Theta, }
+\item[{const float}]{center}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classCTrec_acb42c0e929a3d2ee57bf9718b00686df}
+
+
+Adding one sinogram line to the reconstruction. 
+
+Add one line to the reconstruction.
+
+
+\begin{DoxyParams}{Parameters}
+{\em Theta} & Projection angle. \\
+\hline
+{\em sinoline} & Projection data. \\
+\hline
+{\em result} & Output result. \\
+\hline
+{\em center} & Deviation of the rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 664 of file kernel.cpp.
+
+
+
+References \_\-addLine, \_\-contrast, \_\-pixels, Contrast::ABS, modname, throw\_\-error(), toString(), and unzero().
+
+
+
+Referenced by main().
+
+\hypertarget{classCTrec_a5e986b37c54a91ee417bb3081bf0cdd3}{
+\index{CTrec@{CTrec}!addLine\_\-abs@{addLine\_\-abs}}
+\index{addLine\_\-abs@{addLine\_\-abs}!CTrec@{CTrec}}
+\paragraph[{addLine\_\-abs}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::addLine\_\-abs (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{sinoline, }
+\item[{{\bf Map} \&}]{result, }
+\item[{const float}]{Theta, }
+\item[{const float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a5e986b37c54a91ee417bb3081bf0cdd3}
+
+
+Core addLine: absorption. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinoline} & Projection data. \\
+\hline
+{\em result} & Output result. \\
+\hline
+{\em Theta} & Projection angle. \\
+\hline
+{\em center} & Deviation of the rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 919 of file kernel.cpp.
+
+
+
+References addLine\_\-uni().
+
+
+
+Referenced by choose\_\-algorithm().
+
+\hypertarget{classCTrec_ac016e9ad52824ecd69bc4ebbba688282}{
+\index{CTrec@{CTrec}!addLine\_\-ref@{addLine\_\-ref}}
+\index{addLine\_\-ref@{addLine\_\-ref}!CTrec@{CTrec}}
+\paragraph[{addLine\_\-ref}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::addLine\_\-ref (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{sinoline, }
+\item[{{\bf Map} \&}]{result, }
+\item[{const float}]{Theta, }
+\item[{const float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_ac016e9ad52824ecd69bc4ebbba688282}
+
+
+Core addLine: refraction. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinoline} & Projection data. \\
+\hline
+{\em result} & Output result. \\
+\hline
+{\em Theta} & Projection angle. \\
+\hline
+{\em center} & Deviation of the rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 931 of file kernel.cpp.
+
+
+
+References addLine\_\-uni().
+
+
+
+Referenced by choose\_\-algorithm().
+
+\hypertarget{classCTrec_ae5cdc2190ad4d7c2da723f95d1a26529}{
+\index{CTrec@{CTrec}!addLine\_\-uni@{addLine\_\-uni}}
+\index{addLine\_\-uni@{addLine\_\-uni}!CTrec@{CTrec}}
+\paragraph[{addLine\_\-uni}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::addLine\_\-uni (
+\begin{DoxyParamCaption}
+\item[{{\bf Line} \&}]{sinoline, }
+\item[{{\bf Map} \&}]{result, }
+\item[{const float}]{Theta, }
+\item[{const float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_ae5cdc2190ad4d7c2da723f95d1a26529}
+
+
+Core function to add a projection line into the reconstruction. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Theta} & Projection angle. \\
+\hline
+{\em sinoline} & Projection data. \\
+\hline
+{\em result} & Output result. \\
+\hline
+{\em center} & Deviation of the rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 596 of file kernel.cpp.
+
+
+
+References \_\-contrast, \_\-pixels, Contrast::ABS, filt\_\-window, filter\_\-line(), Contrast::FLT, planB, planF, project\_\-line(), Contrast::REF, and zPad.
+
+
+
+Referenced by addLine\_\-abs(), addLine\_\-ref(), and choose\_\-algorithm().
+
+\hypertarget{classCTrec_a201dd58d6ae65a55ec1fd9f5300f7064}{
+\index{CTrec@{CTrec}!choose\_\-algorithm@{choose\_\-algorithm}}
+\index{choose\_\-algorithm@{choose\_\-algorithm}!CTrec@{CTrec}}
+\paragraph[{choose\_\-algorithm}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::choose\_\-algorithm (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a201dd58d6ae65a55ec1fd9f5300f7064}
+
+
+Sets \_\-reconstruct. 
+
+Assigns one of the algorithms to the \hyperlink{classCTrec_a09c82f115c45c386250a68cd0d8d957b}{CTrec::\_\-reconstruct} pointer.
+
+The assignment is done on the basis of the pre-\/defined members of the class. This method should be called whenever any algoritm-\/defining parameter is altered. 
+
+Definition at line 830 of file kernel.cpp.
+
+
+
+References \_\-addLine, \_\-contrast, \_\-reconstruct, \_\-threads, Contrast::ABS, addLine\_\-abs(), addLine\_\-ref(), addLine\_\-uni(), Contrast::contrast(), Contrast::FLT, modname, Contrast::name(), Contrast::PHS, reconstruct\_\-abs(), reconstruct\_\-abs\_\-thr(), reconstruct\_\-ref(), reconstruct\_\-ref\_\-thr(), reconstruct\_\-uni(), Contrast::REF, and warn().
+
+
+
+Referenced by contrast(), CTrec(), and threads().
+
+\hypertarget{classCTrec_ab0bda30e0ff6585f13cfefe00cf1ee5e}{
+\index{CTrec@{CTrec}!contrast@{contrast}}
+\index{contrast@{contrast}!CTrec@{CTrec}}
+\paragraph[{contrast}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::contrast (
+\begin{DoxyParamCaption}
+\item[{{\bf Contrast}}]{cn}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classCTrec_ab0bda30e0ff6585f13cfefe00cf1ee5e}
+
+
+Changes type of the contrast. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em cn} & New contrast type. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 794 of file kernel.cpp.
+
+
+
+References \_\-contrast, and choose\_\-algorithm().
+
+\hypertarget{classCTrec_a2b6d5eae79d780394a6cf2f0a7e860a6}{
+\index{CTrec@{CTrec}!contrast@{contrast}}
+\index{contrast@{contrast}!CTrec@{CTrec}}
+\paragraph[{contrast}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Contrast} CTrec::contrast (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classCTrec_a2b6d5eae79d780394a6cf2f0a7e860a6}
+
+
+Type of the contrast. 
+
+\begin{DoxyReturn}{Returns}
+Type of the contrast. 
+\end{DoxyReturn}
+
+
+Definition at line 715 of file kernel.cpp.
+
+
+
+References \_\-contrast.
+
+
+
+Referenced by CTrec().
+
+\hypertarget{classCTrec_a3220ac29961577f2070a01612aa609fb}{
+\index{CTrec@{CTrec}!filter@{filter}}
+\index{filter@{filter}!CTrec@{CTrec}}
+\paragraph[{filter}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::filter (
+\begin{DoxyParamCaption}
+\item[{const {\bf Filter} \&}]{ft}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classCTrec_a3220ac29961577f2070a01612aa609fb}
+
+
+Changes type of the filter function. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ft} & New type of the filter function. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 804 of file kernel.cpp.
+
+
+
+References \_\-contrast, \_\-filter, \_\-pixels, Filter::fill(), filt\_\-window, Contrast::REF, and zPad.
+
+\hypertarget{classCTrec_a271d4389ba40526d7c50324f5973365b}{
+\index{CTrec@{CTrec}!filter@{filter}}
+\index{filter@{filter}!CTrec@{CTrec}}
+\paragraph[{filter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Filter} CTrec::filter (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classCTrec_a271d4389ba40526d7c50324f5973365b}
+
+
+Type of the filter function. 
+
+\begin{DoxyReturn}{Returns}
+Type of the filter function. 
+\end{DoxyReturn}
+
+
+Definition at line 733 of file kernel.cpp.
+
+
+
+References \_\-filter.
+
+
+
+Referenced by CTrec(), and pixels().
+
+\hypertarget{classCTrec_abc505913072c98451777f51e8f6538e5}{
+\index{CTrec@{CTrec}!finilize@{finilize}}
+\index{finilize@{finilize}!CTrec@{CTrec}}
+\paragraph[{finilize}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::finilize (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{result, }
+\item[{int}]{thetas, }
+\item[{float}]{pixelSize = {\ttfamily 1.0}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}static\mbox{]}}}\hfill}
+\label{classCTrec_abc505913072c98451777f51e8f6538e5}
+
+
+Finalize the calculations. 
+
+The result of the reconstruction procedure is not normalized to represent the real physical values because the CT algorithm, for the simplicity does not know all parameters needed. This function will do the normalization of the result array. If the array was reconstructed using the \hyperlink{classCTrec_a8a82f56167150e59d38bf831e812c4ea}{CTrec::reconstruct()} or \hyperlink{classCTrec_acb42c0e929a3d2ee57bf9718b00686df}{CTrec::addLine()} methods, with the correct physical values on input, after the normalization it will represent correct values of: $\mu$ -\/ for the \hyperlink{classContrast_a99b7c9b3f4f10b92a6db24002adac72fa81734a45711f288f6c5e7f54bcbbffbb}{Contrast::ABS} $\delta$ -\/ for the \hyperlink{classContrast_a99b7c9b3f4f10b92a6db24002adac72fa1b525c7d8fa77ecc38d32957bdbb2a77}{Contrast::PHS} and \hyperlink{classContrast_a99b7c9b3f4f10b92a6db24002adac72faf34254288d1ad4c4847bf6dec827b603}{Contrast::REF}.
+
+
+\begin{DoxyParams}{Parameters}
+{\em result} & The array to be normalized \\
+\hline
+{\em thetas} & Number of projections used in the CT reconstruction. \\
+\hline
+{\em pixelSize} & Physical size of the pixel \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 936 of file kernel.cpp.
+
+
+
+Referenced by main().
+
+\hypertarget{classCTrec_a8035ba4ea418a79cba3f56e42a85cfb1}{
+\index{CTrec@{CTrec}!pixels@{pixels}}
+\index{pixels@{pixels}!CTrec@{CTrec}}
+\paragraph[{pixels}]{\setlength{\rightskip}{0pt plus 5cm}int CTrec::pixels (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classCTrec_a8035ba4ea418a79cba3f56e42a85cfb1}
+
+
+Width of the reconstructed image. 
+
+\begin{DoxyReturn}{Returns}
+Width of the reconstructed image. 
+\end{DoxyReturn}
+
+
+Definition at line 706 of file kernel.cpp.
+
+
+
+References \_\-pixels.
+
+
+
+Referenced by CTrec().
+
+\hypertarget{classCTrec_a3fe0212cf11d705168bb9c9701d8c818}{
+\index{CTrec@{CTrec}!pixels@{pixels}}
+\index{pixels@{pixels}!CTrec@{CTrec}}
+\paragraph[{pixels}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::pixels (
+\begin{DoxyParamCaption}
+\item[{int}]{px}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a3fe0212cf11d705168bb9c9701d8c818}
+
+
+Pixels. 
+
+Sets \_\-pixels, allocates FFT plans.
+
+I made this method private because will have to reallocate FFT plans, resize and refill the filter window, etc. If you want to reconstruct with different width, you'd better create new \hyperlink{classCTrec}{CTrec} object for this. May be I will change this behaviour in the future
+
+
+\begin{DoxyParams}{Parameters}
+{\em px} & Width of the sinograms to be reconstructed \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 779 of file kernel.cpp.
+
+
+
+References \_\-filter, \_\-pixels, filter(), modname, planB, planF, throw\_\-error(), toString(), and zPad.
+
+\hypertarget{classCTrec_a8a82f56167150e59d38bf831e812c4ea}{
+\index{CTrec@{CTrec}!reconstruct@{reconstruct}}
+\index{reconstruct@{reconstruct}!CTrec@{CTrec}}
+\paragraph[{reconstruct}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::reconstruct (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{sinogram, }
+\item[{{\bf Map} \&}]{result, }
+\item[{const float}]{center}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classCTrec_a8a82f56167150e59d38bf831e812c4ea}
+
+
+Actual reconstruction of a single sinogram. 
+
+Actual reconstruction.
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinogram} & Input sinogram. Can be altered by the reconstruction process. \\
+\hline
+{\em result} & Output result. \\
+\hline
+{\em center} & Deviation of the rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 629 of file kernel.cpp.
+
+
+
+References \_\-contrast, \_\-pixels, \_\-reconstruct, Contrast::ABS, modname, throw\_\-error(), toString(), and unzero().
+
+
+
+Referenced by main().
+
+\hypertarget{classCTrec_a3bb57574704cba563bd6ed4b744744de}{
+\index{CTrec@{CTrec}!reconstruct\_\-abs@{reconstruct\_\-abs}}
+\index{reconstruct\_\-abs@{reconstruct\_\-abs}!CTrec@{CTrec}}
+\paragraph[{reconstruct\_\-abs}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::reconstruct\_\-abs (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{sinogram, }
+\item[{{\bf Map} \&}]{result, }
+\item[{float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a3bb57574704cba563bd6ed4b744744de}
+
+
+Core reconstruction: absorption. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinogram} & Input sinogram. After the reconstruction represents filtered sinogram. \\
+\hline
+{\em result} & Reconstructed result. \\
+\hline
+{\em center} & Rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 869 of file kernel.cpp.
+
+
+
+References reconstruct\_\-uni().
+
+
+
+Referenced by choose\_\-algorithm().
+
+\hypertarget{classCTrec_a0d8046125f82d2ccd559cb026b623d7a}{
+\index{CTrec@{CTrec}!reconstruct\_\-abs\_\-thr@{reconstruct\_\-abs\_\-thr}}
+\index{reconstruct\_\-abs\_\-thr@{reconstruct\_\-abs\_\-thr}!CTrec@{CTrec}}
+\paragraph[{reconstruct\_\-abs\_\-thr}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::reconstruct\_\-abs\_\-thr (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{sinogram, }
+\item[{{\bf Map} \&}]{result, }
+\item[{float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a0d8046125f82d2ccd559cb026b623d7a}
+
+
+Core reconstruction: absorption, parallel approach. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinogram} & Input sinogram. After the reconstruction represents filtered sinogram. \\
+\hline
+{\em result} & Reconstructed result. \\
+\hline
+{\em center} & Rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 893 of file kernel.cpp.
+
+
+
+References reconstruct\_\-uni().
+
+
+
+Referenced by choose\_\-algorithm().
+
+\hypertarget{classCTrec_a17eddd671efd6189fd07b541adc4a6ab}{
+\index{CTrec@{CTrec}!reconstruct\_\-ref@{reconstruct\_\-ref}}
+\index{reconstruct\_\-ref@{reconstruct\_\-ref}!CTrec@{CTrec}}
+\paragraph[{reconstruct\_\-ref}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::reconstruct\_\-ref (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{sinogram, }
+\item[{{\bf Map} \&}]{result, }
+\item[{float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a17eddd671efd6189fd07b541adc4a6ab}
+
+
+Core reconstruction: refraction. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinogram} & Input sinogram. After the reconstruction represents filtered sinogram. \\
+\hline
+{\em result} & Reconstructed result. \\
+\hline
+{\em center} & Rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 881 of file kernel.cpp.
+
+
+
+References reconstruct\_\-uni().
+
+
+
+Referenced by choose\_\-algorithm().
+
+\hypertarget{classCTrec_a779c44d7e4d066af17182d18648f58bd}{
+\index{CTrec@{CTrec}!reconstruct\_\-ref\_\-thr@{reconstruct\_\-ref\_\-thr}}
+\index{reconstruct\_\-ref\_\-thr@{reconstruct\_\-ref\_\-thr}!CTrec@{CTrec}}
+\paragraph[{reconstruct\_\-ref\_\-thr}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::reconstruct\_\-ref\_\-thr (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{sinogram, }
+\item[{{\bf Map} \&}]{result, }
+\item[{float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a779c44d7e4d066af17182d18648f58bd}
+
+
+Core reconstruction: refraction, parallel approach. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinogram} & Input sinogram. After the reconstruction represents filtered sinogram. \\
+\hline
+{\em result} & Reconstructed result. \\
+\hline
+{\em center} & Rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 906 of file kernel.cpp.
+
+
+
+References reconstruct\_\-uni().
+
+
+
+Referenced by choose\_\-algorithm().
+
+\hypertarget{classCTrec_a8da831c3e57bc8925b67155aa9dc06d7}{
+\index{CTrec@{CTrec}!reconstruct\_\-uni@{reconstruct\_\-uni}}
+\index{reconstruct\_\-uni@{reconstruct\_\-uni}!CTrec@{CTrec}}
+\paragraph[{reconstruct\_\-uni}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::reconstruct\_\-uni (
+\begin{DoxyParamCaption}
+\item[{{\bf Map} \&}]{sinogram, }
+\item[{{\bf Map} \&}]{result, }
+\item[{float}]{center}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a8da831c3e57bc8925b67155aa9dc06d7}
+
+
+Core reconstruction (currently universal for all types of contrast). 
+
+Other reconstruction functions ( CTrec::reconstruct\_\-$\ast$() ) are in their place to allow possible future branching of the reconstruction methods/algorithms. Currently all of them just call this universal reconstruction function
+
+
+\begin{DoxyParams}{Parameters}
+{\em sinogram} & Input sinogram. After the reconstruction represents filtered sinogram. \\
+\hline
+{\em result} & Reconstructed result. \\
+\hline
+{\em center} & Rotation center. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 559 of file kernel.cpp.
+
+
+
+References \_\-contrast, \_\-pixels, \_\-threads, Contrast::ABS, filt\_\-window, filter\_\-line(), Contrast::FLT, planB, planF, project\_\-sino(), Contrast::REF, and zPad.
+
+
+
+Referenced by choose\_\-algorithm(), reconstruct\_\-abs(), reconstruct\_\-abs\_\-thr(), reconstruct\_\-ref(), and reconstruct\_\-ref\_\-thr().
+
+\hypertarget{classCTrec_a56c428df8144213e53cf87029134a3ac}{
+\index{CTrec@{CTrec}!threads@{threads}}
+\index{threads@{threads}!CTrec@{CTrec}}
+\paragraph[{threads}]{\setlength{\rightskip}{0pt plus 5cm}void CTrec::threads (
+\begin{DoxyParamCaption}
+\item[{int}]{tr = {\ttfamily 1}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classCTrec_a56c428df8144213e53cf87029134a3ac}
+
+
+Changes number of threads. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em tr} & New number of threads. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 817 of file kernel.cpp.
+
+
+
+References \_\-threads, choose\_\-algorithm(), and nof\_\-threads().
+
+\hypertarget{classCTrec_af59a5e43cbdc7047ee5da7391d9c0385}{
+\index{CTrec@{CTrec}!threads@{threads}}
+\index{threads@{threads}!CTrec@{CTrec}}
+\paragraph[{threads}]{\setlength{\rightskip}{0pt plus 5cm}int CTrec::threads (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classCTrec_af59a5e43cbdc7047ee5da7391d9c0385}
+
+
+Number of threads. 
+
+\begin{DoxyReturn}{Returns}
+Number of threads. 
+\end{DoxyReturn}
+
+
+Definition at line 724 of file kernel.cpp.
+
+
+
+References \_\-threads.
+
+
+
+Referenced by CTrec().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classCTrec_aff1a740cb831c50dceca306fe47c6062}{
+\index{CTrec@{CTrec}!\_\-addLine@{\_\-addLine}}
+\index{\_\-addLine@{\_\-addLine}!CTrec@{CTrec}}
+\paragraph[{\_\-addLine}]{\setlength{\rightskip}{0pt plus 5cm}void(CTrec::$\ast$ {\bf CTrec::\_\-addLine})({\bf Line} \&, {\bf Map} \&, const float, const float) const \hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_aff1a740cb831c50dceca306fe47c6062}
+
+
+Actual function which adds the sinogram line to the result. 
+
+Pointer to one of the addLine functions (see above) which would be used in the reconstruction algorithm. 
+
+Definition at line 254 of file kernel.h.
+
+
+
+Referenced by addLine(), and choose\_\-algorithm().
+
+\hypertarget{classCTrec_a4a2c0cea76273f93c7bd69d10b090c1a}{
+\index{CTrec@{CTrec}!\_\-contrast@{\_\-contrast}}
+\index{\_\-contrast@{\_\-contrast}!CTrec@{CTrec}}
+\paragraph[{\_\-contrast}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Contrast} {\bf CTrec::\_\-contrast}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a4a2c0cea76273f93c7bd69d10b090c1a}
+
+
+Type of the contrast. 
+
+
+
+Definition at line 222 of file kernel.h.
+
+
+
+Referenced by addLine(), addLine\_\-uni(), choose\_\-algorithm(), contrast(), CTrec(), filter(), reconstruct(), and reconstruct\_\-uni().
+
+\hypertarget{classCTrec_a57ae11bb07c6d1015eab118a8e68cc7f}{
+\index{CTrec@{CTrec}!\_\-filter@{\_\-filter}}
+\index{\_\-filter@{\_\-filter}!CTrec@{CTrec}}
+\paragraph[{\_\-filter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Filter} {\bf CTrec::\_\-filter}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a57ae11bb07c6d1015eab118a8e68cc7f}
+
+
+Type of the filter function. 
+
+
+
+Definition at line 224 of file kernel.h.
+
+
+
+Referenced by CTrec(), filter(), and pixels().
+
+\hypertarget{classCTrec_a91849845389f46350ac0bc79e2e43486}{
+\index{CTrec@{CTrec}!\_\-pixels@{\_\-pixels}}
+\index{\_\-pixels@{\_\-pixels}!CTrec@{CTrec}}
+\paragraph[{\_\-pixels}]{\setlength{\rightskip}{0pt plus 5cm}int {\bf CTrec::\_\-pixels}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a91849845389f46350ac0bc79e2e43486}
+
+
+Width of the reconstructed image. 
+
+
+
+Definition at line 221 of file kernel.h.
+
+
+
+Referenced by addLine(), addLine\_\-uni(), CTrec(), filter(), pixels(), reconstruct(), and reconstruct\_\-uni().
+
+\hypertarget{classCTrec_a09c82f115c45c386250a68cd0d8d957b}{
+\index{CTrec@{CTrec}!\_\-reconstruct@{\_\-reconstruct}}
+\index{\_\-reconstruct@{\_\-reconstruct}!CTrec@{CTrec}}
+\paragraph[{\_\-reconstruct}]{\setlength{\rightskip}{0pt plus 5cm}void(CTrec::$\ast$ {\bf CTrec::\_\-reconstruct})({\bf Map} \&, {\bf Map} \&, float) const \hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a09c82f115c45c386250a68cd0d8d957b}
+
+
+Actual reconstruction function. 
+
+Pointer to one of the reconstruction functions (see above) which would be used in the reconstruction algorithm. 
+
+Definition at line 248 of file kernel.h.
+
+
+
+Referenced by choose\_\-algorithm(), and reconstruct().
+
+\hypertarget{classCTrec_aff2191f8d346c015b4df15e05d3a0d31}{
+\index{CTrec@{CTrec}!\_\-threads@{\_\-threads}}
+\index{\_\-threads@{\_\-threads}!CTrec@{CTrec}}
+\paragraph[{\_\-threads}]{\setlength{\rightskip}{0pt plus 5cm}int {\bf CTrec::\_\-threads}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_aff2191f8d346c015b4df15e05d3a0d31}
+
+
+Number of threads. 
+
+
+
+Definition at line 223 of file kernel.h.
+
+
+
+Referenced by choose\_\-algorithm(), CTrec(), reconstruct\_\-uni(), and threads().
+
+\hypertarget{classCTrec_a68ba6426b5de1fc98b63ff6c88d402f4}{
+\index{CTrec@{CTrec}!filt\_\-window@{filt\_\-window}}
+\index{filt\_\-window@{filt\_\-window}!CTrec@{CTrec}}
+\paragraph[{filt\_\-window}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Line} {\bf CTrec::filt\_\-window}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a68ba6426b5de1fc98b63ff6c88d402f4}
+
+
+The array containing the filter window. 
+
+
+
+Definition at line 229 of file kernel.h.
+
+
+
+Referenced by addLine\_\-uni(), filter(), and reconstruct\_\-uni().
+
+\hypertarget{classCTrec_ad29b8e1dff3171ec14f60658204c8de5}{
+\index{CTrec@{CTrec}!modname@{modname}}
+\index{modname@{modname}!CTrec@{CTrec}}
+\paragraph[{modname}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf CTrec::modname} = \char`\"{}reconstruction\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classCTrec_ad29b8e1dff3171ec14f60658204c8de5}
+
+
+Module name. 
+
+
+
+Definition at line 217 of file kernel.h.
+
+
+
+Referenced by addLine(), choose\_\-algorithm(), pixels(), and reconstruct().
+
+\hypertarget{classCTrec_a963a0669b7a3c59119085639f660b154}{
+\index{CTrec@{CTrec}!planB@{planB}}
+\index{planB@{planB}!CTrec@{CTrec}}
+\paragraph[{planB}]{\setlength{\rightskip}{0pt plus 5cm}fftwf\_\-plan {\bf CTrec::planB}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a963a0669b7a3c59119085639f660b154}
+
+
+Backward FFT transformation. 
+
+
+
+Definition at line 231 of file kernel.h.
+
+
+
+Referenced by addLine\_\-uni(), pixels(), reconstruct\_\-uni(), and $\sim$CTrec().
+
+\hypertarget{classCTrec_a18670a29e97fab9f49e3a0060ddcd071}{
+\index{CTrec@{CTrec}!planF@{planF}}
+\index{planF@{planF}!CTrec@{CTrec}}
+\paragraph[{planF}]{\setlength{\rightskip}{0pt plus 5cm}fftwf\_\-plan {\bf CTrec::planF}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classCTrec_a18670a29e97fab9f49e3a0060ddcd071}
+
+
+Forward FFT transformation. 
+
+
+
+Definition at line 230 of file kernel.h.
+
+
+
+Referenced by addLine\_\-uni(), pixels(), reconstruct\_\-uni(), and $\sim$CTrec().
+
+\hypertarget{classCTrec_ac13bcb5f9e53622aa19d440684fa7273}{
+\index{CTrec@{CTrec}!zPad@{zPad}}
+\index{zPad@{zPad}!CTrec@{CTrec}}
+\paragraph[{zPad}]{\setlength{\rightskip}{0pt plus 5cm}const float {\bf CTrec::zPad} = 2.0\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classCTrec_ac13bcb5f9e53622aa19d440684fa7273}
+
+
+Zero-\/padding coefficient. 
+
+The filtering is performed in the domain this times wider than the number of pixels (\hyperlink{classCTrec_a91849845389f46350ac0bc79e2e43486}{CTrec::\_\-pixels}). Must be $>$= 1. 
+
+Definition at line 218 of file kernel.h.
+
+
+
+Referenced by addLine\_\-uni(), filter(), pixels(), and reconstruct\_\-uni().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{kernel_8h}{kernel.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{kernel_8cpp}{kernel.cpp}\end{DoxyCompactItemize}

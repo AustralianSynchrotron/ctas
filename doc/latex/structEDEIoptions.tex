@@ -1,0 +1,177 @@
+\hypertarget{structEDEIoptions}{
+\subsection{EDEIoptions Struct Reference}
+\label{structEDEIoptions}\index{EDEIoptions@{EDEIoptions}}
+}
+
+
+Structure with the elements needed for the initialization of the \hyperlink{classEDEIprocess}{EDEIprocess}.  
+
+
+
+
+{\ttfamily \#include $<$edei.h$>$}
+
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classpoptmx_1_1OptionTable}{poptmx::OptionTable} \hyperlink{group__edeiedei_gae31714a01a177e8ada6450dbd5a343cc}{options} ()
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classPath}{Path} \hyperlink{structEDEIoptions_af7da15cddac94d6eff13df82cb8c07fa}{RCname}
+\begin{DoxyCompactList}\small\item\em Name of the read RCstaff::RCoption() \char`\"{}RC\char`\"{} data file. \item\end{DoxyCompactList}\item 
+\hyperlink{classPath}{Path} \hyperlink{structEDEIoptions_a50ffef2f3656fc6b72cbb801d722c4f9}{FDname}
+\begin{DoxyCompactList}\small\item\em Name of the read RCstaff::FDoption() \char`\"{}FD\char`\"{} data file. \item\end{DoxyCompactList}\item 
+float \hyperlink{structEDEIoptions_a293daefe2fbeb36296107fd1db32640c}{Gm}
+\begin{DoxyCompactList}\small\item\em Value determining the minus position. \item\end{DoxyCompactList}\item 
+float \hyperlink{structEDEIoptions_a849c6335c3368bb43cc774e27ab9103d}{Gp}
+\begin{DoxyCompactList}\small\item\em Value determining the plus position. \item\end{DoxyCompactList}\item 
+\hyperlink{classInterp}{Interp} \hyperlink{structEDEIoptions_a8b89e570e1103169de51b967713a0b80}{mpinter}
+\begin{DoxyCompactList}\small\item\em Interpretation of the ::Gm, ::Gp. \item\end{DoxyCompactList}\item 
+bool \hyperlink{structEDEIoptions_a488f675984a6d3c72b6b8f70422f8c2f}{smooth}
+\begin{DoxyCompactList}\small\item\em Smooth RC to avoid non-\/mono regions. \item\end{DoxyCompactList}\item 
+float \hyperlink{structEDEIoptions_a6a32d7dfbbb0c5af80dfa73e4bef35f2}{acof}
+\begin{DoxyCompactList}\small\item\em X-\/axis (angle) conversion factor. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{group__edeiedei_ga4ca0ca5e3acea8517ed7806eca3b9f71}{rcOptionDesc} = \char`\"{} radians and Y-\/axis in reflectivity.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the RC option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga1d5c3f1289ef962d44d52f344e932369}{fdOptionDesc} = \char`\"{} \$$\backslash$$\backslash$alpha(x)\$ position.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the FD option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_gaf8b9f6e9837dd2d85f8c01071a69b06e}{rcOptionShortDesc} = \char`\"{}Input file containing the RC of the analyzer.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Short description of the RC option. \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{group__edeiedei_ga270b21583b3f075758bd30fd3df8f7fa}{fdOptionShortDesc} = \char`\"{}File containing processed RC used inside the EDEI.\char`\"{}
+\begin{DoxyCompactList}\small\item\em Short description of the FD option. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Structure with the elements needed for the initialization of the \hyperlink{classEDEIprocess}{EDEIprocess}. 
+
+Definition at line 142 of file edei.h.
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{structEDEIoptions_a6a32d7dfbbb0c5af80dfa73e4bef35f2}{
+\index{EDEIoptions@{EDEIoptions}!acof@{acof}}
+\index{acof@{acof}!EDEIoptions@{EDEIoptions}}
+\paragraph[{acof}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf EDEIoptions::acof}}\hfill}
+\label{structEDEIoptions_a6a32d7dfbbb0c5af80dfa73e4bef35f2}
+
+
+X-\/axis (angle) conversion factor. 
+
+
+
+Definition at line 150 of file edei.h.
+
+
+
+Referenced by main(), and options().
+
+\hypertarget{structEDEIoptions_a50ffef2f3656fc6b72cbb801d722c4f9}{
+\index{EDEIoptions@{EDEIoptions}!FDname@{FDname}}
+\index{FDname@{FDname}!EDEIoptions@{EDEIoptions}}
+\paragraph[{FDname}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Path} {\bf EDEIoptions::FDname}}\hfill}
+\label{structEDEIoptions_a50ffef2f3656fc6b72cbb801d722c4f9}
+
+
+Name of the read RCstaff::FDoption() \char`\"{}FD\char`\"{} data file. 
+
+
+
+Definition at line 145 of file edei.h.
+
+\hypertarget{structEDEIoptions_a293daefe2fbeb36296107fd1db32640c}{
+\index{EDEIoptions@{EDEIoptions}!Gm@{Gm}}
+\index{Gm@{Gm}!EDEIoptions@{EDEIoptions}}
+\paragraph[{Gm}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf EDEIoptions::Gm}}\hfill}
+\label{structEDEIoptions_a293daefe2fbeb36296107fd1db32640c}
+
+
+Value determining the minus position. 
+
+
+
+Definition at line 146 of file edei.h.
+
+
+
+Referenced by main(), and options().
+
+\hypertarget{structEDEIoptions_a849c6335c3368bb43cc774e27ab9103d}{
+\index{EDEIoptions@{EDEIoptions}!Gp@{Gp}}
+\index{Gp@{Gp}!EDEIoptions@{EDEIoptions}}
+\paragraph[{Gp}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf EDEIoptions::Gp}}\hfill}
+\label{structEDEIoptions_a849c6335c3368bb43cc774e27ab9103d}
+
+
+Value determining the plus position. 
+
+
+
+Definition at line 147 of file edei.h.
+
+
+
+Referenced by main(), and options().
+
+\hypertarget{structEDEIoptions_a8b89e570e1103169de51b967713a0b80}{
+\index{EDEIoptions@{EDEIoptions}!mpinter@{mpinter}}
+\index{mpinter@{mpinter}!EDEIoptions@{EDEIoptions}}
+\paragraph[{mpinter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Interp} {\bf EDEIoptions::mpinter}}\hfill}
+\label{structEDEIoptions_a8b89e570e1103169de51b967713a0b80}
+
+
+Interpretation of the ::Gm, ::Gp. 
+
+
+
+Definition at line 148 of file edei.h.
+
+
+
+Referenced by main(), and options().
+
+\hypertarget{structEDEIoptions_af7da15cddac94d6eff13df82cb8c07fa}{
+\index{EDEIoptions@{EDEIoptions}!RCname@{RCname}}
+\index{RCname@{RCname}!EDEIoptions@{EDEIoptions}}
+\paragraph[{RCname}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Path} {\bf EDEIoptions::RCname}}\hfill}
+\label{structEDEIoptions_af7da15cddac94d6eff13df82cb8c07fa}
+
+
+Name of the read RCstaff::RCoption() \char`\"{}RC\char`\"{} data file. 
+
+
+
+Definition at line 144 of file edei.h.
+
+
+
+Referenced by main().
+
+\hypertarget{structEDEIoptions_a488f675984a6d3c72b6b8f70422f8c2f}{
+\index{EDEIoptions@{EDEIoptions}!smooth@{smooth}}
+\index{smooth@{smooth}!EDEIoptions@{EDEIoptions}}
+\paragraph[{smooth}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf EDEIoptions::smooth}}\hfill}
+\label{structEDEIoptions_a488f675984a6d3c72b6b8f70422f8c2f}
+
+
+Smooth RC to avoid non-\/mono regions. 
+
+
+
+Definition at line 149 of file edei.h.
+
+
+
+Referenced by main().
+
+
+
+The documentation for this struct was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{edei_8h}{edei.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{ledei_8cpp}{ledei.cpp}\end{DoxyCompactItemize}

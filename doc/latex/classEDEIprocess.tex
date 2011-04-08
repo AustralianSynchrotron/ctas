@@ -1,0 +1,259 @@
+\hypertarget{classEDEIprocess}{
+\subsection{EDEIprocess Class Reference}
+\label{classEDEIprocess}\index{EDEIprocess@{EDEIprocess}}
+}
+
+
+Store, process read RCstaff::RCoption() \char`\"{}RC\char`\"{}, read RCstaff::FDoption() \char`\"{}FD\char`\"{}, extract contrasts.  
+
+
+
+
+{\ttfamily \#include $<$edei.h$>$}
+
+\subsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{Component} \{ \par
+\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4a0ca15c00e66cb8d8eb71439dfad57bae}{ABS}, 
+\par
+\hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4ab2db81707708c7fc95573b0ec104ae9f}{REF}
+ \}
+\begin{DoxyCompactList}\small\item\em Two contrast components available in the EDEI experiment. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{group__edeiedei_ga8516a2db50344f5d80f2a2fb8a870534}{EDEIprocess} (const \hyperlink{classPath}{Path} \&RCname, float \_\-Gm, float \_\-Gp, \hyperlink{classInterp}{Interp} \_\-mpinter, bool \_\-smooth, float \_\-acof)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+void \hyperlink{group__edeiedei_gae6f313c662a444a4bf5516cf9f83dc8c}{saveFD} (const \hyperlink{classPath}{Path} \&filename) const 
+\begin{DoxyCompactList}\small\item\em Save read RCstaff::FDoption() \char`\"{}FD\char`\"{}. \item\end{DoxyCompactList}\item 
+float \hyperlink{group__edeiedei_gabc1c9c24e29e022479a8e74c8bc7e86a}{extract} (float minus, float plus, \hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{Component} comp) const 
+\item 
+{\footnotesize template$<$int N\_\-rank$>$ }\\void \hyperlink{group__edeiedei_gaa8f414bd247177bd9f58be27c716fab9}{extract} (const blitz::Array$<$ float, N\_\-rank $>$ \&minus, const blitz::Array$<$ float, N\_\-rank $>$ \&plus, \hyperlink{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{Component} comp, blitz::Array$<$ float, N\_\-rank $>$ \&out) const 
+\begin{DoxyCompactList}\small\item\em The same as ::extract, but works on array. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{group__edeiedei_ga6222a7fc19bf117145380f89e64292c8}{componentDesc} = \char`\"{}R, REF, REFRACTION -\/ for the refraction component\char`\"{}
+\begin{DoxyCompactList}\small\item\em Description of the ::Component. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{group__edeiedei_gafbe3ba880d64b341f6cbe684648479ec}{loadRC} (const \hyperlink{classPath}{Path} \&filename) const 
+\begin{DoxyCompactList}\small\item\em Loads RC. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \hyperlink{classEDEIprocess_a27cf3442a11ba3d9e9ca9f4137f61265}{AL}
+\begin{DoxyCompactList}\small\item\em Array $\alpha(F)$. \item\end{DoxyCompactList}\item 
+\hyperlink{group__Types_ga4ce3fdeba27702c8b09a141e22709e38}{Line} \hyperlink{classEDEIprocess_a8ed9fc30cd4798e0a90aac2c20e621ec}{PM}
+\begin{DoxyCompactList}\small\item\em Array $ I_L+I_H $. \item\end{DoxyCompactList}\item 
+float \hyperlink{classEDEIprocess_a5f7a6ba365d7b383a2b6c12a344230a2}{Gm}
+\begin{DoxyCompactList}\small\item\em Value determining the minus position. \item\end{DoxyCompactList}\item 
+float \hyperlink{classEDEIprocess_aef4917e24c6b7a3af7b97a9b37c890b8}{Gp}
+\begin{DoxyCompactList}\small\item\em Value determining the plus position. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classEDEIprocess_aba287078b716c76c2d2276cec54a4bd3}{smooth}
+\begin{DoxyCompactList}\small\item\em Smooth RC to avoid non-\/mono regions. \item\end{DoxyCompactList}\item 
+\hyperlink{classInterp}{Interp} \hyperlink{classEDEIprocess_a1de13d8e88dc94c8627098298bc87667}{mpinter}
+\begin{DoxyCompactList}\small\item\em Interpretation of the ::Gm, ::Gp values. \item\end{DoxyCompactList}\item 
+float \hyperlink{classEDEIprocess_a0ee7ea8bd15cc065be6bc4bb4a08c161}{acof}
+\begin{DoxyCompactList}\small\item\em value in the first column of the read RCstaff::RCoption() \char`\"{}RC\char`\"{} gives actual angle in radian. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{group__edeiedei_ga32645490331f1049ac7b8be12b72e9fd}{modname} = \char`\"{}RC arguments\char`\"{}
+\begin{DoxyCompactList}\small\item\em Module name. \item\end{DoxyCompactList}\item 
+static const int \hyperlink{classEDEIprocess_a5261e1cab3a15f020b86594303f2c28c}{function\_\-size} = 65535
+\begin{DoxyCompactList}\small\item\em Size of the ::AL and ::PM arrays. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Store, process read RCstaff::RCoption() \char`\"{}RC\char`\"{}, read RCstaff::FDoption() \char`\"{}FD\char`\"{}, extract contrasts. This class is used for loading, storing, saving, processing the rocking curve of the analyzer from the point of view of the EDEI method.
+
+Also member functions of this class perform EDEI processing of the contrasts basing on the preloaded read RCstaff::RCoption() \char`\"{}RC\char`\"{}, read RCstaff::FDoption() \char`\"{}FD\char`\"{}.
+
+Basically the usage of this class assumes following steps:
+\begin{DoxyItemize}
+\item Setting parameters (all non-\/const public variables). It can be done either by hand or via the command line options using POPT\_\-TABLERC() option table parsed by the libpopt.
+\item Loading read RCstaff::RCoption() \char`\"{}RC\char`\"{} (loadRC()) or read RCstaff::FDoption() \char`\"{}FD\char`\"{} (loadFD()).
+\item If you need to convert read RCstaff::FDoption() \char`\"{}FD\char`\"{} to read RCstaff::RCoption() \char`\"{}RC\char`\"{} just call to saveFD() (see \hyperlink{rc2fd_8cpp}{rc2fd.cpp} for example).
+\item Extract contrast(s) via refract() and/or absorb(). 
+\end{DoxyItemize}
+
+Definition at line 183 of file edei.h.
+
+
+
+\subsubsection{Member Enumeration Documentation}
+\hypertarget{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}{
+\index{EDEIprocess@{EDEIprocess}!Component@{Component}}
+\index{Component@{Component}!EDEIprocess@{EDEIprocess}}
+\paragraph[{Component}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf EDEIprocess::Component}}\hfill}
+\label{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4}
+
+
+Two contrast components available in the EDEI experiment. 
+
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{ABS@{ABS}!EDEIprocess@{EDEIprocess}}\index{EDEIprocess@{EDEIprocess}!ABS@{ABS}}\item[{\em 
+\hypertarget{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4a0ca15c00e66cb8d8eb71439dfad57bae}{
+ABS}
+\label{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4a0ca15c00e66cb8d8eb71439dfad57bae}
+}]Apparent absorption (abs+small-\/angle scat.). \index{REF@{REF}!EDEIprocess@{EDEIprocess}}\index{EDEIprocess@{EDEIprocess}!REF@{REF}}\item[{\em 
+\hypertarget{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4ab2db81707708c7fc95573b0ec104ae9f}{
+REF}
+\label{classEDEIprocess_a745d55d7f97f3aafa52998d49d9acde4ab2db81707708c7fc95573b0ec104ae9f}
+}]Clean refraction. \end{description}
+\end{Desc}
+
+
+
+Definition at line 206 of file edei.h.
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classEDEIprocess_a0ee7ea8bd15cc065be6bc4bb4a08c161}{
+\index{EDEIprocess@{EDEIprocess}!acof@{acof}}
+\index{acof@{acof}!EDEIprocess@{EDEIprocess}}
+\paragraph[{acof}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf EDEIprocess::acof}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classEDEIprocess_a0ee7ea8bd15cc065be6bc4bb4a08c161}
+
+
+value in the first column of the read RCstaff::RCoption() \char`\"{}RC\char`\"{} gives actual angle in radian. 
+
+Multiplication of this coefficient by the 
+
+Definition at line 200 of file edei.h.
+
+
+
+Referenced by loadRC().
+
+\hypertarget{classEDEIprocess_a27cf3442a11ba3d9e9ca9f4137f61265}{
+\index{EDEIprocess@{EDEIprocess}!AL@{AL}}
+\index{AL@{AL}!EDEIprocess@{EDEIprocess}}
+\paragraph[{AL}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Line} {\bf EDEIprocess::AL}\hspace{0.3cm}{\ttfamily  \mbox{[}mutable, private\mbox{]}}}\hfill}
+\label{classEDEIprocess_a27cf3442a11ba3d9e9ca9f4137f61265}
+
+
+Array $\alpha(F)$. 
+
+\[ \alpha = F^{-1}\left( \frac{I_L-I_H}{I_L+I_H} \right) \] 
+
+Definition at line 190 of file edei.h.
+
+
+
+Referenced by EDEIprocess(), extract(), loadRC(), and saveFD().
+
+\hypertarget{classEDEIprocess_a5261e1cab3a15f020b86594303f2c28c}{
+\index{EDEIprocess@{EDEIprocess}!function\_\-size@{function\_\-size}}
+\index{function\_\-size@{function\_\-size}!EDEIprocess@{EDEIprocess}}
+\paragraph[{function\_\-size}]{\setlength{\rightskip}{0pt plus 5cm}const int {\bf EDEIprocess::function\_\-size} = 65535\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classEDEIprocess_a5261e1cab3a15f020b86594303f2c28c}
+
+
+Size of the ::AL and ::PM arrays. 
+
+
+
+Definition at line 188 of file edei.h.
+
+
+
+Referenced by EDEIprocess(), extract(), and loadRC().
+
+\hypertarget{classEDEIprocess_a5f7a6ba365d7b383a2b6c12a344230a2}{
+\index{EDEIprocess@{EDEIprocess}!Gm@{Gm}}
+\index{Gm@{Gm}!EDEIprocess@{EDEIprocess}}
+\paragraph[{Gm}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf EDEIprocess::Gm}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classEDEIprocess_a5f7a6ba365d7b383a2b6c12a344230a2}
+
+
+Value determining the minus position. 
+
+
+
+Definition at line 196 of file edei.h.
+
+
+
+Referenced by loadRC().
+
+\hypertarget{classEDEIprocess_aef4917e24c6b7a3af7b97a9b37c890b8}{
+\index{EDEIprocess@{EDEIprocess}!Gp@{Gp}}
+\index{Gp@{Gp}!EDEIprocess@{EDEIprocess}}
+\paragraph[{Gp}]{\setlength{\rightskip}{0pt plus 5cm}float {\bf EDEIprocess::Gp}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classEDEIprocess_aef4917e24c6b7a3af7b97a9b37c890b8}
+
+
+Value determining the plus position. 
+
+
+
+Definition at line 197 of file edei.h.
+
+
+
+Referenced by loadRC().
+
+\hypertarget{classEDEIprocess_a1de13d8e88dc94c8627098298bc87667}{
+\index{EDEIprocess@{EDEIprocess}!mpinter@{mpinter}}
+\index{mpinter@{mpinter}!EDEIprocess@{EDEIprocess}}
+\paragraph[{mpinter}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Interp} {\bf EDEIprocess::mpinter}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classEDEIprocess_a1de13d8e88dc94c8627098298bc87667}
+
+
+Interpretation of the ::Gm, ::Gp values. 
+
+
+
+Definition at line 199 of file edei.h.
+
+
+
+Referenced by loadRC().
+
+\hypertarget{classEDEIprocess_a8ed9fc30cd4798e0a90aac2c20e621ec}{
+\index{EDEIprocess@{EDEIprocess}!PM@{PM}}
+\index{PM@{PM}!EDEIprocess@{EDEIprocess}}
+\paragraph[{PM}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Line} {\bf EDEIprocess::PM}\hspace{0.3cm}{\ttfamily  \mbox{[}mutable, private\mbox{]}}}\hfill}
+\label{classEDEIprocess_a8ed9fc30cd4798e0a90aac2c20e621ec}
+
+
+Array $ I_L+I_H $. 
+
+
+
+Definition at line 192 of file edei.h.
+
+
+
+Referenced by EDEIprocess(), extract(), loadRC(), and saveFD().
+
+\hypertarget{classEDEIprocess_aba287078b716c76c2d2276cec54a4bd3}{
+\index{EDEIprocess@{EDEIprocess}!smooth@{smooth}}
+\index{smooth@{smooth}!EDEIprocess@{EDEIprocess}}
+\paragraph[{smooth}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf EDEIprocess::smooth}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classEDEIprocess_aba287078b716c76c2d2276cec54a4bd3}
+
+
+Smooth RC to avoid non-\/mono regions. 
+
+
+
+Definition at line 198 of file edei.h.
+
+
+
+Referenced by loadRC().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{edei_8h}{edei.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{ledei_8cpp}{ledei.cpp}\end{DoxyCompactItemize}

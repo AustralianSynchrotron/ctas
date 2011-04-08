@@ -1,0 +1,184 @@
+\hypertarget{classpoptmx_1_1Err}{
+\subsection{poptmx::Err Class Reference}
+\label{classpoptmx_1_1Err}\index{poptmx::Err@{poptmx::Err}}
+}
+
+
+Error type.  
+
+
+
+
+{\ttfamily \#include $<$poptmx.h$>$}
+
+\subsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aa}{ErrTp} \{ \par
+\hyperlink{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaade56e46c65dd44ee6d72a6421940f67d}{WARN}, 
+\par
+\hyperlink{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaaed08113cd4b013e244fcede8e8737c43}{ERR}, 
+\par
+\hyperlink{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaade501809751301eb7047c4be4ccbb9ff}{FATAL}
+ \}
+\begin{DoxyCompactList}\small\item\em Error severity. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classpoptmx_1_1Err_a66e9764ee0bb64be8bec08e7155a4ace}{Err} (\hyperlink{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aa}{ErrTp} \_\-terr, const std::string \&mod, const std::string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1Err_a95fb730166e6dafdd6f53900ac846952}{report} () const 
+\begin{DoxyCompactList}\small\item\em Reports the error. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std::string \hyperlink{classpoptmx_1_1Err_ac4270c7e8a4b08abe20c6a14a875a2d6}{message}
+\begin{DoxyCompactList}\small\item\em The message which describes the error. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1Err_a8a9576733b21c666d739a2b97aa2fa93}{module}
+\begin{DoxyCompactList}\small\item\em Name of the module where the error happened. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aa}{ErrTp} \hyperlink{classpoptmx_1_1Err_a0eea8ad1572c999136c138d60bb0d225}{terr}
+\begin{DoxyCompactList}\small\item\em Error severity. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Error type. 
+
+Definition at line 109 of file poptmx.h.
+
+
+
+\subsubsection{Member Enumeration Documentation}
+\hypertarget{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aa}{
+\index{poptmx::Err@{poptmx::Err}!ErrTp@{ErrTp}}
+\index{ErrTp@{ErrTp}!poptmx::Err@{poptmx::Err}}
+\paragraph[{ErrTp}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf poptmx::Err::ErrTp}}\hfill}
+\label{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aa}
+
+
+Error severity. 
+
+\begin{Desc}
+\item[Enumerator: ]\par
+\begin{description}
+\index{WARN@{WARN}!poptmx::Err@{poptmx::Err}}\index{poptmx::Err@{poptmx::Err}!WARN@{WARN}}\item[{\em 
+\hypertarget{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaade56e46c65dd44ee6d72a6421940f67d}{
+WARN}
+\label{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaade56e46c65dd44ee6d72a6421940f67d}
+}]Warning. \index{ERR@{ERR}!poptmx::Err@{poptmx::Err}}\index{poptmx::Err@{poptmx::Err}!ERR@{ERR}}\item[{\em 
+\hypertarget{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaaed08113cd4b013e244fcede8e8737c43}{
+ERR}
+\label{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaaed08113cd4b013e244fcede8e8737c43}
+}]Error. \index{FATAL@{FATAL}!poptmx::Err@{poptmx::Err}}\index{poptmx::Err@{poptmx::Err}!FATAL@{FATAL}}\item[{\em 
+\hypertarget{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaade501809751301eb7047c4be4ccbb9ff}{
+FATAL}
+\label{classpoptmx_1_1Err_a5536fbfa146a3c996c8d24282451d4aaade501809751301eb7047c4be4ccbb9ff}
+}]Fatal error. \end{description}
+\end{Desc}
+
+
+
+Definition at line 113 of file poptmx.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classpoptmx_1_1Err_a66e9764ee0bb64be8bec08e7155a4ace}{
+\index{poptmx::Err@{poptmx::Err}!Err@{Err}}
+\index{Err@{Err}!poptmx::Err@{poptmx::Err}}
+\paragraph[{Err}]{\setlength{\rightskip}{0pt plus 5cm}poptmx::Err::Err (
+\begin{DoxyParamCaption}
+\item[{{\bf Err::ErrTp}}]{\_\-terr, }
+\item[{const std::string \&}]{mod, }
+\item[{const std::string \&}]{msg}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1Err_a66e9764ee0bb64be8bec08e7155a4ace}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-terr} & Sets \hyperlink{classCtasErr_a316f1b4382d548d47413aff1b57c18e3}{CtasErr::terr} \\
+\hline
+{\em mod} & Sets \hyperlink{classCtasErr_a9ff7fe473d7b44c9d7e3bace22e24eff}{CtasErr::module} \\
+\hline
+{\em msg} & Sets \hyperlink{classCtasErr_a9814f39f8f3c93d77d45209c8808a591}{CtasErr::message} \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 77 of file poptmx.cpp.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classpoptmx_1_1Err_a95fb730166e6dafdd6f53900ac846952}{
+\index{poptmx::Err@{poptmx::Err}!report@{report}}
+\index{report@{report}!poptmx::Err@{poptmx::Err}}
+\paragraph[{report}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::Err::report (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1Err_a95fb730166e6dafdd6f53900ac846952}
+
+
+Reports the error. 
+
+Prints the error into the standard error stream. 
+
+Definition at line 85 of file poptmx.cpp.
+
+
+
+Referenced by poptmx::throw\_\-error(), and poptmx::warn().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classpoptmx_1_1Err_ac4270c7e8a4b08abe20c6a14a875a2d6}{
+\index{poptmx::Err@{poptmx::Err}!message@{message}}
+\index{message@{message}!poptmx::Err@{poptmx::Err}}
+\paragraph[{message}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Err::message}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1Err_ac4270c7e8a4b08abe20c6a14a875a2d6}
+
+
+The message which describes the error. 
+
+
+
+Definition at line 120 of file poptmx.h.
+
+\hypertarget{classpoptmx_1_1Err_a8a9576733b21c666d739a2b97aa2fa93}{
+\index{poptmx::Err@{poptmx::Err}!module@{module}}
+\index{module@{module}!poptmx::Err@{poptmx::Err}}
+\paragraph[{module}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::Err::module}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1Err_a8a9576733b21c666d739a2b97aa2fa93}
+
+
+Name of the module where the error happened. 
+
+
+
+Definition at line 121 of file poptmx.h.
+
+\hypertarget{classpoptmx_1_1Err_a0eea8ad1572c999136c138d60bb0d225}{
+\index{poptmx::Err@{poptmx::Err}!terr@{terr}}
+\index{terr@{terr}!poptmx::Err@{poptmx::Err}}
+\paragraph[{terr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf ErrTp} {\bf poptmx::Err::terr}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1Err_a0eea8ad1572c999136c138d60bb0d225}
+
+
+Error severity. 
+
+
+
+Definition at line 122 of file poptmx.h.
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{poptmx_8h}{poptmx.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{poptmx_8cpp}{poptmx.cpp}\end{DoxyCompactItemize}

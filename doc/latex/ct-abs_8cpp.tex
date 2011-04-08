@@ -1,0 +1,73 @@
+\hypertarget{ct-abs_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/abs.cpp File Reference}
+\label{ct-abs_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/abs.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/abs.cpp}}
+}
+
+
+All-\/in-\/one ct reconstruction of the absorption contrast.  
+
+
+{\ttfamily \#include $<$vector$>$}\par
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/kernel.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/experiment.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/abs.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/poptmx.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{ct-abs_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'ctabs'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+All-\/in-\/one ct reconstruction of the absorption contrast. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Mon Jul 21 10:09:31 2008
+\end{DoxyDate}
+Main file for the program which reads the input sinogram from image, performs CT reconstruction of it and stores the result in other image file 
+
+Definition in file \hyperlink{ct-abs_8cpp_source}{ct-\/abs.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{ct-abs_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{ct-\/abs.cpp@{ct-\/abs.cpp}!main@{main}}
+\index{main@{main}!ct-abs.cpp@{ct-\/abs.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{ct-abs_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'ctabs'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 134 of file ct-\/abs.cpp.
+
+
+
+References clargs::beverbose, clargs::center, Experiment::contrast(), clargs::filter\_\-type, clargs::idealworld, clargs::listname, mask2format(), clargs::nof\_\-threads, clargs::outmask, Experiment::pixels(), SaveImage(), clargs::SaveInt, SinoS::sino(), slice\_\-str2vec(), clargs::slicedesc, Experiment::slices(), Experiment::thetas(), and toString().
+

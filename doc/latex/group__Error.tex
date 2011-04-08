@@ -1,0 +1,160 @@
+\hypertarget{group__Error}{
+\subsection{Error handling.}
+\label{group__Error}\index{Error handling.@{Error handling.}}
+}
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classCtasErr}{CtasErr}
+\begin{DoxyCompactList}\small\item\em Error type. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void COMMON\_\-API \hyperlink{group__Error_gaad605c8e899cb915d214127c18a12157}{throw\_\-error} (const std::string \&mod, const std::string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructs the error, reports and then throws it. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__Error_gacb8a74cf255f5788357a30ce8b4f80db}{throw\_\-bug} (const std::string \&mod)
+\begin{DoxyCompactList}\small\item\em Reports and throws the bug. \item\end{DoxyCompactList}\item 
+\hyperlink{classCtasErr}{CtasErr} COMMON\_\-API \hyperlink{group__Error_gafc17a83d686f911fcbed38f9b4b4fda4}{warn} (const std::string \&mod, const std::string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructs the warning and reports it. \item\end{DoxyCompactList}\item 
+void COMMON\_\-API \hyperlink{group__Error_ga9ddf0cafadd98ea5e8558558b8d6dfb5}{exit\_\-on\_\-error} (const std::string \&mod, const std::string \&msg)
+\begin{DoxyCompactList}\small\item\em Constructs the error, reports and then exits. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+Functions in this group are used for the error parsing, printing, throwing and so on. 
+
+\subsubsection{Function Documentation}
+\hypertarget{group__Error_ga9ddf0cafadd98ea5e8558558b8d6dfb5}{
+\index{Error@{Error}!exit\_\-on\_\-error@{exit\_\-on\_\-error}}
+\index{exit\_\-on\_\-error@{exit\_\-on\_\-error}!Error@{Error}}
+\paragraph[{exit\_\-on\_\-error}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API exit\_\-on\_\-error (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{mod, }
+\item[{const std::string \&}]{msg}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__Error_ga9ddf0cafadd98ea5e8558558b8d6dfb5}
+
+
+Constructs the error, reports and then exits. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mod} & Module where the error happened \\
+\hline
+{\em msg} & Description \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 100 of file common.cpp.
+
+
+
+References CtasErr::FATAL, and CtasErr::report().
+
+
+
+Referenced by clargs::clargs(), main(), and proj\_\-info::proj\_\-info().
+
+\hypertarget{group__Error_gacb8a74cf255f5788357a30ce8b4f80db}{
+\index{Error@{Error}!throw\_\-bug@{throw\_\-bug}}
+\index{throw\_\-bug@{throw\_\-bug}!Error@{Error}}
+\paragraph[{throw\_\-bug}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API throw\_\-bug (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{mod}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__Error_gacb8a74cf255f5788357a30ce8b4f80db}
+
+
+Reports and throws the bug. 
+
+Constructs the error with the message that it must never happen, reports and then throws it.
+
+
+\begin{DoxyParams}{Parameters}
+{\em mod} & Module where the error happened. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 88 of file common.cpp.
+
+
+
+References throw\_\-error().
+
+
+
+Referenced by find\_\-minus(), find\_\-plus(), msign(), Interp::name(), Filter::name(), and Contrast::name().
+
+\hypertarget{group__Error_gaad605c8e899cb915d214127c18a12157}{
+\index{Error@{Error}!throw\_\-error@{throw\_\-error}}
+\index{throw\_\-error@{throw\_\-error}!Error@{Error}}
+\paragraph[{throw\_\-error}]{\setlength{\rightskip}{0pt plus 5cm}void COMMON\_\-API throw\_\-error (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{mod, }
+\item[{const std::string \&}]{msg}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__Error_gaad605c8e899cb915d214127c18a12157}
+
+
+Constructs the error, reports and then throws it. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mod} & Module where the error happened. \\
+\hline
+{\em msg} & Description. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 81 of file common.cpp.
+
+
+
+References CtasErr::ERR, and CtasErr::report().
+
+
+
+Referenced by \_\-conversion(), poptmx::OptionTable::add(), CTrec::addLine(), AqSeries::AqSeries(), BadShape(), Contrast::Contrast(), poptmx::OptionTable::count(), Dcenter::Dcenter(), DEIprocess::DEIprocess(), poptmx::OptionTable::desc(), EDEIprocess::EDEIprocess(), Experiment::Experiment(), IPCprocess::extract(), EDEIprocess::extract(), DEIprocess::extract(), Filter::fill(), Filter::Filter(), find\_\-minus(), find\_\-plus(), flatfield(), getLine(), has\_\-one\_\-peak(), ImageSizes(), SinoS::index(), AqSeries::index(), Interp::Interp(), IPCexp::IPCexp(), IPCprocess::IPCprocess(), line\_\-distributor::line\_\-distributor(), LoadData(), EDEIprocess::loadRC(), main(), poptmx::Option::Option(), poptmx::OptionTable::parse(), poptmx::Option::parse(), CTrec::pixels(), proj\_\-info::proj\_\-info(), project\_\-sino(), AqSeries::projection(), propagate(), ReadImage\_\-IM(), ReadImageLine\_\-FI(), ReadImageLine\_\-IM(), CTrec::reconstruct(), poptmx::OptionTable::replacePointers(), SaveData(), SaveImageINT\_\-IM(), SinoS::SinoS(), tempfile(), throw\_\-bug(), Path::throw\_\-unextracted(), and ts\_\-add().
+
+\hypertarget{group__Error_gafc17a83d686f911fcbed38f9b4b4fda4}{
+\index{Error@{Error}!warn@{warn}}
+\index{warn@{warn}!Error@{Error}}
+\paragraph[{warn}]{\setlength{\rightskip}{0pt plus 5cm}{\bf CtasErr} COMMON\_\-API warn (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{mod, }
+\item[{const std::string \&}]{msg}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{group__Error_gafc17a83d686f911fcbed38f9b4b4fda4}
+
+
+Constructs the warning and reports it. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mod} & Module where the error happened \\
+\hline
+{\em msg} & Description\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+the error generated in warning. 
+\end{DoxyReturn}
+
+
+Definition at line 93 of file common.cpp.
+
+
+
+References CtasErr::report(), and CtasErr::WARN.
+
+
+
+Referenced by poptmx::OptionTable::add(), CTrec::choose\_\-algorithm(), Dcenter::Dcenter(), FImageLoader(), LoadData(), EDEIprocess::loadRC(), main(), nof\_\-threads(), poptmx::OptionTable::parse(), PixelSize(), proj\_\-info::proj\_\-info(), propagate(), ReadImage\_\-FI(), ReadImage\_\-IM(), ReadImageLine\_\-FI(), ReadImageLine\_\-IM(), SaveData(), SaveImageINT\_\-FI(), SinoS::SinoS(), slice\_\-str2vec(), str2n(), and tempfile().
+

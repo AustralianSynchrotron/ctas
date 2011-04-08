@@ -1,0 +1,73 @@
+\hypertarget{ct-ipc_8cpp}{
+\subsection{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/ipc.cpp File Reference}
+\label{ct-ipc_8cpp}\index{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/ipc.cpp@{/home/antonmx/work/projects/ctascmake/src/executables/ct-\/ipc.cpp}}
+}
+
+
+All-\/in-\/one ct reconstruction of the inline phase contrast.  
+
+
+{\ttfamily \#include $<$vector$>$}\par
+{\ttfamily \#include \char`\"{}../common/common.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/experiment.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/ipc.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/poptmx.h\char`\"{}}\par
+{\ttfamily \#include \char`\"{}../common/kernel.h\char`\"{}}\par
+\subsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structclargs}{clargs}
+\begin{DoxyCompactList}\small\item\em Variables affected by the the command line arguments. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{ct-ipc_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{main} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\begin{DoxyCompactList}\small\item\em Main function for 'sinr'. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+All-\/in-\/one ct reconstruction of the inline phase contrast. \begin{DoxyAuthor}{Author}
+antonmx $<$\href{mailto:antonmx@gmail.com}{\tt antonmx@gmail.com}$>$ 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+Wed Jul 7 13:18:49 2010 
+\end{DoxyDate}
+
+
+Definition in file \hyperlink{ct-ipc_8cpp_source}{ct-\/ipc.cpp}.
+
+
+
+\subsubsection{Function Documentation}
+\hypertarget{ct-ipc_8cpp_a0ddf1224851353fc92bfbff6f499fa97}{
+\index{ct-\/ipc.cpp@{ct-\/ipc.cpp}!main@{main}}
+\index{main@{main}!ct-ipc.cpp@{ct-\/ipc.cpp}}
+\paragraph[{main}]{\setlength{\rightskip}{0pt plus 5cm}int main (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{ct-ipc_8cpp_a0ddf1224851353fc92bfbff6f499fa97}
+
+
+Main function for 'sinr'. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the command line arguments. \\
+\hline
+{\em argv} & Array of the command line arguments. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Exit status. 0 if OK, nonzero otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 183 of file ct-\/ipc.cpp.
+
+
+
+References clargs::alpha, clargs::beverbose, clargs::center, clargs::contrast, clargs::dd, clargs::dgamma, clargs::dist, clargs::filter\_\-type, CTrec::finilize(), clargs::lambda, mask2format(), clargs::nof\_\-threads, clargs::outmask, SaveImage(), clargs::SaveInt, AqSeries::shape(), SinoS::sino(), slice\_\-str2vec(), clargs::slicedesc, toString(), clargs::z0\_\-list, and clargs::zD\_\-list.
+

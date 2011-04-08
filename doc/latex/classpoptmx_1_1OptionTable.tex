@@ -1,0 +1,1325 @@
+\hypertarget{classpoptmx_1_1OptionTable}{
+\subsection{poptmx::OptionTable Class Reference}
+\label{classpoptmx_1_1OptionTable}\index{poptmx::OptionTable@{poptmx::OptionTable}}
+}
+
+
+The table of known options.  
+
+
+
+
+{\ttfamily \#include $<$poptmx.h$>$}
+
+\subsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classpoptmx_1_1OptionTable_a6076177bf680019cd40eefa652080bb5}{OptionTable} (const std::string \&\_\-general\_\-desc=\char`\"{}\char`\"{}, const std::string \&\_\-general\_\-long\_\-desc=\char`\"{}\char`\"{}, const std::string \&\_\-general\_\-synopsis=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Constructor. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_af084ab4547da12159b8ff7928e69a6c3}{add} (const \hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \&\_\-val)
+\begin{DoxyCompactList}\small\item\em Incorporates preexisting option table into the table. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_a8625427dbbd7c64c8b3118f3d588486f}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, void $\ast$\_\-val, int($\ast$\_\-convert)(void $\ast$, const std::string \&), const char \_\-char\_\-name, const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-arg\_\-desc, const std::string \&\_\-dflt, bool \_\-is\_\-array)
+\begin{DoxyCompactList}\small\item\em Abstract interface to add an entry into the table. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_ad97ba69700cc3672edc6328d5ec316b5}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, void $\ast$\_\-val, int($\ast$\_\-convert)(void $\ast$, const std::string \&), const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-arg\_\-desc, const std::string \&\_\-dflt, bool \_\-is\_\-array)
+\begin{DoxyCompactList}\small\item\em Abstract interface to add the argument into the table. \item\end{DoxyCompactList}\item 
+{\footnotesize template$<$class BClass $>$ }\\\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{group__poptmx_ga83a8a6d7752c44a0b1d94f32ebd87e04}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, BClass $\ast$\_\-val, const char \_\-char\_\-name, const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-dflt=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Simplified interface to add the option into the table. \item\end{DoxyCompactList}\item 
+{\footnotesize template$<$class BClass $>$ }\\\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{group__poptmx_gabc7aed25667e5d2901455c00348ac4cc}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, std::vector$<$ BClass $>$ $\ast$\_\-val, const char \_\-char\_\-name, const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-dflt=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Simplified interface to add multiple-\/appearing option into the table. \item\end{DoxyCompactList}\item 
+{\footnotesize template$<$class BClass $>$ }\\\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{group__poptmx_ga547f3e8c11f99e72f9c503815f9cd25a}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, BClass $\ast$\_\-val, const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-dflt=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Simplified interface to add the argument into the table. \item\end{DoxyCompactList}\item 
+{\footnotesize template$<$class BClass $>$ }\\\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{group__poptmx_ga3d647be8f19d1059ba235a1838fbe1c1}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, std::vector$<$ BClass $>$ $\ast$\_\-val, const std::string \&\_\-long\_\-name, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc, const std::string \&\_\-dflt=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Simplified interface to add multiple-\/appearing argument into the table. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_a36c65b15ac4f811748dd16f62d51a02f}{add} (\hyperlink{group__poptmx_ga3f58821f631b466567d001183ca437e2}{Kind} \_\-kind, const std::string \&\_\-short\_\-desc, const std::string \&\_\-long\_\-desc=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em Adds note or man. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_a85a22b6aaa6a23b57757b8d78c1c3382}{add\_\-verbose} (bool $\ast$\_\-beverb=0)
+\begin{DoxyCompactList}\small\item\em Includes standard verbose option. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_ab75ea988a9e7f4df929819faf55cf5bb}{add\_\-help} (bool $\ast$\_\-helpme=0)
+\begin{DoxyCompactList}\small\item\em Includes standard help option. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_acef552d1bcafc066a0db6ff1d5b200ee}{add\_\-usage} (bool $\ast$\_\-useme=0)
+\begin{DoxyCompactList}\small\item\em Includes standard usage option. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_af67f317744b2ea42f5d1b0bf513fce14}{add\_\-standard\_\-options} (bool $\ast$\_\-beverb=0, bool $\ast$\_\-helpme=0, bool $\ast$\_\-useme=0)
+\begin{DoxyCompactList}\small\item\em Includes all three standard options;. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_a78951c617d55e45178697d7eca9e0b67}{parse} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_abff6bf9b20aa03f4546ea219bb428557}{has} (const void $\ast$\_\-val) const 
+\begin{DoxyCompactList}\small\item\em Tells if the entry with the \_\-val exists in the table. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_a010fb1d338b563502f09edaaff4e70ab}{has} (const std::string \&\_\-long\_\-name) const 
+\begin{DoxyCompactList}\small\item\em Tells if the entry with the \_\-long\_\-name exists in the table. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_a3f698cc798784744fcc4113bb0fd054a}{has} (const char \_\-char\_\-name) const 
+\begin{DoxyCompactList}\small\item\em Tells if the entry with the \_\-char\_\-name exists in the table. \item\end{DoxyCompactList}\item 
+int \hyperlink{classpoptmx_1_1OptionTable_a53070ddee8ad5fb4abd0eceb35511e44}{count} (const void $\ast$\_\-val=0) const 
+\begin{DoxyCompactList}\small\item\em Returns number of times the entry was processed in \hyperlink{classpoptmx_1_1OptionTable_a78951c617d55e45178697d7eca9e0b67}{parse()}. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1OptionTable_a0a66ac0e3297c36f516ff4d70ed04a80}{desc} (const void $\ast$\_\-val) const 
+\begin{DoxyCompactList}\small\item\em Returns the description of the entry with the value. \item\end{DoxyCompactList}\item 
+int \hyperlink{classpoptmx_1_1OptionTable_a804d3d1816612400a102e9dda416197a}{size} () const 
+\begin{DoxyCompactList}\small\item\em Size of the table. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_ad3c31971fa1e2e061e06e7372c050477}{usage} () const 
+\begin{DoxyCompactList}\small\item\em Constructs the usage message. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_a98d1089187037b02e5d2cee333895229}{Usage} () const 
+\begin{DoxyCompactList}\small\item\em Constructs the verbose usage message. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_a26c611c325ce223bd90affc1b6841c3d}{help} () const 
+\begin{DoxyCompactList}\small\item\em Constructs the help message. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_a00834062b060e732ae72bc3883c55ca1}{Help} () const 
+\begin{DoxyCompactList}\small\item\em Constructs the verbose help message. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_ac87bd15ce01d4629fb70e28d71393b2b}{man} () const 
+\begin{DoxyCompactList}\small\item\em Manages man pages. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1OptionTable_a05e3e6f496cf3a0d946e6d2574477418}{name} () const 
+\begin{DoxyCompactList}\small\item\em Returns the command name as invoked. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_a0a97b02794a0f8745e79b33162fbb8af}{name} (const std::string \&\_\-name)
+\begin{DoxyCompactList}\small\item\em Sets the command name. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std::list$<$ std::string $>$ \hyperlink{classpoptmx_1_1OptionTable_a07cd1458c18f70d0cb5c7e9a3489c04f}{unused}
+\begin{DoxyCompactList}\small\item\em The array of the CLI words which left unprocessed by the parser. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef std::list$<$ \hyperlink{classpoptmx_1_1Option}{Option} $>$::iterator \hyperlink{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{ListO}
+\begin{DoxyCompactList}\small\item\em Just to short the text. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{ListO} \hyperlink{classpoptmx_1_1OptionTable_a99e8f90a0239a5799f585c0830684b36}{find} (const void $\ast$\_\-val) const 
+\begin{DoxyCompactList}\small\item\em Finds entry by value. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{ListO} \hyperlink{classpoptmx_1_1OptionTable_acb5976efec27ae5d63f7bbc3e767f758}{find} (char \_\-char\_\-name) const 
+\begin{DoxyCompactList}\small\item\em Finds entry by short name. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{ListO} \hyperlink{classpoptmx_1_1OptionTable_a8ff4c5acc11225856c2b114096282f26}{find} (const std::string \&\_\-long\_\-name) const 
+\begin{DoxyCompactList}\small\item\em Finds entry by long name. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{ListO} \hyperlink{classpoptmx_1_1OptionTable_af1e5020645bf627e5937e110143760d5}{find} () const 
+\begin{DoxyCompactList}\small\item\em Finds first parse-\/able argument. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{ListO} \hyperlink{classpoptmx_1_1OptionTable_a560ff1c0aff2648e060886095dd119fc}{has\_\-array} () const 
+\begin{DoxyCompactList}\small\item\em True if the table has an array argument. \item\end{DoxyCompactList}\item 
+\hyperlink{classpoptmx_1_1OptionTable}{OptionTable} \& \hyperlink{classpoptmx_1_1OptionTable_a19543d734743ed851ce0b9036383dcc7}{add} (const \hyperlink{classpoptmx_1_1Option}{Option} \&opt)
+\begin{DoxyCompactList}\small\item\em Adds the entry in to the table. \item\end{DoxyCompactList}\item 
+void \hyperlink{classpoptmx_1_1OptionTable_a8e32100929c2bfe52196e8f7ffd39b60}{replacePointers} (std::string \&str)
+\begin{DoxyCompactList}\small\item\em Replaces all pointer marks. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std::list$<$ \hyperlink{classpoptmx_1_1Option}{Option} $>$ \hyperlink{classpoptmx_1_1OptionTable_aaeb4410c92cd7d688b2b41821403d6ef}{options}
+\begin{DoxyCompactList}\small\item\em The table containing all options, arguments, etc. \item\end{DoxyCompactList}\item 
+std::string \hyperlink{classpoptmx_1_1OptionTable_a0bfb132b39096093f9809dbd0b06ac31}{general\_\-desc}
+\item 
+std::string \hyperlink{classpoptmx_1_1OptionTable_a7168462caaba6b939fd66148a4b2715b}{general\_\-long\_\-desc}
+\item 
+std::string \hyperlink{classpoptmx_1_1OptionTable_aa68f1825e50e20f036ec9abfdb0e4a24}{general\_\-synopsis}
+\item 
+std::string \hyperlink{classpoptmx_1_1OptionTable_af3cea70107b7b4f19b1fe61232e3e1d8}{general\_\-name}
+\begin{DoxyCompactList}\small\item\em Program name (as invoked). \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_aed7f2317e288f87f851e6f78d16bc734}{helpme}
+\begin{DoxyCompactList}\small\item\em To be used for the help, if none is provided. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_aa3aab8995cf0a39e49946c7993d11d76}{useme}
+\begin{DoxyCompactList}\small\item\em To be used for the usage, if none is provided. \item\end{DoxyCompactList}\item 
+bool \hyperlink{classpoptmx_1_1OptionTable_a7e3eec8a2c01e6cbe0d7584bfd6d563b}{beverb}
+\begin{DoxyCompactList}\small\item\em To be used for the verbose, if none is provided. \item\end{DoxyCompactList}\item 
+bool $\ast$ \hyperlink{classpoptmx_1_1OptionTable_ac2e25d315d20c51f227ae6b256e0e8f9}{auto\_\-help}
+\begin{DoxyCompactList}\small\item\em Indicates that autohelp was used. \item\end{DoxyCompactList}\item 
+bool $\ast$ \hyperlink{classpoptmx_1_1OptionTable_ae6a353a7f18bdf76b7e408e014fc6883}{auto\_\-use}
+\begin{DoxyCompactList}\small\item\em Indicates that autouse was used. \item\end{DoxyCompactList}\item 
+bool $\ast$ \hyperlink{classpoptmx_1_1OptionTable_acfd37d94b34e7b3262dbcb47ec2d9a51}{auto\_\-verb}
+\begin{DoxyCompactList}\small\item\em Indicates that autoverb was used. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsubsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static const std::string \hyperlink{classpoptmx_1_1OptionTable_a22f4a6d7722fedd31d7e51387945c7f5}{manLN} = \char`\"{}-\/very-\/long-\/key-\/phrase-\/to-\/output-\/man-\/pages\char`\"{}
+\begin{DoxyCompactList}\small\item\em The key phrase which triggers the \hyperlink{classpoptmx_1_1OptionTable_ac87bd15ce01d4629fb70e28d71393b2b}{man()} \item\end{DoxyCompactList}\item 
+static const std::string \hyperlink{classpoptmx_1_1OptionTable_aa7bc68b6c6c485432febb607beb85ec1}{pntrMark} = \char`\"{}\#\#PNTR\#\#\char`\"{}
+\begin{DoxyCompactList}\small\item\em Prefixes and suffixes the printed pointer in the text. \item\end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsubsection{Detailed Description}
+The table of known options. The main (and the only) class to be used by the end user. It stores the information about the program including the general description, all known options and arguments, parses the command line phrase basing on the elements, and may output the usage and/or help messages as well as prepare the manual page for the program.
+
+Within this class the variables ending with \char`\"{}$\ast$\_\-long\_\-desc\char`\"{} would be shown in the verbose help message and will go to the manual pages. The variables ending with \char`\"{}$\ast$\_\-desc\char`\"{} would be shown in both verbose and non-\/verbose help messages. 
+
+Definition at line 234 of file poptmx.h.
+
+
+
+\subsubsection{Member Typedef Documentation}
+\hypertarget{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!ListO@{ListO}}
+\index{ListO@{ListO}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{ListO}]{\setlength{\rightskip}{0pt plus 5cm}typedef std::list$<${\bf Option}$>$::iterator {\bf poptmx::OptionTable::ListO}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_abaa488ce786d8d553d851d225a82d804}
+
+
+Just to short the text. 
+
+
+
+Definition at line 239 of file poptmx.h.
+
+
+
+\subsubsection{Constructor \& Destructor Documentation}
+\hypertarget{classpoptmx_1_1OptionTable_a6076177bf680019cd40eefa652080bb5}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!OptionTable@{OptionTable}}
+\index{OptionTable@{OptionTable}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{OptionTable}]{\setlength{\rightskip}{0pt plus 5cm}poptmx::OptionTable::OptionTable (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{\_\-general\_\-desc = {\ttfamily \char`\"{}\char`\"{}}, }
+\item[{const std::string \&}]{\_\-general\_\-long\_\-desc = {\ttfamily \char`\"{}\char`\"{}}, }
+\item[{const std::string \&}]{\_\-general\_\-synopsis = {\ttfamily \char`\"{}\char`\"{}}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_a6076177bf680019cd40eefa652080bb5}
+
+
+Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-general\_\-desc} & General description of the table (program description). \\
+\hline
+{\em \_\-general\_\-long\_\-desc} & Long description of the table (program). \\
+\hline
+{\em \_\-general\_\-synopsis} & Synopsis of the program. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 558 of file poptmx.cpp.
+
+
+
+\subsubsection{Member Function Documentation}
+\hypertarget{classpoptmx_1_1OptionTable_a19543d734743ed851ce0b9036383dcc7}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add@{add}}
+\index{add@{add}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add (
+\begin{DoxyParamCaption}
+\item[{const {\bf Option} \&}]{opt}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a19543d734743ed851ce0b9036383dcc7}
+
+
+Adds the entry in to the table. 
+
+General interface to add the entry into the table. All other interfaces should use this one.
+
+
+\begin{DoxyParams}{Parameters}
+{\em opt} & Entry to be added. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 925 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, poptmx::Option::char\_\-name, poptmx::Option::desc(), find(), has(), has\_\-array(), poptmx::Option::isarray, poptmx::Option::kind, poptmx::Option::long\_\-name, options, and throw\_\-error().
+
+
+
+Referenced by add(), add\_\-help(), add\_\-standard\_\-options(), add\_\-usage(), add\_\-verbose(), clargs::clargs(), EDEIoptions::options(), and DEIoptions::options().
+
+\hypertarget{classpoptmx_1_1OptionTable_af084ab4547da12159b8ff7928e69a6c3}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add@{add}}
+\index{add@{add}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add (
+\begin{DoxyParamCaption}
+\item[{const {\bf OptionTable} \&}]{\_\-val}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_af084ab4547da12159b8ff7928e69a6c3}
+
+
+Incorporates preexisting option table into the table. 
+
+First puts the general\_\-desc and general\_\-long\_\-desc into the note-\/entry of the table. Then adds all entries of the \_\-val to the table one-\/by-\/one.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & The table to be incorporated. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1035 of file poptmx.cpp.
+
+
+
+References add(), general\_\-desc, general\_\-long\_\-desc, poptmx::NOTE, options, and warn().
+
+\hypertarget{classpoptmx_1_1OptionTable_a8625427dbbd7c64c8b3118f3d588486f}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add@{add}}
+\index{add@{add}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add (
+\begin{DoxyParamCaption}
+\item[{{\bf Kind}}]{\_\-kind, }
+\item[{void $\ast$}]{\_\-val, }
+\item[{int($\ast$)(void $\ast$, const std::string \&)}]{\_\-convert, }
+\item[{const char}]{\_\-char\_\-name, }
+\item[{const std::string \&}]{\_\-long\_\-name, }
+\item[{const std::string \&}]{\_\-short\_\-desc, }
+\item[{const std::string \&}]{\_\-long\_\-desc, }
+\item[{const std::string \&}]{\_\-arg\_\-desc, }
+\item[{const std::string \&}]{\_\-dflt, }
+\item[{bool}]{\_\-is\_\-array}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_a8625427dbbd7c64c8b3118f3d588486f}
+
+
+Abstract interface to add an entry into the table. 
+
+Most abstract and most flexible user interface to add an entry into the table. Should be used only when the user wants to redefine one of the standard type entry.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-kind} & \hyperlink{classpoptmx_1_1Option_a5f5719adfad302943da528300914bd8e}{Option::kind} \\
+\hline
+{\em \_\-val} & \hyperlink{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{Option::val} \\
+\hline
+{\em \_\-convert} & \hyperlink{classpoptmx_1_1Option_a2b02579efd2148ce002d0c5833864795}{Option::convert} \\
+\hline
+{\em \_\-char\_\-name} & \hyperlink{classpoptmx_1_1Option_ae7e0ca795185ac4b4b20bc6766760a4a}{Option::char\_\-name} \\
+\hline
+{\em \_\-long\_\-name} & \hyperlink{classpoptmx_1_1Option_ac9b28f10c43af2e3afc9684e0ef19cc6}{Option::long\_\-name} \\
+\hline
+{\em \_\-short\_\-desc} & \hyperlink{classpoptmx_1_1Option_a16b86218d90bf80a07dc6a49aa8afece}{Option::short\_\-desc} \\
+\hline
+{\em \_\-long\_\-desc} & \hyperlink{classpoptmx_1_1Option}{Option}:: long\_\-desc \\
+\hline
+{\em \_\-arg\_\-desc} & \hyperlink{classpoptmx_1_1Option_a424688d1a39f40e5c4e13d98d1dd2e74}{Option::arg\_\-desc} \\
+\hline
+{\em \_\-is\_\-array} & \hyperlink{classpoptmx_1_1Option_ab87e428e65c1d4c16fc8ba9952d950bb}{Option::isarray} \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 965 of file poptmx.cpp.
+
+
+
+References add().
+
+\hypertarget{classpoptmx_1_1OptionTable_ad97ba69700cc3672edc6328d5ec316b5}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add@{add}}
+\index{add@{add}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add (
+\begin{DoxyParamCaption}
+\item[{{\bf Kind}}]{\_\-kind, }
+\item[{void $\ast$}]{\_\-val, }
+\item[{int($\ast$)(void $\ast$, const std::string \&)}]{\_\-convert, }
+\item[{const std::string \&}]{\_\-long\_\-name, }
+\item[{const std::string \&}]{\_\-short\_\-desc, }
+\item[{const std::string \&}]{\_\-long\_\-desc, }
+\item[{const std::string \&}]{\_\-arg\_\-desc, }
+\item[{const std::string \&}]{\_\-dflt, }
+\item[{bool}]{\_\-is\_\-array}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_ad97ba69700cc3672edc6328d5ec316b5}
+
+
+Abstract interface to add the argument into the table. 
+
+Most abstract and most flexible user interface to add an argument into the table. Should be used only when the user wants to redefine one of the standard type entry.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-kind} & \hyperlink{classpoptmx_1_1Option_a5f5719adfad302943da528300914bd8e}{Option::kind} \\
+\hline
+{\em \_\-val} & \hyperlink{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{Option::val} \\
+\hline
+{\em \_\-convert} & \hyperlink{classpoptmx_1_1Option_a2b02579efd2148ce002d0c5833864795}{Option::convert} \\
+\hline
+{\em \_\-long\_\-name} & \hyperlink{classpoptmx_1_1Option_ac9b28f10c43af2e3afc9684e0ef19cc6}{Option::long\_\-name} \\
+\hline
+{\em \_\-short\_\-desc} & \hyperlink{classpoptmx_1_1Option_a16b86218d90bf80a07dc6a49aa8afece}{Option::short\_\-desc} \\
+\hline
+{\em \_\-long\_\-desc} & \hyperlink{classpoptmx_1_1Option}{Option}:: long\_\-desc \\
+\hline
+{\em \_\-arg\_\-desc} & \hyperlink{classpoptmx_1_1Option_a424688d1a39f40e5c4e13d98d1dd2e74}{Option::arg\_\-desc} \\
+\hline
+{\em \_\-is\_\-array} & \hyperlink{classpoptmx_1_1Option_ab87e428e65c1d4c16fc8ba9952d950bb}{Option::isarray} \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 988 of file poptmx.cpp.
+
+
+
+References add(), poptmx::ARGUMENT, and throw\_\-error().
+
+\hypertarget{classpoptmx_1_1OptionTable_a36c65b15ac4f811748dd16f62d51a02f}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add@{add}}
+\index{add@{add}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add (
+\begin{DoxyParamCaption}
+\item[{{\bf Kind}}]{\_\-kind, }
+\item[{const std::string \&}]{\_\-short\_\-desc, }
+\item[{const std::string \&}]{\_\-long\_\-desc = {\ttfamily \char`\"{}\char`\"{}}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_a36c65b15ac4f811748dd16f62d51a02f}
+
+
+Adds note or man. 
+
+Adds new note or manual page string to the entry table. If adding the note just copies the $\ast$\_\-desc into the appropriate elements of the entry. If adding man-\/page then behaviour is more complex: If the long description is empty then adds the short description would appear in the man file as is, without any changes. Otherwise will add the short description as the section header and long description as the section's text.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-kind} & Kind of entry to add. In this context can be ::NOTE or ::MAN \\
+\hline
+{\em \_\-short\_\-desc} & Note which would appear in the help messages and manual page \\
+\hline
+{\em \_\-long\_\-desc} & Note which would appear in the verbose help message and manual page \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1014 of file poptmx.cpp.
+
+
+
+References add(), poptmx::MAN, poptmx::NOTE, and throw\_\-error().
+
+\hypertarget{classpoptmx_1_1OptionTable_ab75ea988a9e7f4df929819faf55cf5bb}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add\_\-help@{add\_\-help}}
+\index{add\_\-help@{add\_\-help}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add\_\-help}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add\_\-help (
+\begin{DoxyParamCaption}
+\item[{bool $\ast$}]{\_\-helpme = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_ab75ea988a9e7f4df929819faf55cf5bb}
+
+
+Includes standard help option. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-helpme} & The variable to be updated by the option-\/trigger if 0-\/pointer, then uses internal one (\hyperlink{classpoptmx_1_1OptionTable_aed7f2317e288f87f851e6f78d16bc734}{OptionTable::helpme}); \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1072 of file poptmx.cpp.
+
+
+
+References add(), auto\_\-help, helpme, and poptmx::OPTION.
+
+
+
+Referenced by add\_\-standard\_\-options().
+
+\hypertarget{classpoptmx_1_1OptionTable_af67f317744b2ea42f5d1b0bf513fce14}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add\_\-standard\_\-options@{add\_\-standard\_\-options}}
+\index{add\_\-standard\_\-options@{add\_\-standard\_\-options}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add\_\-standard\_\-options}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add\_\-standard\_\-options (
+\begin{DoxyParamCaption}
+\item[{bool $\ast$}]{\_\-beverb = {\ttfamily 0}, }
+\item[{bool $\ast$}]{\_\-helpme = {\ttfamily 0}, }
+\item[{bool $\ast$}]{\_\-useme = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_af67f317744b2ea42f5d1b0bf513fce14}
+
+
+Includes all three standard options;. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-beverb} & The variable to be updated by the option-\/trigger if 0-\/pointer, then uses internal one (\hyperlink{classpoptmx_1_1OptionTable_a7e3eec8a2c01e6cbe0d7584bfd6d563b}{OptionTable::beverb}); \\
+\hline
+{\em \_\-useme} & The variable to be updated by the option-\/trigger if 0-\/pointer, then uses internal one (\hyperlink{classpoptmx_1_1OptionTable_aa3aab8995cf0a39e49946c7993d11d76}{OptionTable::useme}); \\
+\hline
+{\em \_\-helpme} & The variable to be updated by the option-\/trigger if 0-\/pointer, then uses internal one (\hyperlink{classpoptmx_1_1OptionTable_aed7f2317e288f87f851e6f78d16bc734}{OptionTable::helpme}); \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1088 of file poptmx.cpp.
+
+
+
+References add(), add\_\-help(), add\_\-usage(), add\_\-verbose(), auto\_\-help, auto\_\-verb, find(), and poptmx::NOTE.
+
+\hypertarget{classpoptmx_1_1OptionTable_acef552d1bcafc066a0db6ff1d5b200ee}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add\_\-usage@{add\_\-usage}}
+\index{add\_\-usage@{add\_\-usage}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add\_\-usage}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add\_\-usage (
+\begin{DoxyParamCaption}
+\item[{bool $\ast$}]{\_\-useme = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_acef552d1bcafc066a0db6ff1d5b200ee}
+
+
+Includes standard usage option. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-useme} & The variable to be updated by the option-\/trigger if 0-\/pointer, then uses internal one (\hyperlink{classpoptmx_1_1OptionTable_aa3aab8995cf0a39e49946c7993d11d76}{OptionTable::useme}); \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1061 of file poptmx.cpp.
+
+
+
+References add(), auto\_\-use, poptmx::OPTION, and useme.
+
+
+
+Referenced by add\_\-standard\_\-options().
+
+\hypertarget{classpoptmx_1_1OptionTable_a85a22b6aaa6a23b57757b8d78c1c3382}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!add\_\-verbose@{add\_\-verbose}}
+\index{add\_\-verbose@{add\_\-verbose}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{add\_\-verbose}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable} \& poptmx::OptionTable::add\_\-verbose (
+\begin{DoxyParamCaption}
+\item[{bool $\ast$}]{\_\-beverb = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_a85a22b6aaa6a23b57757b8d78c1c3382}
+
+
+Includes standard verbose option. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-beverb} & The variable to be updated by the option-\/trigger if 0-\/pointer, then uses internal one (\hyperlink{classpoptmx_1_1OptionTable_a7e3eec8a2c01e6cbe0d7584bfd6d563b}{OptionTable::beverb}); \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1050 of file poptmx.cpp.
+
+
+
+References add(), auto\_\-verb, beverb, and poptmx::OPTION.
+
+
+
+Referenced by add\_\-standard\_\-options().
+
+\hypertarget{classpoptmx_1_1OptionTable_a53070ddee8ad5fb4abd0eceb35511e44}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!count@{count}}
+\index{count@{count}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{count}]{\setlength{\rightskip}{0pt plus 5cm}int poptmx::OptionTable::count (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{\_\-val = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a53070ddee8ad5fb4abd0eceb35511e44}
+
+
+Returns number of times the entry was processed in \hyperlink{classpoptmx_1_1OptionTable_a78951c617d55e45178697d7eca9e0b67}{parse()}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & The value to check.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+If \_\-val is non-\/zero -\/ number of the times the entry was triggered from the CLI phrase. If \_\-val is zero -\/ number of times all entries were triggered. 
+\end{DoxyReturn}
+
+
+Definition at line 1144 of file poptmx.cpp.
+
+
+
+References find(), has(), options, and throw\_\-error().
+
+
+
+Referenced by clargs::clargs().
+
+\hypertarget{classpoptmx_1_1OptionTable_a0a66ac0e3297c36f516ff4d70ed04a80}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!desc@{desc}}
+\index{desc@{desc}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{desc}]{\setlength{\rightskip}{0pt plus 5cm}string poptmx::OptionTable::desc (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{\_\-val}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a0a66ac0e3297c36f516ff4d70ed04a80}
+
+
+Returns the description of the entry with the value. 
+
+If the entry does not exist in the table and the pointer is non-\/zero, the returned string is the pointer mark which later, after the entry was added to the table, can be replaced using the ::replacePointers(string \&).
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & The value to check\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Description. 
+\end{DoxyReturn}
+
+
+Definition at line 1167 of file poptmx.cpp.
+
+
+
+References find(), has(), pntrMark, and throw\_\-error().
+
+
+
+Referenced by EDEIoptions::options(), and replacePointers().
+
+\hypertarget{classpoptmx_1_1OptionTable_af1e5020645bf627e5937e110143760d5}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!find@{find}}
+\index{find@{find}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{find}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable::ListO} poptmx::OptionTable::find (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_af1e5020645bf627e5937e110143760d5}
+
+
+Finds first parse-\/able argument. 
+
+Finds the first of the argument entries in the table which can take one more value: i.e. either an argument which was not met before, or the argument which accept multiple entries.
+
+\begin{DoxyReturn}{Returns}
+The pointer to the table entry or 0-\/pointer if no entry is found. 
+\end{DoxyReturn}
+
+
+Definition at line 637 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, and options.
+
+
+
+Referenced by add(), add\_\-standard\_\-options(), count(), desc(), has(), parse(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_acb5976efec27ae5d63f7bbc3e767f758}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!find@{find}}
+\index{find@{find}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{find}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable::ListO} poptmx::OptionTable::find (
+\begin{DoxyParamCaption}
+\item[{char}]{\_\-char\_\-name}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_acb5976efec27ae5d63f7bbc3e767f758}
+
+
+Finds entry by short name. 
+
+Finds the entry in the options with the \hyperlink{classpoptmx_1_1Option_ae7e0ca795185ac4b4b20bc6766760a4a}{Option.char\_\-name} equal to \_\-char\_\-name.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-char\_\-name} & The value to search for.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The pointer to the table entry or 0-\/pointer if no entry is found. 
+\end{DoxyReturn}
+
+
+Definition at line 603 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, poptmx::OPTION, and options.
+
+\hypertarget{classpoptmx_1_1OptionTable_a8ff4c5acc11225856c2b114096282f26}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!find@{find}}
+\index{find@{find}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{find}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable::ListO} poptmx::OptionTable::find (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{\_\-long\_\-name}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a8ff4c5acc11225856c2b114096282f26}
+
+
+Finds entry by long name. 
+
+Finds the entry in the options with the \hyperlink{classpoptmx_1_1Option_ac9b28f10c43af2e3afc9684e0ef19cc6}{Option.long\_\-name} equal to \_\-long\_\-name.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-long\_\-name} & The value to search for.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The pointer to the table entry or 0-\/pointer if no entry is found. 
+\end{DoxyReturn}
+
+
+Definition at line 620 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, poptmx::OPTION, and options.
+
+\hypertarget{classpoptmx_1_1OptionTable_a99e8f90a0239a5799f585c0830684b36}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!find@{find}}
+\index{find@{find}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{find}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable::ListO} poptmx::OptionTable::find (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{\_\-val}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a99e8f90a0239a5799f585c0830684b36}
+
+
+Finds entry by value. 
+
+Finds the entry in the options with the \hyperlink{classpoptmx_1_1Option_a8bf55fc70387f6c8929538f420d99658}{Option.val} equal to \_\-val.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & The value to search for.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The pointer to the table entry or 0-\/pointer if no entry is found. 
+\end{DoxyReturn}
+
+
+Definition at line 589 of file poptmx.cpp.
+
+
+
+References options.
+
+\hypertarget{classpoptmx_1_1OptionTable_a3f698cc798784744fcc4113bb0fd054a}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!has@{has}}
+\index{has@{has}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{has}]{\setlength{\rightskip}{0pt plus 5cm}bool poptmx::OptionTable::has (
+\begin{DoxyParamCaption}
+\item[{const char}]{\_\-char\_\-name}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a3f698cc798784744fcc4113bb0fd054a}
+
+
+Tells if the entry with the \_\-char\_\-name exists in the table. 
+
+Tells if the entry with the \_\-val exists in the table.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-char\_\-name} & -\/ entry value to search for.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if found, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 1132 of file poptmx.cpp.
+
+
+
+References find(), and options.
+
+\hypertarget{classpoptmx_1_1OptionTable_abff6bf9b20aa03f4546ea219bb428557}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!has@{has}}
+\index{has@{has}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{has}]{\setlength{\rightskip}{0pt plus 5cm}bool poptmx::OptionTable::has (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{\_\-val}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_abff6bf9b20aa03f4546ea219bb428557}
+
+
+Tells if the entry with the \_\-val exists in the table. 
+
+Tells if the entry with the \_\-val exists in the table.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-val} & -\/ entry value to search for.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if found, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 1108 of file poptmx.cpp.
+
+
+
+References find(), and options.
+
+
+
+Referenced by add(), count(), desc(), and replacePointers().
+
+\hypertarget{classpoptmx_1_1OptionTable_a010fb1d338b563502f09edaaff4e70ab}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!has@{has}}
+\index{has@{has}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{has}]{\setlength{\rightskip}{0pt plus 5cm}bool poptmx::OptionTable::has (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{\_\-long\_\-name}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a010fb1d338b563502f09edaaff4e70ab}
+
+
+Tells if the entry with the \_\-long\_\-name exists in the table. 
+
+Tells if the entry with the \_\-val exists in the table.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-long\_\-name} & -\/ long name to search for.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily true} if found, {\ttfamily false} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 1120 of file poptmx.cpp.
+
+
+
+References find(), and options.
+
+\hypertarget{classpoptmx_1_1OptionTable_a560ff1c0aff2648e060886095dd119fc}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!has\_\-array@{has\_\-array}}
+\index{has\_\-array@{has\_\-array}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{has\_\-array}]{\setlength{\rightskip}{0pt plus 5cm}{\bf OptionTable::ListO} poptmx::OptionTable::has\_\-array (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a560ff1c0aff2648e060886095dd119fc}
+
+
+True if the table has an array argument. 
+
+Finds the first of the argument entries in the table which can take one more value: i.e. either an argument which was not met before, or the argument which accept multiple entries.
+
+\begin{DoxyReturn}{Returns}
+The pointer to the table entry or 0-\/pointer if no entry is found. 
+\end{DoxyReturn}
+
+
+Definition at line 652 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, and options.
+
+
+
+Referenced by add().
+
+\hypertarget{classpoptmx_1_1OptionTable_a00834062b060e732ae72bc3883c55ca1}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!Help@{Help}}
+\index{Help@{Help}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{Help}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::Help (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a00834062b060e732ae72bc3883c55ca1}
+
+
+Constructs the verbose help message. 
+
+
+
+Definition at line 854 of file poptmx.cpp.
+
+
+
+References general\_\-desc, general\_\-long\_\-desc, general\_\-synopsis, and options.
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_a26c611c325ce223bd90affc1b6841c3d}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!help@{help}}
+\index{help@{help}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{help}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::help (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a26c611c325ce223bd90affc1b6841c3d}
+
+
+Constructs the help message. 
+
+
+
+Definition at line 833 of file poptmx.cpp.
+
+
+
+References general\_\-desc, general\_\-synopsis, and options.
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_ac87bd15ce01d4629fb70e28d71393b2b}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!man@{man}}
+\index{man@{man}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{man}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::man (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_ac87bd15ce01d4629fb70e28d71393b2b}
+
+
+Manages man pages. 
+
+
+
+Definition at line 871 of file poptmx.cpp.
+
+
+
+References general\_\-long\_\-desc, general\_\-synopsis, name(), options, and upper().
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_a0a97b02794a0f8745e79b33162fbb8af}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!name@{name}}
+\index{name@{name}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{name}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::name (
+\begin{DoxyParamCaption}
+\item[{const std::string \&}]{\_\-name}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_a0a97b02794a0f8745e79b33162fbb8af}
+
+
+Sets the command name. 
+
+May be useful when you need just to print usage/verbose message before parsing the CLI phrase.
+
+
+\begin{DoxyParams}{Parameters}
+{\em \_\-name} & New command name (usually set to argv\mbox{[}0\mbox{]}). \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1228 of file poptmx.cpp.
+
+
+
+References general\_\-name.
+
+\hypertarget{classpoptmx_1_1OptionTable_a05e3e6f496cf3a0d946e6d2574477418}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!name@{name}}
+\index{name@{name}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{name}]{\setlength{\rightskip}{0pt plus 5cm}string poptmx::OptionTable::name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a05e3e6f496cf3a0d946e6d2574477418}
+
+
+Returns the command name as invoked. 
+
+
+
+Definition at line 1208 of file poptmx.cpp.
+
+
+
+References general\_\-name.
+
+
+
+Referenced by clargs::clargs(), man(), parse(), and usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_a78951c617d55e45178697d7eca9e0b67}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!parse@{parse}}
+\index{parse@{parse}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{parse}]{\setlength{\rightskip}{0pt plus 5cm}bool poptmx::OptionTable::parse (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]}}
+\end{DoxyParamCaption}
+)}\hfill}
+\label{classpoptmx_1_1OptionTable_a78951c617d55e45178697d7eca9e0b67}
+Parses the whole CLI phrase.
+
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of the arguments in the argv. \\
+\hline
+{\em argv} & Pointer to the array of the arguments. The last element must always be 0-\/pointer.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+{\ttfamily false} if help or usage man message were printed, {\ttfamily true} otherwise. 
+\end{DoxyReturn}
+
+
+Definition at line 664 of file poptmx.cpp.
+
+
+
+References poptmx::ARGUMENT, auto\_\-help, auto\_\-use, auto\_\-verb, find(), general\_\-desc, general\_\-long\_\-desc, general\_\-name, general\_\-synopsis, help(), Help(), man(), manLN, name(), options, replacePointers(), throw\_\-error(), unused, usage(), Usage(), and warn().
+
+
+
+Referenced by clargs::clargs().
+
+\hypertarget{classpoptmx_1_1OptionTable_a8e32100929c2bfe52196e8f7ffd39b60}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!replacePointers@{replacePointers}}
+\index{replacePointers@{replacePointers}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{replacePointers}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::replacePointers (
+\begin{DoxyParamCaption}
+\item[{std::string \&}]{str}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a8e32100929c2bfe52196e8f7ffd39b60}
+
+
+Replaces all pointer marks. 
+
+Scans the string for the pointer marks, reads the pointer and replaces the mark with the description given by ::desc(const void$\ast$).
+
+
+\begin{DoxyParams}{Parameters}
+{\em str} & string to be changed. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 1187 of file poptmx.cpp.
+
+
+
+References desc(), has(), pntrMark, and throw\_\-error().
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_a804d3d1816612400a102e9dda416197a}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!size@{size}}
+\index{size@{size}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{size}]{\setlength{\rightskip}{0pt plus 5cm}int poptmx::OptionTable::size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a804d3d1816612400a102e9dda416197a}
+
+
+Size of the table. 
+
+
+
+Definition at line 578 of file poptmx.cpp.
+
+
+
+References options.
+
+\hypertarget{classpoptmx_1_1OptionTable_ad3c31971fa1e2e061e06e7372c050477}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!usage@{usage}}
+\index{usage@{usage}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{usage}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::usage (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_ad3c31971fa1e2e061e06e7372c050477}
+
+
+Constructs the usage message. 
+
+
+
+Definition at line 785 of file poptmx.cpp.
+
+
+
+References auto\_\-help, auto\_\-verb, find(), general\_\-desc, name(), and options.
+
+
+
+Referenced by clargs::clargs(), and parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_a98d1089187037b02e5d2cee333895229}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!Usage@{Usage}}
+\index{Usage@{Usage}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{Usage}]{\setlength{\rightskip}{0pt plus 5cm}void poptmx::OptionTable::Usage (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\hfill}
+\label{classpoptmx_1_1OptionTable_a98d1089187037b02e5d2cee333895229}
+
+
+Constructs the verbose usage message. 
+
+
+
+Definition at line 808 of file poptmx.cpp.
+
+
+
+References auto\_\-help, auto\_\-use, auto\_\-verb, find(), general\_\-desc, general\_\-long\_\-desc, general\_\-synopsis, and options.
+
+
+
+Referenced by parse().
+
+
+
+\subsubsection{Member Data Documentation}
+\hypertarget{classpoptmx_1_1OptionTable_ac2e25d315d20c51f227ae6b256e0e8f9}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!auto\_\-help@{auto\_\-help}}
+\index{auto\_\-help@{auto\_\-help}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{auto\_\-help}]{\setlength{\rightskip}{0pt plus 5cm}bool$\ast$ {\bf poptmx::OptionTable::auto\_\-help}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_ac2e25d315d20c51f227ae6b256e0e8f9}
+
+
+Indicates that autohelp was used. 
+
+
+
+Definition at line 262 of file poptmx.h.
+
+
+
+Referenced by add\_\-help(), add\_\-standard\_\-options(), parse(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_ae6a353a7f18bdf76b7e408e014fc6883}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!auto\_\-use@{auto\_\-use}}
+\index{auto\_\-use@{auto\_\-use}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{auto\_\-use}]{\setlength{\rightskip}{0pt plus 5cm}bool$\ast$ {\bf poptmx::OptionTable::auto\_\-use}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_ae6a353a7f18bdf76b7e408e014fc6883}
+
+
+Indicates that autouse was used. 
+
+
+
+Definition at line 263 of file poptmx.h.
+
+
+
+Referenced by add\_\-usage(), parse(), and Usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_acfd37d94b34e7b3262dbcb47ec2d9a51}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!auto\_\-verb@{auto\_\-verb}}
+\index{auto\_\-verb@{auto\_\-verb}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{auto\_\-verb}]{\setlength{\rightskip}{0pt plus 5cm}bool$\ast$ {\bf poptmx::OptionTable::auto\_\-verb}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_acfd37d94b34e7b3262dbcb47ec2d9a51}
+
+
+Indicates that autoverb was used. 
+
+
+
+Definition at line 264 of file poptmx.h.
+
+
+
+Referenced by add\_\-standard\_\-options(), add\_\-verbose(), parse(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_a7e3eec8a2c01e6cbe0d7584bfd6d563b}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!beverb@{beverb}}
+\index{beverb@{beverb}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{beverb}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf poptmx::OptionTable::beverb}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a7e3eec8a2c01e6cbe0d7584bfd6d563b}
+
+
+To be used for the verbose, if none is provided. 
+
+
+
+Definition at line 261 of file poptmx.h.
+
+
+
+Referenced by add\_\-verbose().
+
+\hypertarget{classpoptmx_1_1OptionTable_a0bfb132b39096093f9809dbd0b06ac31}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!general\_\-desc@{general\_\-desc}}
+\index{general\_\-desc@{general\_\-desc}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{general\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::OptionTable::general\_\-desc}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a0bfb132b39096093f9809dbd0b06ac31}
+Short description of the program. If the table is included into another option table, this description becomes the short\_\-desc of the note preceeding the included elements. 
+
+Definition at line 244 of file poptmx.h.
+
+
+
+Referenced by add(), Help(), help(), parse(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_a7168462caaba6b939fd66148a4b2715b}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!general\_\-long\_\-desc@{general\_\-long\_\-desc}}
+\index{general\_\-long\_\-desc@{general\_\-long\_\-desc}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{general\_\-long\_\-desc}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::OptionTable::general\_\-long\_\-desc}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a7168462caaba6b939fd66148a4b2715b}
+Long description of the program. If the table is included into another option table, this description becomes the long\_\-desc of the note preceeding the included elements. 
+
+Definition at line 249 of file poptmx.h.
+
+
+
+Referenced by add(), Help(), man(), parse(), and Usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_af3cea70107b7b4f19b1fe61232e3e1d8}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!general\_\-name@{general\_\-name}}
+\index{general\_\-name@{general\_\-name}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{general\_\-name}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::OptionTable::general\_\-name}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_af3cea70107b7b4f19b1fe61232e3e1d8}
+
+
+Program name (as invoked). 
+
+
+
+Definition at line 257 of file poptmx.h.
+
+
+
+Referenced by name(), and parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_aa68f1825e50e20f036ec9abfdb0e4a24}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!general\_\-synopsis@{general\_\-synopsis}}
+\index{general\_\-synopsis@{general\_\-synopsis}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{general\_\-synopsis}]{\setlength{\rightskip}{0pt plus 5cm}std::string {\bf poptmx::OptionTable::general\_\-synopsis}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_aa68f1825e50e20f036ec9abfdb0e4a24}
+The string with the synopsis of the program: to be found in the manual page and help messages. If not set then it is automatically generated from the table of options. 
+
+Definition at line 254 of file poptmx.h.
+
+
+
+Referenced by Help(), help(), man(), parse(), and Usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_aed7f2317e288f87f851e6f78d16bc734}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!helpme@{helpme}}
+\index{helpme@{helpme}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{helpme}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf poptmx::OptionTable::helpme}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_aed7f2317e288f87f851e6f78d16bc734}
+
+
+To be used for the help, if none is provided. 
+
+
+
+Definition at line 259 of file poptmx.h.
+
+
+
+Referenced by add\_\-help().
+
+\hypertarget{classpoptmx_1_1OptionTable_a22f4a6d7722fedd31d7e51387945c7f5}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!manLN@{manLN}}
+\index{manLN@{manLN}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{manLN}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf poptmx::OptionTable::manLN} = \char`\"{}-\/very-\/long-\/key-\/phrase-\/to-\/output-\/man-\/pages\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_a22f4a6d7722fedd31d7e51387945c7f5}
+
+
+The key phrase which triggers the \hyperlink{classpoptmx_1_1OptionTable_ac87bd15ce01d4629fb70e28d71393b2b}{man()} 
+
+
+
+Definition at line 275 of file poptmx.h.
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_aaeb4410c92cd7d688b2b41821403d6ef}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!options@{options}}
+\index{options@{options}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{options}]{\setlength{\rightskip}{0pt plus 5cm}std::list$<${\bf Option}$>$ {\bf poptmx::OptionTable::options}\hspace{0.3cm}{\ttfamily  \mbox{[}mutable, private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_aaeb4410c92cd7d688b2b41821403d6ef}
+
+
+The table containing all options, arguments, etc. 
+
+
+
+Definition at line 238 of file poptmx.h.
+
+
+
+Referenced by add(), count(), find(), has(), has\_\-array(), Help(), help(), man(), parse(), size(), Usage(), and usage().
+
+\hypertarget{classpoptmx_1_1OptionTable_aa7bc68b6c6c485432febb607beb85ec1}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!pntrMark@{pntrMark}}
+\index{pntrMark@{pntrMark}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{pntrMark}]{\setlength{\rightskip}{0pt plus 5cm}const string {\bf poptmx::OptionTable::pntrMark} = \char`\"{}\#\#PNTR\#\#\char`\"{}\hspace{0.3cm}{\ttfamily  \mbox{[}static, private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_aa7bc68b6c6c485432febb607beb85ec1}
+
+
+Prefixes and suffixes the printed pointer in the text. 
+
+
+
+Definition at line 277 of file poptmx.h.
+
+
+
+Referenced by desc(), and replacePointers().
+
+\hypertarget{classpoptmx_1_1OptionTable_a07cd1458c18f70d0cb5c7e9a3489c04f}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!unused@{unused}}
+\index{unused@{unused}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{unused}]{\setlength{\rightskip}{0pt plus 5cm}std::list$<$std::string$>$ {\bf poptmx::OptionTable::unused}}\hfill}
+\label{classpoptmx_1_1OptionTable_a07cd1458c18f70d0cb5c7e9a3489c04f}
+
+
+The array of the CLI words which left unprocessed by the parser. 
+
+
+
+Definition at line 364 of file poptmx.h.
+
+
+
+Referenced by parse().
+
+\hypertarget{classpoptmx_1_1OptionTable_aa3aab8995cf0a39e49946c7993d11d76}{
+\index{poptmx::OptionTable@{poptmx::OptionTable}!useme@{useme}}
+\index{useme@{useme}!poptmx::OptionTable@{poptmx::OptionTable}}
+\paragraph[{useme}]{\setlength{\rightskip}{0pt plus 5cm}bool {\bf poptmx::OptionTable::useme}\hspace{0.3cm}{\ttfamily  \mbox{[}private\mbox{]}}}\hfill}
+\label{classpoptmx_1_1OptionTable_aa3aab8995cf0a39e49946c7993d11d76}
+
+
+To be used for the usage, if none is provided. 
+
+
+
+Definition at line 260 of file poptmx.h.
+
+
+
+Referenced by add\_\-usage().
+
+
+
+The documentation for this class was generated from the following files:\begin{DoxyCompactItemize}
+\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{poptmx_8h}{poptmx.h}\item 
+/home/antonmx/work/projects/ctascmake/src/common/\hyperlink{poptmx_8cpp}{poptmx.cpp}\end{DoxyCompactItemize}

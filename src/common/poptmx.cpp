@@ -28,6 +28,7 @@
 ///
 
 #include"poptmx.h"
+#include <unistd.h>
 
 #include<limits>
 #include<algorithm>

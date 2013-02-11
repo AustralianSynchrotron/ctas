@@ -35,6 +35,7 @@
 #include<algorithm>
 #include <stdarg.h>
 #include <string.h> // for memcpy
+#include <unistd.h>
 #include "common.h"
 
 

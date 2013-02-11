@@ -140,12 +140,17 @@ target_link_libraries(simulate-ipc
   lipc
 )
 
+add_executable(stitch stitch.cpp)
+target_link_libraries(stitch
+  common
+  poptmx
+)
 
 set( all_targets
   ipc dei edei
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts ff rc2fd f2i
+  ct-line ts ff rc2fd f2i stitch
 )
 
 

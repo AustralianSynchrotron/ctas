@@ -85,12 +85,14 @@ add_library(common SHARED common.cpp)
 target_link_libraries(common
   ${ImageMagick_LIBRARIES}
   freeimage
+  tiff
 )
 
 add_library(kernel SHARED kernel.cpp)
 target_link_libraries(kernel
   fftw3f
   gsl
+  gslcblas
 )
 
 add_library(lipc SHARED lipc.cpp)

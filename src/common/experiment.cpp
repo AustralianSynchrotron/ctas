@@ -30,6 +30,7 @@
 #include "flatfield.h"
 #include "poptmx.h"
 #include <algorithm>
+#include <unistd.h>
 
 using namespace std;
 

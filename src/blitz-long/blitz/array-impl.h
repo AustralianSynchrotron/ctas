@@ -38,23 +38,23 @@
 #ifndef BZ_ARRAY_H
 #define BZ_ARRAY_H
 
-#include <blitz/blitz.h>
-#include <blitz/memblock.h>
-#include <blitz/range.h>
-#include <blitz/tinyvec.h>
+#include "blitz.h"
+#include "memblock.h"
+#include "range.h"
+#include "tinyvec.h"
 
 #ifdef BZ_ARRAY_SPACE_FILLING_TRAVERSAL
-#include <blitz/traversal.h>
+#include "traversal.h"
 #endif
 
-#include <blitz/indexexpr.h>
-#include <blitz/prettyprint.h>
+#include "indexexpr.h"
+#include "prettyprint.h"
 
-#include <blitz/array/slice.h>     // Subarrays and slicing
-#include <blitz/array/map.h>       // Tensor index notation
-#include <blitz/array/multi.h>     // Multicomponent arrays
-#include <blitz/array/domain.h>    // RectDomain class
-#include <blitz/array/storage.h>   // GeneralArrayStorage
+#include "array/slice.h"     // Subarrays and slicing
+#include "array/map.h"       // Tensor index notation
+#include "array/multi.h"     // Multicomponent arrays
+#include "array/domain.h"    // RectDomain class
+#include "array/storage.h"   // GeneralArrayStorage
 
 
 BZ_NAMESPACE(blitz)
@@ -97,7 +97,7 @@ void find(Array<TinyVector<MyIndexType,N_rank>,1>&,
 // and make Array<P,N2> a friend of Array<P,N> for slicing.
 
 template<typename P_numtype, int N_rank>
-class Array : public MemoryBlockReference<P_numtype> 
+class Array : public MemoryBlockReference<P_numtype>
 #ifdef BZ_NEW_EXPRESSION_TEMPLATES
     , public ETBase<Array<P_numtype,N_rank> >
 #endif
@@ -137,7 +137,7 @@ public:
     // Constructors                             //
     //////////////////////////////////////////////
 
-    
+
     /*
      * Construct an array from an array expression.
      */
@@ -161,7 +161,7 @@ public:
     }
 
     explicit Array(
-        MyIndexType length0, 
+        MyIndexType length0,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -339,7 +339,7 @@ public:
      */
     Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
-      : MemoryBlockReference<T_numtype>(product(shape), dataFirst, 
+      : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
           neverDeleteData),
         storage_(storage)
     {
@@ -356,9 +356,9 @@ public:
      * block will not be freed by Blitz++).
      */
     Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
-        TinyVector<MyIndexType, N_rank> stride, 
+        TinyVector<MyIndexType, N_rank> stride,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
-      : MemoryBlockReference<T_numtype>(product(shape), dataFirst, 
+      : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
           neverDeleteData),
         storage_(storage)
     {
@@ -376,7 +376,7 @@ public:
     Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
         preexistingMemoryPolicy deletionPolicy,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
-      : MemoryBlockReference<T_numtype>(product(shape), dataFirst, 
+      : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
             deletionPolicy),
         storage_(storage)
     {
@@ -392,13 +392,13 @@ public:
 
     /*
      * Construct an array from an existing block of memory, with a
-     * given set of strides.  
+     * given set of strides.
      */
     Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
         TinyVector<MyIndexType, N_rank> stride,
         preexistingMemoryPolicy deletionPolicy,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
-      : MemoryBlockReference<T_numtype>(product(shape), dataFirst, 
+      : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
           deletionPolicy),
         storage_(storage)
     {
@@ -417,7 +417,7 @@ public:
      * This constructor takes an extent (length) vector and storage format.
      */
 
-    Array(const TinyVector<MyIndexType, N_rank>& extent, 
+    Array(const TinyVector<MyIndexType, N_rank>& extent,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -432,7 +432,7 @@ public:
 
     Array(const TinyVector<MyIndexType, N_rank>& lbounds,
         const TinyVector<MyIndexType, N_rank>& extent,
-        const GeneralArrayStorage<N_rank>& storage 
+        const GeneralArrayStorage<N_rank>& storage
            = GeneralArrayStorage<N_rank>());
 
     /*
@@ -440,7 +440,7 @@ public:
      * e.g. Array<int,2> A(Range(10,20), Range(20,30))
      * will create an 11x11 array whose indices are 10..20 and 20..30
      */
-    Array(Range r0, 
+    Array(Range r0,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -455,7 +455,7 @@ public:
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
-        BZPRECONDITION(r0.isAscendingContiguous() && 
+        BZPRECONDITION(r0.isAscendingContiguous() &&
             r1.isAscendingContiguous());
 
         length_[0] = r0.length();
@@ -813,14 +813,14 @@ public:
         constructSubarray(array, r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10);
     }
 
-    Array(Array<T_numtype, N_rank>& array, 
+    Array(Array<T_numtype, N_rank>& array,
         const RectDomain<N_rank>& subdomain)
     {
         constructSubarray(array, subdomain);
     }
 
     /* Constructor added by Julian Cummings */
-    Array(Array<T_numtype, N_rank>& array, 
+    Array(Array<T_numtype, N_rank>& array,
         const StridedDomain<N_rank>& subdomain)
     {
         constructSubarray(array, subdomain);
@@ -850,7 +850,7 @@ public:
     MyIndexType                        base(int rank) const
     { return storage_.base(rank); }
 
-    iterator                           begin() 
+    iterator                           begin()
     { return iterator(*this); }
 
     const_iterator                     begin() const
@@ -887,12 +887,12 @@ public:
     const T_numtype* restrict          data() const
     { return data_ + dataOffset(); }
 
-    T_numtype* restrict                data() 
+    T_numtype* restrict                data()
     { return data_ + dataOffset(); }
 
     // These dataZero() routines refer to the point (0,0,...,0)
     // which may not be in the array if the bases are nonzero.
-    
+
     const T_numtype* restrict          dataZero() const
     { return data_; }
 
@@ -916,7 +916,7 @@ public:
 
         return pos;
     }
-    
+
     const T_numtype* restrict         dataFirst() const
     { return data_ + dataFirstOffset(); }
 
@@ -950,17 +950,17 @@ public:
     Array<P_numtype2,N_rank> extractComponent(
         P_numtype2, int compNum, int numComponents) const;
 
-    void                              free() 
+    void                              free()
     {
         T_base::changeToNullBlock();
         length_ = 0;
     }
- 
-    bool                              isMajorRank(int rank) const 
+
+    bool                              isMajorRank(int rank) const
     { return storage_.ordering(rank) == N_rank-1; }
-    bool                              isMinorRank(int rank) const 
+    bool                              isMinorRank(int rank) const
     { return storage_.ordering(rank) != N_rank-1; }
-    bool                              isRankStoredAscending(int rank) const 
+    bool                              isRankStoredAscending(int rank) const
     { return storage_.isRankStoredAscending(rank); }
 
     bool isStorageContiguous() const;
@@ -1056,15 +1056,15 @@ public:
                                         Range r7, Range r8, Range r9);
     void                              resize(Range r1, Range r2, Range r3,
                                         Range r4, Range r5, Range r6,
-                                        Range r7, Range r8, Range r9, 
+                                        Range r7, Range r8, Range r9,
                                         Range r10);
     void                              resize(Range r1, Range r2, Range r3,
                                         Range r4, Range r5, Range r6,
-                                        Range r7, Range r8, Range r9, 
+                                        Range r7, Range r8, Range r9,
                                         Range r10, Range r11);
 
     void resize(const TinyVector<MyIndexType,N_rank>&);
- 
+
 
     void resizeAndPreserve(const TinyVector<MyIndexType,N_rank>&);
     void resizeAndPreserve(MyIndexType extent);
@@ -1112,9 +1112,9 @@ public:
 
     MyIndexType                       rows() const
     { return length_[0]; }
-    
+
     void                              setStorage(GeneralArrayStorage<N_rank>);
-    
+
     void                              slice(int rank, Range r);
 
     const TinyVector<MyIndexType, N_rank>& shape() const
@@ -1136,7 +1136,7 @@ public:
         { return T_base::lockReferenceCount(!disableLock); }
 
     TinyVector<MyIndexType, N_rank>   ubound() const
-    { 
+    {
         TinyVector<MyIndexType, N_rank> ub;
         for (int i=0; i < N_rank; ++i)
           ub(i) = base(i) + extent(i) - 1;
@@ -1293,7 +1293,7 @@ public:
 
     bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
                        MyIndexType BZ_DEBUG_PARAM(i1)) const {
-        BZPRECHECK(isInRange(i0,i1), "Array index out of range: (" 
+        BZPRECHECK(isInRange(i0,i1), "Array index out of range: ("
             << i0 << ", " << i1 << ")"
             << endl << "Lower bounds: " << storage_.base() << endl
             <<         "Length:       " << length_ << endl);
@@ -1330,7 +1330,7 @@ public:
                        MyIndexType BZ_DEBUG_PARAM(i4)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4), "Array index out of range: ("
-            << i0 << ", " << i1 << ", " << i2 << ", " << i3 
+            << i0 << ", " << i1 << ", " << i2 << ", " << i3
             << ", " << i4 << ")"
             << endl << "Lower bounds: " << storage_.base() << endl
             <<         "Length:       " << length_ << endl);
@@ -1360,7 +1360,7 @@ public:
                        MyIndexType BZ_DEBUG_PARAM(i5),
                        MyIndexType BZ_DEBUG_PARAM(i6)) const
     {
-        BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6), 
+        BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6),
             "Array index out of range: ("
             << i0 << ", " << i1 << ", " << i2 << ", " << i3
             << ", " << i4 << ", " << i5 << ", " << i6 << ")"
@@ -1400,7 +1400,7 @@ public:
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6,i7,i8),
             "Array index out of range: ("
             << i0 << ", " << i1 << ", " << i2 << ", " << i3
-            << ", " << i4 << ", " << i5 << ", " << i6 << ", " << i7 
+            << ", " << i4 << ", " << i5 << ", " << i6 << ", " << i7
             << ", " << i8 << ")"
             << endl << "Lower bounds: " << storage_.base() << endl
             <<         "Length:       " << length_ << endl);
@@ -1464,7 +1464,7 @@ public:
 
     template<int N_rank2>
     T_numtype& restrict operator()(
-        const TinyVector<MyIndexType,N_rank2>& index) 
+        const TinyVector<MyIndexType,N_rank2>& index)
     {
         assertInRange(index);
         return data_[dot(index, stride_)];
@@ -1685,19 +1685,19 @@ public:
  *    the full template for mixed parameters
  *-------------------------------------------------------------------------*/
     const T_numtype& restrict operator()(int i0) const
-    { 
+    {
         assertInRange(i0);
-        return data_[i0 * stride_[0]]; 
+        return data_[i0 * stride_[0]];
     }
 
-    T_numtype& restrict operator()(int i0) 
+    T_numtype& restrict operator()(int i0)
     {
         assertInRange(i0);
         return data_[i0 * stride_[0]];
     }
 
     const T_numtype& restrict operator()(int i0, int i1) const
-    { 
+    {
         assertInRange(i0, i1);
         return data_[i0 * stride_[0] + i1 * stride_[1]];
     }
@@ -1715,7 +1715,7 @@ public:
             + i2 * stride_[2]];
     }
 
-    T_numtype& restrict operator()(int i0, int i1, int i2) 
+    T_numtype& restrict operator()(int i0, int i1, int i2)
     {
         assertInRange(i0, i1, i2);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1849,7 +1849,7 @@ public:
     const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
         int i4, int i5, int i6, int i7, int i8, int i9, int i10) const
     {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, 
+        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
             i9, i10);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
@@ -1860,7 +1860,7 @@ public:
     T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
         int i4, int i5, int i6, int i7, int i8, int i9, int i10)
     {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, 
+        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
             i9, i10);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
@@ -1873,19 +1873,19 @@ public:
  *  operator() for direct indexing up to dim 11 using machine length indices
  *-------------------------------------------------------------------------*/
     const T_numtype& restrict operator()(MyIndexType i0) const
-    { 
+    {
         assertInRange(i0);
-        return data_[i0 * stride_[0]]; 
+        return data_[i0 * stride_[0]];
     }
 
-    T_numtype& restrict operator()(MyIndexType i0) 
+    T_numtype& restrict operator()(MyIndexType i0)
     {
         assertInRange(i0);
         return data_[i0 * stride_[0]];
     }
 
     const T_numtype& restrict operator()(MyIndexType i0, MyIndexType i1) const
-    { 
+    {
         assertInRange(i0, i1);
         return data_[i0 * stride_[0] + i1 * stride_[1]];
     }
@@ -1905,7 +1905,7 @@ public:
     }
 
     T_numtype& restrict operator()(
-        MyIndexType i0, MyIndexType i1, MyIndexType i2) 
+        MyIndexType i0, MyIndexType i1, MyIndexType i2)
     {
         assertInRange(i0, i1, i2);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2059,7 +2059,7 @@ public:
         MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
         MyIndexType i8, MyIndexType i9, MyIndexType i10) const
     {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, 
+        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
             i9, i10);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
@@ -2072,7 +2072,7 @@ public:
         MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
         MyIndexType i8, MyIndexType i9, MyIndexType i10)
     {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, 
+        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
             i9, i10);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
@@ -2166,7 +2166,7 @@ public:
     /*
      * These versions of operator() allow any combination of MyIndexType
      * and Range operands to be used.  Each MyIndexType operand reduces
-     * the rank of the resulting array by one.  
+     * the rank of the resulting array by one.
      *
      * e.g.  Array<int,4> A(20,20,20,20);
      *       Array<int,2> B = A(Range(5,15), 3, 5, Range(8,9));
@@ -2197,7 +2197,7 @@ public:
     }
 
     template<typename T1, typename T2, typename T3>
-    typename SliceInfo<T_numtype,T1,T2,T3>::T_slice 
+    typename SliceInfo<T_numtype,T1,T2,T3>::T_slice
     operator()(T1 r1, T2 r2, T3 r3) const
     {
         typedef typename SliceInfo<T_numtype,T1,T2,T3>::T_slice slice;
@@ -2313,7 +2313,7 @@ public:
     template<int N0>
     _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0> >
     operator()(IndexPlaceholder<N0>) const
-    { 
+    {
         return _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0> >
             (noConst());
     }
@@ -2324,7 +2324,7 @@ public:
     {
         return _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0,
             N1> >(noConst());
-    } 
+    }
 
     template<int N0, int N1, int N2>
     _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0, N1, N2> >
@@ -2347,7 +2347,7 @@ public:
     template<int N0, int N1, int N2, int N3, int N4>
     _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0, N1, N2, N3, N4> >
     operator()(IndexPlaceholder<N0>, IndexPlaceholder<N1>,
-        IndexPlaceholder<N2>, IndexPlaceholder<N3>, 
+        IndexPlaceholder<N2>, IndexPlaceholder<N3>,
         IndexPlaceholder<N4>) const
     {
         return _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0,
@@ -2355,7 +2355,7 @@ public:
     }
 
     template<int N0, int N1, int N2, int N3, int N4, int N5>
-    _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0, N1, N2, N3, 
+    _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0, N1, N2, N3,
         N4, N5> >
     operator()(IndexPlaceholder<N0>, IndexPlaceholder<N1>,
         IndexPlaceholder<N2>, IndexPlaceholder<N3>, IndexPlaceholder<N4>,
@@ -2382,7 +2382,7 @@ public:
         N4, N5, N6, N7> >
     operator()(IndexPlaceholder<N0>, IndexPlaceholder<N1>,
         IndexPlaceholder<N2>, IndexPlaceholder<N3>, IndexPlaceholder<N4>,
-        IndexPlaceholder<N5>, IndexPlaceholder<N6>, 
+        IndexPlaceholder<N5>, IndexPlaceholder<N6>,
         IndexPlaceholder<N7>) const
     {
         return _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0,
@@ -2422,7 +2422,7 @@ public:
     operator()(IndexPlaceholder<N0>, IndexPlaceholder<N1>,
         IndexPlaceholder<N2>, IndexPlaceholder<N3>, IndexPlaceholder<N4>,
         IndexPlaceholder<N5>, IndexPlaceholder<N6>, IndexPlaceholder<N7>,
-        IndexPlaceholder<N8>, IndexPlaceholder<N9>, 
+        IndexPlaceholder<N8>, IndexPlaceholder<N9>,
         IndexPlaceholder<N10>) const
     {
         return _bz_ArrayExpr<ArrayIndexMapping<T_numtype, N_rank, N0,
@@ -2467,7 +2467,7 @@ public:
     //////////////////////////////////////////////
     // Indirection
     //////////////////////////////////////////////
- 
+
     template<typename T_indexContainer>
     IndirectArray<T_array, T_indexContainer>
     operator[](const T_indexContainer& index)
@@ -2475,7 +2475,7 @@ public:
         return IndirectArray<T_array, T_indexContainer>(*this,
             const_cast<T_indexContainer&>(index));
     }
- 
+
     //////////////////////////////////////////////
     // Assignment Operators
     //////////////////////////////////////////////
@@ -2524,7 +2524,7 @@ public:
     // Array operands
     T_array& operator=(const Array<T_numtype,N_rank>&);
 
-    template<typename P_numtype2> 
+    template<typename P_numtype2>
     T_array& operator=(const Array<P_numtype2,N_rank>&);
     template<typename P_numtype2>
     T_array& operator+=(const Array<P_numtype2,N_rank>&);
@@ -2586,7 +2586,7 @@ public:
 #ifdef BZ_ARRAY_SPACE_FILLING_TRAVERSAL
     template<typename T_expr, typename T_update>
     inline T_array& evaluateWithFastTraversal(
-        const TraversalOrder<N_rank - 1>& order, 
+        const TraversalOrder<N_rank - 1>& order,
         T_expr expr, T_update);
 #endif // BZ_ARRAY_SPACE_FILLING_TRAVERSAL
 #endif
@@ -2616,13 +2616,13 @@ public:
 
     T_numtype* restrict getInitializationIterator() { return dataFirst(); }
 
-    bool canCollapse(int outerRank, int innerRank) const { 
+    bool canCollapse(int outerRank, int innerRank) const {
 #ifdef BZ_DEBUG_TRAVERSE
         BZ_DEBUG_MESSAGE("stride(" << innerRank << ")=" << stride(innerRank)
           << ", extent()=" << extent(innerRank) << ", stride(outerRank)="
           << stride(outerRank));
 #endif
-        return (stride(innerRank) * extent(innerRank) == stride(outerRank)); 
+        return (stride(innerRank) * extent(innerRank) == stride(outerRank));
     }
 
 protected:
@@ -2632,7 +2632,7 @@ protected:
 
     _bz_inline2 void computeStrides();
     _bz_inline2 void setupStorage(int rank);
-    void constructSubarray(Array<T_numtype, N_rank>& array, 
+    void constructSubarray(Array<T_numtype, N_rank>& array,
         const RectDomain<N_rank>&);
     void constructSubarray(Array<T_numtype, N_rank>& array,
         const StridedDomain<N_rank>&);
@@ -2668,7 +2668,7 @@ protected:
     template<int N_rank2, typename R0, typename R1, typename R2, typename R3,
              typename R4, typename R5, typename R6, typename R7, typename R8,
              typename R9, typename R10>
-    void constructSlice(Array<T_numtype, N_rank2>& array, R0 r0, R1 r1, R2 r2, 
+    void constructSlice(Array<T_numtype, N_rank2>& array, R0 r0, R1 r1, R2 r2,
         R3 r3, R4 r4, R5 r5, R6 r6, R7 r7, R8 r8, R9 r9, R10 r10);
 
     template<int N_rank2>
@@ -2694,15 +2694,15 @@ protected:
     // NB: adding new data members may require changes to ctors, reference()
 
     /*
-     * For a description of the storage_ members, see the comments for class 
+     * For a description of the storage_ members, see the comments for class
      * GeneralArrayStorage<N_rank> above.
      *
      * length_[] contains the extent of each rank.  E.g. a 10x20x30 array
      *           would have length_ = { 10, 20, 30}.
      * stride_[] contains the stride to move to the next element along each
      *           rank.
-     * zeroOffset_ is the distance from the first element in the array 
-     *           to the point (0,0,...,0).  If base_ is zero and all ranks are 
+     * zeroOffset_ is the distance from the first element in the array
+     *           to the point (0,0,...,0).  If base_ is zero and all ranks are
      *           stored ascending, then zeroOffset_ is zero.  This value
      *           is needed because to speed up indexing, the data_ member
      *           (inherited from MemoryBlockReference) always refers to
@@ -2718,7 +2718,7 @@ protected:
  * Rank numbers start with zero, which may be confusing to users coming
  * from Fortran.  To make code more readable, the following constants
  * may help.  Example: instead of
- * 
+ *
  * MyIndexType firstRankExtent = A.extent(0);
  *
  * One can write:
@@ -2782,13 +2782,13 @@ void find(Array<TinyVector<MyIndexType,N_rank>,1>& indices,
           const Array<P_numtype,N_rank>& exprVals) {
     indices.resize(exprVals.size());
     typename Array<P_numtype,N_rank>::const_iterator it, end = exprVals.end();
-    MyIndexType j=0; 
+    MyIndexType j=0;
     for (it = exprVals.begin(); it != end; ++it)
-        if (*it) 
+        if (*it)
             indices(j++) = it.position();
-    if (j) 
+    if (j)
         indices.resizeAndPreserve(j);
-    else 
+    else
         indices.free();
     return;
 }
@@ -2801,23 +2801,23 @@ BZ_NAMESPACE_END
  * global functions.
  */
 
-#include <blitz/array/iter.h>       // Array iterators
-#include <blitz/array/fastiter.h>   // Fast Array iterators (for et)
-#include <blitz/array/expr.h>       // Array expression objects
-#include <blitz/array/methods.cc>   // Member functions
-#include <blitz/array/eval.cc>      // Array expression evaluation
-#include <blitz/array/ops.cc>       // Assignment operators
-#include <blitz/array/io.cc>        // Output formatting
-#include <blitz/array/et.h>         // Expression templates
-#include <blitz/array/reduce.h>     // Array reduction expression templates
-#include <blitz/array/interlace.cc> // Allocation of interlaced arrays
-#include <blitz/array/resize.cc>    // Array resize, resizeAndPreserve
-#include <blitz/array/slicing.cc>   // Slicing and subarrays
-#include <blitz/array/cycle.cc>     // Cycling arrays
-#include <blitz/array/complex.cc>   // Special support for complex arrays
-#include <blitz/array/zip.h>        // Zipping multicomponent types
-#include <blitz/array/where.h>      // where(X,Y,Z)
-#include <blitz/array/indirect.h>   // Indirection
-#include <blitz/array/stencils.h>   // Stencil objects
+#include "array/iter.h"       // Array iterators
+#include "array/fastiter.h"   // Fast Array iterators (for et)
+#include "array/expr.h"       // Array expression objects
+#include "array/methods.cc"   // Member functions
+#include "array/eval.cc"      // Array expression evaluation
+#include "array/ops.cc"       // Assignment operators
+#include "array/io.cc"        // Output formatting
+#include "array/et.h"         // Expression templates
+#include "array/reduce.h"     // Array reduction expression templates
+#include "array/interlace.cc" // Allocation of interlaced arrays
+#include "array/resize.cc"    // Array resize, resizeAndPreserve
+#include "array/slicing.cc"   // Slicing and subarrays
+#include "array/cycle.cc"     // Cycling arrays
+#include "array/complex.cc"   // Special support for complex arrays
+#include "array/zip.h"        // Zipping multicomponent types
+#include "array/where.h"      // where(X,Y,Z)
+#include "array/indirect.h"   // Indirection
+#include "array/stencils.h"   // Stencil objects
 
 #endif // BZ_ARRAY_H

@@ -1,3 +1,6 @@
+# To make sure the internal version of blitz is used
+include_directories("../blitz-long")
+
 # check ImageMagick
 FIND_PACKAGE(ImageMagick REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS Magick++ REQUIRED)

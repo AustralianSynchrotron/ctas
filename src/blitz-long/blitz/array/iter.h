@@ -37,7 +37,7 @@
         BZPRECHECK(data_!=0, X " invalid iterator (empty array)"); \
         BZPRECHECK((data_>beg_+Y && data_<end_+Y), ((data_<beg_) ? \
             X " invalid iterator (before beginning of array)" :    \
-            X " invalid iterator (past end of array)")); 
+            X " invalid iterator (past end of array)"));
 #else
 #define CheckIteratorValidity(X,Y)
 #endif
@@ -56,7 +56,7 @@ private:
         // a pointer to the array and doing indirection.
         lbound_ = array.lbound();
         order_ = array.ordering();
-        
+
         ubound_(0) = array.ubound(0)+1;
         dataincr_(order_(0)) = array.stride(order_(0));
         for (int i=1,r,s=order_(0);i<N;s=r,++i) {
@@ -73,25 +73,25 @@ private:
 public:
     ConstArrayIterator() : data_(0) { }
 
-    ConstArrayIterator(const Array<T,N>& array) : 
+    ConstArrayIterator(const Array<T,N>& array) :
         data_(const_cast<T*>(array.dataFirst())) {
         Init(array);
         pos_ = lbound_;
     }
 
-    ConstArrayIterator(const Array<T,N>& array, const int) : 
+    ConstArrayIterator(const Array<T,N>& array, const int) :
         data_(end_value(array)) {
         Init(array);
         pos_ = array.ubound();
         ++pos_(order_(0));
     }
 
-    bool operator==(const ConstArrayIterator<T,N>& x) const 
+    bool operator==(const ConstArrayIterator<T,N>& x) const
     { return data_ == x.data_; }
-    
-    bool operator!=(const ConstArrayIterator<T,N>& x) const 
+
+    bool operator!=(const ConstArrayIterator<T,N>& x) const
     { return data_ != x.data_; }
- 
+
     const T& operator*() const {
         CheckIteratorValidity("Attempted to dereference",0);
         return *data_;
@@ -107,22 +107,22 @@ public:
 
     ConstArrayIterator<T,N> operator++(int) {
         ConstArrayIterator<T,N> tmp = *this;
-        ++(*this); 
+        ++(*this);
         return tmp;
     }
 
     ConstArrayIterator<T,N> operator--(int) {
         ConstArrayIterator<T,N> tmp = *this;
-        --(*this); 
+        --(*this);
         return tmp;
     }
 
     // get the current position of the Array iterator in index space
-    const TinyVector<MyIndexType,N>& position() const { 
+    const TinyVector<MyIndexType,N>& position() const {
         CheckIteratorValidity("Array<T,N>::iterator::position() called on",0);
-        return pos_; 
+        return pos_;
     }
-   
+
 private:
     TinyVector<MyIndexType,N> dataincr_, lbound_, ubound_;
     TinyVector<int,N> order_;
@@ -180,7 +180,7 @@ public:
 
     ArrayIterator<T,N> operator++(int) {
         ArrayIterator<T,N> tmp = *this;
-        ++(*this); 
+        ++(*this);
         return tmp;
     }
 
@@ -191,10 +191,13 @@ public:
 
     ArrayIterator<T,N> operator--(int) {
         ArrayIterator<T,N> tmp = *this;
-        --(*this); 
+        --(*this);
         return tmp;
     }
 };
+
+#define BZ_LIKELY(x)   (x)
+#define BZ_UNLIKELY(x) (x)
 
 template<typename T, int N>
 ConstArrayIterator<T,N>& ConstArrayIterator<T,N>::operator++() {
@@ -233,7 +236,7 @@ ConstArrayIterator<T,N>& ConstArrayIterator<T,N>::operator++() {
 
     // At this place the value of data_ should match that of the end iterator.
     // Do the proper correction to achieve that.
-    
+
     for (int i=1;i<N;++i) {
         const int r = order_(i);
         data_ -= dataincr_[r];

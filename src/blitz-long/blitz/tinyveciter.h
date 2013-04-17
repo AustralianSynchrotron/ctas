@@ -29,7 +29,7 @@
 #define BZ_TINYVECITER_H
 
 #ifndef BZ_TINYVEC_H
- #include <blitz/tinyvec.h>
+ #include "blitz/tinyvec.h"
 #endif
 
 #ifndef BZ_MANUAL_VECEXPR_COPY_CONSTRUCTOR

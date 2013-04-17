@@ -43,7 +43,7 @@
 #define BZ_RAND_UNIFORM_H
 
 #ifndef BZ_RANDOM_H
- #include <blitz/random.h>
+ #include "blitz/random.h"
 #endif
 
 BZ_NAMESPACE(blitz)

@@ -33,13 +33,6 @@
 
 using namespace std;
 
-#ifdef _WIN32
-#define NAN numeric_limits<float>::quiet_NaN();
-static inline int isnan(double x){ return _isnan(x); }
-#endif
-
-
-
 
 /// \CLARGS
 struct clargs {
@@ -97,7 +90,7 @@ clargs(int argc, char *argv[]) :
 
 
   command = table.name();
-  
+
   // <input> : one required argument.
   if ( ! table.count(&in_name) )
 	exit_on_error(command, string () +

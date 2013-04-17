@@ -18,7 +18,7 @@
  * are almost certainly incorrect for any other platform.
  */
 
-#include <blitz/wrap-climits.h> 
+#include "blitz/wrap-climits.h" 
 #include <float.h>
 
 BZ_NAMESPACE(std)

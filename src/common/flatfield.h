@@ -38,7 +38,6 @@
 ///
 /// @{
 
-
 /// Performs the flat image subtraction.
 ///
 /// Would be used only as the blitz::Array function.
@@ -57,6 +56,22 @@ flatfield(float fg, float bg, float dc=0.0){
 }
 
 
+/// Adds two arrays with weights.
+///
+/// @param result resulting array.
+/// @param in1 first array.
+/// @param in2 second array.
+/// @param ratio weight of the first array.
+///
+static inline void
+weighted(Map & result, const Map & in1, const Map & in2, float ratio=0.5) {
+  if ( in1.shape() != in2.shape() )
+    throw_error("Weighted array addition", "Input arrays are of different size.");
+  result = in1*ratio + in2*(1-ratio) ;
+}
+
+
+
 /// Performs the background subtraction on arrays.
 ///
 /// @param result resulting array.
@@ -73,8 +88,8 @@ flatfield(Map & result, const Map & fg, const Map & bg){
   if( sh != bg.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
   int sz=0;
-  for (int icur=0; icur<sh(0); icur++)
-    for (int jcur=0; jcur<sh(1); jcur++)
+  for (long icur=0; icur<sh(0); icur++)
+    for (long jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur) );
 }
 
@@ -92,16 +107,18 @@ flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc){
     flatfield(result, fg, bg);
     return;
   }
-  Shape sh=fg.shape();
+  const Shape sh=fg.shape();
   if( sh != bg.shape() || sh != dc.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
   if( sh != result.shape() )
     result.resize(sh);
-  int sz=0;
-  for (int icur=0; icur<sh(0); icur++)
-    for (int jcur=0; jcur<sh(1); jcur++)
+  for (long icur=0; icur<sh(0); icur++)
+    for (long jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), dc(icur,jcur) );
 }
+
+
+
 
 
 namespace blitz {
@@ -124,7 +141,6 @@ BZ_DECLARE_FUNCTION(cutone);
 /// \endcond
 
 }
-
 
 
 /// Description of the option giving the --idealworld option.

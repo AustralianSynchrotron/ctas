@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 ///
-/// @file   
+/// @file
 /// @author antonmx <antonmx@amx-mac.synchrotron.org.au>
 /// @date   Wed Jun 16 10:40:11 2010
 ///
@@ -86,7 +86,7 @@ propagate(const CMap & tif, Map & out, float dd, float lambda, float dist);
 /// @param tif The resulting array with the transmission function.
 /// @param sh Sizes of the array.
 /// @param bd The ration between the absorption and refraction indeces (\f$\beta/\delta\f$).
-/// @param theta Rotation angle of the object. 
+/// @param theta Rotation angle of the object.
 /// @param dd Pixel size.
 /// @param lambda Wavelength.
 ///
@@ -151,14 +151,14 @@ public:
   ///
   /// Extracts the requested contrast component using the parameters given at the initialization.
   ///
-  /// @param in Input array with the intensity distribution. Note: if you want to do the trivial 
+  /// @param in Input array with the intensity distribution. Note: if you want to do the trivial
   ///           absorption correction (I/I_0) do it in prior.
   /// @param out Resulting array.
   /// @param comp Component to be extracted.
   /// @param dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
   ///
   /// @note the arrays ::in and ::out must not be the same.
-  void extract(const Map & in, Map & out, Component comp, float dgamma=0.0) const ;
+  void extract(const Map & in, Map & out, Component comp, float dgamma=1.0) const ;
 
   /// Desired shape of the input arrays.
   ///

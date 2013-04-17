@@ -1,5 +1,5 @@
 ///
-/// @file   
+/// @file
 /// @author antonmx <antonmx@gmail.com>
 /// @date   Mon Jul 12 10:46:57 2010
 ///
@@ -12,6 +12,20 @@
 #define _USE_MATH_DEFINES // for M_PI
 
 #include "ipc.h"
+#include <unistd.h>
+
+
+long process_size_in_pages(void)
+{
+  long s = -1;
+  FILE *f = fopen("/proc/self/statm", "r");
+  if (!f) return -1;
+                  // if for any reason the fscanf fails, s is still -1,
+                  //      with errno appropriately set.
+                  fscanf(f, "%ld", &s);
+  fclose (f);
+  return s * ( getpagesize() / 1024.0 / 1024.0 );
+}
 
 using namespace std;
 
@@ -71,8 +85,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   fft_b = fftwf_plan_dft_2d ( ish(0), ish(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
 
   // prepare the filters
-  for (int i = 0; i < ish(0); i++)
-    for (int j = 0; j < ish(1); j++) {
+  for (long i = 0; i < ish(0); i++)
+    for (long j = 0; j < ish(1); j++) {
       float ei, ej;
       ei = i/float(ish(0));
       ej = j/float(ish(1));
@@ -82,13 +96,22 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
     }
 
   if (alpha == 0.0) // to avoid 0-division
-    absFilter(0,0) = 1.0;
+    absFilter(0l,0l) = 1.0;
   alpha *= dd*dd/(M_PI*dist*lambda);
+  /*
+  for (int i = 0; i < ish(0); i++)
+    for (int j = 0; j < ish(1); j++) {
+      std::cout << absFilter(i,j) << " " <<  i << " " <<  j << "\n";
+      phsFilter(i,j) = 1.0/(absFilter(i,j)+alpha);
+      absFilter(i,j) *= phsFilter(i,j);
+      phsFilter(i,j) *= dd * dd / (4.0*M_PI*M_PI*dist);
+    }
+  */
   phsFilter = 1.0/(absFilter+alpha);
   absFilter *= phsFilter;
   phsFilter *= dd * dd / (4.0*M_PI*M_PI*dist);
   if (alpha == 0.0)
-    phsFilter(0,0) = 0.0;
+    phsFilter(0l,0l) = 0.0;
 
 }
 
@@ -157,8 +180,8 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
   const float sizeX = dd*ish(0), sizeY=dd*ish(1);
 
   fftwf_execute(fft_f);
-  for (int i = 0 ; i<ish(0) ; i++)
-    for (int j = 0 ; j<ish(1) ; j++) {
+  for (long i = 0 ; i<ish(0) ; i++)
+    for (long j = 0 ; j<ish(1) ; j++) {
       float ui = ( i<ish(0)/2  ?  i  :  ish(0)-i ) / sizeX;
       float vj = ( j<ish(1)/2  ?  j  :  ish(1)-j ) / sizeY;
       mid(i,j) *= exp( - (float)M_PI * I_C * lambda * dist * (ui*ui + vj*vj) );
@@ -202,8 +225,8 @@ simulateTif( CMap & tif, const Shape & sh, float bd,
 
   for (int cur=0 ; cur<3 ; cur++) {
 
-    for (int i = 0 ; i<sh(0) ; i++)
-      for (int j = 0 ; j<sh(1); j++) {
+    for (long i = 0 ; i<sh(0) ; i++)
+      for (long j = 0 ; j<sh(1); j++) {
         float y = i/(float(D)-1) - 0.5*sh(0)/float(D);
         float x = j/(float(D)-1) - 0.5*sh(1)/float(D);
         float xxr = xr[cur] * cos(theta);

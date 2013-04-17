@@ -27,15 +27,15 @@
 #define BZ_APPLICS_H
 
 #ifndef BZ_BLITZ_H
- #include <blitz/blitz.h>
+ #include "blitz/blitz.h"
 #endif
 
 #ifndef BZ_PROMOTE_H
- #include <blitz/promote.h>
+ #include "blitz/promote.h"
 #endif
 
 #ifndef BZ_NUMTRAIT_H
- #include <blitz/numtrait.h>
+ #include "blitz/numtrait.h"
 #endif
 
 BZ_NAMESPACE(blitz)
@@ -397,11 +397,11 @@ public:
 BZ_NAMESPACE_END
 
 #ifndef BZ_MATHFUNC_H
- #include <blitz/mathfunc.h>
+ #include "blitz/mathfunc.h"
 #endif
 
 #ifndef BZ_MATHF2_H
- #include <blitz/mathf2.h>
+ #include "blitz/mathf2.h"
 #endif
 
 #endif // BZ_APPLICS_H

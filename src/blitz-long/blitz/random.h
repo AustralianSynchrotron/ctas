@@ -27,7 +27,7 @@
 #define BZ_RANDOM_H
 
 #ifndef BZ_BLITZ_H
- #include <blitz/blitz.h>
+ #include "blitz/blitz.h"
 #endif
 
 BZ_NAMESPACE(blitz)
@@ -58,7 +58,7 @@ protected:
 
 BZ_NAMESPACE_END
 
-#include <blitz/randref.h>
+#include "blitz/randref.h"
 
 #endif // BZ_RANDOM_H
 

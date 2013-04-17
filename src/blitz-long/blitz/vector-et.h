@@ -26,14 +26,14 @@
 #ifndef BZ_VECTOR_ET_H
 #define BZ_VECTOR_ET_H
 
-#include <blitz/vector.h>
+#include "blitz/vector.h"
 
 // These are compile-time expensive things not included
 // by <blitz/vector.h>, but needed if we want vector expressions.
 
-#include <blitz/vecbops.cc>         // Operators with two operands
-#include <blitz/vecuops.cc>         // Functions with one argument
-#include <blitz/vecbfn.cc>          // Functions with two arguments
+#include "blitz/vecbops.cc"         // Operators with two operands
+#include "blitz/vecuops.cc"         // Functions with one argument
+#include "blitz/vecbfn.cc"          // Functions with two arguments
 
 #endif  // BZ_VECTOR_ET_H
 

@@ -563,7 +563,7 @@ CTrec::reconstruct_uni(Map &sinogram, Map &result, float center) const {
 
   const int zShift = (int)(_pixels*(zPad-1)/2);
   const int thetas = sinogram.rows();
-  Line zsinoline((int)(_pixels*zPad)); // zero-padded sinoline.
+  Line zsinoline(_pixels*zPad); // zero-padded sinoline.
 
   if ( _contrast != Contrast::FLT ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
@@ -582,6 +582,7 @@ CTrec::reconstruct_uni(Map &sinogram, Map &result, float center) const {
   }
 
   project_sino(sinogram, result, center, _threads);
+
 
 }
 
@@ -974,7 +975,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   float plane_cos = (plane-center)*cur_sin;
   float Rcenter = pixels*0.5 + center;
 
-  for (int ycur = 0 ; ycur < thetas ; ycur++){
+  for (long ycur = 0 ; ycur < thetas ; ycur++) {
 
 	Line ln = projection(ycur, blitz::Range::all());
 
@@ -984,12 +985,10 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 	  partial_sum( ln.begin(), ln.end(), ln.begin() );
 
 	// projecting
-	for (int xcur = 0 ; xcur < pixels ; xcur++) {
+	for (long xcur = 0 ; xcur < pixels ; xcur++) {
 	  float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
-	  di = (di < 0) ?
-		0 :
-		(di >=pixels ) ? pixels - 1 : di;
-	  result(ycur, xcur) += projection(ycur, int(di));
+	  di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
+	  result(ycur, xcur) += projection(ycur, long(di));
 	}
 
   }

@@ -34,6 +34,6 @@ Array<T,1> convolve(const Array<T,1>& B, const Array<T,1>& C);
 
 BZ_NAMESPACE_END
 
-#include <blitz/array/convolve.cc>
+#include "blitz/array/convolve.cc"
 
 #endif // BZ_ARRAY_CONVOLVE_H

@@ -218,7 +218,7 @@ public:
  *
  **************************************************************************/
 
-#include <blitz/bzconfig.h>
+#include "blitz/bzconfig.h"
 
 #if BZ_SIZEOF_INT != BZ_SIZEOF_PTRDIFF_T
 #define BZ_MATEXPR_NUM_OPERANDS 8

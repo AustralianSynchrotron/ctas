@@ -32,11 +32,11 @@
 #endif
 
 #ifndef BZ_GEOMETRY_H
- #include <blitz/array/geometry.h>
+ #include "blitz/array/geometry.h"
 #endif
 
 #ifndef BZ_TINYMAT_H
- #include <blitz/tinymat.h>
+ #include "blitz/tinymat.h"
 #endif
 
 BZ_NAMESPACE(blitz)

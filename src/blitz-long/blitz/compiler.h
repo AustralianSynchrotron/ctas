@@ -28,7 +28,7 @@
 // The file <blitz/bzconfig.h> is used to select a compiler-specific
 // config.h file that is generated automatically by configure.
 
-#include <blitz/bzconfig.h>
+#include "blitz/bzconfig.h"
 
 /*
  * Define some kludges.

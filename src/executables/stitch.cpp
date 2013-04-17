@@ -51,7 +51,7 @@ struct clargs {
   bool hOrientation;           ///< Mutual orientation of images: vertical or horizontal.
   unsigned int width;                  ///< Width of the stiching region.
   unsigned int cut1;               ///< Cut of the first image.
-  unsigned int cut2;               ///< Cut of the second image.
+  unsigned int cut2;               ///< Cut of the second image.zzd
   bool beverbose;				///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -98,7 +98,7 @@ clargs(int argc, char *argv[]) :
 	.add_standard_options(&beverbose)
 	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
- 
+
   if ( ! table.parse(argc,argv) )
 	exit(0);
   if ( ! table.count() ) {
@@ -151,10 +151,10 @@ int main(int argc, char *argv[]) {
 	 + "is greater that the image size "
 	 + toString( args.hOrientation ? im1.columns() : im1.rows() ) + ".");
   if ( args.cut2+args.width >= ( args.hOrientation ? im2.columns() : im2.rows() ) )
-    exit_on_error(args.command, 
+    exit_on_error(args.command,
          "Crop and stitch width (" + toString(args.cut2) + "+"
          + toString(args.width) + "=" + toString(args.cut2+args.width) + ") "
-         + "is greater that the image size " 
+         + "is greater that the image size "
          + toString( args.hOrientation ? im2.columns() : im2.rows() ) + ".");
 
   Map out;
@@ -168,11 +168,11 @@ int main(int argc, char *argv[]) {
     out( Range::all(), Range( im1.columns() - args.cut1, out.columns() - 1  ) ) =
       im2( Range::all(), Range( args.width + args.cut2, im2.columns() - 1 ) );
 
-    for (int iidx=0; iidx < args.width; iidx++) {
+    for (long iidx=0; iidx < args.width; iidx++) {
       float ratio = (iidx+1.0)/(args.width+1.0);
-      for (int jidx=0; jidx < out.rows(); jidx++ )
-        out ( jidx, im1.columns() - (int)args.cut1 - (int)args.width + iidx ) =
-          (1.0-ratio) * im1( jidx, im1.columns() - (int)args.cut1 - (int)args.width + iidx ) +
+      for (long jidx=0; jidx < out.rows(); jidx++ )
+        out ( jidx, im1.columns() - args.cut1 - args.width + iidx ) =
+          (1.0-ratio) * im1( jidx, im1.columns() - args.cut1 - args.width + iidx ) +
           ratio * im2( jidx, (int)args.cut2 + iidx );
     }
 
@@ -186,42 +186,18 @@ int main(int argc, char *argv[]) {
     out( Range( im1.rows() - args.cut1, out.rows() - 1  ), Range::all() ) =
       im2( Range( args.width + args.cut2, im2.rows() - 1 ), Range::all() );
 
-    for (int iidx=0; iidx < args.width; iidx++) {
+    for (long iidx=0; iidx < args.width; iidx++) {
       float ratio = (iidx+1.0)/(args.width+1.0);
-      for (int jidx=0; jidx < out.columns(); jidx++ )
-        out ( im1.rows() - (int)args.cut1 - (int)args.width + iidx, jidx ) =
-          (1.0-ratio) * im1( im1.rows() - (int)args.cut1 - (int)args.width + iidx, jidx ) +
-          ratio * im2( (int)args.cut2 + iidx, jidx );
+      for (long jidx=0; jidx < out.columns(); jidx++ )
+        out ( im1.rows() - args.cut1 - args.width + iidx, jidx ) =
+          (1.0-ratio) * im1( im1.rows() - args.cut1 - args.width + iidx, jidx ) +
+          ratio * im2( args.cut2 + iidx, jidx );
     }
 
 
   }
 
-
- 
-
-  cout << out.columns() << " "  << out.rows() << "\n";
-  
   SaveImage(args.out_name, out);
-
-/*
-
-  Map arr;
-  ReadImage( args.in_name, arr );
-
-  if (args.mMm) {
-	cout << min(arr) << " " << max(arr) << endl;
-	exit(0);
-  }
-
-  float mincon = args.mincon, maxcon = args.maxcon;
-
-  if ( isnan(mincon) ) mincon = min(arr);
-  if ( isnan(maxcon) ) maxcon = max(arr);
-
-  SaveImage(args.out_name, arr, mincon, maxcon);
-
-*/
 
   exit(0);
 

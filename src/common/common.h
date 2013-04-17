@@ -57,6 +57,12 @@
 #include "../blitz-long/blitz/array.h"
 //#include <blitz/array.h>
 
+#ifdef _WIN32
+#define NAN numeric_limits<float>::quiet_NaN();
+static inline int isnan(double x){ return _isnan(x); }
+#endif
+
+
 /// \cond
 #define PRDN printf("DONE\n"); fflush(stdout);
 inline void prdn( int a ) { printf("DONE %i\n", a); fflush(stdout); }
@@ -97,7 +103,7 @@ public:
 /// @param mod Module where the error happened.
 /// @param msg Description.
 ///
-void COMMON_API 
+void COMMON_API
 throw_error(const std::string & mod, const std::string & msg);
 
 /// \brief Reports and throws the bug.
@@ -107,9 +113,9 @@ throw_error(const std::string & mod, const std::string & msg);
 ///
 /// @param mod Module where the error happened.
 ///
-void COMMON_API 
+void COMMON_API
 throw_bug(const std::string & mod);
- 
+
 
 /// \brief Constructs the warning and reports it.
 ///
@@ -118,7 +124,7 @@ throw_bug(const std::string & mod);
 ///
 /// @return the error generated in warning.
 ///
-CtasErr COMMON_API 
+CtasErr COMMON_API
 warn(const std::string & mod, const std::string & msg);
 
 
@@ -127,7 +133,7 @@ warn(const std::string & mod, const std::string & msg);
 /// @param mod Module where the error happened
 /// @param msg Description
 ///
-void COMMON_API 
+void COMMON_API
 exit_on_error(const std::string & mod, const std::string & msg);
 
 /// @}
@@ -181,7 +187,7 @@ public:
   bool isabsolute() const;		///< Tells if the path is absolute.
 
   Path & bedir();				///< Makes the path to be the directory (adds DIRSEPARATOR).
- 
+
 };
 
 /// \brief Prints type name.
@@ -195,8 +201,8 @@ type_desc (Path*);
 /// @param _val value to be updated.
 /// @param in string to be parsed.
 ///
-/// @return \c true if success, \c false otherwise.
-bool COMMON_API 
+/// @return \c 1 if success, \c -1 otherwise.
+int COMMON_API
 _conversion (Path* _val, const std::string & in);
 
 
@@ -247,8 +253,8 @@ class COMMON_API Contrast {
 public:
   /// Known contrast types.
   typedef enum {
-	ABS,						///< Absorption
-	REF,						///< Refraction
+    ABS,						///< Absorption
+    REF,						///< Refraction
     PHS,                        ///< Phase
     FLT                         ///< Pre-filtered: ready for backprojection, no filtering needed.
   } Cntype ;
@@ -300,8 +306,8 @@ type_desc (Contrast*);
 /// @param _val value to be updated.
 /// @param in string to be parsed.
 ///
-/// @return \c true if success, \c false otherwise.
-bool COMMON_API 
+/// @return \c 1 if success, \c -1 otherwise.
+int COMMON_API
 _conversion (Contrast* _val, const std::string & in);
 
 
@@ -325,6 +331,36 @@ typedef blitz::Array<float,2> Map;
 typedef blitz::Array<float,3> Volume;
 
 
+
+struct Crop {
+  unsigned int left;      ///< Crop from left
+  unsigned int top;       ///< Crop from top
+  unsigned int right;     ///< Crop from right
+  unsigned int bottom;     ///< Crop from bottom
+  inline Crop() : left(0), top(0), right(0), bottom(0) {}
+};
+
+std::string COMMON_API
+type_desc (Crop*);
+
+int COMMON_API
+_conversion (Crop* _val, const std::string & in);
+
+extern const std::string COMMON_API
+CropOptionDesc;
+
+
+/// \brief Rotate the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array. Input and output must be different arrays.
+/// @param angle Rotation angle.
+/// @param crop Crop resulting image
+/// @param bg Values for the pixels in the resulting image not existing in
+///        original.
+///
+void rotate(const Map & inarr, Map & outarr, float angle,
+            const Crop & crop = Crop(), float bg=NAN);
 
 
 
@@ -401,7 +437,7 @@ SeeAlsoList;
 ///
 /// @return New string which represents input string converted into the upper case.
 ///
-std::string COMMON_API 
+std::string COMMON_API
 upper(std::string str);
 
 /// \brief Convert string to lower case
@@ -410,7 +446,7 @@ upper(std::string str);
 ///
 /// @return New string which represents input string converted into the lower case.
 ///
-std::string COMMON_API 
+std::string COMMON_API
 lower(std::string str);
 
 
@@ -425,7 +461,7 @@ lower(std::string str);
 ///
 // Don't use the reference type "const string &" here: will
 // not work on Windows
-std::string COMMON_API 
+std::string COMMON_API
 toString(const std::string fmt, ...);
 
 
@@ -532,7 +568,7 @@ unzero(const blitz::Array<float,N> & arr){
 
 /// \brief Pixel size of the image.
 ///
-/// Calculated from the dpi (dots per inch). 
+/// Calculated from the dpi (dots per inch).
 ///
 /// @param filename Image filename.
 ///
@@ -708,7 +744,7 @@ LoadData(const Path filename, ... );
 /// \brief Save any amount of lines into data file.
 ///
 /// @param filename the name of the data file.
-/// @param ... Any number of the lines. Be careful: 
+/// @param ... Any number of the lines. Be careful:
 /// I supposed that all arguments are of type const Line*,
 /// a null pointer must be passed as the last such argument.
 ///

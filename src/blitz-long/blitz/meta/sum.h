@@ -28,7 +28,7 @@
 #define BZ_META_SUM_H
 
 #ifndef BZ_METAPROG_H
- #include <blitz/meta/metaprog.h>
+ #include "blitz/meta/metaprog.h"
 #endif
 
 BZ_NAMESPACE(blitz)

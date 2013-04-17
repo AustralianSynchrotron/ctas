@@ -41,7 +41,7 @@ using namespace std;
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  Path listname;				///< File with the list of all input contrasts.
+  Path inlist;				///< File with the list of all input contrasts.
   bool idealworld;               ///< Assumption of the world's ideality.
   string slicedesc;				///< String describing the slices to be sino'ed.
   Path outmask;				///< The mask for the output file names.
@@ -54,7 +54,7 @@ struct clargs {
 
 
 clargs::
-clargs(int argc, char *argv[]) : 
+clargs(int argc, char *argv[]) :
   beverbose(false),
   SaveInt(false),
   idealworld(false),
@@ -71,7 +71,7 @@ clargs(int argc, char *argv[]) :
 
   table
 	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &listname, "list",
+	.add(poptmx::ARGUMENT, &inlist, "list",
       "List of the input images.", AqSeries::Desc)
 	.add(poptmx::ARGUMENT, &outmask, "result mask",
 		 "Output result mask.", MaskDesc, outmask)
@@ -87,22 +87,22 @@ clargs(int argc, char *argv[]) :
 	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+    exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+    table.usage();
+    exit(0);
   }
 
   command = table.name();
 
 
   // <list> : one required argument.
-  if ( ! table.count(&listname) )
+  if ( ! table.count(&inlist) )
     exit_on_error(command, "Missing required argument: <list>.");
 
   // <result mask> : one more argument may or may not exist
   if ( ! table.count(&outmask) )
-	outmask = upgrade(listname, "sino-") + "-@.tif";
+	outmask = upgrade(inlist, "sino-") + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
 	outmask = outmask.dtitle() + "-@" + outmask.extension();
 
@@ -114,7 +114,7 @@ clargs(int argc, char *argv[]) :
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv);
-  const AqSeries list(args.listname);
+  const AqSeries list(args.inlist);
   const ABSexp expr(list);
   int
     thetas=expr.thetas(),
@@ -128,10 +128,10 @@ int main(int argc, char *argv[]) {
   ProgressBar bar( args.beverbose, "sinograms formation", sliceV.size());
 
   for (unsigned slice=0 ; slice < sliceV.size() ; slice++ ) {
-	sins.sino(slice, sinogram);
-	if ( args.idealworld )  sinogram = cutone(sinogram);
-	SaveImage( toString(sliceformat, sliceV[slice]+1), sinogram, args.SaveInt);
-	bar.update();
+    sins.sino(slice, sinogram);
+    if ( args.idealworld )  sinogram = cutone(sinogram);
+    SaveImage( toString(sliceformat, sliceV[slice]+1), sinogram, args.SaveInt);
+    bar.update();
   }
 
   exit(0);

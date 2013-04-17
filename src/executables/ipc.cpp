@@ -24,7 +24,7 @@
 /// @author antonmx <antonmx@gmail.com>
 /// @date   Fri Jul  2 12:20:00 2010
 ///
-/// @brief 
+/// @brief
 ///
 ///
 ///
@@ -126,7 +126,7 @@ clargs::clargs(int argc, char *argv[]) :
 	exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
   dd /= 1.0E6; // convert micron -> m
 
-  if ( abs(dgamma)>=1.0 ) // should set even smaller limit
+  if ( abs(dgamma)>1.0 ) // should set even smaller limit
 	exit_on_error(command, "Absolute value of gamma (given by "+table.desc(&dgamma)+")"
                   " is greater than 1.0.");
 
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     proc.extract (id, out, IPCprocess::ABS, args.dgamma);
     SaveImage (args.abs_name, out, args.SaveInt);
   }
-  
+
   exit(0);
 
 }

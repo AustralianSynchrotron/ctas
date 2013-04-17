@@ -114,7 +114,7 @@ private:
 
 BZ_NAMESPACE_END
 
-#include <blitz/vecwhere.cc>        // Expression templates
+#include "blitz/vecwhere.cc"        // Expression templates
 
 #endif // BZ_VECWHERE_H
 

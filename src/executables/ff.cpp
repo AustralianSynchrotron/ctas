@@ -39,69 +39,100 @@ using namespace std;
 
 /// \CLARGS
 struct clargs {
-  Path command;					///< Command name as it was invoked.
-  Path foreground_name;			///< Name of the foreground file.
-  Path background_name;			///< Name of the background file.
-  vector<Path> dc_names;        ///< Name(s) of the dark current file(s).
-  Path output_name;				///< Name of the output file.
-  bool idealworld;				///< Assumption of the world ideality.
-  bool beverbose;				///< Be verbose flag
-  bool SaveInt;					///< Save image as 16-bit integer.
+  Path command;         ///< Command name as it was invoked.
+  Path foreground_name;     ///< Name of the foreground file.
+  Path background_name;   ///< Name of the background file.
+  Path background_2_name;   ///< Name of the second background file.
+  float backgroundWeight;   ///< Weight of the first background file.
+  Path dark_name;        ///< Name of the dark current file.
+  Path dark_2_name;        ///< Name of the second dark current file.
+  float darkWeight;   ///< Weight of the first dark current file.
+  Path output_name;       ///< Name of the output file.
+  bool idealworld;        ///< Assumption of the world ideality.
+  bool beverbose;       ///< Be verbose flag
+  bool SaveInt;         ///< Save image as 16-bit integer.
 
   /// \CLARGSF
-  clargs(int argc, char *argv[]); 
+  clargs(int argc, char *argv[]);
 };
 
 
 clargs::
-clargs(int argc, char *argv[]) : 
+clargs(int argc, char *argv[]) :
   output_name("cleaned-<foreground>"),
   idealworld(false),
   beverbose(false),
-  SaveInt(false)
+  SaveInt(false),
+  backgroundWeight(0.5),
+  darkWeight(0.5)
 {
 
   poptmx::OptionTable table
-	("Flat field correction.",
-	 "For each foreground-background pair of pixels in the corresponding images"
-	 " removes the dark field, divides the foreground by the background and puts"
-     " the result into the output image. If the background pixel is 0 then the"
-     " result is 1. All input images must be of equal size.");
-  
-  table
-	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &foreground_name, "foreground",
-         "Input foreground image.", "")
-    .add(poptmx::ARGUMENT, &background_name, "background",
-         "Input background image.", "")
-	.add(poptmx::ARGUMENT, &dc_names, "dark current",
-         "Input dark current image(s).", "", "NONE")
+  ("Flat field correction.",
+   "For each foreground-background pair of pixels in the corresponding images"
+   " removes the dark field, divides the foreground by the background and puts"
+   " the result into the output image. If the background pixel is 0 then the"
+   " result is 1. All input images must be of equal size.");
 
-	.add(poptmx::NOTE, "OPTIONS:")
-	.add(poptmx::OPTION, &output_name, 'o', "output",
-         "Output image.", "", output_name)
-	.add(poptmx::OPTION, &idealworld, 'w', "idealworld",
-		 "Suppose we live in the ideal world.", IdealWorldOptionDesc)
-	.add(poptmx::OPTION, &SaveInt,'i', "int",
-         "Output image(s) as integer.", IntOptionDesc)
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
-  
-  if ( ! table.parse(argc,argv) )
-	exit(0);
+  table
+  .add(poptmx::NOTE, "ARGUMENTS:")
+  .add(poptmx::ARGUMENT, &foreground_name, "foreground",
+       "Input foreground image.", "")
+  .add(poptmx::ARGUMENT, &background_name, "background",
+       "Input background image.", "")
+  .add(poptmx::ARGUMENT, &dark_name, "dark current",
+       "Input dark current image.", "", "NONE")
+
+  .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &output_name, 'o', "output",
+       "Output image.", "", output_name)
+  .add(poptmx::OPTION, &background_2_name, 'b', "back",
+       "Second background image.", "")
+  .add(poptmx::OPTION, &backgroundWeight, 'B', "bw",
+       "Weight of the first background image.", "", toString(backgroundWeight))
+  .add(poptmx::OPTION, &dark_2_name, 'd', "dark",
+       "Second dark current image.", "")
+  .add(poptmx::OPTION, &darkWeight, 'D', "dw",
+       "Weight of the first dark current image.", "", toString(darkWeight))
+  .add(poptmx::OPTION, &idealworld, 'w', "idealworld",
+       "Suppose we live in the ideal world.", IdealWorldOptionDesc)
+  .add(poptmx::OPTION, &SaveInt, 'i', "int",
+       "Output image(s) as integer.", IntOptionDesc)
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+
+  if ( ! table.parse(argc, argv) )
+    exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+    table.usage();
+    exit(0);
   }
 
   command = table.name();
 
   if ( ! table.count(&foreground_name) )
-	exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&foreground_name)+".");
+    exit_on_error(command, string () +
+                  "Missing required argument: " + table.desc(&foreground_name) + ".");
   if ( ! table.count(&background_name) )
-	exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&background_name)+".");
+    exit_on_error(command, string () +
+                  "Missing required argument: " + table.desc(&background_name) + ".");
+
+  if ( table.count(&backgroundWeight) && ! table.count(&background_2_name) )
+    exit_on_error(command, string () +
+                  "Option " + table.desc(&backgroundWeight) +
+                  " requires option " + table.desc(&background_2_name) + ".");
+
+  if ( table.count(&darkWeight) &&
+       ( ! table.count(&dark_2_name) || ! table.count(&dark_name) ) )
+    exit_on_error(command, string () +
+                  "Option " + table.desc(&darkWeight) +
+                  " requires argument " + table.desc(&dark_name) +
+                  " and option " + table.desc(&dark_2_name) + ".");
+  if ( table.count(&dark_2_name) && ! table.count(&dark_name) )
+    exit_on_error(command, string () +
+                  "Option " + table.desc(&dark_2_name) +
+                  " requires argument " + table.desc(&dark_name) + ".");
+
   if ( output_name.empty() )
     output_name = upgrade(foreground_name, "cleaned-");
 
@@ -112,24 +143,28 @@ clargs(int argc, char *argv[]) :
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  
-  Map fa, ba;
-  ReadImage(args.foreground_name, fa);
-  ReadImage(args.background_name, ba);
-  if ( fa.shape() != ba.shape() )
-    exit_on_error(args.command, "Geometry of the foreground and background"
-                  " images do not match." );
-  Shape sh=fa.shape();
 
-  Map dc(sh);
-  dc=0.0;
-  for (int i=0; i<args.dc_names.size(); i++) {
-    Map dcc(sh);
-    ReadImage(args.dc_names[i], dcc, sh);
-    dc += dcc;
+  Map fa;
+  ReadImage(args.foreground_name, fa);
+  const Shape sh = fa.shape();
+  Map ba(sh), dc(sh);
+  ReadImage(args.background_name, ba, sh);
+
+  if ( ! args.dark_name.empty() )
+    ReadImage(args.dark_name, dc, sh);
+  else
+    dc=0;
+
+  if ( ! args.background_2_name.empty() ) {
+    Map tmp(sh);
+    ReadImage(args.background_2_name, tmp, sh);
+    weighted(ba, ba, tmp, args.backgroundWeight);
   }
-  if ( args.dc_names.size() )
-    dc /= args.dc_names.size();
+  if ( ! args.dark_2_name.empty() ) {
+    Map tmp(sh);
+    ReadImage(args.dark_2_name, tmp, sh);
+    weighted(dc, dc, tmp, args.darkWeight);
+  }
 
   Map oa(sh);
   flatfield(oa, fa, ba, dc);

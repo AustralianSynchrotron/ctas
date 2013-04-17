@@ -37,10 +37,10 @@
 #ifndef BZ_VECTOR_H
 #define BZ_VECTOR_H
 
-#include <blitz/blitz.h>
-#include <blitz/memblock.h>
-#include <blitz/range.h>
-#include <blitz/listinit.h>
+#include "blitz/blitz.h"
+#include "blitz/memblock.h"
+#include "blitz/range.h"
+#include "blitz/listinit.h"
 
 BZ_NAMESPACE(blitz)
 
@@ -448,11 +448,11 @@ istream& operator>>(istream& is, Vector<P_numtype>& x);
 
 BZ_NAMESPACE_END
 
-#include <blitz/veciter.h>          // Iterators
-#include <blitz/vecpick.h>          // VectorPick
-#include <blitz/vecexpr.h>          // Expression template classes
-#include <blitz/vecglobs.h>         // Global functions
-#include <blitz/vector.cc>          // Member functions
-#include <blitz/vecio.cc>           // IO functions
+#include "blitz/veciter.h"          // Iterators
+#include "blitz/vecpick.h"          // VectorPick
+#include "blitz/vecexpr.h"          // Expression template classes
+#include "blitz/vecglobs.h"         // Global functions
+#include "blitz/vector.cc"          // Member functions
+#include "blitz/vecio.cc"           // IO functions
 
 #endif // BZ_VECTOR_H

@@ -33,6 +33,7 @@
 
 #include "common.h"
 #include "flatfield.h"
+#include <vector>
 
 #ifdef _WIN32
 
@@ -117,7 +118,7 @@ private:
   std::vector<Path> dcs;        ///< Dark current images.
 
   bool isbgstring(const std::string & str) const; ///< Tells if the string represents bgnd.
-  bool isdcstring(const std::string & str) const; ///< Tells if the string represents dc. 
+  bool isdcstring(const std::string & str) const; ///< Tells if the string represents dc.
   bool iscomment(const std::string & str) const; ///< Tells if the string is a comment.
   Path bgname(const std::string & str) const; ///< Extracts filename from the bgdn string.
   Path dcname(const std::string & str) const; ///< Extracts filename from the dc string.
@@ -198,6 +199,7 @@ public:
   inline long pixels() const {return sh(1);} 			///< Width of the image.
   inline long slices() const {return sh(0);} 			///< Number of slices (hight) in the image.
   inline Contrast contrast() const {return cntr;} ///< The contrast type of the projection.
+  inline const Shape & shape() const {return sh;} ///< The contrast type of the projection.
 
 };
 
@@ -206,7 +208,7 @@ public:
 
 /// \brief Projections storage.
 ///
-/// This class constructs the 3D array of the input data and then can 
+/// This class constructs the 3D array of the input data and then can
 /// form and output the sinograms.
 ///
 /// If you want to build the sinograms from your own type of experiment,
@@ -224,19 +226,32 @@ private:
   Volume data;					///< 3D array.
   int mapfile;					///< Map file descriptor (if map memory to file)
   bool verb;					///< Show progress bar.
+  std::vector<int> sliceV;
+  Shape _imageShape; ///> Shape of the original projection
 
   int index(int idx) const;		///< Checks correctness of the index.
+
+  void allocateArray(); ///< Allocate the storage
 
 public:
 
   /// Constructor
-  SinoS(const Experiment & exp, const std::vector<int> & sliceV, bool _verb=false);
+  SinoS(const Experiment & exp, const std::vector<int> & _sliceV, bool _verb=false);
+
+  /// Constructor
+  SinoS(const std::vector<Path> & inlist, const std::string & slicedesc, bool _verb=false);
+
+  /// Constructor
+  SinoS(const std::vector<Path> & inlist, const std::string & slicedesc,
+        float angle=0, const Crop & crop = Crop(), bool _verb=false);
 
   ~SinoS();   ///< Destructor.
 
   int pixels() const ;			///< Pixels.
   int slices() const ;			///< Slices.
   int thetas() const ;			///< Thetas.
+  inline const std::vector<int> & indexes() const {return sliceV;}
+  inline const Shape & imageShape() const {return _imageShape;}
 
   void sino(int idx, Map & storage) const;	///< Prepares the sinogram.
 

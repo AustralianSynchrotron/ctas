@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 2.6)
 project (ctas)
-set(VERSION 0.5.2)
+set(VERSION 0.6.0)
+
+set(CMAKE_C_FLAGS "-ffast-math")
+set(CMAKE_CXX_FLAGS "-ffast-math")
 
 include(CheckIncludeFile)
 include(CheckLibraryExists)

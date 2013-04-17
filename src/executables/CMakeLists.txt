@@ -7,6 +7,14 @@ target_link_libraries(ct
   kernel
 )
 
+add_executable(ct-vol ct-vol.cpp)
+target_link_libraries(ct-vol
+  common
+  poptmx
+  kernel
+  experiment
+)
+
 add_executable(ct-line ct-line.cpp)
 target_link_libraries(ct-line
   common
@@ -18,7 +26,10 @@ add_executable(sino sino.cpp)
 target_link_libraries(sino
   common
   poptmx
+  experiment
 )
+
+
 
 add_executable(sino-abs sino-abs.cpp)
 target_link_libraries(sino-abs
@@ -66,6 +77,13 @@ target_link_libraries(rc2fd
 
 add_executable(ipc ipc.cpp)
 target_link_libraries(ipc
+  common
+  poptmx
+  lipc
+)
+
+add_executable(multipc multipc.cpp)
+target_link_libraries(multipc
   common
   poptmx
   lipc
@@ -146,10 +164,18 @@ target_link_libraries(stitch
   poptmx
 )
 
+add_executable(rotate rotate.cpp)
+target_link_libraries(rotate
+  common
+  poptmx
+)
+
+
+
 set( all_targets
-  ipc dei edei
+  multipc ipc dei edei rotate
   sino sino-abs sino-dei sino-edei sino-ipc
-  ct ct-abs ct-dei ct-edei ct-ipc
+  ct ct-vol ct-abs ct-dei ct-edei ct-ipc
   ct-line ts ff rc2fd f2i stitch
 )
 

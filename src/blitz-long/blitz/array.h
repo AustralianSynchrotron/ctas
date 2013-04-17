@@ -29,7 +29,7 @@
 // See comments in <blitz/array-old.h> for an explanation of the new
 // headers arrangement.
 
-#include "blitz/array-impl.h"
+#include "array-impl.h"
 
 #endif  // BZ_ARRAY_ONLY_H
 

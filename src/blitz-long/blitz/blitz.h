@@ -44,9 +44,9 @@
  #endif
 #endif
 
-#include <blitz/compiler.h>          // Compiler-specific directives
-#include <blitz/tuning.h>            // Performance tuning
-#include <blitz/tau.h>               // Profiling
+#include "blitz/compiler.h"          // Compiler-specific directives
+#include "blitz/tuning.h"            // Performance tuning
+#include "blitz/tau.h"               // Profiling
 
 #ifdef BZ_HAVE_STL
   #include <string>
@@ -143,6 +143,6 @@ BZ_NAMESPACE_END
  #define BZ_MUTEX_DESTROY(name)
 #endif
 
-#include <blitz/bzdebug.h>           // Debugging macros
+#include "blitz/bzdebug.h"           // Debugging macros
 
 #endif // BZ_BLITZ_H

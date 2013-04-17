@@ -44,7 +44,7 @@ using namespace std;
 /// foreground and background arrays.
 ///
 /// @param filename File with the foreground-background pairs.
-/// 
+///
 AqSeries::AqSeries(const Path & filename){
 
   if (filename.empty()) // empty list
@@ -58,7 +58,7 @@ AqSeries::AqSeries(const Path & filename){
   char curin[MAXSTRING];
   int bgindex = nobg;
   string fdir=filename.dir(), curstring;
-  
+
   while ( fgets (curin, MAXSTRING, input_list) ) {
 
     curstring = string(curin);
@@ -396,7 +396,7 @@ slice_str2vec(const string & sliceS, int hight){
   const string permitted_chars = string("0123456789,-") + negatec ;
 
   vector<int> sliceV; // the array to be returned as the result.
- 
+
   // empty string
   if ( sliceS.empty() ) {
 	for (int slice = 0 ; slice < hight ; slice++)
@@ -564,53 +564,6 @@ const string SinoS::modname = "sinogram array";
 #include <string.h>
 
 
-/// \brief Prepares the temporary file to map the memory to.
-///
-/// @param size Size of the memory region to be mapped.
-///
-/// @return The file descriptor
-///
-inline static int
-tempfile(const off_t size){
-
-  const char * tmpenv =  "TMPDIR";
-  const string tempdesc =  "You can control the path to the temporary file via"
-	" the environment variable \"" + (string) tmpenv + "\".";
-  const char * TMPDIR = getenv (tmpenv);
-  if ( ! TMPDIR ) TMPDIR = "./" ;
-  if ( strlen(TMPDIR) >= 248 ) { // little under the maximum length (256)
-	warn("temp file", (string)
-		 "The environment variable \"" + tmpenv + "\" is too long:\n"
-		 + TMPDIR + "\n"
-		 "Switching to the default one \"./\". " + tempdesc);
-	TMPDIR = "./";
-  }
-  char tmpfilename[256]; // maximum file name length
-  strcpy(tmpfilename, TMPDIR);
-  if ( tmpfilename[ strlen(tmpfilename)-1 ] != '/' )
-	strcpy(tmpfilename+strlen(tmpfilename), "/");
-  strcpy(tmpfilename+strlen(tmpfilename), "XXXXXX");
-
-  int filedesc = mkstemp(tmpfilename);
-  if ( filedesc < 0 )
-	throw_error("temp file", "Could not open temporary file"
-				" \"" + string(tmpfilename) + "\". " + tempdesc);
-  if ( unlink(tmpfilename) < 0 )
-	warn("temp file", "Could not unlink temporary file"
-		 " \"" + string(tmpfilename) + "\". Don't forget"
-		 " to delete it after the program has finished.");
-  if ( lseek(filedesc, size, SEEK_SET) != size ||
-	   write(filedesc, "END", 3) != 3 ) {
-	// Should I pad the holes ???
-	close (filedesc);
-	throw_error("temp file", "Could not set size of the  temporary file"
-		    " \"" + string(tmpfilename) + "\". You need " + toString((long unsigned)size) +
-                "bytes on the hard disk. " + tempdesc);
-  }
-
-  return filedesc;
-
-}
 
 /// \brief Constructs the 3D array from the absorption contrast projections.
 ///
@@ -618,8 +571,11 @@ tempfile(const off_t size){
 /// @param sliceV List of slices of the interest.
 /// @param _verb Show progress bar.
 ///
-SinoS::SinoS(const Experiment & exp, const vector<int> & sliceV, bool _verb)
-  : verb(_verb) {
+SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
+  verb(_verb),
+  sliceV(_sliceV),
+  _imageShape(exp.shape())
+{
 
   if ( ! exp.thetas() )
 	throw_error(modname, "Empty experiment.");
@@ -634,20 +590,7 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & sliceV, bool _verb)
 				" (" + toString(exp.slices()) + ").");
   allpix = long(thts) * long(slcs) *long(pxls);
 
-  // Create this huge array of input data
-  mapfile = 0;
-  blitz::TinyVector<long, 3> datashp(thts, slcs, pxls);
-  try { data.resize(datashp); }
-  catch(bad_alloc err) {
-	warn (modname, "Failed to allocate memory."
-		  " Trying to play with the memory mapped to file.");
-	mapfile = tempfile( allpix*sizeof(float) );
-	float * datap = (float*)
-	  mmap( 0, allpix*sizeof(float),
-			PROT_WRITE|PROT_READ, MAP_SHARED, mapfile, 0);
-	data.reference( Volume(datap, datashp, blitz::neverDeleteData) );
-  }
-
+  allocateArray();
 
   // Read images to the array.
   Map proj(Shape(slcs,pxls));
@@ -661,6 +604,85 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & sliceV, bool _verb)
 }
 
 
+/// \brief Constructs the 3D array from the list of input images.
+///
+/// @param inlist List of input files.
+/// @param slicedesc List of slices of the interest.
+/// @param _verb Show progress bar.
+///
+SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc, bool _verb) :
+   verb(_verb)
+{
+
+  if ( ! inlist.size() )
+    throw_error(modname, "Empty list of input files.");
+  _imageShape = ImageSizes(inlist[0]);
+  sliceV = slice_str2vec(slicedesc, _imageShape(0));
+  slcs = sliceV.size();
+  thts = inlist.size();
+  pxls = _imageShape(1);
+  allpix = long(thts) * long(slcs) *long(pxls);
+
+  allocateArray();
+
+  // Read images to the array.
+  Map proj(Shape(slcs,pxls));
+  ProgressBar bar(verb, "reading projections", thts);
+  for ( int curproj = 0 ; curproj < thts ; curproj++) {
+    ReadImageLine( inlist[curproj], proj, sliceV, _imageShape);
+    data(curproj, blitz::Range::all(), blitz::Range::all()) = proj;
+    bar.update();
+  }
+
+}
+
+
+
+
+/// \brief Constructs the 3D array from the list of input images.
+///
+/// @param inlist List of input files.
+/// @param slicedesc List of slices of the interest.
+/// @param angle Rotation angle.
+/// @param _verb Show progress bar.
+///
+SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
+             float angle, const Crop & crop, bool _verb) :
+  verb(_verb)
+{
+
+  if ( ! inlist.size() )
+    throw_error(modname, "Empty list of input files.");
+
+  Map iar, oar;
+  ReadImage(inlist[0], iar);
+  const Shape sh = iar.shape();
+  rotate(iar, oar, angle, crop);
+  _imageShape = oar.shape();
+  sliceV = slice_str2vec(slicedesc, _imageShape(0));
+  slcs = sliceV.size();
+  thts = inlist.size();
+  pxls = _imageShape(1);
+  allpix = long(thts) * long(slcs) *long(pxls);
+
+  allocateArray();
+
+  // Read images to the array.
+  Map proj(Shape(slcs,pxls));
+  ProgressBar bar(verb, "reading projections", thts);
+  for ( int curproj = 0 ; curproj < thts ; curproj++) {
+    ReadImage(inlist[curproj], iar, sh);
+    rotate(iar, oar, angle, crop);
+    for ( int sls=0 ; sls < sliceV.size() ; sls++ )
+      data(curproj, sls, blitz::Range::all()) =
+        oar(sliceV[sls], blitz::Range::all());
+    bar.update();
+  }
+
+}
+
+
+
 SinoS::~SinoS(){
   if (mapfile) {
 	munmap(data.data(), allpix*sizeof(float) );
@@ -669,6 +691,68 @@ SinoS::~SinoS(){
 	data.free();
   }
 }
+
+void SinoS::allocateArray() {
+  mapfile = 0;
+  blitz::TinyVector<int, 3> datashp(thts, slcs, pxls);
+  try { data.resize(datashp); }
+  catch(bad_alloc err) {
+
+    warn (modname, "Failed to allocate memory."
+          " Trying to play with the memory mapped to file.");
+
+    const char * tmpenv =  "TMPDIR";
+    const string tempdesc = "You can control the path to the temporary file via"
+                            " the environment variable \"" + (string) tmpenv + "\".";
+    const char * TMPDIR = getenv (tmpenv);
+    if ( ! TMPDIR ) TMPDIR = "./" ;
+    if ( strlen(TMPDIR) >= 248 ) { // little under the maximum length (256)
+      warn("temp file", (string)
+        "The environment variable \"" + tmpenv + "\" is too long:\n"
+        + TMPDIR + "\n"
+        "Switching to the default one \"./\". " + tempdesc);
+      TMPDIR = "./";
+    }
+    char tmpfilename[256]; // maximum file name length
+    strcpy(tmpfilename, TMPDIR);
+    if ( tmpfilename[ strlen(tmpfilename)-1 ] != '/' )
+      strcpy(tmpfilename+strlen(tmpfilename), "/");
+    strcpy(tmpfilename+strlen(tmpfilename), "XXXXXX");
+
+    mapfile = mkstemp(tmpfilename);
+    if ( mapfile < 0 )
+      throw_error("temp file", "Could not open temporary file"
+                  " \"" + string(tmpfilename) + "\". " + tempdesc);
+    if ( unlink(tmpfilename) < 0 )
+    warn("temp file", "Could not unlink temporary file"
+                      " \"" + string(tmpfilename) + "\". Don't forget"
+                      " to delete it after the program has finished.");
+
+    const off_t size = allpix * sizeof(float);
+
+    if ( lseek(mapfile, size, SEEK_SET) != size ||
+         write(mapfile, "END", 3) != 3 ) {
+      // Should I pad the holes ???
+      close (mapfile);
+      throw_error("temp file",
+                "Could not set size of the  temporary file"
+                " \"" + string(tmpfilename) + "\". You need " + toString((long unsigned)size) +
+                "bytes on the hard disk. " + tempdesc);
+    }
+
+    float * datap = (float*) mmap( 0, size, PROT_WRITE|PROT_READ, MAP_SHARED,
+                                   mapfile, 0);
+    if ( ! datap || datap == MAP_FAILED ) {
+      close (mapfile);
+      throw_error(modname, "Failed to mmap memory.");
+    }
+
+    data.reference( Volume(datap, datashp, blitz::neverDeleteData) );
+
+  }
+
+}
+
 
 /// \brief Forms the sinogram.
 ///

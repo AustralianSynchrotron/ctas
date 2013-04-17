@@ -26,7 +26,7 @@
 #ifndef BZ_VECPICK_H
 #define BZ_VECPICK_H
 
-#include <blitz/vector.h>
+#include "blitz/vector.h"
 
 BZ_NAMESPACE(blitz)
 
@@ -290,8 +290,8 @@ private:
 
 BZ_NAMESPACE_END
 
-#include <blitz/vecpick.cc>
-#include <blitz/vecpickio.cc>
-#include <blitz/vecpickiter.h>
+#include "blitz/vecpick.cc"
+#include "blitz/vecpickio.cc"
+#include "blitz/vecpickiter.h"
 
 #endif // BZ_VECPICK_H

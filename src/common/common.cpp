@@ -120,7 +120,7 @@ const string Path::DIRSEPARATOR = "/";
 ///
 void
 Path::throw_unextracted(const string & element) const {
-  throw_error 
+  throw_error
 	("class Path",
 	 "Could not extract " + element + " from path \"" + *this + "\".");
 }
@@ -179,7 +179,7 @@ Path::title () const {
 	return name().substr(0, idx);
 #endif
 }
- 
+
 string
 Path::dtitle () const {
   return dir() + title();
@@ -225,7 +225,7 @@ Path::isabsolute() const {
   return ! drive().empty();
 #else
   return ! empty() && (*this)[0] == '/';
-#endif  
+#endif
 }
 
 
@@ -255,10 +255,10 @@ type_desc (Path*) {
   return "PATH";
 }
 
-bool
+int
 _conversion (Path* _val, const string & in) {
   *_val = Path(in);
-  return true;
+  return 1;
 }
 
 
@@ -346,18 +346,96 @@ type_desc (Contrast*){
   return "STRING";
 }
 
-bool
+int
 _conversion (Contrast* _val, const string & in) {
   *_val=Contrast(in);
-  return true;
+  return 1;
+}
+
+
+string
+type_desc (Crop*){
+  return "UINT:UINT:UINT:UINT";
+}
+
+int
+_conversion (Crop* _val, const string & in) {
+  return 4 == sscanf( in.c_str(), "%u:%u:%u:%u",
+                      &(_val->left), &(_val->top),
+                      &(_val->right), &(_val->bottom) )
+         ? 1 : -1 ;
 }
 
 
 
 
 
+void rotate(const Map & inarr, Map & outarr, float angle,
+            const Crop & crop, float bg) {
+
+  const float cosa = cos(-angle), sina = sin(-angle);
+  const Shape sh = inarr.shape();
+  const int
+    rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
+    rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
+  if ( rwidth <= crop.left + crop.right ||
+       rheight <= crop.top + crop.bottom ) {
+    warn("rotate array",
+         "Image size (" + toString(rwidth) + "," + toString(rheight) + ")"
+         " smaller than crop region (" +
+         toString(crop.left) + "," + toString(crop.top) + "," +
+         toString(crop.right) + "," + toString(crop.bottom) + ")." );
+    outarr.resize(0,0);
+    return;
+  }
+  const Shape  shf( rheight - crop.top - crop.bottom,
+                    rwidth - crop.left - crop.right );
+  outarr.resize(shf);
+
+  if ( isnan(bg) ) {
+    bg=0;
+    bg += mean( inarr( blitz::Range::all(), 0 ) );
+    bg += mean( inarr( 0, blitz::Range::all() ) );
+    bg += mean( inarr( blitz::Range::all(), sh(1)-1 ) );
+    bg += mean( inarr( sh(0)-1, blitz::Range::all() ) );
+    bg /= 4.0;
+  }
+
+  const float
+    constinx = (crop.left-rwidth/2.0)*cosa - (crop.top-rheight/2.0)*sina + sh(1)/2,
+    constiny = (crop.left-rwidth/2.0)*sina + (crop.top-rheight/2.0)*cosa + sh(0)/2;
+
+  for ( long x=0 ; x < shf(1) ; x++) {
+    for ( long y=0 ; y < shf(0) ; y++) {
+
+      /*
+      long xf = lroundl( x*cosa - y*sina + constinx );
+      long yf = lroundl( x*sina + y*cosa + constiny );
+      outarr(y,x)  =  ( xf >=0  &&  xf < sh(1)  &&  yf >=0  &&  yf < sh(0) ) ?
+                      inarr(yf,xf)  :  bg;
+      */
+
+      const float xf = x*cosa - y*sina + constinx;
+      const float yf = x*sina + y*cosa + constiny;
+      const long flx = floor(xf), fly = floor(yf);
+      const float dx=xf-flx, dy=yf-fly;
+
+      if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
+        outarr(y,x)=bg;
+      } else {
+        float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * dx;
+        float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * dx;
+        outarr(y,x) = v0 + (v1-v0) * dy;
+      }
+
+    }
+  }
+
+}
 
 
+const string CropOptionDesc =
+  "left:top:right:bottom. Cropping from the edges of the image.";
 
 
 
@@ -505,11 +583,11 @@ ProgressBar::done(){
   if ( progln < 0 )  progln = 0; // if we have a very narrow terminal
   string eqs(progln, '=');
 
-  cout << string(waswidth+1, '\r') 
+  cout << string(waswidth+1, '\r')
 	   << ( steps ?
 			toString(fmt, steps, eqs.c_str(), "DONE. ") :
 			toString(fmt, step) + " steps. DONE." )
-	   << endl 
+	   << endl
 	   << "Successfully finished " << message << "." << endl;
   fflush(stdout);
 
@@ -608,7 +686,7 @@ FImageLoader(const Path & filename) {
     fif = FreeImage_GetFIFFromFilename(filename.c_str());
   if((fif != FIF_UNKNOWN) && FreeImage_FIFSupportsReading(fif))
     dib = FreeImage_Load(fif, filename.c_str(), 0);
-  
+
   if( ! dib )
 	throw warn("load image FI", "Could not load image \"" + filename + "\".");
 
@@ -641,7 +719,7 @@ PixelSize(const Path & filename) {
          "in vertical and horizontal directions differ.");
 
   switch ( imag.resolutionUnits() ) {
-  case Magick::PixelsPerInchResolution : 
+  case Magick::PixelsPerInchResolution :
     return 25400.0f / res;
   case Magick::PixelsPerCentimeterResolution :
     return 10000.0f / res;
@@ -668,8 +746,10 @@ ImageSizes(const Path & filename){
 void
 ImageSizes(const Path & filename, int *width, int *hight){
   Shape shp = ImageSizes(filename);
-  *width = shp(1);
-  *hight = shp(0);
+  if (width)
+    *width = shp(1);
+  if (hight)
+    *hight = shp(0);
 }
 
 
@@ -752,6 +832,141 @@ ReadImage_FI (const Path & filename, Map & storage ){
 
 }
 
+
+/*
+#  include <tiffio.h>
+#  include <fcntl.h>
+
+/// Loads an image using ImageMagick library.
+///
+/// @param filename Name of the image
+/// @param storage The array to store the image.
+///
+static void
+ReadImage_TIFF (const Path & filename, Map & storage ){
+
+  // BUG in libtiff
+  // On platforms (f.e. CentOS) the TIFFOpen function fails,
+  // while TIFFFdOpen works well. On the MS Windows the
+  // TIFFFdOpen does not work, while TIFFOpen does.
+
+  int fd=0;
+  #ifdef _WIN32
+  TIFF *image = TIFFOpen(filename.c_str(), "r");
+  #else
+  fd = open (filename.c_str(), O_RDONLY);
+  if (fd < 1)
+    throw_error("save float-point image",
+    "Could not open file \"" + filename + "\" for reading.");
+  TIFF *image = TIFFFdOpen(fd, filename.c_str(), "r");
+  #endif
+
+  if( ! image ) {
+    if (fd) close(fd);
+    throw_error("read tiff image",
+    "Could read tif from file\"" + filename + "\".");
+  }
+
+  uint32 imagelength;
+  tdata_t buf;
+  uint32 row;
+
+  TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imagelength);
+  buf = _TIFFmalloc(TIFFScanlineSize(tif));
+  for (row = 0; row < imagelength; row++)
+    tiffreadscanline(tif, buf, row);
+  _tifffree(buf);
+  tiffclose(tif);
+
+  // We need to set some values for basic tags before we can add any data
+  TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width);
+  TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight);
+  TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32);
+  TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
+  TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight);
+  TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
+
+  int wret = TIFFWriteRawStrip(image, 0, (void*) storage.data(), width*hight*4);
+  TIFFClose(image);
+  if (fd) close(fd);
+  if ( -1 == wret )
+    throw_error("save 32-bit image",
+    "Could not save image to file \"" + filename + "\".");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Magick::Image imag;
+  try { imag.read(filename); }
+  catch ( Magick::WarningCoder err ) {}
+  catch ( Magick::Exception & error) {
+    throw_error("load image IM", "Could not read image file\""+filename+"\"."
+    " Caught Magick++ exception: \""+error.what()+"\".");
+  }
+  if ( imag.type() != Magick::GrayscaleType )
+    warn("load image IM",
+         "Input image \"" + filename + "\" is not grayscale.");
+
+    const int
+    width = imag.columns(),
+    hight = imag.rows();
+  const Magick::PixelPacket
+  * pixels = imag.getConstPixels(0,0,width,hight);
+
+  storage.resize( hight, width );
+  float * data = storage.data();
+
+  for ( int k = 0 ; k < hight*width ; k++ )
+    *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
+
+}
+*/
+
+
+
+
+
+
+
+
 /// Loads an image using ImageMagick library.
 ///
 /// @param filename Name of the image
@@ -776,7 +991,7 @@ ReadImage_IM (const Path & filename, Map & storage ){
   const int
     width = imag.columns(),
     hight = imag.rows();
-  const Magick::PixelPacket 
+  const Magick::PixelPacket
     * pixels = imag.getConstPixels(0,0,width,hight);
 
   storage.resize( hight, width );
@@ -811,7 +1026,7 @@ ReadImage(const Path & filename, Map & storage, const Shape & shp){
 
 
 
-/// Reads one line of the FreeImage image. 
+/// Reads one line of the FreeImage image.
 ///
 /// @param storage The array to store the line
 /// @param dib The image to read from.
@@ -838,7 +1053,7 @@ fip2ln(Line & storage, FIBITMAP *dib, int idx){
 }
 
 
-/// \brief Reads one line of the image using FreeImage library. 
+/// \brief Reads one line of the image using FreeImage library.
 ///
 /// @param filename The name of the file with the image.
 /// @param storage Line to read into.
@@ -889,7 +1104,7 @@ ReadImageLine_FI (const Path & filename, Line & storage, int idx){
 }
 
 
-/// \brief Reads one line of the image using ImageMagick library. 
+/// \brief Reads one line of the image using ImageMagick library.
 ///
 /// @param filename The name of the file with the image.
 /// @param storage Line to read into.
@@ -944,7 +1159,7 @@ ReadImageLine(const Path & filename, Line & storage, int idx,
 
 
 
-/// \brief Reads many lines of the image using FreeImage library. 
+/// \brief Reads many lines of the image using FreeImage library.
 ///
 /// @param filename The name of the file with the image.
 /// @param storage Array to read into.
@@ -999,7 +1214,7 @@ ReadImageLine_FI (const Path & filename, Map & storage,
 
 }
 
-/// \brief Reads many line of the image using ImageMagick library. 
+/// \brief Reads many line of the image using ImageMagick library.
 ///
 /// @param filename The name of the file with the image.
 /// @param storage Array to read into.
@@ -1029,8 +1244,9 @@ ReadImageLine_IM (const Path & filename, Map & storage,
 	  storage(curel, blitz::Range::all() ) = 0.0;
 	} else {
 	  const Magick::PixelPacket * pixels = imag.getConstPixels(0,cursl,width,1);
-	  for ( int k = 0 ; k < width ; k++ )
-		storage( (int) curel, k) = (float) Magick::ColorGray( *pixels++  ) .shade();
+	  for ( long k = 0 ; k < width ; k++ )
+		storage( (long) curel, k) =
+		(float) Magick::ColorGray( *pixels++  ) .shade();
 	}
 
   }
@@ -1162,7 +1378,7 @@ namespace blitz {
 ///
 float
 limit01(float x){
-  return ( x < 0.0 ) ? 
+  return ( x < 0.0 ) ?
     (0.0f) :
     ( x > 1.0 ? 1.0f : x ) ;
 }
@@ -1275,13 +1491,14 @@ SaveImageFP (const Path & filename, const Map & storage){
   TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
   TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight);
   TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
+  TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
   int wret = TIFFWriteRawStrip(image, 0, (void*) storage.data(), width*hight*4);
   TIFFClose(image);
   if (fd) close(fd);
   if ( -1 == wret )
 	throw_error("save 32-bit image",
-				"Could not save image to file \"" + filename + "\"."); 
+				"Could not save image to file \"" + filename + "\".");
 
 }
 

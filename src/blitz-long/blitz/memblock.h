@@ -27,16 +27,16 @@
 #ifndef BZ_MEMBLOCK_H
 #define BZ_MEMBLOCK_H
 
-#include <blitz/blitz.h>
+#include "blitz/blitz.h"
 
 #include <stddef.h>     // ptrdiff_t
 
 BZ_NAMESPACE(blitz)
 
-enum preexistingMemoryPolicy { 
-  duplicateData, 
-  deleteDataWhenDone, 
-  neverDeleteData 
+enum preexistingMemoryPolicy {
+  duplicateData,
+  deleteDataWhenDone,
+  neverDeleteData
 };
 
 // Forward declaration of MemoryBlockReference
@@ -63,7 +63,7 @@ protected:
         references_ = 0;
 
         BZ_MUTEX_INIT(mutex)
-        mutexLocking_ = true;    
+        mutexLocking_ = true;
     }
 
     explicit MemoryBlock(size_t items)
@@ -72,7 +72,7 @@ protected:
         allocate(length_);
 
 #ifdef BZ_DEBUG_LOG_ALLOCATIONS
-    cout << "MemoryBlock: allocated " << setw(8) << length_ 
+    cout << "MemoryBlock: allocated " << setw(8) << length_
          << " at " << ((void *)dataBlockAddress_) << endl;
 #endif
 
@@ -81,7 +81,7 @@ protected:
         references_ = 0;
 
         BZ_MUTEX_INIT(mutex)
-        mutexLocking_ = true;    
+        mutexLocking_ = true;
     }
 
     MemoryBlock(size_t length, T_type* data)
@@ -91,12 +91,12 @@ protected:
         dataBlockAddress_ = data;
         references_ = 0;
         BZ_MUTEX_INIT(mutex)
-        mutexLocking_ = true;    
+        mutexLocking_ = true;
     }
 
     virtual ~MemoryBlock()
     {
-        if (dataBlockAddress_) 
+        if (dataBlockAddress_)
         {
 
 #ifdef BZ_DEBUG_LOG_ALLOCATIONS
@@ -111,28 +111,28 @@ protected:
     }
 
     // set mutex locking policy and return true if successful
-    bool doLock(bool lockingPolicy) 
-    { 
+    bool doLock(bool lockingPolicy)
+    {
         if (mutexLocking_ == lockingPolicy) { // already set
             return true;
         }
         else if (references_ <= 1) { // no multiple references, safe to change
-            mutexLocking_ = lockingPolicy; 
+            mutexLocking_ = lockingPolicy;
             return true;
         }
         return false; // unsafe to change
     }
 
     void          addReference()
-    { 
+    {
         if (mutexLocking_) {
             BZ_MUTEX_LOCK(mutex)
         }
-        ++references_; 
+        ++references_;
 
 #ifdef BZ_DEBUG_LOG_REFERENCES
-    cout << "MemoryBlock:    reffed " << setw(8) << length_ 
-         << " at " << ((void *)dataBlockAddress_) << " (r=" 
+    cout << "MemoryBlock:    reffed " << setw(8) << length_
+         << " at " << ((void *)dataBlockAddress_) << " (r="
          << (int)references_ << ")" << endl;
 #endif
         if (mutexLocking_) {
@@ -140,24 +140,24 @@ protected:
         }
     }
 
-    T_type* restrict      data() 
-    { 
-        return data_; 
+    T_type* restrict      data()
+    {
+        return data_;
     }
 
     const T_type* restrict data()      const
-    { 
-        return data_; 
+    {
+        return data_;
     }
 
-    T_type*&      dataBlockAddress() 
-    { 
-        return dataBlockAddress_; 
+    T_type*&      dataBlockAddress()
+    {
+        return dataBlockAddress_;
     }
 
     size_t        length()    const
-    { 
-        return length_; 
+    {
+        return length_;
     }
 
     int           removeReference()
@@ -170,7 +170,7 @@ protected:
 
 #ifdef BZ_DEBUG_LOG_REFERENCES
     cout << "MemoryBlock: dereffed  " << setw(8) << length_
-         << " at " << ((void *)dataBlockAddress_) << " (r=" << (int)references_ 
+         << " at " << ((void *)dataBlockAddress_) << " (r=" << (int)references_
          << ")" << endl;
 #endif
         if (mutexLocking_) {
@@ -246,17 +246,17 @@ public:
         data_ = ref.data_ + offset;
     }
 
-    MemoryBlockReference(size_t length, T_type* data, 
+    MemoryBlockReference(size_t length, T_type* data,
         preexistingMemoryPolicy deletionPolicy)
     {
-        // Create a memory block using already allocated memory. 
+        // Create a memory block using already allocated memory.
 
         // Note: if the deletionPolicy is duplicateData, this must
         // be handled by the leaf class.  In MemoryBlockReference,
         // this is treated as neverDeleteData; the leaf class (e.g. Array)
         // must duplicate the data.
 
-        if ((deletionPolicy == neverDeleteData) 
+        if ((deletionPolicy == neverDeleteData)
             || (deletionPolicy == duplicateData)) {
 // in this case, we do not need a MemoryBlock to ref-count the data
             block_ = 0;
@@ -296,12 +296,12 @@ protected:
 
     int numReferences() const
     {
-        if (block_) 
+        if (block_)
             return block_->references();
 #ifdef BZ_DEBUG_LOG_REFERENCES
         cout << "Invalid reference count for data at "<< data_ << endl;
 #endif
-        return -1;      
+        return -1;
     }
 
     bool lockReferenceCount(bool lockingPolicy) const
@@ -312,7 +312,7 @@ protected:
 #ifdef BZ_DEBUG_LOG_REFERENCES
         cout << "No reference count locking for data at "<< data_ << endl;
 #endif
-        return true;    
+        return true;
     }
 
     void changeToNullBlock()
@@ -359,7 +359,7 @@ private:
         }
     }
 
-    void addReference() const 
+    void addReference() const
     {
         if (block_) {
             block_->addReference();
@@ -371,16 +371,16 @@ private:
         }
     };
 
-    int removeReference() const 
+    int removeReference() const
     {
         if (block_)
             return block_->removeReference();
 #ifdef BZ_DEBUG_LOG_REFERENCES
         cout << "Skipping reference count for data at "<< data_ << endl;
 #endif
-        return -1;      
+        return -1;
     };
-  
+
     void operator=(const MemoryBlockReference<T_type>&)
     { }
 };
@@ -388,6 +388,6 @@ private:
 
 BZ_NAMESPACE_END
 
-#include <blitz/memblock.cc>
+#include "memblock.cc"
 
 #endif // BZ_MEMBLOCK_H

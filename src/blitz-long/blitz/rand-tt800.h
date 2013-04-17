@@ -26,7 +26,7 @@
 #define BZ_RAND_TT800_H
 
 #ifndef BZ_RANDOM_H
- #include <blitz/random.h>
+ #include "blitz/random.h"
 #endif
 
 BZ_NAMESPACE(blitz)

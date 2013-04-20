@@ -144,6 +144,8 @@ public:
   const Path bg(int idx) const ; ///< Gives name of the background.
   inline const std::vector<Path> & dc() const {return dcs;} ///< Gives the array of DC images.
 
+
+
   /// Constructs one cleaned projection of the experimental data.
   void projection(int idx, Map & proj,
                   const std::vector<int> & sliceV = std::vector<int>() ) const ;

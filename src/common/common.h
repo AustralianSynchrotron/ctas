@@ -337,7 +337,8 @@ struct Crop {
   unsigned int top;       ///< Crop from top
   unsigned int right;     ///< Crop from right
   unsigned int bottom;     ///< Crop from bottom
-  inline Crop() : left(0), top(0), right(0), bottom(0) {}
+  inline Crop(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0)
+  : top(t), left(l), bottom(b), right(r) {}
 };
 
 std::string COMMON_API
@@ -361,6 +362,21 @@ CropOptionDesc;
 ///
 void rotate(const Map & inarr, Map & outarr, float angle,
             const Crop & crop = Crop(), float bg=NAN);
+
+/// \brief Rotate selected lines of the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array. Input and output must be different arrays.
+/// @param sliceV Vector of lines to output in the rotated array.
+///        The vector can be modified to leave only exclude the slices
+///        out of the image boudaries.
+/// @param angle Rotation angle.
+/// @param crop Crop resulting image
+/// @param bg Values for the pixels in the resulting image not existing in
+///        original.
+///
+void rotateLines(const Map & inarr, Map & outarr, std::vector<int> & sliceV,
+                 float angle, const Crop & crop = Crop(), float bg=NAN);
 
 
 

@@ -36,6 +36,8 @@
 #include <stdarg.h>
 #include <string.h> // for memcpy
 #include <unistd.h>
+#include <tiffio.h>
+#include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
 #include "common.h"
 
 
@@ -360,10 +362,14 @@ type_desc (Crop*){
 
 int
 _conversion (Crop* _val, const string & in) {
-  return 4 == sscanf( in.c_str(), "%u:%u:%u:%u",
-                      &(_val->left), &(_val->top),
-                      &(_val->right), &(_val->bottom) )
-         ? 1 : -1 ;
+  int l, r, t, b;
+  int scanres = sscanf( in.c_str(), "%i:%i:%i:%i", &t, &l, &b, &r);
+  if (scanres != 4) // try , instead of :
+    scanres = sscanf( in.c_str(), "%i,%i,%i,%i", &t, &l, &b, &r);
+  if ( 4 != scanres || l<0 || r<0 || t<0 || b<0 )
+    return -1;
+  *_val = Crop(t, l, b, r);
+  return 1;
 }
 
 
@@ -372,15 +378,27 @@ _conversion (Crop* _val, const string & in) {
 
 void rotate(const Map & inarr, Map & outarr, float angle,
             const Crop & crop, float bg) {
+  const float maxHeight = sqrt ( inarr.shape()(0) * inarr.shape()(0) +
+                               inarr.shape()(1) * inarr.shape()(1) ) -
+                               crop.top - crop.bottom;
+  vector<int> sliceV ( (int) ceil(maxHeight) );
+  for (int i=0; i<sliceV.size(); i++)
+    sliceV[i]=i;
+  rotateLines(inarr, outarr, sliceV, angle, crop, bg);
+}
+
+
+void rotateLines(const Map & inarr, Map & outarr, vector<int> & sliceV,
+                 float angle, const Crop & crop, float bg) {
 
   const float cosa = cos(-angle), sina = sin(-angle);
   const Shape sh = inarr.shape();
   const int
-    rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
-    rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
+  rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
+  rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
   if ( rwidth <= crop.left + crop.right ||
        rheight <= crop.top + crop.bottom ) {
-    warn("rotate array",
+    warn("rotate array lines",
          "Image size (" + toString(rwidth) + "," + toString(rheight) + ")"
          " smaller than crop region (" +
          toString(crop.left) + "," + toString(crop.top) + "," +
@@ -388,8 +406,15 @@ void rotate(const Map & inarr, Map & outarr, float angle,
     outarr.resize(0,0);
     return;
   }
-  const Shape  shf( rheight - crop.top - crop.bottom,
-                    rwidth - crop.left - crop.right );
+
+  const int maxy = rheight - crop.top - crop.bottom;
+  for ( vector<int>::iterator it = sliceV.begin() ; it != sliceV.end() ; ) {
+    int slice = *it;
+    if ( slice >= 0  && slice < maxy )    it++;
+    else                                  it=sliceV.erase(it);
+  }
+
+  const Shape  shf( sliceV.size(), rwidth - crop.left - crop.right );
   outarr.resize(shf);
 
   if ( isnan(bg) ) {
@@ -402,30 +427,31 @@ void rotate(const Map & inarr, Map & outarr, float angle,
   }
 
   const float
-    constinx = (crop.left-rwidth/2.0)*cosa - (crop.top-rheight/2.0)*sina + sh(1)/2,
-    constiny = (crop.left-rwidth/2.0)*sina + (crop.top-rheight/2.0)*cosa + sh(0)/2;
+  constinx = (crop.left-rwidth/2.0)*cosa - (crop.top-rheight/2.0)*sina + sh(1)/2,
+  constiny = (crop.left-rwidth/2.0)*sina + (crop.top-rheight/2.0)*cosa + sh(0)/2;
 
   for ( long x=0 ; x < shf(1) ; x++) {
-    for ( long y=0 ; y < shf(0) ; y++) {
+    for ( long iy=0 ; iy < shf(0) ; iy++) {
 
       /*
-      long xf = lroundl( x*cosa - y*sina + constinx );
-      long yf = lroundl( x*sina + y*cosa + constiny );
-      outarr(y,x)  =  ( xf >=0  &&  xf < sh(1)  &&  yf >=0  &&  yf < sh(0) ) ?
-                      inarr(yf,xf)  :  bg;
-      */
+       *      long xf = lroundl( x*cosa - y*sina + constinx );
+       *      long yf = lroundl( x*sina + y*cosa + constiny );
+       *      outarr(y,x)  =  ( xf >=0  &&  xf < sh(1)  &&  yf >=0  &&  yf < sh(0) ) ?
+       *                      inarr(yf,xf)  :  bg;
+       */
 
+      const long y = sliceV[iy];
       const float xf = x*cosa - y*sina + constinx;
       const float yf = x*sina + y*cosa + constiny;
       const long flx = floor(xf), fly = floor(yf);
       const float dx=xf-flx, dy=yf-fly;
 
       if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
-        outarr(y,x)=bg;
+        outarr(iy,x)=bg;
       } else {
         float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * dx;
         float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * dx;
-        outarr(y,x) = v0 + (v1-v0) * dy;
+        outarr(iy,x) = v0 + (v1-v0) * dy;
       }
 
     }
@@ -435,7 +461,7 @@ void rotate(const Map & inarr, Map & outarr, float angle,
 
 
 const string CropOptionDesc =
-  "left:top:right:bottom. Cropping from the edges of the image.";
+  "top:left:bottom:right. Cropping from the edges of the image.";
 
 
 
@@ -833,17 +859,20 @@ ReadImage_FI (const Path & filename, Map & storage ){
 }
 
 
-/*
-#  include <tiffio.h>
-#  include <fcntl.h>
 
-/// Loads an image using ImageMagick library.
+
+/// Loads an image (lines) using TIFF library.
 ///
 /// @param filename Name of the image
 /// @param storage The array to store the image.
+/// @param idxs The indexes of the line to read.
+///        if empty then reads whole image.
 ///
 static void
-ReadImage_TIFF (const Path & filename, Map & storage ){
+ReadImageLine_TIFF (const Path & filename, Map & storage,
+                    const vector<int> & idxs ) {
+
+  static const string modname = "load image tiff";
 
   // BUG in libtiff
   // On platforms (f.e. CentOS) the TIFFOpen function fails,
@@ -852,117 +881,161 @@ ReadImage_TIFF (const Path & filename, Map & storage ){
 
   int fd=0;
   #ifdef _WIN32
-  TIFF *image = TIFFOpen(filename.c_str(), "r");
+  TIFF *tif = TIFFOpen(filename.c_str(), "r");
   #else
   fd = open (filename.c_str(), O_RDONLY);
   if (fd < 1)
-    throw_error("save float-point image",
-    "Could not open file \"" + filename + "\" for reading.");
-  TIFF *image = TIFFFdOpen(fd, filename.c_str(), "r");
+    throw_error(modname,
+                "Could not open file \"" + filename + "\" for reading.");
+  TIFF *tif = TIFFFdOpen(fd, filename.c_str(), "r");
   #endif
 
-  if( ! image ) {
+  if( ! tif ) {
     if (fd) close(fd);
-    throw_error("read tiff image",
-    "Could read tif from file\"" + filename + "\".");
+    throw CtasErr(CtasErr::WARN, modname,
+                  "Could not read tif from file\"" + filename + "\".");
   }
 
-  uint32 imagelength;
-  tdata_t buf;
-  uint32 row;
+  uint32 width = 0, height = 0;
+  uint16 spp = 0, bps = 0, fmt = 0, photo;
 
-  TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imagelength);
-  buf = _TIFFmalloc(TIFFScanlineSize(tif));
-  for (row = 0; row < imagelength; row++)
-    tiffreadscanline(tif, buf, row);
-  _tifffree(buf);
-  tiffclose(tif);
+  if ( ! TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &width) )
+    throw warn(modname,
+               "Image \"" + filename + "\" has undefined width.");
 
-  // We need to set some values for basic tags before we can add any data
-  TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width);
-  TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight);
-  TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32);
-  TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
-  TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight);
-  TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
+  if ( ! TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &height) )
+    throw warn(modname,
+               "Image \"" + filename + "\" has undefined height.");
 
-  int wret = TIFFWriteRawStrip(image, 0, (void*) storage.data(), width*hight*4);
-  TIFFClose(image);
-  if (fd) close(fd);
-  if ( -1 == wret )
-    throw_error("save 32-bit image",
-    "Could not save image to file \"" + filename + "\".");
+  if ( ! TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &spp) || spp != 1 )
+    throw warn(modname,
+               "Image \"" + filename + "\" has undefined samples per pixel"
+               " or is not a grayscale.");
+  if ( spp != 1 )
+    throw warn(modname,
+               "Image \"" + filename + "\" is not grayscale.");
 
+  if ( ! TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &bps) )
+    throw warn(modname,
+               "Image \"" + filename + "\" has undefined bits per sample.");
+  if ( bps != 8 && bps != 16 && bps != 32 )
+    throw warn(modname,
+               "Image \"" + filename + "\" has nonstandard " + toString(bps) +
+               " bits per sample. Do not know how to handle it.");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  Magick::Image imag;
-  try { imag.read(filename); }
-  catch ( Magick::WarningCoder err ) {}
-  catch ( Magick::Exception & error) {
-    throw_error("load image IM", "Could not read image file\""+filename+"\"."
-    " Caught Magick++ exception: \""+error.what()+"\".");
+  if ( ! TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &fmt) ) {
+    string warnadd;
+    if (bps != 32) {
+      warnadd = toString(bps) +
+           " bits per sample suggests unsigned integer format.";
+      fmt = SAMPLEFORMAT_UINT;
+    } else {
+      warnadd = "32 bits per sample suggests float-point format.";
+      fmt = SAMPLEFORMAT_IEEEFP;
+    }
+    warn(modname,
+         "Image \"" + filename + "\" has undefined sample format."
+         " Guessing! " + warnadd);
   }
-  if ( imag.type() != Magick::GrayscaleType )
-    warn("load image IM",
-         "Input image \"" + filename + "\" is not grayscale.");
+  if ( fmt != SAMPLEFORMAT_UINT &&
+       fmt != SAMPLEFORMAT_INT &&
+       fmt != SAMPLEFORMAT_IEEEFP )
+    throw warn(modname,
+               "Image \"" + filename + "\" has unsupported sample format.");
 
-    const int
-    width = imag.columns(),
-    hight = imag.rows();
-  const Magick::PixelPacket
-  * pixels = imag.getConstPixels(0,0,width,hight);
+  if ( ! TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &photo) ||
+       photo != PHOTOMETRIC_MINISBLACK )
+    throw warn(modname,
+         "Image \"" + filename + "\" has undefined or unsupported"
+         " photometric interpretation.");
 
-  storage.resize( hight, width );
-  float * data = storage.data();
+  const int readheight = idxs.size() ? idxs.size() : height;
+  storage.resize(readheight,width);
 
-  for ( int k = 0 ; k < hight*width ; k++ )
-    *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
+  tdata_t buf = _TIFFmalloc(TIFFScanlineSize(tif));
+
+  for (uint curidx = 0; curidx < readheight; curidx++) {
+
+    uint32 row = idxs.size() ? idxs[curidx] : curidx;
+
+    if ( row >= height || row < 0 ) {
+
+      warn("load imagelines tiff",
+      "The index of the line to be read (" + toString(row) + ")"
+      " is outside the image boundaries (" + toString(height) + ").");
+
+      storage(curidx, blitz::Range::all()) = 0.0;
+
+    } else {
+
+      if ( TIFFReadScanline(tif, buf, row) < 0 ) {
+        _TIFFfree(buf);
+        throw warn(modname,
+                   "Failed to read line " + toString(row) +
+                   " in image \"" + filename + "\".");
+      }
+
+      #define blitzArrayFromData(type) \
+        blitz::Array<type,1> ( (type *) buf, \
+                               blitz::shape(width), \
+                               blitz::neverDeleteData)
+
+      switch (fmt) {
+      case SAMPLEFORMAT_UINT :
+        if (bps==8)
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint8);
+        else if (bps==16)
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint16);
+        else if (bps==32)
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint32);
+        break;
+      case SAMPLEFORMAT_INT :
+        if (bps==8)
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int8);
+        else if (bps==16)
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int16);
+        else if (bps==32)
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int32);
+        break;
+      case SAMPLEFORMAT_IEEEFP :
+        storage(curidx, blitz::Range::all()) = blitzArrayFromData(float);
+        break;
+      }
+
+    }
+
+  }
+
+
+  _TIFFfree(buf);
+  TIFFClose(tif);
 
 }
-*/
+
+/// Loads an image (lines) using TIFF library.
+///
+/// @param filename Name of the image
+/// @param storage The array to store the image.
+/// @param idxs The indexes of the line to read.
+///        if empty then reads whole image.
+///
+inline static void
+ReadImageLine_TIFF (const Path & filename, Line & storage, int idx) {
+  Map _storage;
+  ReadImageLine_TIFF(filename, _storage, vector<int>(1,idx) );
+  storage=_storage(0,blitz::Range::all());
+}
 
 
-
-
+/// Loads an image using ImageMagick library.
+///
+/// @param filename Name of the image
+/// @param storage The array to store the image.
+///
+inline static void
+ReadImage_TIFF (const Path & filename, Map & storage) {
+  ReadImageLine_TIFF(filename, storage, vector<int>() );
+}
 
 
 
@@ -1005,12 +1078,14 @@ ReadImage_IM (const Path & filename, Map & storage ){
 
 void
 ReadImage (const Path & filename, Map & storage ){
-  try { ReadImage_FI(filename, storage); }
+  try { ReadImage_TIFF(filename, storage); }
   catch (CtasErr err) {
-	if (err.type() != CtasErr::WARN) throw err;
-	// warn("load image", "Loading of image file \"" + filename + "\""
-	// " with FreeImage failed. Trying to load using ImageMagick.");
-	ReadImage_IM(filename, storage);
+    if (err.type() != CtasErr::WARN) throw err;
+    try { ReadImage_FI(filename, storage); }
+    catch (CtasErr err) {
+      if (err.type() != CtasErr::WARN) throw err;
+      ReadImage_IM(filename, storage);
+    }
   }
 }
 
@@ -1138,21 +1213,22 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
 
 
 void
-ReadImageLine (const Path & filename, Line & storage, int idx){
-  try { ReadImageLine_FI(filename, storage, idx); }
+ReadImageLine (const Path & filename, Line & storage, int idx) {
+  try { ReadImageLine_TIFF(filename, storage, idx); }
   catch (CtasErr err) {
-  	if (err.type() != CtasErr::WARN)
-  	  throw err;
-	// Loading of image line from file \"" + filename + "\"
-	// with FreeImage failed. Trying to load using ImageMagick.
-	ReadImageLine_IM(filename, storage, idx);
+    if (err.type() != CtasErr::WARN) throw err;
+    try { ReadImageLine_FI(filename, storage, idx); }
+    catch (CtasErr err) {
+      if (err.type() != CtasErr::WARN) throw err;
+      ReadImageLine_IM(filename, storage, idx);
+    }
   }
 }
 
 
 void
 ReadImageLine(const Path & filename, Line & storage, int idx,
-			  const Shape & shp){
+              const Shape &shp) {
   BadShape(filename, shp);
   ReadImageLine(filename, storage, idx);
 }
@@ -1163,7 +1239,7 @@ ReadImageLine(const Path & filename, Line & storage, int idx,
 ///
 /// @param filename The name of the file with the image.
 /// @param storage Array to read into.
-/// @param idxs The indexes of the line to read.
+/// @param idxs The indexes of the lines to read.
 ///
 static void
 ReadImageLine_FI (const Path & filename, Map & storage,
@@ -1257,20 +1333,23 @@ ReadImageLine_IM (const Path & filename, Map & storage,
 
 void
 ReadImageLine (const Path & filename, Map & storage,
-			   const vector<int> & idxs){
+               const vector<int> & idxs) {
+
   if ( ! idxs.size() ) {
     ReadImage(filename, storage);
     return;
   }
-  try { ReadImageLine_FI(filename, storage, idxs); }
+
+  try { ReadImageLine_TIFF(filename, storage, idxs); }
   catch (CtasErr err) {
-	if (err.type() != CtasErr::WARN)
-	  throw err;
-	/* warn("load image lines",
-		 "Loading of image lines from file \"" + filename + "\""
-		 " with FreeImage failed. Trying to load using ImageMagick."); */
-	ReadImageLine_IM(filename, storage, idxs);
+    if (err.type() != CtasErr::WARN) throw err;
+    try { ReadImageLine_FI(filename, storage, idxs); }
+    catch (CtasErr err) {
+      if (err.type() != CtasErr::WARN) throw err;
+      ReadImageLine_IM(filename, storage, idxs);
+    }
   }
+
 }
 
 
@@ -1439,8 +1518,6 @@ SaveImageINT (const Path & filename, const Map & storage,
 
 
 
-#  include <tiffio.h>
-#  include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
 
 /// \brief Save the array into float point TIFF image.
 ///

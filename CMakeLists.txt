@@ -2,6 +2,11 @@ cmake_minimum_required (VERSION 2.6)
 project (ctas)
 set(VERSION 0.6.0)
 
+add_custom_target(dist
+    COMMAND git archive --prefix=${PROJECT_NAME}.${VERSION}/ HEAD
+        | bzip2 > ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${VERSION}.tar.bz2
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
 set(CMAKE_C_FLAGS "-ffast-math")
 set(CMAKE_CXX_FLAGS "-ffast-math")
 

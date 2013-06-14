@@ -175,6 +175,7 @@ public:
   /// @param str the initializing string.
   inline Path(const char *str) : std::string(str) {};
 
+  const static Path emptypath;
 
   std::string drive () const;	///< Extracts drive letter (has sense on MS WIN only).
   std::string dir () const;		///< Extracts directory.
@@ -340,6 +341,34 @@ struct Crop {
   inline Crop(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0)
   : top(t), left(l), bottom(b), right(r) {}
 };
+
+/// \brief Compare crops.
+///
+/// @param sh1 first crop.
+/// @param sh2 second crop.
+///
+/// @return \c true if the crops are equal, \c false otherwise.
+///
+inline bool
+operator==( const Crop & cr1, const Crop & cr2){
+  return cr1.bottom == cr2.bottom && cr1.top == cr2.top &&
+         cr1.left == cr2.left && cr1.right == cr2.right;
+}
+
+/// \brief Compare crops.
+///
+/// @param sh1 first crop.
+/// @param sh2 second crop.
+///
+/// @return \c false if the crops are equal, \c true otherwise.
+///
+inline bool
+operator!=( const Crop & cr1, const Crop & cr2){
+  return cr1.bottom != cr2.bottom || cr1.top != cr2.top ||
+  cr1.left != cr2.left || cr1.right != cr2.right;
+}
+
+
 
 std::string COMMON_API
 type_desc (Crop*);

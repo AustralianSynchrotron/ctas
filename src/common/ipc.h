@@ -253,8 +253,9 @@ public:
     component(_comp);
   }
 
-  inline void projection( int itheta, Map & proj,
-                          const std::vector<int> & sliceV = std::vector<int>() ) const {
+  inline void projection(  int itheta, Map & proj,
+                           const std::vector<int> & sliceV,
+                           float angle=0, const Crop &crop = Crop() ) const {
 
     listD.projection(itheta, prD);
 
@@ -264,14 +265,15 @@ public:
     }
 
     proc.extract(prD, pr0, comp, dgamma);
+    rotate(pr0, prD, angle, crop);
 
     proj.resize( Shape( sliceV.size() ? sliceV.size() : sh(0) , sh(1) ) );
     if (sliceV.size()) {
       for(int icur = 0 ; icur<sliceV.size() ; icur++)
         proj (icur, blitz::Range::all()) =
-          pr0 (sliceV[icur], blitz::Range::all());
+          prD (sliceV[icur], blitz::Range::all());
     } else {
-      proj = pr0;
+      proj = prD;
     }
 
   }

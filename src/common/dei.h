@@ -50,7 +50,7 @@
 
 #endif
 
- 
+
 /// \defgroup deiedei DEI processing.
 /// Functions in this group are used extract the components from two
 /// image contrasts via the DEI method
@@ -231,11 +231,12 @@ public:
     component(_comp);
   }
 
-  inline void projection(int itheta, Map & proj,
-                         const std::vector<int> & sliceV = std::vector<int>() ) const {
+  inline void projection( int itheta, Map & proj,
+                          const std::vector<int> & sliceV,
+                          float angle=0, const Crop &crop = Crop() ) const {
     Map prM(sh), prP(sh);
-    Mlist.projection(itheta, prM, sliceV);
-    Plist.projection(itheta, prP, sliceV);
+    Mlist.projection(itheta, prM, sliceV, angle, crop);
+    Plist.projection(itheta, prP, sliceV, angle, crop);
     proj = proc.extract( prM, prP, comp);
   }
 

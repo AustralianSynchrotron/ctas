@@ -29,7 +29,7 @@
 /// Have to say that the module with the EDEI processing (this file and deilib.cpp)
 /// is the ugliest in the package. I do not know if it is my fault, or the nature of
 /// algorithm, but this is the fact.
-/// 
+///
 
 
 #ifndef _H_EDEI_H_
@@ -55,7 +55,7 @@
 
 #endif
 
- 
+
 /// \defgroup edeiedei EDEI processing.
 /// Functions in this group are used to process \RC and/or \FD data files
 /// and extract the components from two  image contrasts via the EDEI method
@@ -168,7 +168,7 @@ struct EDEI_API EDEIoptions {
 /// This class is used for loading, storing, saving, processing
 /// the rocking curve of the analyzer from the point
 /// of view of the EDEI method.
-/// 
+///
 /// Also member functions of this class perform EDEI processing
 /// of the contrasts basing on the preloaded \RC, \FD.
 ///
@@ -326,11 +326,12 @@ public:
   }
 
 
-  inline void projection(int itheta, Map & proj,
-                         const std::vector<int> & sliceV = std::vector<int>() ) const {
+  inline void projection( int itheta, Map & proj,
+                          const std::vector<int> & sliceV,
+                          float angle=0, const Crop &crop = Crop() ) const {
     Map prM(sh), prP(sh);
-    Mlist.projection(itheta, prM, sliceV);
-    Plist.projection(itheta, prP, sliceV);
+    Mlist.projection(itheta, prM, sliceV, angle, crop);
+    Plist.projection(itheta, prP, sliceV, angle, crop);
     proc.extract( prM, prP, comp, proj);
   }
 

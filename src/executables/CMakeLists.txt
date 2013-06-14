@@ -1,3 +1,6 @@
+# To make sure the internal version of blitz is used
+include_directories("../blitz-long")
+
 link_directories(${CTAS_BINARY_DIR}/common)
 
 add_executable(ct ct.cpp)
@@ -66,6 +69,7 @@ add_executable(ff ff.cpp)
 target_link_libraries(ff
   common
   poptmx
+  experiment
 )
 
 add_executable(rc2fd rc2fd.cpp)

@@ -30,8 +30,6 @@
 #ifndef _H_ABS_H_
 #define _H_ABS_H_
 
-
-
 /// \cond
 #ifdef _H_EXPERIMENT_H_
 /// \endcond
@@ -60,8 +58,9 @@ public:
   }
 
   void projection(int itheta, Map & proj,
-                  const std::vector<int> & sliceV = std::vector<int>() ) const {
-    list.projection(itheta, proj, sliceV);
+                  const std::vector<int> & sliceV,
+                  float angle=0, const Crop &crop = Crop()) const {
+    list.projection(itheta, proj, sliceV, angle, crop);
   }
 
 };

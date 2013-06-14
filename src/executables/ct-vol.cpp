@@ -52,7 +52,7 @@ struct clargs {
   Filter filter_type;           ///< Type of the filtering function.
   float dd;             ///< Pixel size.
   float angle;           ///< Angle of the sino slicing.
-  Crop crop; //< Crop input projection image
+  Crop crop; ///< Crop input projection image
   Dcenter center;               ///< Rotation center.
   unsigned nof_threads;              ///< Number of threads in the reconstruction.
   bool beverbose;       ///< Be verbose flag
@@ -244,6 +244,7 @@ int main(int argc, char *argv[]) {
     new SinoS(args.inlist, args.slicedesc, args.angle, args.crop, args.beverbose);
   if ( ! sins || ! sins->indexes().size() )
     throw_error(args.command, "No slices requested");
+
   CTrec rec(sins->pixels(), args.contrast, args.nof_threads, args.filter_type);
 
   if ( args.nof_threads == 1 || sins->indexes().size()<=2 ) {

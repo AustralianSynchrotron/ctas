@@ -33,6 +33,7 @@
 
 #include "common.h"
 #include "flatfield.h"
+#include <blitz/rand-tt800.h>
 #include <vector>
 
 #ifdef _WIN32
@@ -104,30 +105,55 @@ class EXPERIMENT_API AqSeries {
 private:
 
   static const std::string modname;	///< Module name.
-  static const int nobg = -1;	///< "Magick number" for the "no background".
+  //static const int nobg = -1;	///< "Magick number" for the "no background".
 
   const static std::string BGPREFIX;  ///< Background prefix.
-  const static std::string DCPREFIX;  ///< Dark current prefix.
+  const static std::string DFPREFIX;  ///< Dark current prefix.
 
-  /// Element of the foregrounds array:
-  /// the foreground itself and the index of the corresponding background.
-  typedef std::pair< Path, int > fgelement;
+  struct FgElement {
 
-  std::vector<fgelement> fgs;	///< Storage of foregrounds.
+    Path fg;
+    int bg1;
+    int df1;
+    int bg2;
+    float bgWeight;
+    int df2;
+    float dfWeight;
+
+    FgElement( Path _fg, int _bg1=-1, int _dc1=-1,
+               int _bg2=-1, float _bgWeight=1.0,
+               int _dc2=-1, float _dfWeight=1.0 ) :
+      fg(_fg), bg1(_bg1), df1(_dc1),
+      bg2(_bg2), bgWeight(_bgWeight),
+      df2(_dc2), dfWeight(_dfWeight)
+    {}
+
+  };
+
+  std::vector<FgElement> fgs;	///< Storage of foregrounds.
   std::vector<Path> bgs;		///< Storage of backgrounds.
-  std::vector<Path> dcs;        ///< Dark current images.
+  std::vector<Path> dfs;        ///< Dark current images.
+
+
 
   bool isbgstring(const std::string & str) const; ///< Tells if the string represents bgnd.
-  bool isdcstring(const std::string & str) const; ///< Tells if the string represents dc.
+  bool isdfstring(const std::string & str) const; ///< Tells if the string represents dc.
   bool iscomment(const std::string & str) const; ///< Tells if the string is a comment.
   Path bgname(const std::string & str) const; ///< Extracts filename from the bgdn string.
-  Path dcname(const std::string & str) const; ///< Extracts filename from the dc string.
+  Path dfname(const std::string & str) const; ///< Extracts filename from the dc string.
   int index(int idx) const ;	///< Checks correctness of the index.
 
   Shape sh;                     ///< Shape of the input images.
 
+  mutable std::pair<int, Map> memDfA;
+  mutable std::pair<int, Map> memBgA;
+  mutable std::pair<int, Map> memDfB;
+  mutable std::pair<int, Map> memBgB;
+
   /// Constructs the dark current array.
+  /*
   void darkCurrent(Map & dcc, const std::vector<int> & sliceV) const ;
+  */
 
 public:
 
@@ -139,24 +165,19 @@ public:
   inline long slices() const {return sh(0);} 			///< Number of slices (hight) in the image.
   inline long size() const {return sh(0)*sh(1)*fgs.size();}	///< Total size of the data.
 
-
-  const Path fg(int idx) const ; ///< Gives name of the foreground.
-  const Path bg(int idx) const ; ///< Gives name of the background.
-  inline const std::vector<Path> & dc() const {return dcs;} ///< Gives the array of DC images.
-
-
-
-  /// Constructs one cleaned projection of the experimental data.
   void projection(int idx, Map & proj,
-                  const std::vector<int> & sliceV = std::vector<int>() ) const ;
+                  const std::string & slicedesc = std::string() ,
+                  float angle=0, const Crop &crop = Crop()) const ;
+
+  void projection(int idx, Map &proj,
+                  const std::vector<int> &sliceV,
+                  float angle=0, const Crop &crop = Crop()) const ;
+
+  const Path & fg(int idx) const ; ///< Gives name of the foreground.
 
   const static std::string Desc; ///< Description of the file with the AqSeries.
 
 };
-
-
-
-
 
 
 
@@ -189,13 +210,9 @@ public:
   };
 
   /// \brief Constructs processed projection.
-  ///
-  /// @param itheta the number of the projection to be returned.
-  /// @param proj Array to put the projection into.
-  /// @param sliceV array of slices to be extracted.
-  ///
-  virtual void projection(int itheta, Map & proj,
-                          const std::vector<int> & sliceV = std::vector<int>()) const = 0;
+  virtual void projection( int itheta, Map & proj,
+                           const std::vector<int> & sliceV,
+                           float angle=0, const Crop &crop = Crop() ) const = 0;
 
   inline long thetas() const {return thts;} 			///< Total number of projections.
   inline long pixels() const {return sh(1);} 			///< Width of the image.

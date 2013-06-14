@@ -63,11 +63,12 @@ flatfield(float fg, float bg, float dc=0.0){
 /// @param in2 second array.
 /// @param ratio weight of the first array.
 ///
-static inline void
+static inline Map &
 weighted(Map & result, const Map & in1, const Map & in2, float ratio=0.5) {
   if ( in1.shape() != in2.shape() )
     throw_error("Weighted array addition", "Input arrays are of different size.");
   result = in1*ratio + in2*(1-ratio) ;
+  return result;
 }
 
 

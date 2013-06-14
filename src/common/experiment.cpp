@@ -31,6 +31,7 @@
 #include "poptmx.h"
 #include <algorithm>
 #include <unistd.h>
+#include <fstream>
 
 using namespace std;
 
@@ -50,52 +51,92 @@ AqSeries::AqSeries(const Path & filename){
   if (filename.empty()) // empty list
     return;
 
-  FILE* input_list = fopen(filename.c_str(), "r");
-  if ( ! input_list )
-    throw_error (modname, "Could not open input data file"
-				 " \"" + filename + "\" for reading.");
-  const int MAXSTRING = FILENAME_MAX + 1 + 16 + 1;
-  char curin[MAXSTRING];
-  int bgindex = nobg;
-  string fdir=filename.dir(), curstring;
+  string curstring;
+  fstream input_file(filename.c_str(), ios::in);
+  if ( ! input_file.is_open() )
+    throw_error(modname, string() +
+                "Failed to open input file \"" + filename.c_str() + "\"\n");
+  const string fdir=filename.dir();
 
-  while ( fgets (curin, MAXSTRING, input_list) ) {
+  int fgIdx=-1, prevBgIdx=-1, prevDfIdx=0, bgIdx=-1, dfIdx=-1;
 
-    curstring = string(curin);
-	if ( ! curstring.empty() && *(curstring.end()-1) == '\n')
-      curstring.erase(curstring.end()-1);
+  while (!input_file.eof()) {
 
-	if ( curstring.find_first_not_of(" \t") != string::npos ) {
-	  if ( isbgstring(curstring) ) {
-		curstring = bgname(curstring);
-		if ( curstring.empty() ) {
-		  bgindex = nobg;
-		} else {
-            // Windows version is likely to fail here. See cdpath in common.cpp
-		  bgs.push_back( cdpath(fdir, curstring) );
-		  bgindex = bgs.size()-1 ;
-		}
-      } else if ( isdcstring(curstring) ) {
-        curstring = dcname(curstring);
-		if ( ! curstring.empty() )
-		  dcs.push_back( cdpath(fdir, curstring) );
-      } else if ( iscomment(curstring) ) {
-        // Do nothing
-	  } else {
-		fgs.push_back( fgelement( cdpath(fdir, curstring), bgindex ) );
-	  }
-	}
+    getline(input_file, curstring);
+
+    if ( isbgstring(curstring) ) {
+
+      curstring = bgname(curstring);
+      if ( ! curstring.empty() ) {
+        bgs.push_back( cdpath(fdir, curstring) );
+        bgIdx=bgs.size()-1;
+      }
+
+      for (int idx=prevBgIdx+1 ; idx<=fgIdx ; idx++) {
+        if ( curstring.empty() ) {
+          fgs[idx].bg2=-1;
+          fgs[idx].bgWeight=1.0;
+        } else if ( fgs[idx].bg1 == -1)  {
+          fgs[idx].bg1=bgIdx;
+          fgs[idx].bgWeight=1.0;
+        } else {
+          fgs[idx].bg2=bgIdx;
+          fgs[idx].bgWeight= (fgIdx-idx+0.5) / (fgIdx-prevBgIdx) ;
+        }
+      }
+
+      prevBgIdx=fgIdx;
+
+    } else if ( isdfstring(curstring) ) {
+
+      curstring = dfname(curstring);
+      if ( ! curstring.empty() ) {
+        dfs.push_back( cdpath(fdir, curstring) );
+        dfIdx=dfs.size()-1;
+      }
+
+      for (int idx=prevDfIdx+1 ; idx<=fgIdx ; idx++) {
+        if ( curstring.empty() ) {
+          fgs[idx].df2=-1;
+          fgs[idx].dfWeight=1.0;
+        } else if ( fgs[idx].df1 == -1)  {
+          fgs[idx].df1=dfIdx;
+          fgs[idx].dfWeight=1.0;
+        } else {
+          fgs[idx].df2=dfIdx;
+          fgs[idx].dfWeight= (fgIdx-idx+0.5) / (fgIdx-prevDfIdx) ;
+        }
+      }
+
+      prevDfIdx=fgIdx;
+
+    } else if ( iscomment(curstring) ) {
+
+      // Do nothing
+
+    } else
+
+    {
+      fgs.push_back( FgElement( cdpath(fdir, curstring), bgIdx, dfIdx) );
+      fgIdx++;
+    }
+
 
   }
-
-  fclose(input_list);
+  input_file.close();
 
   if ( ! thetas() )
-	throw_error (modname, "Empty input data file '" + filename + "'.");
+    throw_error (modname, "Empty input data file '" + filename + "'.");
 
-  sh = ImageSizes(fg(0));
+  sh = ImageSizes(fgs[0].fg);
 
 }
+
+
+const Path & AqSeries::fg(int idx) const {
+  return fgs[index(idx)].fg;
+}
+
 
 
 
@@ -117,8 +158,8 @@ AqSeries::isbgstring(const string & str) const {
 /// @return \c true if the string describes the dark current, \c false otherwise.
 ///
 bool
-AqSeries::isdcstring(const string & str) const {
-  return ! str.compare(0, DCPREFIX.length(), DCPREFIX);
+AqSeries::isdfstring(const string & str) const {
+  return ! str.compare(0, DFPREFIX.length(), DFPREFIX);
 }
 
 /// \brief Tells if the string is a comment.
@@ -129,7 +170,10 @@ AqSeries::isdcstring(const string & str) const {
 ///
 bool
 AqSeries::iscomment(const string & str) const {
-  return str.empty() || ! str.compare(0, 1, "#");
+  return
+    str.empty() ||
+    str.find_first_not_of(" \t") == string::npos ||
+    ! str.compare(0, 1, "#");
 }
 
 
@@ -151,8 +195,8 @@ AqSeries::bgname(const string & str) const {
 /// @return The dark current filename.
 ///
 Path
-AqSeries::dcname(const string & str) const {
-  return isdcstring(str) ? str.substr( DCPREFIX.length() ) : string("") ;
+AqSeries::dfname(const string & str) const {
+  return isdfstring(str) ? str.substr( DFPREFIX.length() ) : string("") ;
 }
 
 
@@ -164,58 +208,50 @@ AqSeries::dcname(const string & str) const {
 ///
 int
 AqSeries::index(int idx) const  {
-  if ( idx >= thetas() )
+  if ( idx >= thetas() || idx < 0 )
 	throw_error (modname, "Bad index " + toString(idx) +
 				 " is outside the list of size (" + toString(thetas()) + ")");
   return idx;
 }
 
-/// \brief Foreground name.
-///
-/// @param idx Projection index.
-///
-/// @return The name of the (image) file containing the foreground.
-///
-const Path
-AqSeries::fg(int idx) const {
-  return fgs[index(idx)].first;
-}
 
-
-/// \brief Background name.
-///
-/// @param idx Projection index.
-///
-/// @return The name of the (image) file containing the background
-///         corresponding to the projection index.
-///
-const Path
-AqSeries::bg(int idx) const {
-  index(idx);
-  return ( fgs[idx].second == nobg ) ? Path() : bgs[ fgs[idx].second ];
-}
-
-
-/// Constructs the dark current map from all dark-current images in the input file
-/// and puts it into the ::dcc array.
-///
-/// @param dcc resulting array.
-/// @param sliceV
-///
-void
-AqSeries::darkCurrent(Map & dcc, const std::vector<int> & sliceV) const {
-
-  Shape dsh = sliceV.size() ? Shape(sliceV.size(), sh(1)) : sh ;
-  dcc.resize(dsh);
-  dcc=0.0;
-
-  for (int icur=0 ; icur < dcs.size() ; icur++) {
-    Map dct(sh);
-    ReadImageLine(dcs[icur], dct, sliceV, sh);
-    dcc += dct;
+void readnrot(const string &img, Map &map, const Shape & sh,
+              float angle, const vector<int> &slices, const Crop & crop)  {
+  if (angle==0.0)
+    ReadImageLine(img, map, slices, sh);
+  else {
+    Map temp;
+    ReadImage(img, map, sh);
+    rotate(map, temp, angle, crop);
+    if ( ! slices.empty() ) {
+      map.resize(slices.size(), temp.shape()(1));
+      for ( int sls=0 ; sls < slices.size() ; sls++ )
+        if (slices[sls] < temp.shape()(1))
+          map(sls, blitz::Range::all()) =
+            temp(slices[sls], blitz::Range::all());
+        else
+          map(sls, blitz::Range::all()) = 0.0;
+    } else {
+      map=temp.copy();
+    }
   }
-  if (dcs.size())
-    dcc /= dcs.size();
+}
+
+
+/// Constructs the flat-field subtracted projection from the experimental data
+/// at given rotation position ::itheta and puts it into ::proj array.
+///
+/// @param idx rotation position.
+/// @param proj the array to put data into.
+/// @param slicedesc List of slices of the interest.
+/// @param angle Rotation angle.
+/// @param crop Cropping of the image (after rotation if given).
+///
+void AqSeries::projection(int idx, Map & proj,
+                          const std::string & slicedesc,
+                          float angle, const Crop &crop) const {
+  vector<int> slicesV = slice_str2vec(slicedesc, slices());
+  projection(idx, proj, slicesV, angle, crop);
 }
 
 
@@ -225,48 +261,194 @@ AqSeries::darkCurrent(Map & dcc, const std::vector<int> & sliceV) const {
 /// @param idx rotation position.
 /// @param proj the array to put data into.
 /// @param sliceV array of slices to be extracted.
+/// @param angle Rotation angle.
+/// @param crop Cropping of the image (after rotation if given).
 ///
-void AqSeries::projection(int idx, Map & proj, const std::vector<int> & sliceV)  const {
+void AqSeries::projection(int idx, Map &proj,
+                          const std::vector<int> &slicesV,
+                          float angle, const Crop &crop) const {
 
-  index(idx);
-  static vector<int> slices;
-  static Shape dsh;
-  static Map dcc, bgc;
-  static string bgname;
+  static vector<int> _slicesV = slicesV;
+  static float _angle = angle;
+  static Crop _crop = crop;
+  static int bgIdx1=-1, bgIdx2=-1, fgIdx1=-1, fgIdx2=-1;
+  Map *bg1=0, *bg2=0, *df1=0, *df2=0;
 
-  if ( slices != sliceV ) {
-    if ( sliceV.back() >= sh(0) )
-      throw_error(modname, "The maximum slice in the requested list of slices"
-                  " (" + toString(sliceV.back()+1) + ") is outside the image height"
-                  " (" + toString(sh(0)) + ").");
-    slices=sliceV;
-    dsh = sliceV.size() ? Shape(sliceV.size(), sh(1)) : sh ;
-    bgc.resize(dsh);
-    bgc = 1.0;
-    darkCurrent(dcc, slices);
-    bgname = "";
+  readnrot(fgs[idx].fg, proj, sh, angle, slicesV, crop);
+  const Shape prsh=proj.shape();
+
+  bool reset=false;
+  if ( _slicesV != slicesV ) {
+    reset=true;
+    _slicesV = slicesV;
+  }
+  if ( angle != _angle ) {
+    reset=true;
+    _angle = angle;
+  }
+  if ( _crop != crop ) {
+    reset=true;
+    _crop = crop;
   }
 
-  if ( bg(idx) != bgname ) {
-    bgname = bg(idx);
-    if (bgname.empty())
-      bgc = 1.0;
-    else
-      ReadImageLine(bgname, bgc, sliceV, sh);
+  if (reset) {
+
+    if ( fgs[idx].bg1 != -1 ) {
+      memBgA.first = fgs[idx].bg1;
+      readnrot(bgs[fgs[idx].bg1], memBgA.second , sh,
+               angle, slicesV, crop);
+      bg1 = & memBgA.second;
+    }
+    if ( fgs[idx].bg2 != -1 ) {
+      memBgB.first = fgs[idx].bg2;
+      readnrot(bgs[fgs[idx].bg2], memBgB.second, sh,
+               angle, slicesV, crop);
+      bg2 = & memBgB.second;
+    }
+    if ( fgs[idx].df1 != -1 ) {
+      memDfA.first = fgs[idx].df1;
+      readnrot(dfs[fgs[idx].df1], memDfA.second, sh,
+               angle, slicesV, crop);
+      df1 = & memDfA.second;
+    }
+    if ( fgs[idx].df2 != -1 ) {
+      memDfB.first = fgs[idx].df2;
+      readnrot(dfs[fgs[idx].df2], memDfB.second, sh,
+               angle, slicesV, crop);
+      df2 = & memDfB.second;
+    }
+
+  } else {
+
+    if ( memBgA.first == fgs[idx].bg1  &&  fgs[idx].bg1 >= 0)
+      bg1 = & memBgA.second;
+    else if ( memBgA.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0)
+      bg2 = & memBgA.second;
+    else {
+      memBgA.second.resize(0,0);
+      memBgA.first = -1;
+    }
+
+    if ( memBgB.first == fgs[idx].bg1  &&  fgs[idx].bg1 >= 0  &&  ! bg1 )
+      bg1 = & memBgB.second;
+    else if ( memBgB.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0  &&  ! bg2)
+      bg2 = & memBgB.second;
+    else {
+      memBgB.second.resize(0,0);
+      memBgB.first = -1;
+    }
+
+    if ( ! bg1 && fgs[idx].bg1 >=0 )
+      if (memBgA.first <= 1) {
+        memBgA.first = fgs[idx].bg1;
+        readnrot(bgs[fgs[idx].bg1], memBgA.second, sh,
+                 angle, slicesV, crop);
+        bg1 = & memBgA.second;
+      } else if (memBgB.first <= 1) {
+        memBgB.first = fgs[idx].bg1;
+        readnrot(bgs[fgs[idx].bg1], memBgB.second, sh,
+                 angle, slicesV, crop);
+        bg1 = & memBgB.second;
+      } else {
+        throw_error("AqSeries projection",
+                    "No expected first background. Developer's error.");
+      }
+
+    if ( ! bg2 && fgs[idx].bg2 >=0 )
+      if (memBgA.first <= 1) {
+        memBgA.first = fgs[idx].bg2;
+        readnrot(bgs[fgs[idx].bg2], memBgA.second, sh,
+                 angle, slicesV, crop);
+        bg2 = & memBgA.second;
+      } else if (memBgB.first <= 1) {
+        memBgB.first = fgs[idx].bg2;
+        readnrot(bgs[fgs[idx].bg2], memBgB.second, sh,
+                 angle, slicesV, crop);
+        bg2 = & memBgB.second;
+      } else {
+        throw_error("AqSeries projection",
+                    "No expected second background. Developer's error.");
+      }
+
+    if ( memDfA.first == fgs[idx].df1  &&  fgs[idx].df1 >= 0)
+      df1 = & memDfA.second;
+    else if ( memDfA.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0)
+      df2 = & memDfA.second;
+    else {
+      memDfA.second.resize(0,0);
+      memDfA.first = -1;
+    }
+
+    if ( memDfB.first == fgs[idx].df1  &&  fgs[idx].df1 >= 0  &&  ! df1 )
+      df1 = & memDfB.second;
+    else if ( memDfB.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0  &&  ! df2)
+      df2 = & memDfB.second;
+    else {
+      memDfB.second.resize(0,0);
+      memDfB.first = -1;
+    }
+
+    if ( ! df1 && fgs[idx].df1 >=0 )
+      if (memDfA.first <= 1) {
+        memDfA.first = fgs[idx].df1;
+        readnrot(dfs[fgs[idx].df1], memDfA.second, sh,
+                 angle, slicesV, crop);
+        df1 = & memDfA.second;
+      } else if (memDfB.first <= 1) {
+        memDfB.first = fgs[idx].df1;
+        readnrot(dfs[fgs[idx].df1], memDfB.second, sh,
+                 angle, slicesV, crop);
+        df1 = & memDfB.second;
+      } else {
+        throw_error("AqSeries projection",
+                    "No expected first dark-field. Developer's error.");
+      }
+
+      if ( ! df2 && fgs[idx].df2 >=0 )
+        if (memDfA.first <= 1) {
+          memDfA.first = fgs[idx].df2;
+          readnrot(dfs[fgs[idx].df2], memDfA.second, sh,
+                   angle, slicesV, crop);
+          df2 = & memDfA.second;
+        } else if (memDfB.first <= 1) {
+          memDfB.first = fgs[idx].df2;
+          readnrot(dfs[fgs[idx].df2], memDfB.second, sh,
+                   angle, slicesV, crop);
+          df2 = & memDfB.second;
+        } else {
+          throw_error("AqSeries projection",
+                      "No expected second dark-field. Developer's error.");
+        }
+
   }
 
-  Map fgc(sh);
-  ReadImageLine(fg(idx), fgc, sliceV, sh);
+  Map df(prsh);
+  if (df1 && df2)
+    weighted(df, *df1, *df2, fgs[idx].dfWeight);
+  else if (df1)
+    df=df1->copy();
+  else if (df2)
+    df=df2->copy();
+  else
+    df=0;
 
-  flatfield(proj, fgc, bgc, dcc);
+  Map bg(prsh);
+  if (bg1 && bg2)
+    weighted(bg, *bg1, *bg2, fgs[idx].bgWeight) - df;
+  else if (bg1)
+    bg = *bg1 - df;
+  else if (bg2)
+    bg = *bg2 - df;
+  else
+    bg=1+df;
 
-  return;
+  flatfield(proj, proj, bg, df);
 
 }
 
 const std::string AqSeries::modname  = "acquisition series";
 const std::string AqSeries::BGPREFIX = "#BACKGROUND# ";
-const std::string AqSeries::DCPREFIX = "#DARKCURRENT# ";
+const std::string AqSeries::DFPREFIX = "#DARKCURRENT# ";
 const std::string AqSeries::Desc =
   "Text file which describes the stack of input images: foregrounds and (optionally)"
   " background(s). The strings in the file can be one of the following forms:\n"
@@ -278,8 +460,8 @@ const std::string AqSeries::Desc =
   " above the first background. If the string starting with the prefix does not"
   " contain any background name then all following foregrounds are considered as"
   " is ( i.e. no background removal is performed).\n"
-  "    " + AqSeries::DCPREFIX + "<dark current filename>\n"
-  "The string prefixed with the \"" + AqSeries::DCPREFIX + "\" gives the name of"
+  "    " + AqSeries::DFPREFIX + "<dark current filename>\n"
+  "The string prefixed with the \"" + AqSeries::DFPREFIX + "\" gives the name of"
   " the dark current file right after the prefix. If more than one DC file is"
   " given, then the average of all are used.\n"
   "    <foreground filename>\n"
@@ -764,7 +946,7 @@ SinoS::sino(int idx, Map & storage) const {
   index(idx);
   storage.resize(thts, pxls);
   storage = data
-	(blitz::Range::all(), idx, blitz::Range::all()).copy();
+            (blitz::Range::all(), idx, blitz::Range::all()).copy();
 }
 
 

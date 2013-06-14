@@ -54,7 +54,7 @@ struct clargs {
   bool SaveInt;					///< Save image as 16-bit integer.
 
   /// \CLARGSF
-  clargs(int argc, char *argv[]); 
+  clargs(int argc, char *argv[]);
 };
 
 
@@ -129,13 +129,13 @@ clargs(int argc, char *argv[]) :
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  
+
   Map sinogram;
   ReadImage( args.sinogram_name, sinogram );
   int pixels = sinogram.columns();
   Map result( pixels, pixels );
   const CTrec rec(pixels, args.contrast, args.nof_threads, args.filter_type);
-  
+
   rec.reconstruct(sinogram, result, args.center);
   CTrec::finilize(result, sinogram.shape()(0), args.dd);
 
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
   ////    result *= args.lambda / (2*M_PI);
 
   SaveImage(args.result_name, result, args.SaveInt);
-  
+
   exit(0);
 
 }

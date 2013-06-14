@@ -115,6 +115,8 @@ const string Path::DIRSEPARATOR = "\\";
 const string Path::DIRSEPARATOR = "/";
 #endif
 
+const Path Path::emptypath = Path();
+
 
 /// Constructs the error which reports the unextractable element.
 ///
@@ -933,9 +935,12 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       warnadd = "32 bits per sample suggests float-point format.";
       fmt = SAMPLEFORMAT_IEEEFP;
     }
+    // Gives to many warnings
+    /*
     warn(modname,
          "Image \"" + filename + "\" has undefined sample format."
          " Guessing! " + warnadd);
+    */
   }
   if ( fmt != SAMPLEFORMAT_UINT &&
        fmt != SAMPLEFORMAT_INT &&
@@ -1250,7 +1255,8 @@ ReadImageLine_FI (const Path & filename, Map & storage,
 	hight =  FreeImage_GetHeight(dib),
 	width =  FreeImage_GetWidth(dib);
 
-  storage.resize( idxs.size(), width );
+  const int readheight = idxs.size() ? idxs.size() : hight;
+  storage.resize( readheight, width );
 
   void (*convert)(Line &, FIBITMAP *dib, int);
   switch ( FreeImage_GetImageType(dib) ) {
@@ -1272,16 +1278,16 @@ ReadImageLine_FI (const Path & filename, Map & storage,
 			   " cannot be loaded with FreeImage: not single channel per pixel.");
   }
 
-  for ( unsigned curel = 0 ; curel < idxs.size() ; curel++ ){
-	int cursl = idxs[curel];
-	Line curline = storage(curel, blitz::Range::all());
-	if ( cursl >= hight || cursl < 0 ) {
-	  warn("load imagelines FI",
-		   "The index of the line to be read (" + toString(cursl) + ")"
-		   " is outside the image boundaries (" + toString(hight) + ").");
-	  curline = 0.0;
-	} else {
-	  convert( curline, dib, cursl);
+  for ( unsigned curel = 0 ; curel < readheight ; curel++ ){
+    int cursl = idxs.size() ? idxs[curel] : curel;
+    Line curline = storage(curel, blitz::Range::all());
+    if ( cursl >= hight || cursl < 0 ) {
+      warn("load imagelines FI",
+           "The index of the line to be read (" + toString(cursl) + ")"
+           " is outside the image boundaries (" + toString(hight) + ").");
+      curline = 0.0;
+    } else {
+      convert( curline, dib, cursl);
 	}
 
   }
@@ -1309,21 +1315,22 @@ ReadImageLine_IM (const Path & filename, Map & storage,
 
   const int width = imag.columns();
   const int hight = imag.rows();
-  storage.resize( idxs.size(), width );
+  const int readheight = idxs.size() ? idxs.size() : hight;
+  storage.resize( readheight, width );
 
-  for ( unsigned curel = 0 ; curel < idxs.size() ; curel++ ){
-	int cursl = idxs[curel];
-	if ( cursl >= hight ) {
-	  warn("load imagelines IM",
-		   "The index of the line to be read (" + toString(cursl) + ")"
-		   " is outside the image boundaries (" + toString(hight) + ").");
-	  storage(curel, blitz::Range::all() ) = 0.0;
-	} else {
-	  const Magick::PixelPacket * pixels = imag.getConstPixels(0,cursl,width,1);
-	  for ( long k = 0 ; k < width ; k++ )
-		storage( (long) curel, k) =
-		(float) Magick::ColorGray( *pixels++  ) .shade();
-	}
+  for ( unsigned curel = 0 ; curel < readheight ; curel++ ){
+    int cursl = idxs.size() ? idxs[curel] : curel;
+    if ( cursl >= hight ) {
+      warn("load imagelines IM",
+           "The index of the line to be read (" + toString(cursl) + ")"
+           " is outside the image boundaries (" + toString(hight) + ").");
+      storage(curel, blitz::Range::all() ) = 0.0;
+    } else {
+      const Magick::PixelPacket *pixels = imag.getConstPixels(0,cursl,width,1);
+      for ( long k = 0 ; k < width ; k++ )
+        storage( (long) curel, k) =
+          (float) Magick::ColorGray( *pixels++  ) .shade();
+    }
 
   }
 

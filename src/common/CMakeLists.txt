@@ -4,6 +4,7 @@ include_directories("../blitz-long")
 # check ImageMagick
 FIND_PACKAGE(ImageMagick REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS Magick++ REQUIRED)
+FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
 # check it's version
 find_program(MAGICKCONFIG, Magick++-config)
 if( "${MAGICKCONFIG}" MATCHES "MAGICKCONFIG-NOTFOUND" )
@@ -26,10 +27,10 @@ if (  # version < 6.4.2
       )
     )
   )
-  message("ImageMagick version ... < 6.4.2")
+  message("   ImageMagick version ... < 6.4.2")
   set(MAGICKLIB_NAMESPACE true) # for src/config.h
 else()
-  message("ImageMagick version ... >= 6.4.2")
+  message("   ImageMagick version ... >= 6.4.2")
 endif()
 # check HDRI support in ImageMagick
 execute_process(
@@ -86,9 +87,12 @@ add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED common.cpp)
 target_link_libraries(common
-  ${ImageMagick_LIBRARIES}
+  Magick++
+  MagickCore
   freeimage
   tiff
+  ${OPENCL_LL}
+  config++
 )
 
 add_library(kernel SHARED kernel.cpp)
@@ -96,6 +100,7 @@ target_link_libraries(kernel
   fftw3f
   gsl
   gslcblas
+  pthread
 )
 
 add_library(lipc SHARED lipc.cpp)
@@ -105,7 +110,19 @@ target_link_libraries(lipc
 
 add_library(ldei SHARED ldei.cpp)
 add_library(ledei SHARED ledei.cpp)
-add_library(experiment SHARED experiment.cpp)
+
+
+if (OPENCL_FOUND)
+  set(FFCL "ff.cl")
+  set(FFCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${FFCL}")
+  set(FFCLINC "${CMAKE_BINARY_DIR}/${FFCL}.includeme")
+  add_custom_command(
+    OUTPUT ${FFCLINC}
+    COMMAND cat ${FFCLSRC} | xxd -i > ${FFCLINC}
+    DEPENDS ${FFCLSRC}
+  )
+endif()
+add_library(experiment SHARED experiment.cpp ${FFCLINC})
 
 
 install(TARGETS

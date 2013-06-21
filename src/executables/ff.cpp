@@ -138,9 +138,9 @@ clargs(int argc, char *argv[]) :
 
     inlist = FgL;
 
-    if ( output_name.empty() )
+    if ( ! table.count(&output_name) )
       output_name = "cleaned-@.tif";
-    if ( string(output_name).find('@') == string::npos )
+    else if ( string(output_name).find('@') == string::npos )
       output_name = output_name.dtitle() + "-@" + output_name.extension();
 
   } else {
@@ -163,7 +163,7 @@ clargs(int argc, char *argv[]) :
                     "Option " + table.desc(&dark_2_name) +
                     " requires argument " + table.desc(&dark_name) + ".");
 
-    if ( output_name.empty() )
+    if ( ! table.count(&output_name) )
       output_name = upgrade(foreground_name, "cleaned-");
 
   }
@@ -183,8 +183,8 @@ int main(int argc, char *argv[]) {
     AqSeries series(args.inlist);
     ProgressBar bar(args.beverbose, "flat field correction", series.thetas());
     for (int idx=0 ; idx<series.thetas() ; idx++) {
-      series.projection(idx, oa, vector<int>(), args.angle, args.crop);
-      if ( args.idealworld ) oa = cutone(oa);
+      series.projection(idx, oa, vector<int>(), args.angle, args.crop,
+                        args.idealworld ? 1.0 : 0.0 );
       string toSave=args.output_name;
       toSave.replace( toSave.rfind('@'), 1, series.fg(idx).name() );
       SaveImage(toSave, oa, args.SaveInt);

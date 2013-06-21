@@ -36,8 +36,50 @@
 using namespace std;
 
 
+#ifdef OPENCL_FOUND
+
+cl::Program * AqSeries::program = AqSeries::init() ;
+
+cl::Program * AqSeries::init() {
+
+  if ( ! clIsInited() )
+    return 0;
+
+  cl::Program * ret_program=0;
+
+  char csrc[] =  {
+    #include "ff.cl.includeme"
+  };
+
+  try {
+    ret_program = new cl::Program(*CL_context, string(csrc, sizeof(csrc)));
+  } catch (cl::Error err) {
+    warn(modname, (string) "Could not load OpenCL program: " + err.what() );
+    return 0;
+  }
+
+  try {
+    ret_program->build();
+  } catch (cl::Error err) {
+    warn(modname, (string) "Could not build OpenCL program: " + err.what() +
+         ". More detailsd below:" );
+    warn(modname, "   Build Status: " +
+         toString( ret_program->getBuildInfo<CL_PROGRAM_BUILD_STATUS>(*CL_device) ) );
+    warn(modname, "   Build Options: " +
+         ret_program->getBuildInfo<CL_PROGRAM_BUILD_OPTIONS>(*CL_device) );
+    warn(modname, "   Build Log:\n" +
+         ret_program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(*CL_device) +
+         "   End build Log:" );
+    return 0;
+  }
+
+  return ret_program;
+
+}
 
 
+
+#endif // OPENCL_FOUND
 
 /// \brief Parses input file.
 ///
@@ -129,6 +171,17 @@ AqSeries::AqSeries(const Path & filename){
     throw_error (modname, "Empty input data file '" + filename + "'.");
 
   sh = ImageSizes(fgs[0].fg);
+
+
+#ifdef OPENCL_FOUND
+  if (program) {
+    try {
+      kernel = cl::Kernel(*program, "ff");
+    } catch (cl::Error err) {
+      warn(modname, (string) "Could not create OpenCL kernel \"ff\": " + err.what() );
+    }
+  }
+#endif // OPENCL_FOUND
 
 }
 
@@ -249,9 +302,9 @@ void readnrot(const string &img, Map &map, const Shape & sh,
 ///
 void AqSeries::projection(int idx, Map & proj,
                           const std::string & slicedesc,
-                          float angle, const Crop &crop) const {
+                          float angle, const Crop &crop, float cutOff) const {
   vector<int> slicesV = slice_str2vec(slicedesc, slices());
-  projection(idx, proj, slicesV, angle, crop);
+  projection(idx, proj, slicesV, angle, crop, cutOff);
 }
 
 
@@ -266,74 +319,128 @@ void AqSeries::projection(int idx, Map & proj,
 ///
 void AqSeries::projection(int idx, Map &proj,
                           const std::vector<int> &slicesV,
-                          float angle, const Crop &crop) const {
+                          float angle, const Crop &crop, float cutOff) const {
 
-  static vector<int> _slicesV = slicesV;
-  static float _angle = angle;
-  static Crop _crop = crop;
-  static int bgIdx1=-1, bgIdx2=-1, fgIdx1=-1, fgIdx2=-1;
+  /*
+   *  cerr << fgs[idx].fg << " "
+   *       << (  fgs[idx].bg1 == -1 ?  "<NONE>" : bgs[fgs[idx].bg1] ) << " "
+   *       << ( fgs[idx].bg2 == -1  ?  "<NONE>" : bgs[fgs[idx].bg2] ) << " "
+   *       << fgs[idx].bgWeight << " "
+   *       << ( fgs[idx].df1 == -1  ?  "<NONE>" : dfs[fgs[idx].df1] ) << " "
+   *       << ( fgs[idx].df2 == -1  ?  "<NONE>" : dfs[fgs[idx].df2] ) << " "
+   *       << fgs[idx].dfWeight
+   *       << "\n";
+   */
+
   Map *bg1=0, *bg2=0, *df1=0, *df2=0;
 
   readnrot(fgs[idx].fg, proj, sh, angle, slicesV, crop);
-  const Shape prsh=proj.shape();
 
-  bool reset=false;
-  if ( _slicesV != slicesV ) {
-    reset=true;
-    _slicesV = slicesV;
+#ifdef OPENCL_FOUND
+  const unsigned int fprsz = sizeof(float) * proj.size() ;
+  if (program) {
+    cl_io = cl::Buffer(*CL_context, CL_MEM_READ_WRITE, fprsz);
+    CL_queue->enqueueWriteBuffer(cl_io, CL_TRUE, 0, fprsz, proj.data());
+    kernel.setArg(0, cl_io);
   }
-  if ( angle != _angle ) {
-    reset=true;
-    _angle = angle;
-  }
-  if ( _crop != crop ) {
-    reset=true;
-    _crop = crop;
-  }
+#endif // OPENCL_FOUND
 
-  if (reset) {
+
+  if ( prev_prsh != proj.shape() ||
+       angle != prev_angle ||
+       prev_slicesV != slicesV ||
+       prev_crop != crop ) {
+
+    prev_prsh = proj.shape();
+    prev_angle = angle;
+    prev_slicesV = slicesV;
+    prev_crop = crop;
 
     if ( fgs[idx].bg1 != -1 ) {
       memBgA.first = fgs[idx].bg1;
       readnrot(bgs[fgs[idx].bg1], memBgA.second , sh,
                angle, slicesV, crop);
       bg1 = & memBgA.second;
+#ifdef OPENCL_FOUND
+      if (program) {
+        cl_bgA = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+        CL_queue->enqueueWriteBuffer(cl_bgA, CL_TRUE, 0, fprsz, bg1->data());
+        kernel.setArg(1, cl_bgA);
+      }
+#endif // OPENCL_FOUND
     }
     if ( fgs[idx].bg2 != -1 ) {
       memBgB.first = fgs[idx].bg2;
       readnrot(bgs[fgs[idx].bg2], memBgB.second, sh,
                angle, slicesV, crop);
       bg2 = & memBgB.second;
+#ifdef OPENCL_FOUND
+      if (program) {
+        cl_bgB = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+        CL_queue->enqueueWriteBuffer(cl_bgB, CL_TRUE, 0, fprsz, bg2->data());
+        kernel.setArg(2, cl_bgB);
+      }
+#endif // OPENCL_FOUND
     }
     if ( fgs[idx].df1 != -1 ) {
       memDfA.first = fgs[idx].df1;
       readnrot(dfs[fgs[idx].df1], memDfA.second, sh,
                angle, slicesV, crop);
       df1 = & memDfA.second;
+#ifdef OPENCL_FOUND
+      if (program) {
+        cl_dfA = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+        CL_queue->enqueueWriteBuffer(cl_dfA, CL_TRUE, 0, fprsz, df1->data());
+        kernel.setArg(3, cl_dfA);
+      }
+#endif // OPENCL_FOUND
     }
     if ( fgs[idx].df2 != -1 ) {
       memDfB.first = fgs[idx].df2;
       readnrot(dfs[fgs[idx].df2], memDfB.second, sh,
                angle, slicesV, crop);
       df2 = & memDfB.second;
+#ifdef OPENCL_FOUND
+      if (program) {
+        cl_dfB = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+        CL_queue->enqueueWriteBuffer(cl_dfB, CL_TRUE, 0, fprsz, df2->data());
+        kernel.setArg(4, cl_dfB);
+      }
+#endif // OPENCL_FOUND
     }
 
   } else {
 
-    if ( memBgA.first == fgs[idx].bg1  &&  fgs[idx].bg1 >= 0)
+    if ( memBgA.first == fgs[idx].bg1  &&  fgs[idx].bg1 >= 0) {
       bg1 = & memBgA.second;
-    else if ( memBgA.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0)
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(1, cl_bgA);
+#endif // OPENCL_FOUND
+    } else if ( memBgA.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0) {
       bg2 = & memBgA.second;
-    else {
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(2, cl_bgA);
+#endif // OPENCL_FOUND
+    } else {
       memBgA.second.resize(0,0);
       memBgA.first = -1;
     }
 
-    if ( memBgB.first == fgs[idx].bg1  &&  fgs[idx].bg1 >= 0  &&  ! bg1 )
+    if ( memBgB.first == fgs[idx].bg1  &&  fgs[idx].bg1 >= 0  &&  ! bg1 ) {
       bg1 = & memBgB.second;
-    else if ( memBgB.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0  &&  ! bg2)
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(1, cl_bgB);
+#endif // OPENCL_FOUND
+    } else if ( memBgB.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0  &&  ! bg2) {
       bg2 = & memBgB.second;
-    else {
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(2, cl_bgB);
+#endif // OPENCL_FOUND
+    } else {
       memBgB.second.resize(0,0);
       memBgB.first = -1;
     }
@@ -344,11 +451,25 @@ void AqSeries::projection(int idx, Map &proj,
         readnrot(bgs[fgs[idx].bg1], memBgA.second, sh,
                  angle, slicesV, crop);
         bg1 = & memBgA.second;
+#ifdef OPENCL_FOUND
+        if (program) {
+          cl_bgA = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+          CL_queue->enqueueWriteBuffer(cl_bgA, CL_TRUE, 0, fprsz, bg1->data());
+          kernel.setArg(1, cl_bgA);
+        }
+#endif // OPENCL_FOUND
       } else if (memBgB.first <= 1) {
         memBgB.first = fgs[idx].bg1;
         readnrot(bgs[fgs[idx].bg1], memBgB.second, sh,
                  angle, slicesV, crop);
         bg1 = & memBgB.second;
+#ifdef OPENCL_FOUND
+        if (program) {
+          cl_bgB = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+          CL_queue->enqueueWriteBuffer(cl_bgB, CL_TRUE, 0, fprsz, bg1->data());
+          kernel.setArg(1, cl_bgB);
+        }
+#endif // OPENCL_FOUND
       } else {
         throw_error("AqSeries projection",
                     "No expected first background. Developer's error.");
@@ -360,30 +481,60 @@ void AqSeries::projection(int idx, Map &proj,
         readnrot(bgs[fgs[idx].bg2], memBgA.second, sh,
                  angle, slicesV, crop);
         bg2 = & memBgA.second;
+#ifdef OPENCL_FOUND
+        if (program) {
+          cl_bgA = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+          CL_queue->enqueueWriteBuffer(cl_bgA, CL_TRUE, 0, fprsz, bg2->data());
+          kernel.setArg(2, cl_bgA);
+        }
+#endif // OPENCL_FOUND
       } else if (memBgB.first <= 1) {
         memBgB.first = fgs[idx].bg2;
         readnrot(bgs[fgs[idx].bg2], memBgB.second, sh,
                  angle, slicesV, crop);
         bg2 = & memBgB.second;
+#ifdef OPENCL_FOUND
+        if (program) {
+          cl_bgB = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+          CL_queue->enqueueWriteBuffer(cl_bgB, CL_TRUE, 0, fprsz, bg2->data());
+          kernel.setArg(2, cl_bgB);
+        }
+#endif // OPENCL_FOUND
       } else {
         throw_error("AqSeries projection",
                     "No expected second background. Developer's error.");
       }
 
-    if ( memDfA.first == fgs[idx].df1  &&  fgs[idx].df1 >= 0)
+    if ( memDfA.first == fgs[idx].df1  &&  fgs[idx].df1 >= 0) {
       df1 = & memDfA.second;
-    else if ( memDfA.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0)
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(3, cl_dfA);
+#endif // OPENCL_FOUND
+    } else if ( memDfA.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0) {
       df2 = & memDfA.second;
-    else {
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(4, cl_dfA);
+#endif // OPENCL_FOUND
+    } else {
       memDfA.second.resize(0,0);
       memDfA.first = -1;
     }
 
-    if ( memDfB.first == fgs[idx].df1  &&  fgs[idx].df1 >= 0  &&  ! df1 )
+    if ( memDfB.first == fgs[idx].df1  &&  fgs[idx].df1 >= 0  &&  ! df1 ) {
       df1 = & memDfB.second;
-    else if ( memDfB.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0  &&  ! df2)
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(3, cl_dfB);
+#endif // OPENCL_FOUND
+    } else if ( memDfB.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0  &&  ! df2) {
       df2 = & memDfB.second;
-    else {
+#ifdef OPENCL_FOUND
+      if (program)
+        kernel.setArg(4, cl_dfB);
+#endif // OPENCL_FOUND
+    } else {
       memDfB.second.resize(0,0);
       memDfB.first = -1;
     }
@@ -394,11 +545,25 @@ void AqSeries::projection(int idx, Map &proj,
         readnrot(dfs[fgs[idx].df1], memDfA.second, sh,
                  angle, slicesV, crop);
         df1 = & memDfA.second;
+#ifdef OPENCL_FOUND
+        if (program) {
+          cl_dfA = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+          CL_queue->enqueueWriteBuffer(cl_dfA, CL_TRUE, 0, fprsz, df1->data());
+          kernel.setArg(3, cl_dfA);
+        }
+#endif // OPENCL_FOUND
       } else if (memDfB.first <= 1) {
         memDfB.first = fgs[idx].df1;
         readnrot(dfs[fgs[idx].df1], memDfB.second, sh,
                  angle, slicesV, crop);
         df1 = & memDfB.second;
+#ifdef OPENCL_FOUND
+        if (program) {
+          cl_dfB = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+          CL_queue->enqueueWriteBuffer(cl_dfB, CL_TRUE, 0, fprsz, df1->data());
+          kernel.setArg(3, cl_dfB);
+        }
+#endif // OPENCL_FOUND
       } else {
         throw_error("AqSeries projection",
                     "No expected first dark-field. Developer's error.");
@@ -410,11 +575,25 @@ void AqSeries::projection(int idx, Map &proj,
           readnrot(dfs[fgs[idx].df2], memDfA.second, sh,
                    angle, slicesV, crop);
           df2 = & memDfA.second;
+#ifdef OPENCL_FOUND
+          if (program) {
+            cl_dfA = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+            CL_queue->enqueueWriteBuffer(cl_dfA, CL_TRUE, 0, fprsz, df1->data());
+            kernel.setArg(4, cl_dfA);
+          }
+#endif // OPENCL_FOUND
         } else if (memDfB.first <= 1) {
           memDfB.first = fgs[idx].df2;
           readnrot(dfs[fgs[idx].df2], memDfB.second, sh,
                    angle, slicesV, crop);
           df2 = & memDfB.second;
+#ifdef OPENCL_FOUND
+          if (program) {
+            cl_dfB = cl::Buffer(*CL_context, CL_MEM_READ_ONLY, fprsz );
+            CL_queue->enqueueWriteBuffer(cl_dfB, CL_TRUE, 0, fprsz, df2->data());
+            kernel.setArg(4, cl_dfB);
+          }
+#endif // OPENCL_FOUND
         } else {
           throw_error("AqSeries projection",
                       "No expected second dark-field. Developer's error.");
@@ -422,7 +601,53 @@ void AqSeries::projection(int idx, Map &proj,
 
   }
 
-  Map df(prsh);
+#ifdef OPENCL_FOUND
+  if (program) {
+
+    if (bg1 && bg2) {
+      kernel.setArg(5, fgs[idx].bgWeight);
+    } else if (bg1) {
+      kernel.setArg(2, 0);
+      kernel.setArg(5, 1);
+    } else if (bg2) {
+      kernel.setArg(1, 0);
+      kernel.setArg(5, 0);
+    } else {
+      kernel.setArg(1, 0);
+      kernel.setArg(2, 0);
+    }
+
+    if (df1 && df2) {
+      kernel.setArg(6, fgs[idx].dfWeight);
+    } else if (df1) {
+      kernel.setArg(4, 0);
+      kernel.setArg(6, 1);
+    } else if (df2) {
+      kernel.setArg(3, 0);
+      kernel.setArg(6, 0);
+    } else {
+      kernel.setArg(3, 0);
+      kernel.setArg(4, 0);
+    }
+
+    kernel.setArg(7, cutOff);
+
+    try {
+      CL_queue->enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(proj.size()), cl::NullRange);
+      CL_queue->finish();
+      CL_queue->enqueueReadBuffer(cl_io, CL_TRUE, 0, fprsz, proj.data());
+    } catch (cl::Error err) {
+      warn(modname, (string) "Failed to run OpenCL kernel \"ff\": "
+           + err.what() + ". Returned value: " + toString(err.err()) + "." );
+      return;
+    }
+
+    return;
+
+  }
+#endif // OPENCL_FOUND
+
+  Map df(proj.shape());
   if (df1 && df2)
     weighted(df, *df1, *df2, fgs[idx].dfWeight);
   else if (df1)
@@ -432,7 +657,7 @@ void AqSeries::projection(int idx, Map &proj,
   else
     df=0;
 
-  Map bg(prsh);
+  Map bg(proj.shape());
   if (bg1 && bg2)
     weighted(bg, *bg1, *bg2, fgs[idx].bgWeight) - df;
   else if (bg1)
@@ -444,7 +669,28 @@ void AqSeries::projection(int idx, Map &proj,
 
   flatfield(proj, proj, bg, df);
 
+  if ( cutOff>=0.0 )
+    for (long icur=0; icur<proj.shape()(0); icur++)
+      for (long jcur=0; jcur<proj.shape()(1); jcur++)
+        if ( proj(icur,jcur) > cutOff )
+          proj(icur,jcur) = cutOff;
+
 }
+
+
+void AqSeries::clean() const {
+  prev_slicesV.clear();
+  memDfA.second.resize(0,0);
+  memBgA.second.resize(0,0);
+  memDfB.second.resize(0,0);
+  memBgB.second.resize(0,0);
+  cl_io  = cl::Buffer();
+  cl_bgA = cl::Buffer();
+  cl_bgB = cl::Buffer();
+  cl_dfA = cl::Buffer();
+  cl_dfB = cl::Buffer();
+}
+
 
 const std::string AqSeries::modname  = "acquisition series";
 const std::string AqSeries::BGPREFIX = "#BACKGROUND# ";

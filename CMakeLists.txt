@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 2.6)
 project (ctas)
 set(VERSION 0.6.0)
 
+SET( CMAKE_MODULE_PATH ${ctas_SOURCE_DIR}/cmake)
+
 add_custom_target(dist
     COMMAND git archive --prefix=${PROJECT_NAME}.${VERSION}/ HEAD
         | bzip2 > ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${VERSION}.tar.bz2

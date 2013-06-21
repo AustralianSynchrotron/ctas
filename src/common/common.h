@@ -50,8 +50,6 @@
 
 #endif
 
-
-
 #include <string>
 #include <vector>
 #include "../blitz-long/blitz/array.h"
@@ -188,6 +186,8 @@ public:
   bool isabsolute() const;		///< Tells if the path is absolute.
 
   Path & bedir();				///< Makes the path to be the directory (adds DIRSEPARATOR).
+
+  static const Path home();
 
 };
 
@@ -600,7 +600,29 @@ unzero(const blitz::Array<float,N> & arr){
 /// @}
 
 
+/// \defgroup OCL OpenCL
+///
+/// Preparing the OpenCL infrastructure.
+///
+/// @{
 
+
+
+#ifdef OPENCL_FOUND
+
+#define __CL_ENABLE_EXCEPTIONS
+#include<CL/cl.hpp>
+
+cl::Device * CL_device=0;
+cl::Context * CL_context=0;
+cl::CommandQueue * CL_queue=0;
+
+bool clIsInited();
+
+#endif // OPENCL_FOUND
+
+
+/// @}
 
 
 

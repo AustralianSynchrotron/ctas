@@ -1,7 +1,8 @@
 # To make sure the internal version of blitz is used
+
 include_directories("../blitz-long")
 
-link_directories(${CTAS_BINARY_DIR}/common)
+link_directories(${CMAKE_BINARY_DIR}/src/common)
 
 add_executable(ct ct.cpp)
 target_link_libraries(ct
@@ -64,6 +65,7 @@ target_link_libraries(sino-ipc
   experiment
   lipc
 )
+
 
 add_executable(ff ff.cpp)
 target_link_libraries(ff

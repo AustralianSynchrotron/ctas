@@ -44,6 +44,10 @@
 using namespace std;
 
 
+
+
+
+
 /// \brief Constructor.
 ///
 /// @param _terr Sets CtasErr::terr
@@ -81,7 +85,7 @@ CtasErr::type() const {
 
 
 void
-throw_error(const string & mod, const string & msg){
+throw_error(const string & mod, const string & msg) {
   CtasErr err(CtasErr::ERR, mod, msg);
   err.report();
   throw err;
@@ -230,6 +234,18 @@ Path::isabsolute() const {
 #else
   return ! empty() && (*this)[0] == '/';
 #endif
+}
+
+
+const Path Path::home() {
+  char * hm;
+  #ifdef _WIN32
+  //return getenv("USERPROFILE");
+  hm = getenv("APPDATA");
+  #else
+  hm = getenv("HOME");
+  #endif
+  return Path(hm).bedir();
 }
 
 
@@ -655,6 +671,148 @@ ProgressBar::getwidth(){
 
 
 
+#ifdef OPENCL_FOUND
+
+//#include<libconfig.h++>
+//using namespace libconfig;
+
+static bool clInited = false;
+
+bool clIsInited() {
+
+  if (clInited)
+    return true;
+
+  std::vector<cl::Platform> CL_platforms;
+  std::vector<cl::Device> CL_devices;
+
+  try {
+    cl::Platform::get(&CL_platforms);
+  } catch (cl::Error err) {
+    warn("CL init", err.what());
+    return false;
+  }
+
+  for (int plidx=0; plidx < CL_platforms.size() ; plidx++ ) {
+
+    cl::Platform * pl = CL_platforms.data() + plidx;
+
+    /*
+     *    string info;
+     *    cout << "OpenCL platform [" << plidx << "]\n";
+     *    pl->getInfo(CL_PLATFORM_PROFILE, &info);
+     *    cout << "  profile: " << info << "\n";
+     *    pl->getInfo(CL_PLATFORM_VERSION, &info);
+     *    cout << "  version: " << info << "\n";
+     *    pl->getInfo(CL_PLATFORM_NAME, &info);
+     *    cout << "  name: " << info << "\n";
+     *    pl->getInfo(CL_PLATFORM_VENDOR, &info);
+     *    cout << "  vendor: " << info << "\n";
+     *    pl->getInfo(CL_PLATFORM_EXTENSIONS, &info);
+     *    cout << "  extensions: " << info << "\n";
+     */
+
+    vector<cl::Device> devs;
+    pl->getDevices(CL_DEVICE_TYPE_GPU, &devs);
+    //pl->getDevices(CL_DEVICE_TYPE_ALL, &devs);
+    //cout << "List of OpenCL GPU devices (" << devs.size() << "):\n";
+
+    for (int devidx=0; devidx<devs.size(); devidx++) {
+
+      if ( devs[devidx].getInfo<CL_DEVICE_AVAILABLE>() &&
+        devs[devidx].getInfo<CL_DEVICE_COMPILER_AVAILABLE>() &&
+        devs[devidx].getInfo<CL_DEVICE_EXECUTION_CAPABILITIES>()
+      )
+        CL_devices.push_back(devs[devidx]);
+
+        /*
+         *      cout << "  OpenCL device [" << devidx << "]\n";
+         *
+         *      cout << "    TYPE: " << dev->getInfo<CL_DEVICE_TYPE>() << "\n";
+         *      cout << "    VENDOR_ID: " << dev->getInfo<CL_DEVICE_VENDOR_ID>() << "\n";
+         *      cout << "    MAX_COMPUTE_UNITS: " << dev->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << "\n";
+         *      cout << "    MAX_WORK_ITEM_DIMENSIONS: " << dev->getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>() << "\n";
+         *      cout << "    MAX_WORK_GROUP_SIZE: " << dev->getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << "\n";
+         *      //cout << "    MAX_WORK_ITEM_SIZES: " << dev->getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>() << "\n";
+         *      cout << "    ADDRESS_BITS: " << dev->getInfo<CL_DEVICE_ADDRESS_BITS>() << "\n";
+         *      cout << "    MAX_MEM_ALLOC_SIZE: " << dev->getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>() << "\n";
+         *      cout << "    GLOBAL_MEM_SIZE: " << dev->getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << "\n";
+         *      cout << "    MAX_CONSTANT_BUFFER_SIZE: " << dev->getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>() << "\n";
+         *      cout << "    LOCAL_MEM_SIZE: " << dev->getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << "\n";
+         *      cout << "    AVAILABLE: " << dev->getInfo<CL_DEVICE_AVAILABLE>() << "\n";
+         *      cout << "    COMPILER_AVAILABLE: " << dev->getInfo<CL_DEVICE_COMPILER_AVAILABLE>() << "\n";
+         *      cout << "    EXECUTION_CAPABILITIES: " << dev->getInfo<CL_DEVICE_EXECUTION_CAPABILITIES>() << "\n";
+         *      cout << "    NAME: " << dev->getInfo<CL_DEVICE_NAME>() << "\n";
+         *      cout << "    VENDOR: " << dev->getInfo<CL_DEVICE_VENDOR>() << "\n";
+         *      cout << "    DRIVER_VERSION: " << dev->getInfo<CL_DRIVER_VERSION>() << "\n";
+         *      cout << "    PROFILE: " << dev->getInfo<CL_DEVICE_PROFILE>() << "\n";
+         *      cout << "    VERSION: " << dev->getInfo<CL_DEVICE_VERSION>() << "\n";
+         *      cout << "    OPENCL_C_VERSION: " << dev->getInfo<CL_DEVICE_OPENCL_C_VERSION>() << "\n";
+         */
+
+    }
+
+  }
+
+  if (CL_devices.empty()) {
+    warn("CL init", "No OpenCL devices found");
+    return false;
+  } else if (CL_devices.size()==1) {
+    CL_device = new cl::Device(CL_devices[0]);
+  } else { // more than one device found
+    int idx=0;
+    for (int devidx=0; devidx<CL_devices.size(); devidx++)
+      if ( CL_devices[idx].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()
+        < CL_devices[devidx].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() )
+        idx=devidx;
+      CL_device = new cl::Device( CL_devices[idx] );
+
+    /* TODO:
+     * complete this part to read device name from the config
+     * file instead of choosing the device with maximum memory
+     * above.
+     *
+     *    Config cfg;
+     *    string devName;
+     *    bool haveName=false;
+     *
+     *    try {
+     *      cfg.readFile(Path::home() + ".ctas.ini");
+     *      cfg.lookupValue("CL_device_name", &devName);
+     } catch( ... ) { }
+
+     */
+
+  }
+
+  try {
+    CL_context = new cl::Context(*CL_device);
+    CL_queue = new cl::CommandQueue(*CL_context, *CL_device, 0);
+  } catch (cl::Error err) {
+    warn("CL init", err.what());
+    return false;
+  }
+
+  clInited = true;
+  return clInited;
+
+}
+
+#endif // OPENCL_FOUND
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifdef _WIN32
 #  define STATIC_MAGICK
@@ -728,7 +886,6 @@ FImageLoader(const Path & filename) {
   return dib;
 
 }
-
 
 
 float

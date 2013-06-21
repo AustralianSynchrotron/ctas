@@ -94,7 +94,6 @@ std::vector<int> EXPERIMENT_API
 slice_str2vec(const std::string & sliceS, int hight);
 
 
-
 /// \brief Parsing file of the acquisition series.
 ///
 /// This class parses and stores the list of foreground-background pairs
@@ -134,8 +133,6 @@ private:
   std::vector<Path> bgs;		///< Storage of backgrounds.
   std::vector<Path> dfs;        ///< Dark current images.
 
-
-
   bool isbgstring(const std::string & str) const; ///< Tells if the string represents bgnd.
   bool isdfstring(const std::string & str) const; ///< Tells if the string represents dc.
   bool iscomment(const std::string & str) const; ///< Tells if the string is a comment.
@@ -145,15 +142,33 @@ private:
 
   Shape sh;                     ///< Shape of the input images.
 
+
+  // needed to remember the parameters of the previous ::projection()
+  mutable std::vector<int> prev_slicesV;
+  mutable float prev_angle;
+  mutable Crop prev_crop;
+  mutable Shape prev_prsh;
+
   mutable std::pair<int, Map> memDfA;
   mutable std::pair<int, Map> memBgA;
   mutable std::pair<int, Map> memDfB;
   mutable std::pair<int, Map> memBgB;
 
-  /// Constructs the dark current array.
-  /*
-  void darkCurrent(Map & dcc, const std::vector<int> & sliceV) const ;
-  */
+#ifdef OPENCL_FOUND
+
+  static cl::Program * program;
+  static cl::Program * init();
+
+  mutable cl::Kernel kernel;
+
+  mutable cl::Buffer cl_io;
+  mutable cl::Buffer cl_bgA;
+  mutable cl::Buffer cl_bgB;
+  mutable cl::Buffer cl_dfA;
+  mutable cl::Buffer cl_dfB;
+
+#endif // OPENCL_FOUND
+
 
 public:
 
@@ -167,11 +182,13 @@ public:
 
   void projection(int idx, Map & proj,
                   const std::string & slicedesc = std::string() ,
-                  float angle=0, const Crop &crop = Crop()) const ;
+                  float angle=0, const Crop &crop = Crop(), float cutOff=0.0) const ;
 
   void projection(int idx, Map &proj,
                   const std::vector<int> &sliceV,
-                  float angle=0, const Crop &crop = Crop()) const ;
+                  float angle=0, const Crop &crop = Crop(), float cutOff=0.0) const ;
+
+  void clean() const;
 
   const Path & fg(int idx) const ; ///< Gives name of the foreground.
 

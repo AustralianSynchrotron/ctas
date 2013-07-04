@@ -92,7 +92,6 @@ target_link_libraries(common
   freeimage
   tiff
   ${OPENCL_LL}
-  config++
 )
 
 add_library(kernel SHARED kernel.cpp)

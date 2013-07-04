@@ -92,7 +92,6 @@ target_link_libraries(common
   freeimage
   tiff
   ${OPENCL_LL}
-  config++
 )
 
 if (OPENCL_FOUND)

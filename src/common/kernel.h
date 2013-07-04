@@ -29,6 +29,7 @@
 ///
 
 
+
 #ifndef _H_KERNEL_H_
 #define _H_KERNEL_H_
 
@@ -83,61 +84,61 @@ public:
   /// Filter types.
   typedef enum {
 
-	/// No filter: 1
-	NONE=0,
+    /// No filter: 1
+    NONE=0,
 
-	/// Ramp: \f$ |k| \f$
-	RAMP,
+    /// Ramp: \f$ |k| \f$
+    RAMP,
 
-	/// Barlett: \f$ |k|(1-|k|) \f$
-	BARLETT,
+    /// Barlett: \f$ |k|(1-|k|) \f$
+    BARLETT,
 
-	/// Welch: \f$ |k|(1-k^2) \f$
-	WELCH,
+    /// Welch: \f$ |k|(1-k^2) \f$
+    WELCH,
 
-	/** Parzen:
-		\f[ |k|\times\left\{ \begin{array}{lll}
-		1-6k^2+3|k|^3  &  :  &  |k|\leq1/2    \cr
-		2(1+|k|^3)     &  :  &   1/2<|k|\leq1
-		\end{array} \right. \f]
-	*/
-	PARZEN,
+    /** Parzen:
+    \f[ |k|\times\left\{ \begin{array}{lll}
+    1-6k^2+3|k|^3  &  :  &  |k|\leq1/2    \cr
+    2(1+|k|^3)     &  :  &   1/2<|k|\leq1
+    \end{array} \right. \f]
+    */
+    PARZEN,
 
-	/// Hann: \f$ |k|0.5(1+\cos{\pi k}) \f$
-	HANN,
+    /// Hann: \f$ |k|0.5(1+\cos{\pi k}) \f$
+    HANN,
 
-	/// Hamming: \f$ |k|(0.54+0.46\cos{\pi k}) \f$
-	HAMMING,
+    /// Hamming: \f$ |k|(0.54+0.46\cos{\pi k}) \f$
+    HAMMING,
 
-	/// Blackman: \f$ |k|(0.42+0.5\cos{\pi k}+0.08\cos{2\pi k}) \f$
-	BLACKMAN,
+    /// Blackman: \f$ |k|(0.42+0.5\cos{\pi k}+0.08\cos{2\pi k}) \f$
+    BLACKMAN,
 
-	/// Lanckzos: \f[ |k|\frac{\sin{\pi k}}{k} \f]
-	LANCKZOS,
+    /// Lanckzos: \f[ |k|\frac{\sin{\pi k}}{k} \f]
+    LANCKZOS,
 
-	/// Kaiser: \f[ |k|\frac{I_0(\alpha\sqrt{1-k^2})}{I_0(\alpha)} \f]
-	KAISER,
+    /// Kaiser: \f[ |k|\frac{I_0(\alpha\sqrt{1-k^2})}{I_0(\alpha)} \f]
+    KAISER,
 
-	/// Gauss: \f[ |k|2^{-(k/\sigma)^2} \f]
-	GAUSS
+    /// Gauss: \f[ |k|2^{-(k/\sigma)^2} \f]
+    GAUSS
 
   } Ftype ;
 
 private:
 
-  static const std::string modname;	///< Module name.
-  Ftype filttp;					///< Filter type
-  float alsig;					///< Additional parameter required by some filters
+  static const std::string modname; ///< Module name.
+  Ftype filttp;         ///< Filter type
+  float alsig;          ///< Additional parameter required by some filters
 
 public:
 
   Filter(Ftype _tp=RAMP, float _as=0); ///< Trivial constructor
-  Filter(const std::string & _name, float _as=0);	///< Constructor from name
+  Filter(const std::string &_name, float _as=0);  ///< Constructor from name
 
-  Ftype filter() const ;		///< Filter
-  std::string name() const;			///< Returns name
+  Ftype filter() const ;    ///< Filter
+  std::string name() const;     ///< Returns name
 
-  Line & fill(Line & filt, int pixels = 0) const; ///< Fills the window
+  Line &fill(Line &filt, int pixels = 0) const;   ///< Fills the window
 
 };
 
@@ -180,118 +181,94 @@ bool KERNEL_API _conversion (Filter* _val, const std::string & in);
 
 
 
-
-
-
 /// \brief CT reconstruction class
 ///
 /// This class first collects all information needed for the CT reconstruction
 /// (size, contrast type, filter, etc.) and then performs the reconstruction
 /// using either CTrec::reconstruct or CTrec::addLine methods
-/// I designed the CT as the class not as a function in order to provide easy
-///  way to plug in any new contrast and/or algorithm (f.e. GPU-, FPGA-, bla-bla-bla-based).
-///
-/// In order to include new reconstruction algorithm you should follow these
-/// steps:
-/// -# Add the method which implements you algorithm. See CTrec::reconstruct_abs()
-///    and other CTrec::reconstruct_* methods for example (currently all
-///    of them just call the universal reconstruction CTrec::reconstruct_uni(),
-///    they are added into the class just for the architecture's flexibility).
-/// -# Set the CTrec::_reconstruct and CTrec::_addLine pointers to your method
-///    from the previous step. Please do it ONLY within CTrec::choose_algorithm().
-///    The choice of the pointer may depend on any condition you can imagine
-///    and any parameter(s) you have added in the first step.
-/// -# If needed, add new member(s) into the class which are required for the
-///    algorithm (see CTrec::_filter for example). For these new member(s)
-///    create set/get methods (see CTrec::filter() and
-///    CTrec::filter(const Filter &) for example).
-/// -# If it is needed, add the new constructor, or update existing one.
-///
-///    Voala: you can initialize the reconstruction and reconstruct your
-///    sinogram using CTrec::reconstruct() method (f.e. see ct.cpp ).
 ///
 class KERNEL_API CTrec {
 
 private:
 
-  static const std::string modname;	///< Module name.
-  static const float zPad;		///< Zero-padding coefficient.
+  static const float zPad;    ///< Zero-padding coefficient.
+
+  const int _width;          ///< Width of the reconstructed image.
+  const int _projections;          ///< Number of projections in sinogram.
+
+  int projection_counter;          ///< Counting projections.
+  bool nextAddLineResets;          ///< If true, resets _result to 0 on next addLine.
 
   // Settable parameters
-  int _pixels;					///< Width of the reconstructed image.
-  Contrast _contrast;			///< Type of the contrast.
-  int _threads;					///< Number of threads.
-  Filter _filter;				///< Type of the filter function.
+  Contrast _contrast;     ///< Type of the contrast.
+  Filter _filter;       ///< Type of the filter function.
 
-  void pixels(int px);			///< Pixels
+  Map _result;
 
   // divergent parameters.
-  Line filt_window;				///< The array containing the filter window.
-  fftwf_plan planF;				///< Forward FFT transformation.
-  fftwf_plan planB;				///< Backward FFT transformation.
+  Line filt_window;       ///< The array containing the filter window.
+  fftwf_plan planF;       ///< Forward FFT transformation.
+  fftwf_plan planB;       ///< Backward FFT transformation.
 
-  // Implementations of the reconstruction algorithms.
-  void reconstruct_uni(Map &sinogram, Map &result, float center) const;
-  void reconstruct_abs(Map &sinogram, Map &result, float center) const;
-  void reconstruct_abs_thr(Map &sinogram, Map &result, float center) const;
-  void reconstruct_ref(Map &sinogram, Map &result, float center) const;
-  void reconstruct_ref_thr(Map &sinogram, Map &result, float center) const;
+#ifdef OPENCL_FOUND
 
-  void addLine_ref(Line &sinoline, Map &result, const float Theta, const float center) const;
-  void addLine_abs(Line &sinoline, Map &result, const float Theta, const float center) const;
-  void addLine_uni(Line &sinoline, Map &result, const float Theta, const float center) const;
+  static cl_int err;
+  static cl_program program;
 
-  /// \brief Actual reconstruction function.
+  mutable cl_kernel kernelSino;
+  mutable cl_kernel kernelLine;
+
+  cl_mem clSlice;
+  cl_mem clSinoImage;
+  cl_mem  clAngles;
+  cl_sampler clSinoSampler;
+
+  static pthread_mutex_t ctreclock;
+
+#endif // OPENCL_FOUND
+
+  void prepare_sino(Map & sinogram);
+
+  /// \brief Prepares internal storage for new data.
   ///
-  /// Pointer to one of the reconstruction functions (see above) which
-  /// would be used in the reconstruction algorithm.
-  void (CTrec::*_reconstruct) (Map &, Map &, float) const;
-
-  /// \brief Actual function which adds the sinogram line to the result.
+  /// Mainly to be used in the conjunction with the ::addLine(),
+  /// between two complete reconstructions.
   ///
-  /// Pointer to one of the addLine functions (see above) which
-  /// would be used in the reconstruction algorithm.
-  void (CTrec::*_addLine) (Line&, Map&, const float, const float) const;
-
-  void choose_algorithm();		///< Sets _reconstruct
+  void reset();
 
 public:
 
-  CTrec(int px, Contrast cn, int tr=0, const Filter & ft=Filter());
-  CTrec(int px, Contrast cn, const Filter & ft);
+  CTrec(const Shape &sinoshape, Contrast cn, const Filter &ft);
+
   ~CTrec();
 
+  static Map reconstruct(Map &sinogram, Contrast cn, const Filter &ft=Filter(),
+                         const float center=0, float pixelSize=1.0);
+
+  const Map & reconstruct(Map &sinogram, const float center, float pixelSize=1.0);
+
+  /// Adding one sinogram line to the reconstruction array.
+  void addLine(Line &sinoline, const float Theta, const float center);
+
+  /// \brief Finalizes the reconstruction and returns the result.
+  ///
+  /// Intended to be used in the conjunction with the ::addLine(), as
+  /// ::reconstruct() finilizes the results. After calling this method,
+  /// next call to ::addLine() will first reset the internal results to 0.
+  ///
+  /// @param pixelSize Physical size of the pixel.
+  ///
+  const Map & result(float pixelSize=1.0);
+
+  static const std::string modname; ///< Module name.
+
   // Set/get parameters.
-  int pixels() const ;
+  int width() const ;
+  int projections() const;
   void contrast(Contrast cn);
   Contrast contrast() const ;
-  void threads(int tr);
-  int threads() const ;
   void filter(const Filter & ft);
   Filter filter() const ;
-
-  /// Actual reconstruction of a single sinogram.
-  void reconstruct(Map &sinogram, Map &result, const float center) const;
-
-  /// Adding one sinogram line to the reconstruction.
-  void addLine(Line &sinoline, Map &result, const float Theta, const float center) const;
-
-  /// \brief Finalize the calculations.
-  ///
-  /// The result of the reconstruction procedure is not normalized to represent
-  /// the real physical values because the CT algorithm, for the simplicity does not know
-  /// all parameters needed. This function will do the normalization of the result array.
-  /// If the array was reconstructed using the CTrec::reconstruct() or CTrec::addLine() methods,
-  /// with the correct physical values on input, after the normalization it will represent
-  /// correct values of:
-  /// \f$\mu\f$ - for the Contrast::ABS
-  /// \f$\delta\f$ - for the Contrast::PHS and Contrast::REF.
-  ///
-  /// @param result The array to be normalized
-  /// @param thetas Number of projections used in the CT reconstruction.
-  /// @param pixelSize Physical size of the pixel
-  ///
-  static void finilize(Map & result, int thetas, float pixelSize=1.0);
 
 };
 
@@ -322,7 +299,6 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 extern KERNEL_API const std::string CenterOptionDesc;
 
 
-
 /// \brief Number of threads for the process.
 ///
 /// @param _threads Requested number of threads (0 for auto).
@@ -332,6 +308,7 @@ extern KERNEL_API const std::string CenterOptionDesc;
 ///
 long KERNEL_API
 nof_threads(long _threads=0);
+
 
 /// @}
 

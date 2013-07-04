@@ -683,113 +683,133 @@ bool clIsInited() {
   if (clInited)
     return true;
 
-  std::vector<cl::Platform> CL_platforms;
-  std::vector<cl::Device> CL_devices;
+  cl_int err;
 
-  try {
-    cl::Platform::get(&CL_platforms);
-  } catch (cl::Error err) {
-    warn("CL init", err.what());
+  cl_uint nof_platforms;
+  err = ::clGetPlatformIDs(0, 0, &nof_platforms);
+  if (err != CL_SUCCESS) {
+    warn("OpenCLinit", "Could not get number of OpenCL platforms: " + toString(err) );
     return false;
   }
 
-  for (int plidx=0; plidx < CL_platforms.size() ; plidx++ ) {
+  vector<cl_platform_id> platforms(nof_platforms);
+  vector<cl_device_id> devices;
 
-    cl::Platform * pl = CL_platforms.data() + plidx;
+  err = clGetPlatformIDs(nof_platforms, platforms.data(), 0);
+  if (err != CL_SUCCESS) {
+    warn("OpenCLinit", "Could not get OpenCL platforms: " + toString(err) );
+    return false;
+  }
 
-    /*
-     *    string info;
-     *    cout << "OpenCL platform [" << plidx << "]\n";
-     *    pl->getInfo(CL_PLATFORM_PROFILE, &info);
-     *    cout << "  profile: " << info << "\n";
-     *    pl->getInfo(CL_PLATFORM_VERSION, &info);
-     *    cout << "  version: " << info << "\n";
-     *    pl->getInfo(CL_PLATFORM_NAME, &info);
-     *    cout << "  name: " << info << "\n";
-     *    pl->getInfo(CL_PLATFORM_VENDOR, &info);
-     *    cout << "  vendor: " << info << "\n";
-     *    pl->getInfo(CL_PLATFORM_EXTENSIONS, &info);
-     *    cout << "  extensions: " << info << "\n";
-     */
+  for (int plidx=0; plidx < platforms.size() ; plidx++ ) {
 
-    vector<cl::Device> devs;
-    pl->getDevices(CL_DEVICE_TYPE_GPU, &devs);
-    //pl->getDevices(CL_DEVICE_TYPE_ALL, &devs);
-    //cout << "List of OpenCL GPU devices (" << devs.size() << "):\n";
+    cl_uint nof_devices = 0;
 
-    for (int devidx=0; devidx<devs.size(); devidx++) {
+    err = clGetDeviceIDs( platforms[plidx], CL_DEVICE_TYPE_GPU, 0, 0, &nof_devices);
+    if (err != CL_SUCCESS) {
+      warn("OpenCLinit", "Could not get OpenCL number of GPU devices of a platform: "
+           + toString(err) );
+    } else {
 
-      if ( devs[devidx].getInfo<CL_DEVICE_AVAILABLE>() &&
-        devs[devidx].getInfo<CL_DEVICE_COMPILER_AVAILABLE>() &&
-        devs[devidx].getInfo<CL_DEVICE_EXECUTION_CAPABILITIES>()
-      )
-        CL_devices.push_back(devs[devidx]);
+      vector<cl_device_id> platform_devices(nof_devices);
+      err = clGetDeviceIDs( platforms[plidx], CL_DEVICE_TYPE_GPU,
+                            nof_devices, platform_devices.data(), 0);
+      if (err != CL_SUCCESS) {
+        warn("OpenCLinit", "Could not get OpenCL GPU devices of a platform: "
+             + toString(err) );
+      } else {
 
-        /*
-         *      cout << "  OpenCL device [" << devidx << "]\n";
-         *
-         *      cout << "    TYPE: " << dev->getInfo<CL_DEVICE_TYPE>() << "\n";
-         *      cout << "    VENDOR_ID: " << dev->getInfo<CL_DEVICE_VENDOR_ID>() << "\n";
-         *      cout << "    MAX_COMPUTE_UNITS: " << dev->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << "\n";
-         *      cout << "    MAX_WORK_ITEM_DIMENSIONS: " << dev->getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>() << "\n";
-         *      cout << "    MAX_WORK_GROUP_SIZE: " << dev->getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << "\n";
-         *      //cout << "    MAX_WORK_ITEM_SIZES: " << dev->getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>() << "\n";
-         *      cout << "    ADDRESS_BITS: " << dev->getInfo<CL_DEVICE_ADDRESS_BITS>() << "\n";
-         *      cout << "    MAX_MEM_ALLOC_SIZE: " << dev->getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>() << "\n";
-         *      cout << "    GLOBAL_MEM_SIZE: " << dev->getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() << "\n";
-         *      cout << "    MAX_CONSTANT_BUFFER_SIZE: " << dev->getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>() << "\n";
-         *      cout << "    LOCAL_MEM_SIZE: " << dev->getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << "\n";
-         *      cout << "    AVAILABLE: " << dev->getInfo<CL_DEVICE_AVAILABLE>() << "\n";
-         *      cout << "    COMPILER_AVAILABLE: " << dev->getInfo<CL_DEVICE_COMPILER_AVAILABLE>() << "\n";
-         *      cout << "    EXECUTION_CAPABILITIES: " << dev->getInfo<CL_DEVICE_EXECUTION_CAPABILITIES>() << "\n";
-         *      cout << "    NAME: " << dev->getInfo<CL_DEVICE_NAME>() << "\n";
-         *      cout << "    VENDOR: " << dev->getInfo<CL_DEVICE_VENDOR>() << "\n";
-         *      cout << "    DRIVER_VERSION: " << dev->getInfo<CL_DRIVER_VERSION>() << "\n";
-         *      cout << "    PROFILE: " << dev->getInfo<CL_DEVICE_PROFILE>() << "\n";
-         *      cout << "    VERSION: " << dev->getInfo<CL_DEVICE_VERSION>() << "\n";
-         *      cout << "    OPENCL_C_VERSION: " << dev->getInfo<CL_DEVICE_OPENCL_C_VERSION>() << "\n";
-         */
+        for (int devidx=0; devidx<platform_devices.size(); devidx++) {
+
+          cl_device_id dev = platform_devices[devidx];
+          bool errHappened=false;
+
+          cl_bool devIsAvailable;
+          err = clGetDeviceInfo(dev, CL_DEVICE_AVAILABLE,
+                                sizeof(cl_bool), &devIsAvailable, 0);
+          if (err != CL_SUCCESS) {
+            warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_AVAILABLE\": "
+                 + toString(err) );
+            errHappened=true;
+          }
+
+          cl_bool devCompilerIsAvailable;
+          err = clGetDeviceInfo(dev, CL_DEVICE_COMPILER_AVAILABLE, sizeof(cl_bool),
+                                &devCompilerIsAvailable, 0);
+          if (err != CL_SUCCESS) {
+            warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_COMPILER_AVAILABLE\": "
+                 + toString(err) );
+            errHappened=true;
+          }
+
+          cl_device_exec_capabilities devExecCapabilities;
+          err = clGetDeviceInfo(dev, CL_DEVICE_EXECUTION_CAPABILITIES, sizeof(cl_device_exec_capabilities),
+                                &devExecCapabilities, 0);
+          if (err != CL_SUCCESS) {
+            warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_EXECUTION_CAPABILITIES\": "
+                 + toString(err) );
+            errHappened=true;
+          }
+
+          if ( ! errHappened &&
+               devIsAvailable &&
+               devCompilerIsAvailable &&
+               ( devExecCapabilities & CL_EXEC_KERNEL ) )
+            devices.push_back(dev);
+
+        }
+
+      }
 
     }
 
   }
 
-  if (CL_devices.empty()) {
-    warn("CL init", "No OpenCL devices found");
+
+  if (devices.empty()) {
+
+    warn("OpenCLinit", "No OpenCL devices found.");
     return false;
-  } else if (CL_devices.size()==1) {
-    CL_device = new cl::Device(CL_devices[0]);
+
   } else { // more than one device found
-    int idx=0;
-    for (int devidx=0; devidx<CL_devices.size(); devidx++)
-      if ( CL_devices[idx].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()
-        < CL_devices[devidx].getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() )
+
+    int idx=-1;
+    cl_ulong devmem, devmaxmem=0;
+    for (int devidx=0; devidx < devices.size(); devidx++) {
+      err = clGetDeviceInfo(devices[devidx], CL_DEVICE_GLOBAL_MEM_SIZE,
+                            sizeof(cl_ulong),  &devmem, 0);
+      if (err == CL_SUCCESS  &&  devmem > devmaxmem)
         idx=devidx;
-      CL_device = new cl::Device( CL_devices[idx] );
+    }
+
+    if (idx >= 0)
+      CL_device = devices[idx];
 
     /* TODO:
      * complete this part to read device name from the config
      * file instead of choosing the device with maximum memory
      * above.
-     *
-     *    Config cfg;
-     *    string devName;
-     *    bool haveName=false;
-     *
-     *    try {
-     *      cfg.readFile(Path::home() + ".ctas.ini");
-     *      cfg.lookupValue("CL_device_name", &devName);
-     } catch( ... ) { }
-
      */
 
   }
 
-  try {
-    CL_context = new cl::Context(*CL_device);
-    CL_queue = new cl::CommandQueue(*CL_context, *CL_device, 0);
-  } catch (cl::Error err) {
-    warn("CL init", err.what());
+  cl_platform_id platform;
+  err = clGetDeviceInfo(CL_device, CL_DEVICE_PLATFORM, sizeof(cl_platform_id),  &platform, 0);
+  if (err != CL_SUCCESS) {
+    warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_PLATFORM\": "
+         + toString(err) );
+    return false;
+  }
+
+  CL_context = clCreateContext(0, 1, &CL_device, 0, 0, &err);
+  if (err != CL_SUCCESS) {
+    warn("OpenCLinit", "Could not create OpenCL context: " + toString(err) );
+    return false;
+  }
+
+  CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
+  if (err != CL_SUCCESS) {
+    warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
     return false;
   }
 
@@ -797,6 +817,78 @@ bool clIsInited() {
   return clInited;
 
 }
+
+
+
+
+cl_program initProgram(char csrc[], size_t length, const string & modname) {
+
+  if ( ! clIsInited() )
+    return 0;
+
+  const char * src = csrc;
+
+  cl_int err;
+
+  cl_program program =
+    clCreateProgramWithSource( CL_context, 1, &src, &length, &err);
+  if (err != CL_SUCCESS) {
+    warn(modname, "Could not load OpenCL program: " + toString(err) );
+    return 0;
+  }
+
+  err = clBuildProgram( program, 0, 0, "", 0, 0);
+  if (err != CL_SUCCESS) {
+
+    warn(modname, (string) "Could not build OpenCL program: " + toString(err) +
+    ". More detailsd below:" );
+
+    cl_build_status stat;
+    err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_STATUS,
+                                sizeof(cl_build_status), &stat, 0);
+    if (err != CL_SUCCESS)
+      warn(modname, "Could not get OpenCL program build status: " + toString(err) );
+    else
+      warn(modname, "   Build status: " + toString(stat) );
+
+    size_t len=0;
+    err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
+                              0, 0, &len);
+    char * buildOptions = (char*) calloc(len, sizeof(char));
+    if (buildOptions)
+      err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
+                                len, buildOptions, 0);
+      if (err != CL_SUCCESS)
+        warn(modname, "Could not get OpenCL program build options: " + toString(err) );
+      else
+        warn(modname, "   Build options: " + string(buildOptions, len) );
+      if (buildOptions)
+        free(buildOptions);
+
+      err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
+                                  0, 0, &len);
+      char * buildLog = (char*) calloc(len, sizeof(char));
+      if (buildOptions)
+        err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
+                                    len, buildLog, 0);
+        if (err != CL_SUCCESS)
+          warn(modname, "Could not get OpenCL program build log: " + toString(err) );
+        else
+          warn(modname, "   Build log:\n" +  string(buildLog, len) );
+        if (buildLog)
+          free(buildLog);
+
+
+        return 0;
+
+  }
+
+  return program;
+
+}
+
+
+
 
 #endif // OPENCL_FOUND
 

@@ -95,7 +95,17 @@ target_link_libraries(common
   config++
 )
 
-add_library(kernel SHARED kernel.cpp)
+if (OPENCL_FOUND)
+  set(CTCL "ct.cl")
+  set(CTCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${CTCL}")
+  set(CTCLINC "${CMAKE_BINARY_DIR}/${CTCL}.includeme")
+  add_custom_command(
+    OUTPUT ${CTCLINC}
+    COMMAND cat ${CTCLSRC} | xxd -i > ${CTCLINC}
+    DEPENDS ${CTCLSRC}
+  )
+endif()
+add_library(kernel SHARED kernel.cpp ${CTCLINC})
 target_link_libraries(kernel
   fftw3f
   gsl

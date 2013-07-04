@@ -58,7 +58,7 @@ struct clargs {
 
 
 clargs::
-clargs(int argc, char *argv[]) : 
+clargs(int argc, char *argv[]) :
   beverbose(false),
   nof_threads(0),
   SaveInt(false),
@@ -79,7 +79,7 @@ clargs(int argc, char *argv[]) :
 	 "All these procedures can be performed on the step-by-step basis using"
 	 " tools \"bg\", \"dei\", \"sino\" and \"ct\", but this approach saves all"
 	 " intermediate results on the hard disk and therefore a lot of time is"
-	 " spent for the I/O operations, memory allocations, etc. Also much more"	
+	 " spent for the I/O operations, memory allocations, etc. Also much more"
  " disk space is used.");
 
   table
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
   const string sliceformat = mask2format(args.outmask, slices);
   const vector<int> sliceV = slice_str2vec(args.slicedesc, slices);
   const SinoS sins(expr, sliceV, args.beverbose);
-  CTrec rec(pixels, expr.contrast(), args.nof_threads, args.filter_type);
+  CTrec rec( expr.shape() , expr.contrast(), args.filter_type);
 
   /*
   if ( args.nof_threads == 1 || slices.size()<=2 ) {
@@ -246,11 +246,11 @@ int main(int argc, char *argv[]) {
 
   ProgressBar bar(args.beverbose, "reconstruction", sliceV.size());
   for (unsigned slice=0 ; slice < sliceV.size() ; slice++ ) {
-	Map sinogram(thetas, pixels), result(pixels, pixels);
-	sins.sino(slice, sinogram);
-	rec.reconstruct(sinogram, result, args.center(sliceV[slice]+1));
-	SaveImage( toString(sliceformat, sliceV[slice]+1), result, args.SaveInt);
-	bar.update();
+    Map sinogram(thetas, pixels), result(pixels, pixels);
+    sins.sino(slice, sinogram);
+    const Map & res = rec.reconstruct(sinogram, args.center(sliceV[slice]+1));
+    SaveImage( toString(sliceformat, sliceV[slice]+1), res, args.SaveInt);
+    bar.update();
   }
 
   /*

@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     thetas=expr.thetas(),
     pixels=expr.pixels(),
     slices=expr.slices();
-  const CTrec rec(pixels, expr.contrast(), args.nof_threads, args.filter_type);
+  CTrec rec( expr.shape() , expr.contrast(), args.filter_type);
   const string sliceformat = mask2format(args.outmask, slices);
   const vector<int> sliceV = slice_str2vec(args.slicedesc, slices);
   const SinoS sins(expr, sliceV, args.beverbose);
@@ -150,11 +150,12 @@ int main(int argc, char *argv[]) {
   ProgressBar bar(args.beverbose, "reconstruction", sliceV.size());
 
   for (unsigned slice=0 ; slice < sliceV.size() ; slice++ ) {
-	sins.sino(slice, sinogram);
-	if ( args.idealworld )  sinogram = cutone(sinogram);
-	rec.reconstruct(sinogram, result, args.center(slice+1));
-	SaveImage( toString(sliceformat, sliceV[slice]+1), result, args.SaveInt);
-	bar.update();
+    sins.sino(slice, sinogram);
+    if ( args.idealworld )
+      sinogram = cutone(sinogram);
+    const Map & res = rec.reconstruct(sinogram, args.center(sliceV[slice]+1));
+    SaveImage( toString(sliceformat, sliceV[slice]+1), res, args.SaveInt);
+    bar.update();
   }
 
   exit(0);

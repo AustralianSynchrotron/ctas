@@ -149,7 +149,6 @@ public:
   const clargs & args;
   const SinoS *sins;
   const string sliceformat;
-  const CTrec & rec;
 
   int slice;          ///< Current projection index.
   int size;
@@ -157,11 +156,11 @@ public:
 
   ProgressBar bar;
   pthread_mutex_t lock;         ///< Thread mutex used in the data distribution.
+  static pthread_mutex_t ctreclock;
 
-  slice_distributor(const clargs & _args, const SinoS *_sins, const CTrec & _rec ) :
+  slice_distributor(const clargs & _args, const SinoS *_sins) :
     args(_args),
     sins(_sins),
-    rec(_rec),
     slice(0),
     sliceformat( mask2format(args.outmask, sins->imageShape()(0) ) )
   {
@@ -195,13 +194,19 @@ public:
 
 };
 
+pthread_mutex_t slice_distributor::ctreclock = PTHREAD_MUTEX_INITIALIZER;
+
 
 void * in_thread (void * _thread_args){
 
   slice_distributor * thread_args = ( slice_distributor* ) (_thread_args);
   if ( ! thread_args )
     throw_error("in thread", "Inappropriate thread function arguments.");
-  const CTrec & rec = thread_args->rec;
+
+  pthread_mutex_lock(&slice_distributor::ctreclock);
+  CTrec rec(thread_args->sins->sinoShape(),
+            thread_args->args.contrast, thread_args->args.filter_type);
+  pthread_mutex_unlock(&slice_distributor::ctreclock);
 
   int slice;
   Map sinogram, result;
@@ -209,9 +214,12 @@ void * in_thread (void * _thread_args){
   while ( thread_args->distribute(&slice) ) {
     thread_args->sins->sino(slice, sinogram);
     int curslice = thread_args->sins->indexes()[slice]+1;
-    rec.reconstruct(sinogram, result, thread_args->args.center(curslice) );
+    const Map & res = rec.reconstruct(sinogram, thread_args->args.center(curslice),
+                               thread_args->args.dd);
+    pthread_mutex_lock(&slice_distributor::ctreclock);
     SaveImage( toString(thread_args->sliceformat, curslice),
-               result, thread_args->args.SaveInt);
+               res, thread_args->args.SaveInt);
+    pthread_mutex_unlock(&slice_distributor::ctreclock);
     thread_args->bar.update();
   }
 
@@ -245,9 +253,9 @@ int main(int argc, char *argv[]) {
   if ( ! sins || ! sins->indexes().size() )
     throw_error(args.command, "No slices requested");
 
-  CTrec rec(sins->pixels(), args.contrast, args.nof_threads, args.filter_type);
-
   if ( args.nof_threads == 1 || sins->indexes().size()<=2 ) {
+
+    CTrec rec(sins->sinoShape(), args.contrast, args.filter_type);
 
     Map sinogram, result;
     const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
@@ -258,15 +266,14 @@ int main(int argc, char *argv[]) {
 
     for (unsigned slice=0 ; slice < sins->indexes().size() ; slice++ ) {
       sins->sino(slice, sinogram);
-      rec.reconstruct(sinogram, result, args.center(slice+1));
-      SaveImage( toString(sliceformat, sins->indexes()[slice]+1), result, args.SaveInt);
+      const Map & res = rec.reconstruct(sinogram, args.center(slice+1), args.dd);
+      SaveImage( toString(sliceformat, sins->indexes()[slice]+1), res, args.SaveInt);
       bar.update();
     }
 
   }  else {
 
-    rec.threads(1);
-    slice_distributor dist(args, sins, rec);
+    slice_distributor dist(args, sins);
     const int threads = nof_threads(args.nof_threads);
 
     pthread_t ntid [threads];

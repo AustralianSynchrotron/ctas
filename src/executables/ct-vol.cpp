@@ -33,6 +33,7 @@
 
 
 #include <vector>
+#include <queue>
 #include "../common/common.h"
 #include "../common/kernel.h"
 #include "../common/experiment.h"
@@ -139,7 +140,7 @@ clargs(int argc, char *argv[]) :
 
 
 
-
+void * in_write_thread (void * _thread_args);
 
 
 class slice_distributor {
@@ -155,72 +156,156 @@ public:
   int pixels;
 
   ProgressBar bar;
-  pthread_mutex_t lock;         ///< Thread mutex used in the data distribution.
-  static pthread_mutex_t ctreclock;
+  pthread_mutex_t distribution_lock;         ///< Thread mutex used in the data distribution.
+  static pthread_mutex_t ctrec_lock;
+
+  pthread_t write_thread;
+
+  struct ImageCue {
+    Map image;
+    int curslice;
+    ImageCue(const Map & _image, int _curslice) :
+      image(_image.copy()), curslice(_curslice) {}
+  };
+  queue<ImageCue*> imagecue;
+  static pthread_mutex_t putake_lock;
+
+  static pthread_cond_t new_data_cond;
+  static pthread_cond_t released_memory_cond;
+  bool no_more_data;
+
 
   slice_distributor(const clargs & _args, const SinoS *_sins) :
     args(_args),
     sins(_sins),
     slice(0),
-    sliceformat( mask2format(args.outmask, sins->imageShape()(0) ) )
+    sliceformat( mask2format(args.outmask, sins->imageShape()(0) ) ),
+    no_more_data(false)
   {
+
     if (!sins)
       throw_error("slice distributor", "Non-existing sinograms.");
-    if ( pthread_mutex_init(&lock, NULL) != 0 )
+    if ( pthread_mutex_init(&distribution_lock, NULL) != 0 )
       throw_error("slice distributor", "Failed to initialize the mutex.");
     bar = ProgressBar(args.beverbose, "reconstruction", _sins->slices());
+
+    if ( pthread_create(&write_thread, NULL, in_write_thread, this ) )
+      throw_error("write thread", "Can't create thread.");
+
+
   }
 
- /// \brief Destructor.
- inline ~slice_distributor(){
-   pthread_mutex_destroy(&lock);
- }
+/// \brief Destructor.
+  inline ~slice_distributor() {
+    // It is supposed to be onces created, never destroyed.
+  }
 
- /// \brief Destributor.
- ///
- /// @param Theta Rotation angle of the line.
- /// @param sinoline Line to be projected.
- ///
- /// @return \c true if the thread should process the job, \c false if the
- /// global work is finished and the thread should exit.
- ///
- inline bool distribute(int *_slice) {
-   pthread_mutex_lock(&lock);
-   bool returned = slice < sins->slices();
-   *_slice = slice++;
-   pthread_mutex_unlock(&lock);
-   return returned;
- }
+
+
+
+  ImageCue * put_image(const Map & image, int curslice) {
+    // will be called from one of the reconstraction threads.
+    ImageCue * img ;
+    pthread_mutex_lock(&putake_lock);
+    while ( ! ( img = new (nothrow) ImageCue(image, curslice) ) )
+      pthread_cond_wait(&released_memory_cond, &putake_lock);
+    imagecue.push(img);
+    pthread_mutex_unlock(&putake_lock);
+    pthread_cond_signal(&new_data_cond);
+  }
+
+
+  ImageCue * take_image() {
+
+    // will be called from writing thread.
+    pthread_mutex_lock(&putake_lock);
+    while ( imagecue.empty() &&  ! no_more_data )
+      pthread_cond_wait(&new_data_cond, &putake_lock);
+
+    ImageCue * img = 0;
+    if ( ! imagecue.empty() ) {
+      img = imagecue.front();
+      imagecue.pop();
+    }
+
+    pthread_mutex_unlock(&putake_lock);
+    return img;
+
+  }
+
+
+  inline void complete_writing() {
+    no_more_data=true;
+    pthread_cond_signal(&new_data_cond);
+    pthread_join(write_thread, 0);
+  }
+
+
+/// \brief Destributor.
+///
+/// @param Theta Rotation angle of the line.
+/// @param sinoline Line to be projected.
+///
+/// @return \c true if the thread should process the job, \c false if the
+/// global work is finished and the thread should exit.
+///
+  inline bool distribute(int *_slice) {
+    pthread_mutex_lock(&distribution_lock);
+    bool returned = slice < sins->slices();
+    *_slice = slice++;
+    pthread_mutex_unlock(&distribution_lock);
+    return returned;
+  }
 
 };
 
-pthread_mutex_t slice_distributor::ctreclock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t slice_distributor::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t slice_distributor::putake_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t slice_distributor::new_data_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t slice_distributor::released_memory_cond = PTHREAD_COND_INITIALIZER;
 
 
-void * in_thread (void * _thread_args){
+void *in_write_thread (void *_thread_args) {
 
-  slice_distributor * thread_args = ( slice_distributor* ) (_thread_args);
-  if ( ! thread_args )
+  slice_distributor *distributor = ( slice_distributor * ) (_thread_args);
+  if ( ! distributor )
+    throw_error("write thread", "Inappropriate thread function arguments.");
+
+  slice_distributor::ImageCue *img=0;
+  while ( ( img = distributor->take_image() ) ) {
+    SaveImage( toString(distributor->sliceformat, img->curslice),
+               img->image, distributor->args.SaveInt);
+    delete img;
+    distributor->bar.update();
+    pthread_cond_signal(& distributor->released_memory_cond);
+  }
+
+
+}
+
+
+
+
+void *in_reconstruction_thread (void *_thread_args) {
+
+  slice_distributor * distributor = ( slice_distributor* ) (_thread_args);
+  if ( ! distributor )
     throw_error("in thread", "Inappropriate thread function arguments.");
 
-  pthread_mutex_lock(&slice_distributor::ctreclock);
-  CTrec rec(thread_args->sins->sinoShape(),
-            thread_args->args.contrast, thread_args->args.filter_type);
-  pthread_mutex_unlock(&slice_distributor::ctreclock);
+  pthread_mutex_lock(&slice_distributor::ctrec_lock);
+  CTrec rec(distributor->sins->sinoShape(),
+            distributor->args.contrast, distributor->args.filter_type);
+  pthread_mutex_unlock(&slice_distributor::ctrec_lock);
 
   int slice;
-  Map sinogram, result;
+  Map sinogram;
 
-  while ( thread_args->distribute(&slice) ) {
-    thread_args->sins->sino(slice, sinogram);
-    int curslice = thread_args->sins->indexes()[slice]+1;
-    const Map & res = rec.reconstruct(sinogram, thread_args->args.center(curslice),
-                               thread_args->args.dd);
-    pthread_mutex_lock(&slice_distributor::ctreclock);
-    SaveImage( toString(thread_args->sliceformat, curslice),
-               res, thread_args->args.SaveInt);
-    pthread_mutex_unlock(&slice_distributor::ctreclock);
-    thread_args->bar.update();
+  while ( distributor->distribute(&slice) ) {
+    distributor->sins->sino(slice, sinogram);
+    int curslice = distributor->sins->indexes()[slice]+1;
+    const Map & res = rec.reconstruct(sinogram, distributor->args.center(curslice),
+                               distributor->args.dd);
+    distributor->put_image( res, curslice );
   }
 
 
@@ -278,11 +363,13 @@ int main(int argc, char *argv[]) {
 
     pthread_t ntid [threads];
     for (int ith = 0 ; ith < threads ; ith++)
-      if ( pthread_create(ntid+ith, NULL, in_thread, &dist ) )
+      if ( pthread_create(ntid+ith, NULL, in_reconstruction_thread, &dist ) )
         throw_error("project sino in thread", "Can't create thread.");
 
       for (int ith = 0 ; ith < threads ; ith++)
         pthread_join( ntid[ith], 0);
+
+      dist.complete_writing();
 
   }
 

@@ -157,7 +157,7 @@ public:
 
   ProgressBar bar;
   pthread_mutex_t distribution_lock;         ///< Thread mutex used in the data distribution.
-  static pthread_mutex_t ctrec_lock;
+  //static pthread_mutex_t ctrec_lock;
 
   pthread_t write_thread;
 
@@ -169,11 +169,11 @@ public:
   };
   queue<ImageCue*> imagecue;
   static pthread_mutex_t putake_lock;
-
   static pthread_cond_t new_data_cond;
   static pthread_cond_t released_memory_cond;
   bool no_more_data;
 
+  static pthread_mutex_t createrec_lock;
 
   slice_distributor(const clargs & _args, const SinoS *_sins) :
     args(_args),
@@ -241,6 +241,10 @@ public:
   }
 
 
+  inline bool all_scheduled() {
+    return slice >= sins->slices();
+  }
+
 /// \brief Destributor.
 ///
 /// @param Theta Rotation angle of the line.
@@ -251,7 +255,7 @@ public:
 ///
   inline bool distribute(int *_slice) {
     pthread_mutex_lock(&distribution_lock);
-    bool returned = slice < sins->slices();
+    bool returned = ! all_scheduled();
     *_slice = slice++;
     pthread_mutex_unlock(&distribution_lock);
     return returned;
@@ -259,7 +263,6 @@ public:
 
 };
 
-pthread_mutex_t slice_distributor::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t slice_distributor::putake_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t slice_distributor::new_data_cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t slice_distributor::released_memory_cond = PTHREAD_COND_INITIALIZER;
@@ -284,18 +287,14 @@ void *in_write_thread (void *_thread_args) {
 }
 
 
-
-
 void *in_reconstruction_thread (void *_thread_args) {
 
   slice_distributor * distributor = ( slice_distributor* ) (_thread_args);
   if ( ! distributor )
     throw_error("in thread", "Inappropriate thread function arguments.");
 
-  pthread_mutex_lock(&slice_distributor::ctrec_lock);
   CTrec rec(distributor->sins->sinoShape(),
-            distributor->args.contrast, distributor->args.filter_type);
-  pthread_mutex_unlock(&slice_distributor::ctrec_lock);
+            distributor->args.contrast, distributor->args.filter_type );
 
   int slice;
   Map sinogram;
@@ -359,17 +358,18 @@ int main(int argc, char *argv[]) {
   }  else {
 
     slice_distributor dist(args, sins);
-    const int threads = nof_threads(args.nof_threads);
 
-    pthread_t ntid [threads];
-    for (int ith = 0 ; ith < threads ; ith++)
-      if ( pthread_create(ntid+ith, NULL, in_reconstruction_thread, &dist ) )
+    const int run_threads = nof_threads(args.nof_threads);
+    vector<pthread_t> threads(run_threads);
+
+    for (int ith = 0 ; ith < run_threads ; ith++)
+      if ( pthread_create( & threads[ith], NULL, in_reconstruction_thread, &dist ) )
         throw_error("project sino in thread", "Can't create thread.");
 
-      for (int ith = 0 ; ith < threads ; ith++)
-        pthread_join( ntid[ith], 0);
+    for (int ith = 0 ; ith < threads.size() ; ith++)
+      pthread_join( threads[ith], 0);
 
-      dist.complete_writing();
+    dist.complete_writing();
 
   }
 

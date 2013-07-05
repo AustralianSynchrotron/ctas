@@ -559,17 +559,7 @@ cl_program CTrec::program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
 
 cl_int CTrec::err = CL_SUCCESS;
 
-//pthread_mutex_t CTrec::ctreclock = PTHREAD_MUTEX_INITIALIZER;
-
-/*
-CTrec::init_mutex();
-
-bool CTrec::init_mutex() {
-  if ( pthread_mutex_init(&ctreclock, NULL) )
-    throw_error(modname, "Failed to initialize the mutex.");
-  return true;
-}
-*/
+pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #endif // OPENCL_FOUND
 
@@ -591,91 +581,103 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
   _filter(ft)
 {
 
-  filter(_filter);
+  pthread_mutex_lock(&ctrec_lock);
 
-  if (_width <= 1)
-    throw_error (modname, "Number of pixels in the CT reconstruction "
-                 + toString(_width) + ": less or equal to 1.");
-  planF = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_R2HC, FFTW_ESTIMATE);
-  planB = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_HC2R, FFTW_ESTIMATE);
+  try {
+
+    filter(_filter);
+
+    if (_width <= 1)
+      throw_error (modname, "Number of pixels in the CT reconstruction "
+                   + toString(_width) + ": less or equal to 1.");
+    planF = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_R2HC, FFTW_ESTIMATE);
+    planB = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_HC2R, FFTW_ESTIMATE);
 
 #ifdef OPENCL_FOUND
-  if (program) {
+    if (program) {
 
-    try {
+      try {
 
-      kernelSino = clCreateKernel ( program, "ct_sino", &err);
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not create OpenCL kernel \"ct_sino\": "
-                    + toString(err) );
+        kernelSino = clCreateKernel ( program, "ct_sino", &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL kernel \"ct_sino\": "
+                      + toString(err) );
 
-      kernelLine = clCreateKernel ( program, "ct_line", &err);
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not create OpenCL kernel \"ct_line\": "
-                    + toString(err) );
+        kernelLine = clCreateKernel ( program, "ct_line", &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL kernel \"ct_line\": "
+                      + toString(err) );
 
-      clSlice = clCreateBuffer ( CL_context, CL_MEM_WRITE_ONLY,
-                                 sizeof(float) * _width * _width, 0, &err);
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not create OpenCL buffer for ct result: "
-                    + toString(err) );
+        clSlice = clCreateBuffer ( CL_context, CL_MEM_WRITE_ONLY,
+                                   sizeof(float) * _width * _width, 0, &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL buffer for ct result: "
+                      + toString(err) );
 
-      setArg(kernelSino, 0, clSlice, modname);
-      setArg(kernelLine, 0, clSlice, modname);
+        setArg(kernelSino, 0, clSlice, modname);
+        setArg(kernelLine, 0, clSlice, modname);
 
-      cl_image_format format = {CL_INTENSITY, CL_FLOAT};
-      clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY,
-                                     &format, _width, _projections, 0, 0, &err);
+        cl_image_format format = {CL_INTENSITY, CL_FLOAT};
+        clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY,
+                                       &format, _width, _projections, 0, 0, &err);
 #warning: Yes, I know it is depricated. But. The new function clCreateImage segfaults for no reason.
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not create OpenCL 2D image for sinogram: "
-                    + toString(err) );
-      setArg(kernelSino, 1, clSinoImage, modname);
-      setArg(kernelLine, 1, clSinoImage, modname);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL 2D image for sinogram: "
+                      + toString(err) );
+        setArg(kernelSino, 1, clSinoImage, modname);
+        setArg(kernelLine, 1, clSinoImage, modname);
 
-      setArg(kernelSino, 2, (cl_int) _width, modname);
-      setArg(kernelLine, 2, (cl_int) _width, modname);
+        setArg(kernelSino, 2, (cl_int) _width, modname);
+        setArg(kernelLine, 2, (cl_int) _width, modname);
 
-      setArg(kernelSino, 3, (cl_int) _projections, modname);
+        setArg(kernelSino, 3, (cl_int) _projections, modname);
 
-      blitz::Array<cl_float2, 1> angleCache(_projections);
-      for (size_t i = 0; i < _projections; i++) {
-        float th = (M_PI * i) / _projections;
-        angleCache(i).s[0] = sinf(th);
-        angleCache(i).s[1] = cosf(th);
+        blitz::Array<cl_float2, 1> angleCache(_projections);
+        for (size_t i = 0; i < _projections; i++) {
+          float th = (M_PI * i) / _projections;
+          angleCache(i).s[0] = sinf(th);
+          angleCache(i).s[1] = cosf(th);
+        }
+        const size_t iAnglesSize = sizeof(cl_float2) * _projections;
+        clAngles = clCreateBuffer ( CL_context, CL_MEM_READ_ONLY,
+                                    sizeof(float) * iAnglesSize, 0, &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL buffer for ct angles: "
+                      + toString(err) );
+        err = clEnqueueWriteBuffer(  CL_queue, clAngles, CL_TRUE, 0,
+                                     sizeof(float) * iAnglesSize , angleCache.data(),
+                                     0, 0, 0);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not write OpenCL buffer of ct angles: "
+                      + toString(err) );
+        setArg(kernelSino, 5, clAngles, modname);
+
+        clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE,
+                                          CL_FILTER_LINEAR, &err) ;
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL sampler for sinogram: "
+                      + toString(err) );
+        setArg(kernelSino, 6, clSinoSampler, modname);
+        setArg(kernelLine, 5, clSinoSampler, modname);
+
+      } catch (CtasErr errh) {
+        warn(modname,
+             "Could not create OpenCL infrastructure (see above)."
+             " Will perform CPU-based reconstruction.");
       }
-      const size_t iAnglesSize = sizeof(cl_float2) * _projections;
-      clAngles = clCreateBuffer ( CL_context, CL_MEM_READ_ONLY,
-                                  sizeof(float) * iAnglesSize, 0, &err);
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not create OpenCL buffer for ct angles: "
-                    + toString(err) );
-      err = clEnqueueWriteBuffer(  CL_queue, clAngles, CL_TRUE, 0,
-                                   sizeof(float) * iAnglesSize , angleCache.data(),
-                                   0, 0, 0);
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not write OpenCL buffer of ct angles: "
-                    + toString(err) );
-      setArg(kernelSino, 5, clAngles, modname);
 
-      clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE,
-                                        CL_FILTER_LINEAR, &err) ;
-      if (err != CL_SUCCESS)
-        throw_error(modname, "Could not create OpenCL sampler for sinogram: "
-                    + toString(err) );
-      setArg(kernelSino, 6, clSinoSampler, modname);
-      setArg(kernelLine, 5, clSinoSampler, modname);
-
-    } catch (CtasErr errh) {
-      warn(modname,
-           "Could not create OpenCL infrastructure (see above)."
-           " Will perform CPU-based reconstruction.");
     }
-
-  }
 #endif // OPENCL_FOUND
 
-  reset();
+    reset();
+
+  } catch (...) {
+    pthread_mutex_unlock(&ctrec_lock);
+    throw;
+  }
+
+  pthread_mutex_unlock(&ctrec_lock);
+
 
 }
 
@@ -683,6 +685,7 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
 /// \brief Destructor
 CTrec::~CTrec(){
 #ifdef OPENCL_FOUND
+  pthread_mutex_lock(&ctrec_lock);
   clReleaseSampler(clSinoSampler);
   clReleaseMemObject(clSinoImage);
   clReleaseMemObject(clSlice);
@@ -692,6 +695,7 @@ CTrec::~CTrec(){
 #endif // OPENCL_FOUND
   fftwf_destroy_plan(planF);
   fftwf_destroy_plan(planB);
+  pthread_mutex_unlock(&ctrec_lock);
 }
 
 
@@ -817,6 +821,7 @@ CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
     if (err != CL_SUCCESS)
       throw_error(modname, "Failed to perform the sinogram reconstruction with OpenCL: "
                   + toString(err) + ".");
+
     err = clFinish(CL_queue);
     if ( err != CL_SUCCESS )
       throw_error(modname, "Failed to finish OpenCL kernel \"ct_sino\": "

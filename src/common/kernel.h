@@ -212,6 +212,8 @@ private:
 
 #ifdef OPENCL_FOUND
 
+  static pthread_mutex_t ctrec_lock;
+
   static cl_int err;
   static cl_program program;
 
@@ -222,8 +224,6 @@ private:
   cl_mem clSinoImage;
   cl_mem  clAngles;
   cl_sampler clSinoSampler;
-
-  static pthread_mutex_t ctreclock;
 
 #endif // OPENCL_FOUND
 

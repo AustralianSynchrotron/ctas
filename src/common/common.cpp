@@ -778,8 +778,10 @@ bool clIsInited() {
     for (int devidx=0; devidx < devices.size(); devidx++) {
       err = clGetDeviceInfo(devices[devidx], CL_DEVICE_GLOBAL_MEM_SIZE,
                             sizeof(cl_ulong),  &devmem, 0);
-      if (err == CL_SUCCESS  &&  devmem > devmaxmem)
+      if (err == CL_SUCCESS  &&  devmem > devmaxmem) {
+        devmaxmem = devmem;
         idx=devidx;
+      }
     }
 
     if (idx >= 0)

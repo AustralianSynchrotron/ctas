@@ -695,7 +695,7 @@ void AqSeries::projection(int idx, Map &proj,
 
   flatfield(proj, proj, bg, df);
 
-  if ( cutOff>=0.0 )
+  if ( cutOff>0.0 )
     for (long icur=0; icur<proj.shape()(0); icur++)
       for (long jcur=0; jcur<proj.shape()(1); jcur++)
         if ( proj(icur,jcur) > cutOff )

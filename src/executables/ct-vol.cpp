@@ -289,6 +289,7 @@ void *in_write_thread (void *_thread_args) {
 
 void *in_reconstruction_thread (void *_thread_args) {
 
+
   slice_distributor * distributor = ( slice_distributor* ) (_thread_args);
   if ( ! distributor )
     throw_error("in thread", "Inappropriate thread function arguments.");
@@ -361,6 +362,7 @@ int main(int argc, char *argv[]) {
 
     const int run_threads = nof_threads(args.nof_threads);
     vector<pthread_t> threads(run_threads);
+
 
     for (int ith = 0 ; ith < run_threads ; ith++)
       if ( pthread_create( & threads[ith], NULL, in_reconstruction_thread, &dist ) )

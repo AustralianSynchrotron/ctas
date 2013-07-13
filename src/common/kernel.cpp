@@ -639,13 +639,11 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
           angleCache(i).s[1] = cosf(th);
         }
         const size_t iAnglesSize = sizeof(cl_float2) * _projections;
-        clAngles = clCreateBuffer ( CL_context, CL_MEM_READ_ONLY,
-                                    sizeof(float) * iAnglesSize, 0, &err);
+        clAngles = clCreateBuffer ( CL_context, CL_MEM_READ_ONLY, iAnglesSize, 0, &err);
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not create OpenCL buffer for ct angles: "
                       + toString(err) );
-        err = clEnqueueWriteBuffer(  CL_queue, clAngles, CL_TRUE, 0,
-                                     sizeof(float) * iAnglesSize , angleCache.data(),
+        err = clEnqueueWriteBuffer(  CL_queue, clAngles, CL_TRUE, 0, iAnglesSize , angleCache.data(),
                                      0, 0, 0);
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not write OpenCL buffer of ct angles: "

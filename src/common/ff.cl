@@ -39,7 +39,7 @@ __kernel void ff(__global float* fg,
   else
     fg[l] = (fgg - df) / (bg-df);
 
-  if ( cutOff>=0.0f && fg[l] > cutOff )
+  if ( cutOff>0.0f && fg[l] > cutOff )
     fg[l]=cutOff;
 
 }

@@ -448,8 +448,8 @@ void rotateLines(const Map & inarr, Map & outarr, vector<int> & sliceV,
   constinx = (crop.left-rwidth/2.0)*cosa - (crop.top-rheight/2.0)*sina + sh(1)/2,
   constiny = (crop.left-rwidth/2.0)*sina + (crop.top-rheight/2.0)*cosa + sh(0)/2;
 
-  for ( long x=0 ; x < shf(1) ; x++) {
-    for ( long iy=0 ; iy < shf(0) ; iy++) {
+  for ( blitz::MyIndexType x=0 ; x < shf(1) ; x++) {
+    for ( blitz::MyIndexType iy=0 ; iy < shf(0) ; iy++) {
 
       /*
        *      long xf = lroundl( x*cosa - y*sina + constinx );
@@ -461,15 +461,15 @@ void rotateLines(const Map & inarr, Map & outarr, vector<int> & sliceV,
       const long y = sliceV[iy];
       const float xf = x*cosa - y*sina + constinx;
       const float yf = x*sina + y*cosa + constiny;
-      const long flx = floor(xf), fly = floor(yf);
+      const blitz::MyIndexType flx = floor(xf), fly = floor(yf);
       const float dx=xf-flx, dy=yf-fly;
 
       if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
-        outarr(iy,x)=bg;
+        outarr(iy, x)=bg;
       } else {
         float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * dx;
         float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * dx;
-        outarr(iy,x) = v0 + (v1-v0) * dy;
+        outarr(iy, x) = v0 + (v1-v0) * dy;
       }
 
     }
@@ -1578,8 +1578,8 @@ ReadImageLine_IM (const Path & filename, Map & storage,
       storage(curel, blitz::Range::all() ) = 0.0;
     } else {
       const Magick::PixelPacket *pixels = imag.getConstPixels(0,cursl,width,1);
-      for ( long k = 0 ; k < width ; k++ )
-        storage( (long) curel, k) =
+      for ( blitz::MyIndexType k = 0 ; k < width ; k++ )
+        storage( (blitz::MyIndexType) curel, k) =
           (float) Magick::ColorGray( *pixels++  ) .shade();
     }
 

@@ -114,8 +114,9 @@ static cl_mem allocateCLbuf( cl_mem * old_buf, const Map & arr, cl_kernel kern, 
 ///
 /// @param filename File with the foreground-background pairs.
 ///
-AqSeries::AqSeries(const Path & filename) :
-#ifdef OPENCL_FOUND
+AqSeries::AqSeries(const Path & filename) 
+#ifdef OPENCL_FOUNDi
+  :
   kernel(0),
   cl_io(0),
   cl_bgA(0),
@@ -696,8 +697,8 @@ void AqSeries::projection(int idx, Map &proj,
   flatfield(proj, proj, bg, df);
 
   if ( cutOff>=0.0 )
-    for (long icur=0; icur<proj.shape()(0); icur++)
-      for (long jcur=0; jcur<proj.shape()(1); jcur++)
+    for (blitz::MyIndexType icur=0; icur<proj.shape()(0); icur++)
+      for (blitz::MyIndexType jcur=0; jcur<proj.shape()(1); jcur++)
         if ( proj(icur,jcur) > cutOff )
           proj(icur,jcur) = cutOff;
 
@@ -710,7 +711,9 @@ void AqSeries::clean() const {
   memBgA.second.resize(0,0);
   memDfB.second.resize(0,0);
   memBgB.second.resize(0,0);
+#ifdef OPENCL_FOUND
   cleanCLmem();
+#endif // OPENCL_FOUND
 }
 
 

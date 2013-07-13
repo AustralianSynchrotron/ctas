@@ -89,8 +89,8 @@ flatfield(Map & result, const Map & fg, const Map & bg){
   if( sh != bg.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
   int sz=0;
-  for (long icur=0; icur<sh(0); icur++)
-    for (long jcur=0; jcur<sh(1); jcur++)
+  for (blitz::MyIndexType icur=0; icur<sh(0); icur++)
+    for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur) );
 }
 
@@ -113,8 +113,8 @@ flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc){
     throw_error("flat field", "Different shapes of the input arrays.");
   if( sh != result.shape() )
     result.resize(sh);
-  for (long icur=0; icur<sh(0); icur++)
-    for (long jcur=0; jcur<sh(1); jcur++)
+  for (blitz::MyIndexType icur=0; icur<sh(0); icur++)
+    for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), dc(icur,jcur) );
 }
 

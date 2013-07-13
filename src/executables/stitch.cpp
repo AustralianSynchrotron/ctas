@@ -168,12 +168,12 @@ int main(int argc, char *argv[]) {
     out( Range::all(), Range( im1.columns() - args.cut1, out.columns() - 1  ) ) =
       im2( Range::all(), Range( args.width + args.cut2, im2.columns() - 1 ) );
 
-    for (long iidx=0; iidx < args.width; iidx++) {
+    for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
       float ratio = (iidx+1.0)/(args.width+1.0);
-      for (long jidx=0; jidx < out.rows(); jidx++ )
-        out ( jidx, im1.columns() - args.cut1 - args.width + iidx ) =
-          (1.0-ratio) * im1( jidx, im1.columns() - args.cut1 - args.width + iidx ) +
-          ratio * im2( jidx, (int)args.cut2 + iidx );
+      for (blitz::MyIndexType jidx=0; jidx < out.rows(); jidx++ )
+        out ( jidx, (blitz::MyIndexType) (im1.columns() - args.cut1 - args.width + iidx) ) =
+          (1.0-ratio) * im1( jidx, (blitz::MyIndexType) (im1.columns() - args.cut1 - args.width + iidx ) ) +
+          ratio * im2( jidx, (blitz::MyIndexType) (args.cut2 + iidx) );
     }
 
   } else {
@@ -186,12 +186,12 @@ int main(int argc, char *argv[]) {
     out( Range( im1.rows() - args.cut1, out.rows() - 1  ), Range::all() ) =
       im2( Range( args.width + args.cut2, im2.rows() - 1 ), Range::all() );
 
-    for (long iidx=0; iidx < args.width; iidx++) {
+    for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
       float ratio = (iidx+1.0)/(args.width+1.0);
-      for (long jidx=0; jidx < out.columns(); jidx++ )
-        out ( im1.rows() - args.cut1 - args.width + iidx, jidx ) =
-          (1.0-ratio) * im1( im1.rows() - args.cut1 - args.width + iidx, jidx ) +
-          ratio * im2( args.cut2 + iidx, jidx );
+      for (blitz::MyIndexType jidx=0; jidx < out.columns(); jidx++ )
+        out ( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx, jidx ) ) =
+          (1.0-ratio) * im1( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx, jidx ) ) +
+          ratio * im2( (blitz::MyIndexType) (args.cut2 + iidx), jidx );
     }
 
 

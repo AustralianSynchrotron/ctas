@@ -581,7 +581,9 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
   _filter(ft)
 {
 
+#ifdef OPENCL_FOUND
   pthread_mutex_lock(&ctrec_lock);
+#endif // OPENCL_FOUND
 
   try {
 
@@ -670,12 +672,15 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
     reset();
 
   } catch (...) {
+#ifdef OPENCL_FOUND
     pthread_mutex_unlock(&ctrec_lock);
+#endif // OPENCL_FOUND
     throw;
   }
 
+#ifdef OPENCL_FOUND
   pthread_mutex_unlock(&ctrec_lock);
-
+#endif // OPENCL_FOUND
 
 }
 
@@ -690,10 +695,10 @@ CTrec::~CTrec(){
   clReleaseMemObject(clAngles);
   clReleaseKernel(kernelLine);
   clReleaseKernel(kernelSino);
+  pthread_mutex_unlock(&ctrec_lock);
 #endif // OPENCL_FOUND
   fftwf_destroy_plan(planF);
   fftwf_destroy_plan(planB);
-  pthread_mutex_unlock(&ctrec_lock);
 }
 
 
@@ -1086,7 +1091,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   float plane_cos = (plane-center)*cur_sin;
   float Rcenter = pixels*0.5 + center;
 
-  for (long ycur = 0 ; ycur < thetas ; ycur++) {
+  for (blitz::MyIndexType ycur = 0 ; ycur < thetas ; ycur++) {
 
 	Line ln = projection(ycur, blitz::Range::all());
 
@@ -1096,10 +1101,10 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 	  partial_sum( ln.begin(), ln.end(), ln.begin() );
 
 	// projecting
-	for (long xcur = 0 ; xcur < pixels ; xcur++) {
+	for (blitz::MyIndexType xcur = 0 ; xcur < pixels ; xcur++) {
 	  float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
 	  di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
-	  result(ycur, xcur) += projection(ycur, long(di));
+	  result(ycur, xcur) += projection( ycur, (blitz::MyIndexType) di );
 	}
 
   }

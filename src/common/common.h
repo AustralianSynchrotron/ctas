@@ -380,6 +380,14 @@ extern const std::string COMMON_API
 CropOptionDesc;
 
 
+/// \brief Crop the array.
+///
+/// @param io_arr Input array.
+/// @param crop Crop resulting image
+///
+void cropMe(Map & io_arr, const Crop & crop);
+
+
 /// \brief Rotate the array.
 ///
 /// @param inarr Input array.
@@ -525,6 +533,7 @@ inline std::string toString (int           n)   { return toString("%i", n); }
 inline std::string toString (long unsigned n)   { return toString("%u", n); }
 inline std::string toString (unsigned      n)   { return toString("%u", n); }
 inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
+inline std::string toString (const Crop & crp)  { return toString("%ut,%ul,%ub,%ur", crp.top, crp.left, crp.bottom, crp.right);}
 /// \endcond
 
 

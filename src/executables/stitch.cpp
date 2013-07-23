@@ -189,11 +189,10 @@ int main(int argc, char *argv[]) {
     for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
       float ratio = (iidx+1.0)/(args.width+1.0);
       for (blitz::MyIndexType jidx=0; jidx < out.columns(); jidx++ )
-        out ( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx, jidx ) ) =
-          (1.0-ratio) * im1( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx, jidx ) ) +
+        out ( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx) , jidx ) =
+          (1.0-ratio) * im1( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx), jidx ) +
           ratio * im2( (blitz::MyIndexType) (args.cut2 + iidx), jidx );
     }
-
 
   }
 

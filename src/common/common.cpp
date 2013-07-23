@@ -392,6 +392,24 @@ _conversion (Crop* _val, const string & in) {
 
 
 
+void cropMe(Map & io_arr, const Crop & crop) {
+  
+  if ( ! crop.left && ! crop.right && ! crop.top && ! crop.bottom )
+    return;
+  if (  crop.left + crop.right >= io_arr.shape()(1)  ||
+        crop.top + crop.bottom >= io_arr.shape()(0) ) {
+    warn("Crop array", "Cropping (" + toString(crop) + ")"
+         " is larger than array size ("+toString(io_arr.shape())+")");
+    return;
+  }
+  
+  Map out_arr = io_arr( blitz::Range(crop.top, io_arr.shape()(0)-1-crop.bottom ),
+                        blitz::Range(crop.left, io_arr.shape()(1)-1-crop.right ) );
+  
+  io_arr.resize(out_arr.shape());
+  io_arr = out_arr.copy();
+  
+}
 
 
 void rotate(const Map & inarr, Map & outarr, float angle,

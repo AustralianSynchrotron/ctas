@@ -710,6 +710,7 @@ CTrec::reconstruct(Map &sinogram, Contrast cn, const Filter &ft,
 
   CTrec rec( sinogram.shape(), cn, ft );
 
+
   if ( nof_threads() == 1
 #ifdef OPENCL_FOUND
        || rec.kernelSino

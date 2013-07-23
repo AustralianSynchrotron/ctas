@@ -176,10 +176,18 @@ target_link_libraries(rotate
   poptmx
 )
 
+add_executable(norm norm.cpp)
+target_link_libraries(norm
+  common
+  poptmx
+  experiment
+)
+
+
 
 
 set( all_targets
-  multipc ipc dei edei rotate
+  multipc ipc dei edei rotate norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
   ct-line ts ff rc2fd f2i stitch

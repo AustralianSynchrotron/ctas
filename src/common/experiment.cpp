@@ -114,18 +114,8 @@ static cl_mem allocateCLbuf( cl_mem * old_buf, const Map & arr, cl_kernel kern, 
 ///
 /// @param filename File with the foreground-background pairs.
 ///
-AqSeries::AqSeries(const Path & filename) 
-#ifdef OPENCL_FOUNDi
-  :
-  kernel(0),
-  cl_io(0),
-  cl_bgA(0),
-  cl_bgB(0),
-  cl_dfA(0),
-  cl_dfB(0)
-#endif // OPENCL_FOUND
-{
-
+AqSeries::AqSeries(const Path & filename) {
+  
   if (filename.empty()) // empty list
     return;
 
@@ -211,9 +201,17 @@ AqSeries::AqSeries(const Path & filename)
 
 #ifdef OPENCL_FOUND
   if (program) {
+    
+    cl_io=0;
+    cl_bgA=0;
+    cl_bgB=0;
+    cl_dfA=0;
+    cl_dfB=0;
+
     kernel = clCreateKernel ( program, "ff", &err);
     if (err != CL_SUCCESS)
       warn(modname, (string) "Could not create OpenCL kernel \"ff\": " + toString(err) );
+    
   }
 #endif // OPENCL_FOUND
 
@@ -304,9 +302,10 @@ AqSeries::index(int idx) const  {
 
 void readnrot(const string &img, Map &map, const Shape & sh,
               float angle, const vector<int> &slices, const Crop & crop)  {
-  if (angle==0.0)
+  if (angle==0.0) {
     ReadImageLine(img, map, slices, sh);
-  else {
+    cropMe(map,crop);
+  } else {
     Map temp;
     ReadImage(img, map, sh);
     rotate(map, temp, angle, crop);
@@ -355,17 +354,6 @@ void AqSeries::projection(int idx, Map & proj,
 void AqSeries::projection(int idx, Map &proj,
                           const std::vector<int> &slicesV,
                           float angle, const Crop &crop, float cutOff) const {
-
-  /*
-   *  cerr << fgs[idx].fg << " "
-   *       << (  fgs[idx].bg1 == -1 ?  "<NONE>" : bgs[fgs[idx].bg1] ) << " "
-   *       << ( fgs[idx].bg2 == -1  ?  "<NONE>" : bgs[fgs[idx].bg2] ) << " "
-   *       << fgs[idx].bgWeight << " "
-   *       << ( fgs[idx].df1 == -1  ?  "<NONE>" : dfs[fgs[idx].df1] ) << " "
-   *       << ( fgs[idx].df2 == -1  ?  "<NONE>" : dfs[fgs[idx].df2] ) << " "
-   *       << fgs[idx].dfWeight
-   *       << "\n";
-   */
 
   Map *bg1=0, *bg2=0, *df1=0, *df2=0;
 

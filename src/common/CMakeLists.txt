@@ -70,22 +70,24 @@ if( "${HAVE_GSL_SF_BESSEL_H}" MATCHES "HAVE_GSL_SF_BESSEL_H-NOTFOUND" )
   message(FATAL_ERROR "Could not find \"gsl/gsl_sf_bessel.h\" header which must be a part of the GSL library.")
 endif()
 
-find_library(HAVE_FREEIMAGE freeimage)
-if( "${HAVE_FREEIMAGE}" MATCHES "HAVE_FREEIMAGE-NOTFOUND" )
-  message(FATAL_ERROR "FreeImage library not found.")
-endif()
-check_include_file(FreeImage.h HAVE_FREEIMAGE_H)
-if( "${HAVE_FREEIMAGE_H}" MATCHES "HAVE_FREEIMAGE_H-NOTFOUND" )
-  message(FATAL_ERROR "Development part of the FreeImage library not found (FreeImage.h).")
-endif()
-
 
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/common/config.h.in ${CMAKE_SOURCE_DIR}/src/common/config.h)
 
 
 add_library(poptmx SHARED poptmx.cpp)
 
-add_library(common SHARED common.cpp)
+if (OPENCL_FOUND)
+  set(LIMITCL "limit.cl")
+  set(LIMITCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${LIMITCL}")
+  set(LIMITCLINC "${CMAKE_BINARY_DIR}/${LIMITCL}.includeme")
+  add_custom_command(
+    OUTPUT ${LIMITCLINC}
+    COMMAND cat ${LIMITCLSRC} | xxd -i > ${LIMITCLINC}
+    DEPENDS ${LIMITCLSRC}
+  )
+endif()
+
+add_library(common SHARED common.cpp ${LIMITCLINC})
 target_link_libraries(common
   Magick++
   MagickCore
@@ -104,6 +106,7 @@ if (OPENCL_FOUND)
     DEPENDS ${CTCLSRC}
   )
 endif()
+
 add_library(kernel SHARED kernel.cpp ${CTCLINC})
 target_link_libraries(kernel
   fftw3f
@@ -131,6 +134,7 @@ if (OPENCL_FOUND)
     DEPENDS ${FFCLSRC}
   )
 endif()
+
 add_library(experiment SHARED experiment.cpp ${FFCLINC})
 
 

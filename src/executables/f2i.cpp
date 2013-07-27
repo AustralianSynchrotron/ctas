@@ -39,10 +39,10 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   Path in_name;               ///< Name of the input file.
   Path out_name;              ///< Name of the output file.
-  float mincon;					///< Black intensity.
-  float maxcon;					///< White intensity.
-  bool beverbose;				///< Be verbose flag
-  bool mMm;						///< Output minimum and maximum.
+  float mincon;         ///< Black intensity.
+  float maxcon;         ///< White intensity.
+  bool beverbose;       ///< Be verbose flag
+  bool mMm;           ///< Output minimum and maximum.
   /// \CLARGSF
   clargs(int argc, char *argv[]);
 };
@@ -58,34 +58,34 @@ clargs(int argc, char *argv[]) :
 {
 
   poptmx::OptionTable table
-	("Converts float-point image to the integer one.",
-	 "Can also output minimum and maximum values of the image.");
+  ("Converts float-point image to the integer one.",
+   "Can also output minimum and maximum values of the image.");
 
   table
-	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &in_name, "input", "Input image.", "")
-	.add(poptmx::ARGUMENT, &out_name, "output", "Output image.",
-		 "", out_name)
+  .add(poptmx::NOTE, "ARGUMENTS:")
+  .add(poptmx::ARGUMENT, &in_name, "input", "Input image.", "")
+  .add(poptmx::ARGUMENT, &out_name, "output", "Output image.",
+       "", out_name)
 
-	.add(poptmx::NOTE, "OPTIONS:")
-	.add(poptmx::OPTION, &mincon, 'm', "min",
-		 "Pixel value corresponding to black.",
-		 " All values below this will turn black.", "<minimum>")
-	.add(poptmx::OPTION, &maxcon, 'M', "max",
-		 "Pixel value corresponding to white.",
-		 " All values above this will turn white.", "<maximum>")
-	.add(poptmx::OPTION, &mMm,     0, "minmax",
-		 "Outputs minimum and maximum of the image.",
-		 "If this option is given no float-to-int conversion is done"
-		 " and no output image is written.")
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+  .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &mincon, 'm', "min",
+       "Pixel value corresponding to black.",
+       " All values below this will turn black.", "<minimum>")
+  .add(poptmx::OPTION, &maxcon, 'M', "max",
+       "Pixel value corresponding to white.",
+       " All values above this will turn white.", "<maximum>")
+  .add(poptmx::OPTION, &mMm,     0, "minmax",
+       "Outputs minimum and maximum of the image.",
+       "If this option is given no float-to-int conversion is done"
+       " and no output image is written.")
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+    exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+    table.usage();
+    exit(0);
   }
 
 
@@ -93,8 +93,8 @@ clargs(int argc, char *argv[]) :
 
   // <input> : one required argument.
   if ( ! table.count(&in_name) )
-	exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&in_name)+".");
+    exit_on_error(command, string () +
+                  "Missing required argument: "+table.desc(&in_name)+".");
   // <output> : one more argument may or may not exist
   if ( ! table.count(&out_name) )
     out_name = upgrade(in_name, "int-");
@@ -113,8 +113,8 @@ int main(int argc, char *argv[]) {
   ReadImage( args.in_name, arr );
 
   if (args.mMm) {
-	cout << min(arr) << " " << max(arr) << endl;
-	exit(0);
+    cout << min(arr) << " " << max(arr) << endl;
+    exit(0);
   }
 
   float mincon = args.mincon, maxcon = args.maxcon;

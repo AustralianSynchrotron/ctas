@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <tiffio.h>
 #include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
+#include<climits>
 #include "common.h"
 
 
@@ -393,7 +394,7 @@ _conversion (Crop* _val, const string & in) {
 
 
 void cropMe(Map & io_arr, const Crop & crop) {
-  
+
   if ( ! crop.left && ! crop.right && ! crop.top && ! crop.bottom )
     return;
   if (  crop.left + crop.right >= io_arr.shape()(1)  ||
@@ -402,13 +403,13 @@ void cropMe(Map & io_arr, const Crop & crop) {
          " is larger than array size ("+toString(io_arr.shape())+")");
     return;
   }
-  
+
   Map out_arr = io_arr( blitz::Range(crop.top, io_arr.shape()(0)-1-crop.bottom ),
                         blitz::Range(crop.left, io_arr.shape()(1)-1-crop.right ) );
-  
+
   io_arr.resize(out_arr.shape());
   io_arr = out_arr.copy();
-  
+
 }
 
 
@@ -931,7 +932,6 @@ cl_program initProgram(char csrc[], size_t length, const string & modname) {
 #  define MAGICK_STATIC_LINK
 #endif
 #include<Magick++.h>
-#include<FreeImage.h>
 
 
 static bool
@@ -965,39 +965,6 @@ initMagick(){
 
 
 
-/// Loads the FreeImage image.
-///
-/// For further use with FreeImage library's functions.
-/// Do not forget to unload image afterwards.
-///
-/// @param filename Name of the image.
-///
-/// @return
-///
-static FIBITMAP *
-FImageLoader(const Path & filename) {
-
-  FREE_IMAGE_FORMAT fif = FIF_UNKNOWN;
-  FIBITMAP *dib=0;
-  fif = FreeImage_GetFileType(filename.c_str(), 0);
-  if(fif == FIF_UNKNOWN)
-    fif = FreeImage_GetFIFFromFilename(filename.c_str());
-  if((fif != FIF_UNKNOWN) && FreeImage_FIFSupportsReading(fif))
-    dib = FreeImage_Load(fif, filename.c_str(), 0);
-
-  if( ! dib )
-	throw warn("load image FI", "Could not load image \"" + filename + "\".");
-
-  FREE_IMAGE_COLOR_TYPE tp = FreeImage_GetColorType(dib);
-  if ( tp != FIC_MINISBLACK  &&  tp != FIC_MINISWHITE ) {
-    FreeImage_Unload(dib);
-	throw warn("load image FI", "Input image \"" + filename +
-			   "\" is not grayscale.");
-  }
-
-  return dib;
-
-}
 
 
 float
@@ -1054,81 +1021,10 @@ void
 BadShape(const Path & filename, const Shape & shp){
   Shape ashp = ImageSizes(filename);
   if ( ashp != shp )
-	throw_error("load image", "The shape of the image"
-				"\"" + filename + "\"  (" + toString(ashp) + ") is not equal"
-				" to the requested shape (" + toString(shp)  + ").");
+    throw_error("load image", "The shape of the image"
+                "\"" + filename + "\"  (" + toString(ashp) + ") is not equal"
+                " to the requested shape (" + toString(shp)  + ").");
 }
-
-
-
-#  include<climits>
-
-
-/// Reads FreeImage image into the array.
-///
-/// @param storage The array to read into.
-/// @param dib Image to read.
-///
-template <class StClass> static inline void
-fip2arr(Map & storage, FIBITMAP *dib ){
-
-  const double coeff = numeric_limits<StClass>::is_integer ?
-	1.0/(numeric_limits<StClass>::max)()  :  1.0 ;
-  StClass * pixels = (StClass *)  FreeImage_GetBits(dib);
-  const int
-	bps = FreeImage_GetBPP(dib),
-	hight =  FreeImage_GetHeight(dib),
-	width =  FreeImage_GetWidth(dib),
-	shift =  FreeImage_GetPitch(dib) / (bps/8);
-
-  storage.resize(hight,width);
-  blitz::Array<StClass,2> tarr(hight,width);
-
-  for (int y=0 ; y < hight ; y++)
-	memcpy(tarr.data() + y*width, pixels + (hight-y-1)*shift, width*bps/8);
-  storage = blitz::cast<float>(tarr) * coeff;
-
-}
-
-/// Loads an image using FreeImage library.
-///
-/// @param filename Name of the image
-/// @param storage The array to store the image.
-///
-static void
-ReadImage_FI (const Path & filename, Map & storage ){
-
-  FIBITMAP *dib = FImageLoader(filename);
-  if (!dib)
-	  throw warn("load image FI", "FreeImage could not open image"
-	             " \"" + filename + "\" for reading.");
-
-  void (*convert)(Map &, FIBITMAP *);
-  switch (  FreeImage_GetImageType(dib) ) {
-  case FIT_UINT16 : convert = fip2arr<unsigned short>; break;
-  case FIT_INT16  : convert = fip2arr<short>;          break;
-  case FIT_UINT32 : convert = fip2arr<unsigned>;       break;
-  case FIT_INT32  : convert = fip2arr<int>;            break;
-  case FIT_FLOAT  : convert = fip2arr<float>;          break;
-  case FIT_DOUBLE :
-	warn("load image FI",
-		 "Input image \"" + filename + "\" has pixels of double type."
-		 " May give wrong result when converting from double to float.");
-	convert = fip2arr<double>;
-	break;
-
-  default :
-    FreeImage_Unload(dib);
-	throw warn("load image FI", "Input image \"" + filename + "\""
-			   " cannot be loaded with FreeImage: not single channel per pixel.");
-  }
-
-  convert(storage, dib);
-
-  FreeImage_Unload(dib);
-
-}
-
 
 
 
@@ -1329,11 +1225,11 @@ ReadImage_IM (const Path & filename, Map & storage ){
   catch ( Magick::WarningCoder err ) {}
   catch ( Magick::Exception & error) {
     throw_error("load image IM", "Could not read image file\""+filename+"\"."
-		        " Caught Magick++ exception: \""+error.what()+"\".");
+                " Caught Magick++ exception: \""+error.what()+"\".");
   }
   if ( imag.type() != Magick::GrayscaleType )
     warn("load image IM",
-		 "Input image \"" + filename + "\" is not grayscale.");
+         "Input image \"" + filename + "\" is not grayscale.");
 
   const int
     width = imag.columns(),
@@ -1354,12 +1250,9 @@ void
 ReadImage (const Path & filename, Map & storage ){
   try { ReadImage_TIFF(filename, storage); }
   catch (CtasErr err) {
-    if (err.type() != CtasErr::WARN) throw err;
-    try { ReadImage_FI(filename, storage); }
-    catch (CtasErr err) {
-      if (err.type() != CtasErr::WARN) throw err;
-      ReadImage_IM(filename, storage);
-    }
+    if (err.type() != CtasErr::WARN)
+      throw;
+    ReadImage_IM(filename, storage);
   }
 }
 
@@ -1375,82 +1268,6 @@ ReadImage(const Path & filename, Map & storage, const Shape & shp){
 
 
 
-/// Reads one line of the FreeImage image.
-///
-/// @param storage The array to store the line
-/// @param dib The image to read from.
-/// @param idx The index of the line to read.
-///
-template <class StClass> static inline void
-fip2ln(Line & storage, FIBITMAP *dib, int idx){
-
-  const double coeff = numeric_limits<StClass>::is_integer ?
-	1.0/(numeric_limits<StClass>::max)()  :  1.0 ;
-  StClass * pixels = (StClass *)  FreeImage_GetBits(dib);
-  const int
-	bps = FreeImage_GetBPP(dib),
-	hight =  FreeImage_GetHeight(dib),
-	width =  FreeImage_GetWidth(dib),
-	shift =  FreeImage_GetPitch(dib) / (bps/8);
-
-  storage.resize(width);
-  blitz::Array<StClass,1> tarr(width) ;
-
-  memcpy(tarr.data(), pixels + (hight-idx-1)*shift, width*bps/8);
-  storage = blitz::cast<float>(tarr) * coeff;
-
-}
-
-
-/// \brief Reads one line of the image using FreeImage library.
-///
-/// @param filename The name of the file with the image.
-/// @param storage Line to read into.
-/// @param idx The index of the line to read.
-///
-static void
-ReadImageLine_FI (const Path & filename, Line & storage, int idx){
-
-  FIBITMAP *dib = FImageLoader(filename);
-
-  const int
-	hight =  FreeImage_GetHeight(dib),
-	width =  FreeImage_GetWidth(dib);
-
-  if (idx >= hight || idx < 0 ) {
-    FreeImage_Unload(dib);
-    throw_error("load imageline FI",
-                "The index of the line to be read (" + toString(idx) + ")"
-				" is outside the image boundaries (" + toString(hight) + ").");
-  }
-
-  storage.resize( width );
-
-  void (*convert)(Line &, FIBITMAP *dib, int);
-  switch ( FreeImage_GetImageType(dib) ) {
-  case FIT_UINT16 : convert = fip2ln<unsigned short>; break;
-  case FIT_INT16  : convert = fip2ln<short>;          break;
-  case FIT_UINT32 : convert = fip2ln<unsigned>;       break;
-  case FIT_INT32  : convert = fip2ln<int>;            break;
-  case FIT_FLOAT  : convert = fip2ln<float>;          break;
-  case FIT_DOUBLE :
-	warn("load imageline FI",
-		 "Input image \"" + filename + "\" has pixels of double type."
-		 " May give wrong result when converting from double to float.");
-	convert = fip2ln<double>;
-	break;
-
-  default :
-    FreeImage_Unload(dib);
-	throw warn("load imageline FI", "Input image \"" + filename + "\""
-			   " cannot be loaded with FreeImage: not single channel per pixel.");
-  }
-
-  convert(storage, dib, idx);
-
-  FreeImage_Unload(dib);
-
-}
 
 
 /// \brief Reads one line of the image using ImageMagick library.
@@ -1473,7 +1290,7 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
   if ( idx < 0 || (unsigned) idx >= imag.rows() )
     throw_error("load imageline IM",
                 "The index of the line to be read (" + toString(idx) + ")"
-				" is outside the image boundaries (" + toString(imag.rows()) + ").");
+                " is outside the image boundaries (" + toString(imag.rows()) + ").");
 
   const Magick::PixelPacket
     * pixels = imag.getConstPixels(0,idx,width,1);
@@ -1490,12 +1307,9 @@ void
 ReadImageLine (const Path & filename, Line & storage, int idx) {
   try { ReadImageLine_TIFF(filename, storage, idx); }
   catch (CtasErr err) {
-    if (err.type() != CtasErr::WARN) throw err;
-    try { ReadImageLine_FI(filename, storage, idx); }
-    catch (CtasErr err) {
-      if (err.type() != CtasErr::WARN) throw err;
-      ReadImageLine_IM(filename, storage, idx);
-    }
+    if (err.type() != CtasErr::WARN)
+      throw;
+    ReadImageLine_IM(filename, storage, idx);
   }
 }
 
@@ -1509,61 +1323,6 @@ ReadImageLine(const Path & filename, Line & storage, int idx,
 
 
 
-/// \brief Reads many lines of the image using FreeImage library.
-///
-/// @param filename The name of the file with the image.
-/// @param storage Array to read into.
-/// @param idxs The indexes of the lines to read.
-///
-static void
-ReadImageLine_FI (const Path & filename, Map & storage,
-				  const vector<int> & idxs){
-
-  FIBITMAP *dib = FImageLoader(filename);
-  const int
-	hight =  FreeImage_GetHeight(dib),
-	width =  FreeImage_GetWidth(dib);
-
-  const int readheight = idxs.size() ? idxs.size() : hight;
-  storage.resize( readheight, width );
-
-  void (*convert)(Line &, FIBITMAP *dib, int);
-  switch ( FreeImage_GetImageType(dib) ) {
-  case FIT_UINT16 : convert = fip2ln<unsigned short>; break;
-  case FIT_INT16  : convert = fip2ln<short>;          break;
-  case FIT_UINT32 : convert = fip2ln<unsigned>;       break;
-  case FIT_INT32  : convert = fip2ln<int>;            break;
-  case FIT_FLOAT  : convert = fip2ln<float>;          break;
-  case FIT_DOUBLE :
-	warn("load imagelines FI",
-		 "Input image \"" + filename + "\" has pixels of double type."
-		 " May give wrong result when converting from double to float.");
-	convert = fip2ln<double>;
-	break;
-
-  default :
-    FreeImage_Unload(dib);
-	throw warn("load imagelines FI", "Input image \"" + filename + "\""
-			   " cannot be loaded with FreeImage: not single channel per pixel.");
-  }
-
-  for ( unsigned curel = 0 ; curel < readheight ; curel++ ){
-    int cursl = idxs.size() ? idxs[curel] : curel;
-    Line curline = storage(curel, blitz::Range::all());
-    if ( cursl >= hight || cursl < 0 ) {
-      warn("load imagelines FI",
-           "The index of the line to be read (" + toString(cursl) + ")"
-           " is outside the image boundaries (" + toString(hight) + ").");
-      curline = 0.0;
-    } else {
-      convert( curline, dib, cursl);
-	}
-
-  }
-
-  FreeImage_Unload(dib);
-
-}
 
 /// \brief Reads many line of the image using ImageMagick library.
 ///
@@ -1573,7 +1332,7 @@ ReadImageLine_FI (const Path & filename, Map & storage,
 ///
 static void
 ReadImageLine_IM (const Path & filename, Map & storage,
-			   const vector<int> & idxs){
+                  const vector<int> &idxs) {
 
   initMagick();
   Magick::Image imag;
@@ -1618,12 +1377,9 @@ ReadImageLine (const Path & filename, Map & storage,
 
   try { ReadImageLine_TIFF(filename, storage, idxs); }
   catch (CtasErr err) {
-    if (err.type() != CtasErr::WARN) throw err;
-    try { ReadImageLine_FI(filename, storage, idxs); }
-    catch (CtasErr err) {
-      if (err.type() != CtasErr::WARN) throw err;
+    if (err.type() != CtasErr::WARN)
+      throw;
       ReadImageLine_IM(filename, storage, idxs);
-    }
   }
 
 }
@@ -1641,47 +1397,6 @@ ReadImageLine(const Path & filename, Map & storage,
 
 
 
-
-/// Saves image in integer format using FreeImage library.
-///
-/// @param filename file to save image into.
-/// @param storage array with the image.
-///
-static void
-SaveImageINT_FI (const Path & filename, const Map & storage){
-
-  FREE_IMAGE_FORMAT fif = FreeImage_GetFIFFromFilename(filename.c_str());
-  if( fif == FIF_UNKNOWN )
-	throw warn("save image FI", "The output filename \"" + filename + "\""
-			   " does not correspond to any format supported by FreeImage");
-  if ( ! FreeImage_FIFSupportsWriting(fif) )
-	throw warn("save image FI", "FreeImage cannot write to this file format.");
-
-  const int
-    width = storage.columns(),
-    hight = storage.rows(),
-	bps = 16;
-
-  FIBITMAP *dib =  FreeImage_AllocateT(FIT_UINT16, width, hight, bps, 0, 0, 0);
-  if (!dib)
-    throw warn("save image FI", "FreeImage could not allocate memory for the image.");
-
-  const int shift = FreeImage_GetPitch(dib) / (bps/8);
-  unsigned short * pixels = (unsigned short *) FreeImage_GetBits(dib);
-
-  blitz::Array<unsigned short,2> tarr( storage.shape() ) ;
-  tarr = (numeric_limits<unsigned short>::max)() * storage;
-
-  for (int y=0 ; y < hight ; y++)
-	memcpy( pixels + (hight-y-1)*shift, tarr.data()+ y*width, width*bps/8);
-
-  bool saveSuc = FreeImage_Save(fif, dib, filename.c_str(), 0);
-  FreeImage_Unload(dib);
-  if ( ! saveSuc )
-	throw warn("save image FI", "FreeImage could not save image"
-			   " to output file \"" + filename + "\".");
-
-}
 
 
 /// Saves image in integer format using ImageMagick library.
@@ -1734,8 +1449,8 @@ namespace blitz {
 float
 limit01(float x){
   return ( x < 0.0 ) ?
-    (0.0f) :
-    ( x > 1.0 ? 1.0f : x ) ;
+    0.0 :
+    ( x > 1.0 ? 1.0 : x ) ;
 }
 
 /// \cond
@@ -1743,6 +1458,45 @@ BZ_DECLARE_FUNCTION(limit01);
 /// \endcond
 
 }
+
+
+
+
+#ifdef OPENCL_FOUND
+
+char limit_array_src[] = {
+  #include "limit.cl.includeme"
+};
+
+bool limit_array_inited=false;
+cl_program limit_array_cl_program=0;
+cl_kernel limit_array_cl_kernel=0;
+
+bool init_limit_array_cl() {
+
+  if (limit_array_inited)
+    return limit_array_cl_program && limit_array_cl_kernel;
+
+  limit_array_cl_program =
+    initProgram( limit_array_src, sizeof(limit_array_src), "Limit array" );
+
+  if ( limit_array_cl_program ) {
+
+    cl_int err;
+    limit_array_cl_kernel = clCreateKernel
+                            ( limit_array_cl_program, "limit_array", &err);
+    if (err != CL_SUCCESS)
+      warn("Limit array", "Could not create OpenCL kernel \"limit_array\": "
+           + toString(err) );
+
+  }
+
+  limit_array_inited = true;
+  return limit_array_cl_program && limit_array_cl_kernel;
+
+}
+
+#endif  // OPENCL_FOUND
 
 
 /// \brief Save the array into integer image.
@@ -1757,38 +1511,91 @@ BZ_DECLARE_FUNCTION(limit01);
 /// @param maxval the value corresponding to white.
 ///
 static void
-SaveImageINT (const Path & filename, const Map & storage,
-			  float minval=0, float maxval=0 ){
+SaveImageINT (const Path &filename, const Map &storage,
+              float minval=0, float maxval=0 ) {
 
   if ( ! storage.size() ) {
     warn("save image",
-		 "Zero-sized array for image '" + filename + "': won't save." );
+         "Zero-sized array for image '" + filename + "': won't save." );
     return;
   }
 
   Map stor(storage.shape());
   if (minval == maxval) {
-	  minval = (blitz::min)(storage);
+    minval = (blitz::min)(storage);
     maxval = (blitz::max)(storage);
   }
   if (minval == maxval) {
-	warn("save image",
-		 "All elements in the image '" + filename + "' have the same value.");
-	if      ( minval < 0.0 ) stor = 0.0;
-	else if ( minval > 1.0 ) stor = 1.0;
-	else                     stor = minval;
+
+    warn("save image",
+         "All elements in the image '" + filename + "' have the same value.");
+    if      ( minval < 0.0 ) stor = 0.0;
+    else if ( minval > 1.0 ) stor = 1.0;
+    else                     stor = minval;
+
   } else {
-	stor = ( storage - minval ) / (maxval-minval);
-	stor = limit01(stor);
+
+    const string modname = "Limit array";
+
+#ifdef OPENCL_FOUND
+    if ( init_limit_array_cl() ) {
+
+      cl_int err;
+      cl_mem clStorage = 0;
+
+      try {
+
+        const size_t iStorageSize = sizeof(cl_float) * storage.size() ;
+        clStorage = clCreateBuffer ( CL_context, CL_MEM_READ_WRITE, iStorageSize, 0, &err);
+        if (err != CL_SUCCESS) {
+          clStorage = 0;
+          throw_error(modname, "Could not create OpenCL buffer: " + toString(err) );
+        }
+        err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, iStorageSize,
+                                     storage.data(), 0, 0, 0);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not write OpenCL buffer: " + toString(err) );
+
+        setArg(limit_array_cl_kernel, 0, clStorage, modname);
+        setArg(limit_array_cl_kernel, 1, minval, modname);
+        setArg(limit_array_cl_kernel, 2, maxval, modname);
+
+        size_t sz = storage.size();
+        err = clEnqueueNDRangeKernel( CL_queue, limit_array_cl_kernel, 1,
+                                      0,  & sz, 0, 0, 0, 0);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Failed to perform with OpenCL: " + toString(err) + ".");
+
+        err = clFinish(CL_queue);
+        if ( err != CL_SUCCESS )
+          throw_error(modname, "Failed to finish OpenCL kernel \"limit_array\": " + toString(err) + "." );
+
+        err = clEnqueueReadBuffer (CL_queue, clStorage, CL_TRUE, 0, iStorageSize,
+                                   stor.data(), 0, 0, 0 );
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not read OpenCL buffer: " + toString(err) );
+
+      } catch (...) {
+        if (clStorage)
+          clReleaseMemObject(clStorage);
+        throw;
+      }
+      if (clStorage)
+        clReleaseMemObject(clStorage);
+
+    } else {
+#endif  // OPENCL_FOUND
+
+      stor = ( storage - minval ) / (maxval-minval);
+      stor = limit01(stor);
+
+#ifdef  OPENCL_FOUND
+    }
+#endif  // OPENCL_FOUND
+
   }
 
-  try { SaveImageINT_FI(filename, stor); }
-  catch (CtasErr err) {
-  	if (err.type() != CtasErr::WARN)
-  	  throw err;
-	// Saving with FreeImage failed. Trying ImageMagick.
-	SaveImageINT_IM(filename, stor);
-  }
+  SaveImageINT_IM(filename, stor);
 
 }
 

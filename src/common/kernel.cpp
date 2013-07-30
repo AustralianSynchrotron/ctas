@@ -965,12 +965,7 @@ CTrec::result(float pixelSize) {
 
 #ifdef OPENCL_FOUND
   if (kernelLine) {
-    err = clEnqueueReadBuffer (CL_queue, clSlice, CL_TRUE, 0,
-                               sizeof(float) * _width * _width,
-                               _result.data(), 0, 0, 0 );
-    if (err != CL_SUCCESS)
-      throw_error(modname, "Could not read OpenCL buffer of reconstructed imagwe: "
-                  + toString(err) );
+    cl2map( _result, clSlice );
   }
 #endif // OPENCL_FOUND
 

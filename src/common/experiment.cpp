@@ -36,7 +36,8 @@
 using namespace std;
 
 
-const std::string AqSeries::modname  = "acquisition series";
+
+const string AqSeries::modname  = "acquisition series";
 
 
 #ifdef OPENCL_FOUND
@@ -75,20 +76,12 @@ static cl_mem allocateCLbuf( cl_mem * old_buf, const Map & arr, cl_kernel kern, 
   if (!kern)
     return 0;
 
-  const unsigned int fprsz = sizeof(float) * arr.size() ;
-  cl_int err;
+  cl_mem buf = 0;
 
-  cl_mem buf;
-  buf = clCreateBuffer ( CL_context, flags, fprsz, 0, &err);
-  if (err != CL_SUCCESS) {
-    warn(modname, "Could not create OpenCL buffer: " + toString(err) );
-    return 0;
-  }
-
-  err = clEnqueueWriteBuffer
-        (  CL_queue, buf, CL_TRUE, 0, fprsz, arr.data(), 0, 0, 0);
-  if (err != CL_SUCCESS) {
-    warn(modname, "Could not write OpenCL buffer: " + toString(err) );
+  try {
+    buf = map2cl(arr, flags);
+  } catch (CtasErr cterr) {
+    warn(modname, "Could not put OpenCL buffer.");
     return 0;
   }
 
@@ -115,7 +108,7 @@ static cl_mem allocateCLbuf( cl_mem * old_buf, const Map & arr, cl_kernel kern, 
 /// @param filename File with the foreground-background pairs.
 ///
 AqSeries::AqSeries(const Path & filename) {
-  
+
   if (filename.empty()) // empty list
     return;
 
@@ -201,7 +194,7 @@ AqSeries::AqSeries(const Path & filename) {
 
 #ifdef OPENCL_FOUND
   if (program) {
-    
+
     cl_io=0;
     cl_bgA=0;
     cl_bgB=0;
@@ -211,7 +204,7 @@ AqSeries::AqSeries(const Path & filename) {
     kernel = clCreateKernel ( program, "ff", &err);
     if (err != CL_SUCCESS)
       warn(modname, (string) "Could not create OpenCL kernel \"ff\": " + toString(err) );
-    
+
   }
 #endif // OPENCL_FOUND
 
@@ -650,12 +643,8 @@ void AqSeries::projection(int idx, Map &proj,
       warn(modname, "Failed to finish OpenCL kernel \"ff\": "  + toString(err) + "." );
       return;
     }
-    err = clEnqueueReadBuffer
-          (CL_queue, cl_io, CL_TRUE, 0, sizeof(float) * sz, proj.data(), 0, 0, 0 );
-    if (err != CL_SUCCESS) {
-      warn(modname, (string) "Could not read OpenCL buffer: " + toString(err) );
-      return;
-    }
+
+    cl2map(proj, cl_io);
 
     return;
 

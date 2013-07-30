@@ -125,6 +125,7 @@ add_library(ledei SHARED ledei.cpp)
 
 
 if (OPENCL_FOUND)
+
   set(FFCL "ff.cl")
   set(FFCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${FFCL}")
   set(FFCLINC "${CMAKE_BINARY_DIR}/${FFCL}.includeme")
@@ -133,6 +134,7 @@ if (OPENCL_FOUND)
     COMMAND cat ${FFCLSRC} | xxd -i > ${FFCLINC}
     DEPENDS ${FFCLSRC}
   )
+
 endif()
 
 add_library(experiment SHARED experiment.cpp ${FFCLINC})

@@ -910,6 +910,38 @@ cl_program initProgram(char csrc[], size_t length, const string & modname) {
 
 
 
+cl_mem map2cl(const Map & storage, cl_mem_flags flag) {
+
+  cl_int err;
+  const size_t iStorageSize = sizeof(cl_float) * storage.size() ;
+
+  cl_mem clStorage = clCreateBuffer ( CL_context, CL_MEM_READ_WRITE, iStorageSize, 0, &err);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
+
+  err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, iStorageSize,
+                               storage.data(), 0, 0, 0);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
+
+  return clStorage;
+
+}
+
+void cl2map(Map & storage, cl_mem clbuffer) {
+
+  cl_int err;
+
+  err = clEnqueueReadBuffer (CL_queue, clbuffer, CL_TRUE, 0,
+                             sizeof(cl_float) * storage.size(),
+                             storage.data(), 0, 0, 0 );
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
+
+}
+
+
+
 
 #endif // OPENCL_FOUND
 
@@ -1545,16 +1577,7 @@ SaveImageINT (const Path &filename, const Map &storage,
 
       try {
 
-        const size_t iStorageSize = sizeof(cl_float) * storage.size() ;
-        clStorage = clCreateBuffer ( CL_context, CL_MEM_READ_WRITE, iStorageSize, 0, &err);
-        if (err != CL_SUCCESS) {
-          clStorage = 0;
-          throw_error(modname, "Could not create OpenCL buffer: " + toString(err) );
-        }
-        err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, iStorageSize,
-                                     storage.data(), 0, 0, 0);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not write OpenCL buffer: " + toString(err) );
+        clStorage = map2cl(storage, CL_MEM_READ_WRITE);
 
         setArg(limit_array_cl_kernel, 0, clStorage, modname);
         setArg(limit_array_cl_kernel, 1, minval, modname);
@@ -1570,10 +1593,7 @@ SaveImageINT (const Path &filename, const Map &storage,
         if ( err != CL_SUCCESS )
           throw_error(modname, "Failed to finish OpenCL kernel \"limit_array\": " + toString(err) + "." );
 
-        err = clEnqueueReadBuffer (CL_queue, clStorage, CL_TRUE, 0, iStorageSize,
-                                   stor.data(), 0, 0, 0 );
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not read OpenCL buffer: " + toString(err) );
+        cl2map(stor, clStorage);
 
       } catch (...) {
         if (clStorage)

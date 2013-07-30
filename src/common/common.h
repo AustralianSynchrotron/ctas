@@ -630,6 +630,10 @@ bool clIsInited();
 
 cl_program initProgram(char csrc[], size_t length, const std::string & modname);
 
+cl_mem map2cl(const Map & storage, cl_mem_flags flag = CL_MEM_READ_ONLY);
+
+void cl2map(Map & storage, cl_mem clbuffer);
+
 template <class T> void
 setArg (cl_kernel kern, cl_uint arg_idx, const T val,
         const std::string &modname) {

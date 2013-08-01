@@ -101,7 +101,7 @@ clargs(int argc, char *argv[]) :
     out_name = in_name;
   if ( table.count(&norm)  &&  norm == 0.0 )
     exit_on_error(command, "Zero norm.");
- 
+
 }
 
 
@@ -122,11 +122,12 @@ int main(int argc, char *argv[]) {
     float sum=0;
     for (int icur=0; icur<columns.size(); icur++ )
       sum += arr(rcur, (blitz::MyIndexType) columns[icur]);
-    norm(rcur) = (sum==0.0) ? 1.0 : sum;
+    norm(rcur) = (sum==0.0) ? 1.0 : sum / columns.size() ;
   }
-  const float averagenorm = (args.norm==0.0)  ?  sum(norm)/sh(0)  :  args.norm;
+  const float averagenorm = (args.norm==0.0)  ?
+                            sum(norm)/sh(0)  :  args.norm;
 
-  for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++) 
+  for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++)
     arr(rcur, blitz::Range::all()) *= averagenorm / norm(rcur) ;
 
   SaveImage(args.out_name, arr);

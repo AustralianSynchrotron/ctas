@@ -13,8 +13,8 @@ kernel void ct_sino (
   const int i = index % pixels;
   const int hp = pixels / 2 ;
 
-  const int hpmc = hp - abs( (int) center ) - 2 ;
-  if (  (i-hp)*(i-hp) + (j-hp)*(j-hp) >= hpmc * hpmc ) {
+  //const int hpmc = hp - abs( (int) center ) - 2 ;
+  if (  (i-hp)*(i-hp) + (j-hp)*(j-hp) >= hp * hp - 1 ) {
     slice[index]=0;
   } else {
     float total = 0.0f;
@@ -43,8 +43,8 @@ kernel void ct_line (
   const int i = index % pixels;
   const int hp = pixels / 2 ;
 
-  const int hpmc = hp - abs( (int) center );
-  if (  (i-hp)*(i-hp) + (j-hp)*(j-hp) < hpmc * hpmc  ) {
+  //const int hpmc = hp - abs( (int) center );
+  if (  (i-hp)*(i-hp) + (j-hp)*(j-hp) < hp * hp - 1 ) {
     const float offsetI = center + (1-cossin.y-cossin.x) * hp
                           + cossin.y * j + cossin.x * i;
     slice[index] += read_imagef(sinoline, sampler, (float2)(offsetI, 0)).x ;

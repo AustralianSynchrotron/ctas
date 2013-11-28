@@ -39,13 +39,24 @@
 #include <tiffio.h>
 #include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
 #include<climits>
+#include <ctime>
 #include "common.h"
 
 
 using namespace std;
 
 
+const clock_t startTV = clock();
+clock_t prevTV = startTV;
 
+void prdn( int a ) {
+  clock_t nowTV = clock();
+  double start_elapsed = double( nowTV - startTV ) / CLOCKS_PER_SEC;
+  double prev_elapsed = double( nowTV - prevTV ) / CLOCKS_PER_SEC;
+  printf("DONE %i:  %f  %f\n", a, prev_elapsed, start_elapsed);
+  fflush(stdout);
+  prevTV=nowTV;
+}
 
 
 

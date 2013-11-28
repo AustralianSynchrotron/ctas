@@ -157,7 +157,7 @@ clargs(int argc, char *argv[]) :
     exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
   dd /= 1.0E6; // convert micron -> m
 
-  if ( abs(dgamma)>=1.0 ) // should set even smaller limit
+  if ( abs(dgamma)>1.0 ) // should set even smaller limit
     exit_on_error(command, "Absolute value of gamma (given by "+table.desc(&dgamma)+")"
                   " is greater than 1.0.");
 

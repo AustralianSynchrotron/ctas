@@ -61,10 +61,7 @@ static inline int isnan(double x){ return _isnan(x); }
 #endif
 
 
-/// \cond
-#define PRDN printf("DONE\n"); fflush(stdout);
-inline void prdn( int a ) { printf("DONE %i\n", a); fflush(stdout); }
-/// \endcond
+void prdn( int a );
 
 
 

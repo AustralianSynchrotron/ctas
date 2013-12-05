@@ -694,8 +694,8 @@ void AqSeries::clean() const {
 }
 
 
-const std::string AqSeries::BGPREFIX = "#BACKGROUND# ";
-const std::string AqSeries::DFPREFIX = "#DARKCURRENT# ";
+const std::string AqSeries::BGPREFIX = "#BG# ";
+const std::string AqSeries::DFPREFIX = "#DF# ";
 const std::string AqSeries::Desc =
   "Text file which describes the stack of input images: foregrounds and (optionally)"
   " background(s). The strings in the file can be one of the following forms:\n"

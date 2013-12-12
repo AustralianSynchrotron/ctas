@@ -103,9 +103,6 @@ class EXPERIMENT_API AqSeries {
 
 private:
 
-  static const std::string modname;	///< Module name.
-  //static const int nobg = -1;	///< "Magick number" for the "no background".
-
   const static std::string BGPREFIX;  ///< Background prefix.
   const static std::string DFPREFIX;  ///< Dark current prefix.
 
@@ -156,16 +153,17 @@ private:
 
 #ifdef OPENCL_FOUND
 
-  static cl::Program * program;
-  static cl::Program * init();
+  static cl_int err;
+  static cl_program program;
 
-  mutable cl::Kernel kernel;
+  mutable cl_kernel kernel;
+  mutable cl_mem cl_io;
+  mutable cl_mem cl_bgA;
+  mutable cl_mem cl_bgB;
+  mutable cl_mem cl_dfA;
+  mutable cl_mem cl_dfB;
 
-  mutable cl::Buffer cl_io;
-  mutable cl::Buffer cl_bgA;
-  mutable cl::Buffer cl_bgB;
-  mutable cl::Buffer cl_dfA;
-  mutable cl::Buffer cl_dfB;
+  void cleanCLmem() const;
 
 #endif // OPENCL_FOUND
 
@@ -173,6 +171,8 @@ private:
 public:
 
   AqSeries(const Path & filename); ///< Constructs from file.
+
+  static const std::string modname; ///< Module name.
 
   inline Shape shape() const {return sh;} ///< Shape of the projection image.
   inline long thetas() const {return fgs.size();} 			///< Total number of projections.
@@ -288,6 +288,7 @@ public:
   int thetas() const ;			///< Thetas.
   inline const std::vector<int> & indexes() const {return sliceV;}
   inline const Shape & imageShape() const {return _imageShape;}
+  inline Shape sinoShape() const {return Shape(thetas(), pixels());}
 
   void sino(int idx, Map & storage) const;	///< Prepares the sinogram.
 

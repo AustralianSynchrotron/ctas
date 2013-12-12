@@ -48,6 +48,7 @@ struct clargs {
   Path outmask;				    ///< The mask for the output file names.
   Filter filter_type;           ///< Type of the filtering function.
   Dcenter center;               ///< Rotation center.
+  float arc;
   unsigned nof_threads;         ///< Number of threads in the reconstruction.
   bool beverbose;				///< Be verbose flag
   bool SaveInt;					///< Save image as 16-bit integer.
@@ -58,8 +59,9 @@ struct clargs {
 
 
 clargs::
-clargs(int argc, char *argv[]) : 
+clargs(int argc, char *argv[]) :
   beverbose(false),
+  arc(180),
   nof_threads(0),
   SaveInt(false),
   outmask("reconstructed-<minus list>-@.tif"),
@@ -79,7 +81,7 @@ clargs(int argc, char *argv[]) :
 	 "All these procedures can be performed on the step-by-step basis using"
 	 " tools \"bg\", \"dei\", \"sino\" and \"ct\", but this approach saves all"
 	 " intermediate results on the hard disk and therefore a lot of time is"
-	 " spent for the I/O operations, memory allocations, etc. Also much more"	
+	 " spent for the I/O operations, memory allocations, etc. Also much more"
  " disk space is used.");
 
   table
@@ -104,6 +106,11 @@ clargs(int argc, char *argv[]) :
 		 "Slices to be processed.", SliceOptionDesc, "<all>")
 	.add(poptmx::OPTION,   &center, 'c', "center",
 		 "Variable rotation center.", DcenterOptionDesc, toString(0.0))
+  .add(poptmx::OPTION, &arc, 'a', "arc",
+       "CT scan range (deg).",
+       "Arc of the CT scan in degrees: step size multiplied by number of projections."
+       " Note: this is not where the half-object 360-degree CT is handeled.",
+       toString(arc))
 	.add(poptmx::OPTION,   &filter_type, 'f', "filter",
 		 "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
 	.add(poptmx::OPTION,   &nof_threads, 't', "threads",
@@ -112,15 +119,15 @@ clargs(int argc, char *argv[]) :
 		 " calculated automatically.", "<auto>")
 	.add(poptmx::OPTION,   &SaveInt,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
-    .add(deiopt.options())
+  .add(deiopt.options())
 	.add_standard_options(&beverbose)
 	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+    exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+    table.usage();
+    exit(0);
   }
 
   command = table.name();
@@ -128,16 +135,19 @@ clargs(int argc, char *argv[]) :
   // <minus list> and <plus list> : required arguments.
   if ( ! table.count(&Mlistname) )
     exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&Mlistname)+".");
+    "Missing required argument: "+table.desc(&Mlistname)+".");
   if ( ! table.count(&Plistname) )
     exit_on_error(command, string() +
-				  "Missing required argument: "+table.desc(&Plistname)+".");
-
+    "Missing required argument: "+table.desc(&Plistname)+".");
+  
   // <result mask> : one more argument may or may not exist
   if ( ! table.count(&outmask) )
-	outmask = upgrade(Mlistname.dtitle(), "reconstructed-") + "-@.tif";
+    outmask = upgrade(Mlistname.dtitle(), "reconstructed-") + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
-	outmask = outmask.dtitle() + "-@" + outmask.extension();
+    outmask = outmask.dtitle() + "-@" + outmask.extension();
+  if (arc <= 0.0)
+    exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
+
 
 }
 
@@ -238,7 +248,7 @@ int main(int argc, char *argv[]) {
   const string sliceformat = mask2format(args.outmask, slices);
   const vector<int> sliceV = slice_str2vec(args.slicedesc, slices);
   const SinoS sins(expr, sliceV, args.beverbose);
-  CTrec rec(pixels, expr.contrast(), args.nof_threads, args.filter_type);
+  CTrec rec( expr.shape() , expr.contrast(), args.arc, args.filter_type);
 
   /*
   if ( args.nof_threads == 1 || slices.size()<=2 ) {
@@ -246,11 +256,11 @@ int main(int argc, char *argv[]) {
 
   ProgressBar bar(args.beverbose, "reconstruction", sliceV.size());
   for (unsigned slice=0 ; slice < sliceV.size() ; slice++ ) {
-	Map sinogram(thetas, pixels), result(pixels, pixels);
-	sins.sino(slice, sinogram);
-	rec.reconstruct(sinogram, result, args.center(sliceV[slice]+1));
-	SaveImage( toString(sliceformat, sliceV[slice]+1), result, args.SaveInt);
-	bar.update();
+    Map sinogram(thetas, pixels), result(pixels, pixels);
+    sins.sino(slice, sinogram);
+    const Map & res = rec.reconstruct(sinogram, args.center(sliceV[slice]+1));
+    SaveImage( toString(sliceformat, sliceV[slice]+1), res, args.SaveInt);
+    bar.update();
   }
 
   /*

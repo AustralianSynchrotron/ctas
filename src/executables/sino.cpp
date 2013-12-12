@@ -60,10 +60,10 @@ struct clargs {
 
 clargs::
 clargs(int argc, char *argv[]) :
-angle(0.0),
-beverbose(false),
-SaveInt(false),
-outmask("sino_@.tif")
+  angle(0.0),
+  beverbose(false),
+  SaveInt(false),
+  outmask("sino_@.tif")
 {
 
   poptmx::OptionTable table

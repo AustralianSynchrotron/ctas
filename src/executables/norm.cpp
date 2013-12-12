@@ -23,15 +23,23 @@
 /// @author antonmx <antonmx@gmail.com>
 /// @date   Mon Jul 21 10:09:31 2008
 ///
-/// @brief %Converts float-point image into integer.
+/// @brief %Normalizes an image per using selected stripe.
 ///
 
 
 #include "../common/common.h"
 #include "../common/poptmx.h"
+#include "../common/experiment.h"
 #include <math.h>
 
 using namespace std;
+using namespace blitz;
+
+#ifdef _WIN32
+#define NAN numeric_limits<float>::quiet_NaN();
+static inline int isnan(double x){ return _isnan(x); }
+#endif
+
 
 
 /// \CLARGS
@@ -39,10 +47,9 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   Path in_name;               ///< Name of the input file.
   Path out_name;              ///< Name of the output file.
-  float mincon;         ///< Black intensity.
-  float maxcon;         ///< White intensity.
-  bool beverbose;       ///< Be verbose flag
-  bool mMm;           ///< Output minimum and maximum.
+  string columndesc;
+  float norm;
+  bool beverbose;
   /// \CLARGSF
   clargs(int argc, char *argv[]);
 };
@@ -50,16 +57,14 @@ struct clargs {
 
 clargs::
 clargs(int argc, char *argv[]) :
-  mincon(NAN),
-  maxcon(NAN),
   beverbose(false),
-  mMm(false),
-  out_name("int-<input>")
+  out_name("<input>"),
+  norm(0)
 {
 
   poptmx::OptionTable table
-  ("Converts float-point image to the integer one.",
-   "Can also output minimum and maximum values of the image.");
+  ("Normalizes the stripe of the image.",
+   "Normalizes the rows of the input image in accordance with the columns mean value.");
 
   table
   .add(poptmx::NOTE, "ARGUMENTS:")
@@ -68,16 +73,12 @@ clargs(int argc, char *argv[]) :
        "", out_name)
 
   .add(poptmx::NOTE, "OPTIONS:")
-  .add(poptmx::OPTION, &mincon, 'm', "min",
-       "Pixel value corresponding to black.",
-       " All values below this will turn black.", "<minimum>")
-  .add(poptmx::OPTION, &maxcon, 'M', "max",
-       "Pixel value corresponding to white.",
-       " All values above this will turn white.", "<maximum>")
-  .add(poptmx::OPTION, &mMm,     0, "minmax",
-       "Outputs minimum and maximum of the image.",
-       "If this option is given no float-to-int conversion is done"
-       " and no output image is written.")
+  .add(poptmx::OPTION, &columndesc, 'c', "column",
+       "Reference columns.",
+       "Columns which are used as the reference in the normalization." +
+       SliceOptionDesc, "<all>")
+  .add(poptmx::OPTION, &norm, 'n', "norm",
+       "The normal level.", "" , "<auto>")
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -94,10 +95,12 @@ clargs(int argc, char *argv[]) :
   // <input> : one required argument.
   if ( ! table.count(&in_name) )
     exit_on_error(command, string () +
-                  "Missing required argument: "+table.desc(&in_name)+".");
+    "Missing required argument: "+table.desc(&in_name)+".");
   // <output> : one more argument may or may not exist
   if ( ! table.count(&out_name) )
-    out_name = upgrade(in_name, "int-");
+    out_name = in_name;
+  if ( table.count(&norm)  &&  norm == 0.0 )
+    exit_on_error(command, "Zero norm.");
 
 }
 
@@ -111,18 +114,23 @@ int main(int argc, char *argv[]) {
 
   Map arr;
   ReadImage( args.in_name, arr );
+  const Shape sh = arr.shape();
+  vector<int> columns = slice_str2vec( args.columndesc, sh(1) );
 
-  if (args.mMm) {
-    cout << min(arr) << " " << max(arr) << endl;
-    exit(0);
+  Line norm(sh(0));
+  for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++) {
+    float sum=0;
+    for (int icur=0; icur<columns.size(); icur++ )
+      sum += arr(rcur, (blitz::MyIndexType) columns[icur]);
+    norm(rcur) = (sum==0.0) ? 1.0 : sum / columns.size() ;
   }
+  const float averagenorm = (args.norm==0.0)  ?
+                            sum(norm)/sh(0)  :  args.norm;
 
-  float mincon = args.mincon, maxcon = args.maxcon;
+  for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++)
+    arr(rcur, blitz::Range::all()) *= averagenorm / norm(rcur) ;
 
-  if ( isnan(mincon) ) mincon = min(arr);
-  if ( isnan(maxcon) ) maxcon = max(arr);
-
-  SaveImage(args.out_name, arr, mincon, maxcon);
+  SaveImage(args.out_name, arr);
 
   exit(0);
 

@@ -61,10 +61,7 @@ static inline int isnan(double x){ return _isnan(x); }
 #endif
 
 
-/// \cond
-#define PRDN printf("DONE\n"); fflush(stdout);
-inline void prdn( int a ) { printf("DONE %i\n", a); fflush(stdout); }
-/// \endcond
+void prdn( int a );
 
 
 
@@ -380,6 +377,14 @@ extern const std::string COMMON_API
 CropOptionDesc;
 
 
+/// \brief Crop the array.
+///
+/// @param io_arr Input array.
+/// @param crop Crop resulting image
+///
+void cropMe(Map & io_arr, const Crop & crop);
+
+
 /// \brief Rotate the array.
 ///
 /// @param inarr Input array.
@@ -525,6 +530,7 @@ inline std::string toString (int           n)   { return toString("%i", n); }
 inline std::string toString (long unsigned n)   { return toString("%u", n); }
 inline std::string toString (unsigned      n)   { return toString("%u", n); }
 inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
+inline std::string toString (const Crop & crp)  { return toString("%ut,%ul,%ub,%ur", crp.top, crp.left, crp.bottom, crp.right);}
 /// \endcond
 
 
@@ -611,13 +617,51 @@ unzero(const blitz::Array<float,N> & arr){
 #ifdef OPENCL_FOUND
 
 #define __CL_ENABLE_EXCEPTIONS
-#include<CL/cl.hpp>
+#include <CL/cl.h>
 
-cl::Device * CL_device=0;
-cl::Context * CL_context=0;
-cl::CommandQueue * CL_queue=0;
+cl_device_id CL_device;
+cl_context CL_context;
+cl_command_queue CL_queue;
 
 bool clIsInited();
+
+cl_program initProgram(char csrc[], size_t length, const std::string & modname);
+
+cl_mem map2cl(const Map & storage, cl_mem_flags flag = CL_MEM_READ_ONLY);
+
+void cl2map(Map & storage, cl_mem clbuffer);
+
+template <class T> void
+setArg (cl_kernel kern, cl_uint arg_idx, const T val,
+        const std::string &modname) {
+
+  if (!kern)
+    throw_error(modname, "Setting arguments for invalid OpenCL kernel.");
+
+  cl_int err =  clSetKernelArg (kern, arg_idx, sizeof(T), &val);
+
+  if (err != CL_SUCCESS) {
+
+    std::string errstr = "Could not set argument " + toString(arg_idx) +
+                         " for OpenCL kernel";
+
+    size_t len=0;
+    cl_int eerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, 0, 0, &len);
+    char *kernel_function = (char *) calloc(len, sizeof(char));
+    if (kernel_function) {
+      eerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME,
+                               len, kernel_function, 0);
+      if (eerr == CL_SUCCESS)
+        errstr += " \"" + std::string(kernel_function, len) + "\"";
+      free(kernel_function);
+    }
+
+    throw_error(modname, errstr + ": " + toString(err) );
+
+  }
+
+}
+
 
 #endif // OPENCL_FOUND
 

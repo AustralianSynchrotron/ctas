@@ -52,6 +52,7 @@ struct clargs {
   Path output_name;       ///< Name of the output file.
   float angle;           ///< Angle of the sino slicing.
   Crop crop; ///< Crop input projection image
+  string projdesc;       ///< String describing the projections to be cleaned.
   bool idealworld;        ///< Assumption of the world ideality.
   bool beverbose;       ///< Be verbose flag
   bool SaveInt;         ///< Save image as 16-bit integer.
@@ -113,6 +114,8 @@ clargs(int argc, char *argv[]) :
        CropOptionDesc, "")
   .add(poptmx::OPTION, &idealworld, 'w', "idealworld",
        "Suppose we live in the ideal world.", IdealWorldOptionDesc)
+  .add(poptmx::OPTION, &projdesc, 'p', "projections",
+       "Projections to be processed. Makes sence only if the list is given in arguments.", SliceOptionDesc, "<all>")
   .add(poptmx::OPTION, &SaveInt, 'i', "int",
        "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
@@ -168,6 +171,10 @@ clargs(int argc, char *argv[]) :
 
   }
 
+  if ( inlist.empty() && table.count(&projdesc) )
+    exit_on_error(command,  "Option " + table.desc(&projdesc)
+                            + "assumes input list as the single argument.");
+
 }
 
 
@@ -181,12 +188,13 @@ int main(int argc, char *argv[]) {
   if ( ! args.inlist.empty() ) {
 
     AqSeries series(args.inlist);
-    ProgressBar bar(args.beverbose, "flat field correction", series.thetas());
-    for (int idx=0 ; idx<series.thetas() ; idx++) {
-      series.projection(idx, oa, vector<int>(), args.angle, args.crop,
+    vector<int> projectionsV = slice_str2vec(args.projdesc, series.thetas());
+    ProgressBar bar(args.beverbose, "flat field correction", projectionsV.size());
+    for (int idx=0 ; idx < projectionsV.size()  ; idx++) {
+      series.projection(projectionsV[idx] , oa, vector<int>(), args.angle, args.crop,
                         args.idealworld ? 1.0 : 0.0 );
       string toSave=args.output_name;
-      toSave.replace( toSave.rfind('@'), 1, series.fg(idx).name() );
+      toSave.replace( toSave.rfind('@'), 1, series.fg(projectionsV[idx]).name() );
       SaveImage(toSave, oa, args.SaveInt);
       bar.update();
     }
@@ -218,8 +226,7 @@ int main(int argc, char *argv[]) {
 
     flatfield(oa, fa, ba, dc);
     if ( args.idealworld ) oa = cutone(oa);
-
-    SaveImage(args.output_name, oa, args.SaveInt);
+      SaveImage(args.output_name, oa, args.SaveInt);
 
   }
 

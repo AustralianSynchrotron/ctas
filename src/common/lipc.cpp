@@ -85,8 +85,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   fft_b = fftwf_plan_dft_2d ( ish(0), ish(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
 
   // prepare the filters
-  for (long i = 0; i < ish(0); i++)
-    for (long j = 0; j < ish(1); j++) {
+  for (blitz::MyIndexType i = 0; i < ish(0); i++)
+    for (blitz::MyIndexType j = 0; j < ish(1); j++) {
       float ei, ej;
       ei = i/float(ish(0));
       ej = j/float(ish(1));
@@ -96,7 +96,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
     }
 
   if (alpha == 0.0) // to avoid 0-division
-    absFilter(0l,0l) = 1.0;
+    absFilter( (blitz::MyIndexType) 0l, (blitz::MyIndexType) 0l) = 1.0;
   alpha *= dd*dd/(M_PI*dist*lambda);
   /*
   for (int i = 0; i < ish(0); i++)
@@ -111,7 +111,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   absFilter *= phsFilter;
   phsFilter *= dd * dd / (4.0*M_PI*M_PI*dist);
   if (alpha == 0.0)
-    phsFilter(0l,0l) = 0.0;
+    phsFilter( (blitz::MyIndexType) 0, (blitz::MyIndexType) 0) = 0.0;
 
 }
 
@@ -180,8 +180,8 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
   const float sizeX = dd*ish(0), sizeY=dd*ish(1);
 
   fftwf_execute(fft_f);
-  for (long i = 0 ; i<ish(0) ; i++)
-    for (long j = 0 ; j<ish(1) ; j++) {
+  for (blitz::MyIndexType i = 0 ; i<ish(0) ; i++)
+    for (blitz::MyIndexType j = 0 ; j<ish(1) ; j++) {
       float ui = ( i<ish(0)/2  ?  i  :  ish(0)-i ) / sizeX;
       float vj = ( j<ish(1)/2  ?  j  :  ish(1)-j ) / sizeY;
       mid(i,j) *= exp( - (float)M_PI * I_C * lambda * dist * (ui*ui + vj*vj) );
@@ -223,10 +223,10 @@ simulateTif( CMap & tif, const Shape & sh, float bd,
   tif.resize(sh);
   tif = 1.0;
 
-  for (int cur=0 ; cur<3 ; cur++) {
+  for (blitz::MyIndexType cur=0 ; cur<3 ; cur++) {
 
-    for (long i = 0 ; i<sh(0) ; i++)
-      for (long j = 0 ; j<sh(1); j++) {
+    for (blitz::MyIndexType i = 0 ; i<sh(0) ; i++)
+      for (blitz::MyIndexType j = 0 ; j<sh(1); j++) {
         float y = i/(float(D)-1) - 0.5*sh(0)/float(D);
         float x = j/(float(D)-1) - 0.5*sh(1)/float(D);
         float xxr = xr[cur] * cos(theta);

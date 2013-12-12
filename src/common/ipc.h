@@ -292,7 +292,7 @@ public:
   /// @param _dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
   ///
   inline void gamma(float _dgamma) {
-    if ( abs(_dgamma)>=1.0 ) // should set even smaller limit
+    if ( abs(_dgamma)>1.0 ) // should set even smaller limit
       throw_error(modname, "Absolute value of gamma is greater than 1.0.");
     dgamma = _dgamma;
   }

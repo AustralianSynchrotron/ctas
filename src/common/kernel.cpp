@@ -53,9 +53,9 @@ using namespace std;
 
 
 long
-nof_threads(long _threads){
+nof_threads(long _threads) {
   if (_threads)
-	return _threads;
+    return _threads;
 
 #ifdef _WIN32
 #ifndef _SC_NPROCESSORS_ONLN
@@ -68,11 +68,11 @@ nof_threads(long _threads){
 
   long nProcessorsOnline = sysconf(_SC_NPROCESSORS_ONLN);
   if (nProcessorsOnline == -1) {
-	warn ("thread number",
-		  "Unable to read online processor count.");
-	return 1;
+    warn ("thread number",
+          "Unable to read online processor count.");
+    return 1;
   } else {
-	return nProcessorsOnline;
+    return nProcessorsOnline;
   }
 }
 
@@ -100,7 +100,7 @@ Filter::Filter(Ftype _tp, float _as)
 /// @param _name Filter name.
 /// @param _as Additional parameter.
 ///
-Filter::Filter(const string & _name, float _as)
+Filter::Filter(const string &_name, float _as)
   : alsig(_as) {
   string name = upper(_name);
   if ( name.empty() || name == "NONE" ) filttp = NONE;
@@ -115,7 +115,7 @@ Filter::Filter(const string & _name, float _as)
   else if ( name == "KAISER") filttp = KAISER;
   else if ( name == "GAUSS") filttp = GAUSS;
   else throw_error(modname, "The string \""+ _name +"\""
-				   " does not describe any known filter.");
+                     " does not describe any known filter.");
   //check_alsig();
 }
 
@@ -126,17 +126,28 @@ Filter::Filter(const string & _name, float _as)
 string
 Filter::name() const {
   switch (filttp) {
-  case NONE:     return "NONE";
-  case RAMP:     return "RAMP";
-  case BARLETT:  return "BARLETT";
-  case WELCH:    return "WELCH";
-  case PARZEN:   return "PARZEN";
-  case HANN:     return "HANN";
-  case HAMMING:  return "HAMMING";
-  case BLACKMAN: return "BLACKMAN";
-  case LANCKZOS: return "LANCKZOS";
-  case KAISER:   return "KAISER";
-  case GAUSS:    return "GAUSS";
+  case NONE:
+    return "NONE";
+  case RAMP:
+    return "RAMP";
+  case BARLETT:
+    return "BARLETT";
+  case WELCH:
+    return "WELCH";
+  case PARZEN:
+    return "PARZEN";
+  case HANN:
+    return "HANN";
+  case HAMMING:
+    return "HAMMING";
+  case BLACKMAN:
+    return "BLACKMAN";
+  case LANCKZOS:
+    return "LANCKZOS";
+  case KAISER:
+    return "KAISER";
+  case GAUSS:
+    return "GAUSS";
   default :
     throw_bug(__FUNCTION__);
     return "";
@@ -165,19 +176,19 @@ Filter::filter() const {
 /// @return Filled window.
 ///
 Line &
-Filter::fill(Line & filt, int pixels) const {
+Filter::fill(Line &filt, int pixels) const {
 
   if ( ! pixels ) pixels = filt.size();
   else filt.resize(pixels);
   if ( ! pixels )
-	throw_error(modname, "Zero-size filter requested.");
+    throw_error(modname, "Zero-size filter requested.");
 
   filt = 0.0;
   filt(0) = 0.25;
   for ( int pix = 1 ; pix < pixels/2 ; pix += 2)
     filt(pix) = -1.0/(pix*pix*M_PI*M_PI);
   fftwf_plan planZ = fftwf_plan_r2r_1d (pixels, filt.data(), filt.data(),
-										FFTW_HC2R, FFTW_ESTIMATE);
+                                        FFTW_HC2R, FFTW_ESTIMATE);
   fftwf_execute(planZ);
   fftwf_destroy_plan(planZ);
 
@@ -189,58 +200,58 @@ Filter::fill(Line & filt, int pixels) const {
 
   for ( int pix = 0 ; pix < pixels ; pix++) {
 
-	float fp = (pix < pixels/2) ? pix : pixels - pix;
-	fp *= 2.0/pixels;
+    float fp = (pix < pixels/2) ? pix : pixels - pix;
+    fp *= 2.0/pixels;
 
-	switch (filttp) {
+    switch (filttp) {
 
-	case NONE:
-	case RAMP:
-	  fp = 1.0;
-	  break;
+    case NONE:
+    case RAMP:
+      fp = 1.0;
+      break;
 
-	case BARLETT:
-	  fp = (1-fp);
-	  break;
+    case BARLETT:
+      fp = (1-fp);
+      break;
 
-	case WELCH:
-	  fp = (1-fp*fp);
-	  break;
+    case WELCH:
+      fp = (1-fp*fp);
+      break;
 
-	case PARZEN:
-	  fp = (fp <= 0.5) ?
-		1-6*fp*fp + 3*fp*fp*fp : 2*(1+fp*fp*fp);
-	  break;
+    case PARZEN:
+      fp = (fp <= 0.5) ?
+           1-6*fp*fp + 3*fp*fp*fp : 2*(1+fp*fp*fp);
+      break;
 
-	case HANN:
-	  fp = 0.5 * ( 1 + cos(M_PI*fp) );
-	  break;
+    case HANN:
+      fp = 0.5 * ( 1 + cos(M_PI*fp) );
+      break;
 
-	case HAMMING:
-	  fp = 0.54+0.46*cos(M_PI*fp);
-	  break;
+    case HAMMING:
+      fp = 0.54+0.46*cos(M_PI*fp);
+      break;
 
-	case BLACKMAN:
-	  fp = ( 0.42 + 0.5*cos(M_PI*fp)+0.08*cos(2*M_PI*fp));
-	  break;
+    case BLACKMAN:
+      fp = ( 0.42 + 0.5*cos(M_PI*fp)+0.08*cos(2*M_PI*fp));
+      break;
 
-	case LANCKZOS:
-	  fp = (fp==0.0) ? 0.0 : abs(sin(M_PI*fp))/fp;
-	  break;
+    case LANCKZOS:
+      fp = (fp==0.0) ? 0.0 : abs(sin(M_PI*fp))/fp;
+      break;
 
-	case KAISER:
-	  fp = gsl_sf_bessel_I0(alsig*sqrt(1-fp*fp)) /
-		gsl_sf_bessel_I0(alsig) ;
-	  break;
+    case KAISER:
+      fp = gsl_sf_bessel_I0(alsig*sqrt(1-fp*fp)) /
+           gsl_sf_bessel_I0(alsig) ;
+      break;
 
-	case GAUSS:
-	  fp = pow( (float) 2.0, (float) -fp*fp/(alsig*alsig)) ;
-	  break;
+    case GAUSS:
+      fp = pow( (float) 2.0, (float) -fp*fp/(alsig*alsig)) ;
+      break;
 
-	}
+    }
 
     // Here 2.0 appears because of the R2HC-HC2R FFT pair.
-	filt(pix) *= fp/2.0;
+    filt(pix) *= fp/2.0;
 
   }
 
@@ -249,12 +260,12 @@ Filter::fill(Line & filt, int pixels) const {
 }
 
 bool
-operator==(const Filter & a, const Filter & b){
+operator==(const Filter &a, const Filter &b) {
   return a.filter() == b.filter();
 }
 
 bool
-operator!=(const Filter & a, const Filter & b){
+operator!=(const Filter &a, const Filter &b) {
   return a.filter() != b.filter();
 }
 
@@ -278,20 +289,20 @@ const string FilterOptionDesc=
   " and their graphs can be found in the html documentation.";
 
 string
-type_desc (Filter*){
+type_desc (Filter *) {
   return "STRING[:FLOAT]";
 }
 
 bool
-_conversion (Filter* _val, const string & in) {
+_conversion (Filter *_val, const string &in) {
   float alsig;
   std::string::size_type idx=in.find(':');
-  if (idx == std::string::npos){
-	*_val = Filter(in);
+  if (idx == std::string::npos) {
+    *_val = Filter(in);
   } else {
-	if ( ! poptmx::_conversion(&alsig, in.substr(idx+1)) )
-	  return false;
-	*_val = Filter(in.substr(0,idx), alsig);
+    if ( ! poptmx::_conversion(&alsig, in.substr(idx+1)) )
+      return false;
+    *_val = Filter(in.substr(0,idx), alsig);
   }
   return true;
 }
@@ -327,8 +338,8 @@ static const int TR_conf = 1 << 16;
 /// @param planB Backward FFT plan.
 ///
 static inline void
-filter_line(Line & ln, const Line & f_win,
-			const fftwf_plan *planF, const fftwf_plan *planB){
+filter_line(Line &ln, const Line &f_win,
+            const fftwf_plan *planF, const fftwf_plan *planB) {
   float *lnp = ln.data();
   fftwf_execute_r2r( *planF, lnp, lnp);
   ln *= f_win;
@@ -344,7 +355,7 @@ filter_line(Line & ln, const Line & f_win,
 /// @param center Deviation of the rotation center.
 ///
 static void
-project_line(const Line & sino, Map & result, float Theta, float center) {
+project_line(const Line &sino, Map &result, float Theta, float center) {
 
   int pixels = sino.size();
   float abcenter = abs(center);
@@ -356,13 +367,12 @@ project_line(const Line & sino, Map & result, float Theta, float center) {
 
   int ncos_theta = (int) (TR_conf * cos(Theta));
   int nsin_theta = (int) (TR_conf * sin(Theta));
-  int t_axis_cp  = (int)
-	(TR_conf *
-	 ( center + ( 1 - cos(Theta) - sin(Theta) ) * pixels / 2.0 ));
+  int t_axis_cp  = (int) (TR_conf *
+                          ( center + ( 1 - cos(Theta) - sin(Theta) ) * pixels / 2.0 ));
 
   int t_axis, delta;
   float *tresultp;
-  for ( int xpix = (int)(abcenter) ; xpix < (int)(pixels-abcenter) ; xpix++){
+  for ( int xpix = (int)(abcenter) ; xpix < (int)(pixels-abcenter) ; xpix++) {
     delta = (nPp - xpix);
     delta = (int) (sqrt(radius*radius - delta*delta ) - 1) ;
     t_axis = t_axis_cp + xpix * ncos_theta;
@@ -385,8 +395,8 @@ project_sino(const Map &sinogram, Map &result, float center) {
   //int pixels = sinogram.columns();
   int thetas = sinogram.rows();
   for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-	Line sinoline = sinogram(iTheta, blitz::Range::all());
-	project_line(sinoline, result, (M_PI * iTheta)/thetas, center);
+    Line sinoline = sinogram(iTheta, blitz::Range::all());
+    project_line(sinoline, result, (M_PI * iTheta)/thetas, center);
   }
 }
 
@@ -424,16 +434,19 @@ public:
   /// @param _res Output result.
   /// @param _cent Deviation of the rotation axis.
   ///
-  line_distributor(const Map & _sinogram, Map & _res, float _cent)
-	: sinogram(_sinogram), _result(_res), _center(_cent) {
+  line_distributor(const Map & _sinogram, Map & _res, float _cent) :
+    sinogram(_sinogram),
+    _result(_res),
+    _center(_cent)
+ {
     iTheta = 0;
-	thetas = sinogram.rows();
+    thetas = sinogram.rows();
     if ( pthread_mutex_init(&lock, NULL) != 0 )
       throw_error("line_distributor", "Failed to initialize the mutex.");
   }
 
   /// \brief Destructor.
-  inline ~line_distributor(){
+  inline ~line_distributor() {
     pthread_mutex_destroy(&lock);
   }
 
@@ -457,14 +470,14 @@ public:
   /// @return \c true if the thread should process the job, \c false if the
   /// global work is finished and the thread should exit.
   ///
-  inline bool distribute(float *Theta, Line & sinoline){
+  inline bool distribute(float *Theta, Line &sinoline) {
     pthread_mutex_lock(&lock);
-	bool returned = iTheta < thetas;
-	if ( returned ) {
-	  sinoline.reference( sinogram(iTheta, blitz::Range::all()) );
-	  *Theta = (M_PI * iTheta)/thetas;
-	  iTheta++;
-	}
+    bool returned = iTheta < thetas;
+    if ( returned ) {
+      sinoline.reference( sinogram(iTheta, blitz::Range::all()) );
+      *Theta = (M_PI * iTheta)/thetas;
+      iTheta++;
+    }
     pthread_mutex_unlock(&lock);
     return returned;
   }
@@ -501,8 +514,8 @@ static inline void
 project_sino( const Map &sinogram, Map &result, float center, int threads ) {
 
   if (threads == 1) {
-	project_sino (sinogram, result, center);
-	return;
+    project_sino (sinogram, result, center);
+    return;
   }
 
   // Here I will assume that all threads can write to the same result array
@@ -514,8 +527,6 @@ project_sino( const Map &sinogram, Map &result, float center, int threads ) {
   // line_distributor for each thread with it's own result array and then
   // sum all these results after the threads had finished.
 
-  //int pixels = sinogram.columns();
-  //int thetas = sinogram.rows();
   line_distributor args(sinogram, result, center);
   vector<pthread_t> ntid(threads);
 
@@ -539,31 +550,208 @@ const string CTrec::modname = "reconstruction";
 /// than the number of pixels (CTrec::_pixels). Must be >= 1.
 const float CTrec::zPad = 2.0;
 
+#ifdef OPENCL_FOUND
+
+char ctsrc[] = {
+  #include "ct.cl.includeme"
+};
+cl_program CTrec::program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
+
+cl_int CTrec::err = CL_SUCCESS;
+
+pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
+
+#endif // OPENCL_FOUND
 
 
 
 
-/// \brief Core reconstruction (currently universal for all types of contrast).
-///
-/// Other reconstruction functions ( CTrec::reconstruct_*() ) are in their
-/// place to allow possible future branching of the reconstruction
-/// methods/algorithms. Currently all of them just call this universal
-/// reconstruction function
-///
-/// @param sinogram Input sinogram. After the reconstruction
-/// represents filtered sinogram.
-/// @param result Reconstructed result.
-/// @param center Rotation center.
-///
-void
-CTrec::reconstruct_uni(Map &sinogram, Map &result, float center) const {
+CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) :
+  _width(sinoshape(1)),
+  _projections(sinoshape(0)),
+  projection_counter(0),
+  nextAddLineResets(true),
+  _result(_width,_width),
+#ifdef OPENCL_FOUND
+  kernelSino(0),
+  kernelLine(0),
+  clSlice(0),
+  clSinoImage(0),
+  clAngles(0),
+#endif // OPENCL_FOUND
+  _contrast(cn),
+  _filter(ft)
+{
 
-  if ( _contrast == Contrast::ABS )
+#ifdef OPENCL_FOUND
+  pthread_mutex_lock(&ctrec_lock);
+#endif // OPENCL_FOUND
+
+  try {
+
+    filter(_filter);
+
+    if (_width <= 1)
+      throw_error (modname, "Number of pixels in the CT reconstruction "
+                   + toString(_width) + ": less or equal to 1.");
+    planF = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_R2HC, FFTW_ESTIMATE);
+    planB = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_HC2R, FFTW_ESTIMATE);
+
+#ifdef OPENCL_FOUND
+    if (program) {
+
+      try {
+
+        kernelSino = clCreateKernel ( program, "ct_sino", &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL kernel \"ct_sino\": "
+                      + toString(err) );
+
+        kernelLine = clCreateKernel ( program, "ct_line", &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL kernel \"ct_line\": "
+                      + toString(err) );
+
+        clSlice = clCreateBuffer ( CL_context, CL_MEM_WRITE_ONLY,
+                                   sizeof(float) * _width * _width, 0, &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL buffer for ct result: "
+                      + toString(err) );
+
+        setArg(kernelSino, 0, clSlice, modname);
+        setArg(kernelLine, 0, clSlice, modname);
+
+        cl_image_format format = {CL_INTENSITY, CL_FLOAT};
+        clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY,
+                                       &format, _width, _projections, 0, 0, &err);
+#warning: Yes, I know it is depricated. But. The new function clCreateImage segfaults for no reason.
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL 2D image for sinogram: "
+                      + toString(err) );
+        setArg(kernelSino, 1, clSinoImage, modname);
+        setArg(kernelLine, 1, clSinoImage, modname);
+
+        setArg(kernelSino, 2, (cl_int) _width, modname);
+        setArg(kernelLine, 2, (cl_int) _width, modname);
+
+        setArg(kernelSino, 3, (cl_int) _projections, modname);
+
+        blitz::Array<cl_float2, 1> angleCache(_projections);
+        for (size_t i = 0; i < _projections; i++) {
+          float th = arc * M_PI * i / ( _projections * 180.0 );
+          angleCache(i).s[0] = sinf(th);
+          angleCache(i).s[1] = cosf(th);
+        }
+        const size_t iAnglesSize = sizeof(cl_float2) * _projections;
+        clAngles = clCreateBuffer ( CL_context, CL_MEM_READ_ONLY, iAnglesSize, 0, &err);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL buffer for ct angles: "
+                      + toString(err) );
+        err = clEnqueueWriteBuffer(  CL_queue, clAngles, CL_TRUE, 0, iAnglesSize , angleCache.data(),
+                                     0, 0, 0);
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not write OpenCL buffer of ct angles: "
+                      + toString(err) );
+        setArg(kernelSino, 5, clAngles, modname);
+
+        clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE,
+                                          CL_FILTER_LINEAR, &err) ;
+        if (err != CL_SUCCESS)
+          throw_error(modname, "Could not create OpenCL sampler for sinogram: "
+                      + toString(err) );
+        setArg(kernelSino, 6, clSinoSampler, modname);
+        setArg(kernelLine, 5, clSinoSampler, modname);
+
+      } catch (CtasErr errh) {
+        warn(modname,
+             "Could not create OpenCL infrastructure (see above)."
+             " Will perform CPU-based reconstruction.");
+      }
+
+    }
+#endif // OPENCL_FOUND
+
+    reset();
+
+  } catch (...) {
+#ifdef OPENCL_FOUND
+    pthread_mutex_unlock(&ctrec_lock);
+#endif // OPENCL_FOUND
+    throw;
+  }
+
+#ifdef OPENCL_FOUND
+  pthread_mutex_unlock(&ctrec_lock);
+#endif // OPENCL_FOUND
+
+}
+
+
+/// \brief Destructor
+CTrec::~CTrec(){
+#ifdef OPENCL_FOUND
+  pthread_mutex_lock(&ctrec_lock);
+  clReleaseSampler(clSinoSampler);
+  clReleaseMemObject(clSinoImage);
+  clReleaseMemObject(clSlice);
+  clReleaseMemObject(clAngles);
+  clReleaseKernel(kernelLine);
+  clReleaseKernel(kernelSino);
+  pthread_mutex_unlock(&ctrec_lock);
+#endif // OPENCL_FOUND
+  fftwf_destroy_plan(planF);
+  fftwf_destroy_plan(planB);
+}
+
+
+#include <time.h>
+
+Map
+CTrec::reconstruct(Map &sinogram, Contrast cn, float arc, const Filter &ft,
+                   const float center, float pixelSize) {
+
+  CTrec rec( sinogram.shape(), cn, arc, ft );
+
+
+  if ( nof_threads() == 1
+#ifdef OPENCL_FOUND
+       || rec.kernelSino
+#endif // OPENCL_FOUND
+     ) {
+    rec.reconstruct(sinogram, center);
+  } else {
+
+    // Implementing many threads per single sino approach
+
+    if ( abs(center) >= rec._width/2 )
+      throw_error(modname, "In static reconstruction."
+                  " The rotation center is outside the image."
+                  " Image width: " + toString(rec._width) + ", the deviation"
+                  " of the rotation axis from the center of the image: "
+                  + toString(center) + ".");
+
+    rec.prepare_sino(sinogram);
+    project_sino(sinogram, rec._result, center, nof_threads());
+
+  }
+
+  return rec.result(pixelSize);
+
+}
+
+void CTrec::prepare_sino(Map &sinogram) {
+
+  if ( ! sinogram.isStorageContiguous() )
+    sinogram.reference( sinogram.copy() );
+
+  if (_contrast == Contrast::ABS) {
+    unzero(sinogram);
     sinogram = -log(sinogram);
+  }
 
-  const int zShift = (int)(_pixels*(zPad-1)/2);
+  const int zShift = (int)(_width*(zPad-1)/2);
   const int thetas = sinogram.rows();
-  Line zsinoline(_pixels*zPad); // zero-padded sinoline.
+  Line zsinoline(_width*zPad); // zero-padded sinoline.
 
   if ( _contrast != Contrast::FLT ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
@@ -571,141 +759,258 @@ CTrec::reconstruct_uni(Map &sinogram, Map &result, float center) const {
       Line sinoline = sinogram(iTheta, blitz::Range::all());
 
       zsinoline = 0;
-      zsinoline(blitz::Range(zShift, zShift+_pixels)) = sinoline;
+      zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
       filter_line(zsinoline, filt_window, &planF, &planB);
-      sinoline = zsinoline(blitz::Range(zShift, zShift+_pixels));
-
-      if ( _contrast == Contrast::REF )
-        partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
+      sinoline = zsinoline(blitz::Range(zShift, zShift+_width));
 
     }
   }
 
-  project_sino(sinogram, result, center, _threads);
-
+  if ( _contrast == Contrast::REF ) {
+    for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
+      Line sinoline = sinogram(iTheta, blitz::Range::all());
+      partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
+    }
+  }
 
 }
+
+
+
+
+/// \brief Core reconstruction.
+///
+/// @param sinogram Input sinogram. After the reconstruction
+/// represents filtered sinogram.
+/// @param center Rotation center.
+///
+const Map &
+CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
+
+  if ( sinogram.columns() != _width )
+    throw_error ( modname, "The width of the input sinogram"
+                  " (" + toString(sinogram.columns()) + ") does not match the"
+                  " requested reconstruction width "
+                  " (" + toString(_width) + ")." );
+  if ( _projections != 1  &&  _projections != sinogram.rows() )
+    throw_error ( modname, "The height of the input array"
+                  " (" + toString(sinogram.rows()) + ") does not match the"
+                  " one used in construction of this instance of CTrec"
+                  " (" + toString(_projections) + ")." );
+  if ( abs(center) >= _width/2 )
+    throw_error(modname, "The rotation center is outside the image:"
+                " Image width: " + toString(_width) + ", the deviation"
+                " of the rotation axis from the center of the image: "
+                + toString(center) + ".");
+
+  prepare_sino(sinogram);
+
+  reset();
+
+#ifdef OPENCL_FOUND
+  if (kernelSino) {
+
+    const size_t origin[3] = {0, 0, 0};
+    const size_t region[3] = { (size_t) _width, (size_t) _projections, 1};
+
+    err = clEnqueueWriteImage( CL_queue, clSinoImage, CL_FALSE,
+                               origin, region, 0, 0, sinogram.data(), 0, 0, 0);
+    if (err != CL_SUCCESS)
+      throw_error(modname, "Could not write OpenCL 2D image of sinogram: "
+                  + toString(err) );
+
+    setArg(kernelSino, 4, (cl_float) center, modname);
+
+    size_t sz = _width*_width;
+    err = clEnqueueNDRangeKernel( CL_queue, kernelSino, 1,
+                                  0,  & sz, 0, 0, 0, 0);
+    if (err != CL_SUCCESS)
+      throw_error(modname, "Failed to perform the sinogram reconstruction with OpenCL: "
+                  + toString(err) + ".");
+
+    err = clFinish(CL_queue);
+    if ( err != CL_SUCCESS )
+      throw_error(modname, "Failed to finish OpenCL kernel \"ct_sino\": "
+                  + toString(err) + "." );
+
+  } else {
+#endif // OPENCL_FOUND
+
+    project_sino(sinogram, _result, center);
+
+#ifdef OPENCL_FOUND
+  }
+#endif // OPENCL_FOUND
+
+  projection_counter += _projections;
+  return result(pixelSize);
+
+}
+
 
 /// \brief Core function to add a projection line into the reconstruction.
 ///
 /// @param Theta Projection angle.
 /// @param sinoline Projection data.
-/// @param result Output result.
 /// @param center Deviation of the rotation center.
 ///
 void
-CTrec::addLine_uni(Line &sinoline, Map &result, const float Theta, const float center) const {
+CTrec::addLine(Line &sinoline, const float Theta, const float center) {
 
-  if ( _contrast == Contrast::ABS )
+  if ( sinoline.size() != _width )
+    throw_error ( modname, "The width of the input sinogram line"
+                  " (" + toString(sinoline.size()) + ") does not match the"
+                  " requested reconstruction width "
+                  " (" + toString(_width) + ")." );
+  if ( abs(center) >= _width/2 )
+    throw_error(modname, "The rotation center is outside the image:"
+                " Image width: " + toString(_width) + ", the deviation"
+                " of the rotation axis from the center of the image: "
+                + toString(center) + ".");
+
+  if (nextAddLineResets)
+    reset();
+
+  if ( ! sinoline.isStorageContiguous() )
+    sinoline.reference( sinoline.copy() );
+
+  if (_contrast == Contrast::ABS) {
+    unzero(sinoline);
     sinoline = -log(sinoline);
+  }
 
   if ( _contrast != Contrast::FLT ) {
 
-    const int zShift = (int)(_pixels*(zPad-1)/2);
-    Line zsinoline((int)(_pixels*zPad)); // zero-padded sinoline.
+    const int zShift = (int)(_width*(zPad-1)/2);
+    Line zsinoline((int)(_width*zPad)); // zero-padded sinoline.
 
     zsinoline = 0;
-    zsinoline(blitz::Range(zShift, zShift+_pixels)) = sinoline;
+    zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
     filter_line(zsinoline, filt_window, &planF, &planB);
-    sinoline = zsinoline(blitz::Range(zShift, zShift+_pixels));
+    sinoline = zsinoline(blitz::Range(zShift, zShift+_width));
 
   }
 
   if ( _contrast == Contrast::REF )
     partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
 
-  project_line(sinoline, result, Theta, center);
+
+#ifdef OPENCL_FOUND
+  if (kernelLine) {
+
+    const size_t origin[3] = {0, 0, 0};
+    const size_t region[3] = { (size_t) _width, 1, 1};
+
+    err = clEnqueueWriteImage( CL_queue, clSinoImage, CL_FALSE,
+                               origin, region, 0, 0, sinoline.data(), 0, 0, 0);
+    if (err != CL_SUCCESS)
+      throw_error(modname, "Could not write OpenCL 2D image of sinoline: "
+                  + toString(err) );
+
+    setArg(kernelLine, 3, (cl_float) center, modname);
+
+    cl_float2 cossin;
+    cossin.s[0] = sinf(Theta);
+    cossin.s[1] = cosf(Theta);
+    setArg(kernelLine, 4, cossin, modname);
+
+    size_t sz = _width*_width;
+    err = clEnqueueNDRangeKernel( CL_queue, kernelLine, 1,
+                                  0,  & sz, 0, 0, 0, 0);
+    if (err != CL_SUCCESS)
+      throw_error(modname, "Failed to perform the sinoline addition with OpenCL: "
+                  + toString(err) + ".");
+    err = clFinish(CL_queue);
+    if ( err != CL_SUCCESS )
+      throw_error(modname, "Failed to finish OpenCL kernel \"ct_line\": "
+                  + toString(err) + "." );
+
+    projection_counter++;
+    return;
+
+  }
+#endif // OPENCL_FOUND
+
+  project_line(sinoline, _result, Theta, center);
+  projection_counter++;
 
 }
 
 
+/// The result of the reconstruction procedure is not normalized to represent
+/// the real physical values because the CT algorithm, for the simplicity does not know
+/// all parameters needed. This function will do the normalization of the result array.
+/// If the array was reconstructed using the CTrec::reconstruct() or CTrec::addLine() methods,
+/// with the correct physical values on input, after the normalization it will represent
+/// correct values of:
+/// \f$\mu\f$ - for the Contrast::ABS
+/// \f$\delta\f$ - for the Contrast::PHS and Contrast::REF.
+const Map &
+CTrec::result(float pixelSize) {
 
-/// \brief Actual reconstruction.
-///
-/// @param sinogram Input sinogram. Can be altered by the reconstruction process.
-/// @param result Output result.
-/// @param center Deviation of the rotation center.
-///
-void
-CTrec::reconstruct(Map &sinogram, Map &result, const float center) const {
+  if ( ! projection_counter ) // _result was already finilized (or nothing was reconstructed).
+    return _result;
 
+  if ( _projections != 1  &&  _projections != projection_counter )
+    warn(modname, "Projection counter of the reconstructed algorithm"
+         " (" + toString(projection_counter) + ")"
+         " is not equal to the requested number of projections"
+         " (" + toString(_projections) + ")."
+         " Possibly forgot to CTrec::reset() between two reconstructions."
+         " Developper's error.");
 
-  if ( sinogram.columns() != _pixels )
-	throw_error ( modname, "The width of the input array"
-				  " (" + toString(sinogram.columns()) + ") does not match the"
-				  " requested reconstruction width "
-				  " (" + toString(_pixels) + ")." );
-  if ( abs(center) >= _pixels/2 )
-	throw_error(modname, "The rotation center is outside the image:"
-				" Image width: " + toString(_pixels) + ", the deviation"
-				" of the rotation axis from the center of the image: "
-				+ toString(center) + ".");
+  if ( pixelSize <= 0 ) {
+    warn(modname, "Impossible pixel size (" + toString(pixelSize) + ")."
+    " Using 1.0 instead.");
+    pixelSize=1.0;
+  }
 
+#ifdef OPENCL_FOUND
+  if (kernelLine) {
+    cl2map( _result, clSlice );
+  }
+#endif // OPENCL_FOUND
 
-  result.resize(_pixels, _pixels);
-  result = 0.0;
+  // \Delta\Theta = \pi/thetas comes from the integration over \Theta.
+  // The pixelSize is missing inside the CT algorithm in the filtering function Filter::fill().
+  _result *= M_PI / ( pixelSize * projection_counter );
 
-  if ( ! sinogram.isStorageContiguous() ) sinogram.reference( sinogram.copy() );
-  if ( ! result  .isStorageContiguous() ) result  .reference( result  .copy() );
-
-  if (_contrast == Contrast::ABS) unzero(sinogram);
-
-  (this->*_reconstruct)(sinogram, result, center);
-
-}
-
-/// \brief Add one line to the reconstruction.
-///
-/// @param Theta Projection angle.
-/// @param sinoline Projection data.
-/// @param result Output result.
-/// @param center Deviation of the rotation center.
-///
-void
-CTrec::addLine(Line &sinoline, Map &result, const float Theta, const float center) const {
-
-  if ( sinoline.size() != _pixels )
-	throw_error ( modname, "The width of the input sinogram line"
-				  " (" + toString(sinoline.size()) + ") does not match the"
-				  " requested reconstruction width "
-				  " (" + toString(_pixels) + ")." );
-  if ( result.shape() != Shape(_pixels, _pixels) )
-	throw_error(modname, "The size of the result array"
-                " (" + toString(result.columns()) + ":" + toString(result.rows()) + ")"
-				" does not match the requested reconstruction width"
-                " (" + toString(_pixels) + ").");
-  if ( abs(center) >= _pixels/2 )
-	throw_error(modname, "The rotation center is outside the image:"
-				" Image width: " + toString(_pixels) + ", the deviation"
-				" of the rotation axis from the center of the image: "
-				+ toString(center) + ".");
-
-  if ( ! sinoline.isStorageContiguous() ) sinoline.reference( sinoline.copy() );
-  if ( ! result  .isStorageContiguous() ) result  .reference( result  .copy() );
-
-  if (_contrast == Contrast::ABS) unzero(sinoline);
-
-  (this->*_addLine)(sinoline, result, Theta, center);
-
-
+  projection_counter=0;
+  nextAddLineResets=true;
+  return _result;
 
 }
 
 
+void CTrec::reset() {
+  nextAddLineResets=false;
+  projection_counter=0;
+  _result=0.0;
+#ifdef OPENCL_FOUND
+  if (kernelLine)
+    err = clEnqueueWriteBuffer(  CL_queue, clSlice, CL_TRUE, 0,
+                                 sizeof(float) * _width * _width ,
+                                 _result.data(),  0, 0, 0);
+  if (err != CL_SUCCESS)
+    throw_error(modname, "Could not set OpenCL buffer of ct reconstruction: "
+                + toString(err) );
 
-/// \brief Destructor
-CTrec::~CTrec(){
-  fftwf_destroy_plan(planF);
-  fftwf_destroy_plan(planB);
+#endif // OPENCL_FOUND
 }
+
+
+
+
+
+
 
 /// \brief Width of the reconstructed image.
 ///
 /// @return Width of the reconstructed image.
 ///
 int
-CTrec::pixels() const {
-  return _pixels;
+CTrec::width() const {
+  return _width;
 }
 
 /// \brief Type of the contrast.
@@ -717,15 +1022,6 @@ CTrec::contrast() const {
   return _contrast;
 }
 
-/// \brief Number of threads.
-///
-/// @return Number of threads.
-///
-int
-CTrec::threads() const {
-  return _threads;
-}
-
 /// \brief Type of the filter function.
 ///
 /// @return Type of the filter function.
@@ -735,57 +1031,6 @@ CTrec::filter() const {
   return _filter;
 }
 
-/// \brief Constructor
-///
-/// @param px Width of the reconstructed image.
-/// @param cn Type of the contrast.
-/// @param tr Number of threads.
-/// @param ft Type of the filter function.
-///
-CTrec::CTrec(int px, Contrast cn, int tr, const Filter & ft)
-  : _pixels(px), _contrast(cn), _threads(tr), _filter(ft) {
-  pixels(_pixels);
-  filter(_filter);
-  contrast(_contrast);
-  threads(_threads);
-  choose_algorithm();
-}
-
-/// \brief Constructor
-///
-/// @param px Width of the reconstructed image.
-/// @param cn Type of the contrast.
-/// @param ft Type of the filter function.
-///
-CTrec::CTrec(int px, Contrast cn, const Filter & ft)
-  : _pixels(px), _contrast(cn), _threads(0), _filter(ft) {
-  pixels(_pixels);
-  filter(_filter);
-  contrast(_contrast);
-  threads(_threads);
-  choose_algorithm();
-}
-
-/// \brief Sets _pixels, allocates FFT plans.
-///
-/// I made this method private because will have to reallocate
-/// FFT plans, resize and refill the filter window, etc.
-/// If you want to reconstruct with different width, you'd better
-/// create new CTrec object for this. May be I will change this
-/// behaviour in the future
-///
-/// @param px Width of the sinograms to be reconstructed
-///
-void
-CTrec::pixels(int px){
-  _pixels=px;
-  if (_pixels <= 1)
-	throw_error (modname, "Number of pixels in the CT reconstruction"
-				 + toString(_pixels) + ": less or equal to 1.");
-  planF = fftwf_plan_r2r_1d ((int)(_pixels*zPad), 0, 0, FFTW_R2HC, FFTW_ESTIMATE);
-  planB = fftwf_plan_r2r_1d ((int)(_pixels*zPad), 0, 0, FFTW_HC2R, FFTW_ESTIMATE);
-  filter(_filter);
-}
 
 /// \brief Changes type of the contrast.
 ///
@@ -794,7 +1039,6 @@ CTrec::pixels(int px){
 void
 CTrec::contrast(Contrast cn){
   _contrast=cn;
-  choose_algorithm();
 }
 
 /// \brief Changes type of the filter function.
@@ -802,144 +1046,14 @@ CTrec::contrast(Contrast cn){
 /// @param ft New type of the filter function.
 ///
 void
-CTrec::filter(const Filter & ft){
-  filt_window.resize((int)(_pixels*zPad));
+CTrec::filter(const Filter & ft) {
+  filt_window.resize((int)(_width*zPad));
   _filter = ft;
   _filter.fill(filt_window);
   filt_window *= zPad;
-  if ( _contrast == Contrast::REF ) filt_window(0)=0.0;
+  if ( _contrast == Contrast::REF )
+    filt_window(0)=0.0;
 }
-
-/// \brief Changes number of threads.
-///
-/// @param tr New number of threads.
-///
-void
-CTrec::threads(int tr=1){
-  _threads = nof_threads(tr);
-  choose_algorithm();
-}
-
-
-/// \brief Assigns one of the algorithms to the CTrec::_reconstruct pointer
-///
-/// The assignment is done on the basis of the pre-defined members of the class.
-/// This method should be called whenever any algoritm-defining parameter
-/// is altered.
-///
-void
-CTrec::choose_algorithm(){
-  switch (_contrast.contrast()) {
-  case Contrast::ABS:
-    _reconstruct = ( _threads == 1 ) ?
-	  &CTrec::reconstruct_abs : &CTrec::reconstruct_abs_thr;
-    _addLine = &CTrec::addLine_abs;
-	break;
-  case Contrast::REF:
-    _reconstruct = ( _threads == 1 ) ?
-	  &CTrec::reconstruct_ref : &CTrec::reconstruct_ref_thr;
-    _addLine = &CTrec::addLine_ref;
-	break;
-  case Contrast::PHS:
-    _reconstruct = &CTrec::reconstruct_uni;
-    _addLine = &CTrec::addLine_uni;
-    break;
-  case Contrast::FLT:
-    _reconstruct = &CTrec::reconstruct_uni;
-    _addLine = &CTrec::addLine_uni;
-    break;
-  default :
-    warn(modname, "Do not know how to reconstruct contrast type \""
-         + _contrast.name() + "\". Will use standard reconstruction method.");
-    _reconstruct = &CTrec::reconstruct_uni;
-    _addLine = &CTrec::addLine_uni;
-	break;
-  }
-}
-
-
-
-/// \brief Core reconstruction: absorption
-///
-/// @param sinogram Input sinogram. After the reconstruction
-/// represents filtered sinogram.
-/// @param result Reconstructed result.
-/// @param center Rotation center.
-///
-void
-CTrec::reconstruct_abs(Map &sinogram, Map &result, float center) const {
-  reconstruct_uni(sinogram, result, center);
-}
-
-/// \brief Core reconstruction: refraction
-///
-/// @param sinogram Input sinogram. After the reconstruction
-/// represents filtered sinogram.
-/// @param result Reconstructed result.
-/// @param center Rotation center.
-///
-void
-CTrec::reconstruct_ref(Map &sinogram, Map &result, float center) const {
-  reconstruct_uni(sinogram, result, center);
-}
-
-/// \brief Core reconstruction: absorption, parallel approach.
-///
-/// @param sinogram Input sinogram. After the reconstruction
-/// represents filtered sinogram.
-/// @param result Reconstructed result.
-/// @param center Rotation center.
-///
-void
-CTrec::reconstruct_abs_thr(Map &sinogram, Map &result, float center) const {
-  reconstruct_uni(sinogram, result, center);
-}
-
-
-/// \brief Core reconstruction: refraction, parallel approach
-///
-/// @param sinogram Input sinogram. After the reconstruction
-/// represents filtered sinogram.
-/// @param result Reconstructed result.
-/// @param center Rotation center.
-///
-void
-CTrec::reconstruct_ref_thr(Map &sinogram, Map &result, float center) const {
-  reconstruct_uni(sinogram, result, center);
-}
-
-
-/// \brief Core addLine: absorption.
-///
-/// @param sinoline Projection data.
-/// @param result Output result.
-/// @param Theta Projection angle.
-/// @param center Deviation of the rotation center.
-///
-void
-CTrec::addLine_abs(Line &sinoline, Map &result, const float Theta, const float center) const {
-  addLine_uni(sinoline, result, Theta, center);
-}
-
-/// \brief Core addLine: refraction.
-///
-/// @param sinoline Projection data.
-/// @param result Output result.
-/// @param Theta Projection angle.
-/// @param center Deviation of the rotation center.
-///
-void
-CTrec::addLine_ref(Line &sinoline, Map &result, const float Theta, const float center) const {
-  addLine_uni(sinoline, result, Theta, center);
-}
-
-void
-CTrec::finilize(Map & result, int thetas, float pixelSize) {
-  // \Delta\Theta = \pi/thetas comes from the integration over \Theta.
-  // The pixelSize is missing inside the CT algorithm in the filtering function Filter::fill().
-  result *= M_PI / ( pixelSize * thetas);
-}
-
 
 
 
@@ -975,7 +1089,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   float plane_cos = (plane-center)*cur_sin;
   float Rcenter = pixels*0.5 + center;
 
-  for (long ycur = 0 ; ycur < thetas ; ycur++) {
+  for (blitz::MyIndexType ycur = 0 ; ycur < thetas ; ycur++) {
 
 	Line ln = projection(ycur, blitz::Range::all());
 
@@ -985,10 +1099,10 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 	  partial_sum( ln.begin(), ln.end(), ln.begin() );
 
 	// projecting
-	for (long xcur = 0 ; xcur < pixels ; xcur++) {
+	for (blitz::MyIndexType xcur = 0 ; xcur < pixels ; xcur++) {
 	  float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
 	  di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
-	  result(ycur, xcur) += projection(ycur, long(di));
+	  result(ycur, xcur) += projection( ycur, (blitz::MyIndexType) di );
 	}
 
   }

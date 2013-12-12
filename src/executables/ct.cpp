@@ -48,6 +48,7 @@ struct clargs {
   float center;                   ///< Rotation center.
   Path sinogram_name;         ///< Name of the sinogram file.
   Path result_name;           ///< Name of the file to save the result to.
+  float arc;
   float dd;             ///< Pixel size.
   bool beverbose;				///< Be verbose flag
   bool SaveInt;					///< Save image as 16-bit integer.
@@ -63,6 +64,7 @@ clargs(int argc, char *argv[]) :
   beverbose(false),
   SaveInt(false),
   result_name("reconstructed-<sinogram>"),
+  arc(180),
   dd(1.0)
 {
 
@@ -78,11 +80,16 @@ clargs(int argc, char *argv[]) :
        "Output reconstructed image.", "", result_name)
 
   .add(poptmx::NOTE, "OPTIONS:")
-  .add(poptmx::OPTION, &contrast, 'C', "contrast",
+  .add(poptmx::OPTION, &contrast, 'k', "contrast",
        "Input component.",
        "Type of the contrast presented in the sinogram. " + Contrast::Desc)
   .add(poptmx::OPTION, &center, 'c', "center",
        "Rotation center.", CenterOptionDesc, toString(center))
+  .add(poptmx::OPTION, &arc, 'a', "arc",
+       "CT scan range (deg).",
+       "Arc of the CT scan in degrees: step size multiplied by number of projections."
+       " Note: this is not where the half-object 360-degree CT is handeled.",
+       toString(arc))
   .add(poptmx::OPTION, &filter_type, 'f', "filter",
        "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
   .add(poptmx::OPTION, &dd, 'r', "resolution",
@@ -113,6 +120,8 @@ clargs(int argc, char *argv[]) :
       exit_on_error(command, "Negative pixel size (given by "+table.desc(&dd)+").");
     dd /= 1.0E6;
   }
+  if (arc <= 0.0)
+    exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
 
 
 }
@@ -127,7 +136,7 @@ int main(int argc, char *argv[]) {
   Map sino;
   ReadImage( args.sinogram_name, sino);
   const Map rec =
-    CTrec::reconstruct(sino, args.contrast, args.filter_type, args.center, args.dd);
+    CTrec::reconstruct(sino, args.contrast, args.arc, args.filter_type, args.center, args.dd);
   SaveImage(args.result_name, rec, args.SaveInt);
 
   exit(0);

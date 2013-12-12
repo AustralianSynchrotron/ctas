@@ -19,8 +19,8 @@ kernel void ct_sino (
     float total = 0.0f;
     for (size_t proj = 0; proj < thetas; proj++)  {
       const float2 cossin = cossins[proj];
-      float offsetI = center + (1-cossin.y-cossin.x) * hp
-                             + cossin.y * j + cossin.x * i;
+      float offsetI = center + (1-cossin.x-cossin.y) * hp
+                             + cossin.x * j + cossin.y * i;
       total += read_imagef(sinogram, sampler, (float2)(offsetI, proj)).x ;
     }
     slice[index] = total;

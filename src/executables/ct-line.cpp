@@ -46,7 +46,7 @@ struct clargs {
   Contrast contrast;            ///< Type of the contrast.
   int slice;                  ///< Slice number to pick up in the projections.
   Filter filter_type;           ///< Type of the filtering function.
-  float center;                   ///< Rotation center.
+  float center;                   ///< Rotation center.z
   Path result_name;           ///< Name of the file to save the result to.
   bool beverbose;				///< Be verbose flag
   bool SaveInt;					///< Save image as 16-bit integer.
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
     throw_error("ct-line", "Could not read from input.");
 
   int pixels = sinoline.size();
-  CTrec rec( Shape(1,pixels), args.contrast, args.filter_type);
+  CTrec rec( Shape(1,pixels), args.contrast, 180.0, args.filter_type);
 
   ProgressBar pbar(args.beverbose, "Reconstructing");
 

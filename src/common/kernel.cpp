@@ -564,7 +564,9 @@ pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif // OPENCL_FOUND
 
 
-CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
+
+
+CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) :
   _width(sinoshape(1)),
   _projections(sinoshape(0)),
   projection_counter(0),
@@ -636,7 +638,7 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, const Filter & ft) :
 
         blitz::Array<cl_float2, 1> angleCache(_projections);
         for (size_t i = 0; i < _projections; i++) {
-          float th = (M_PI * i) / _projections;
+          float th = arc * M_PI * i / ( _projections * 180.0 );
           angleCache(i).s[0] = sinf(th);
           angleCache(i).s[1] = cosf(th);
         }
@@ -705,10 +707,10 @@ CTrec::~CTrec(){
 #include <time.h>
 
 Map
-CTrec::reconstruct(Map &sinogram, Contrast cn, const Filter &ft,
+CTrec::reconstruct(Map &sinogram, Contrast cn, float arc, const Filter &ft,
                    const float center, float pixelSize) {
 
-  CTrec rec( sinogram.shape(), cn, ft );
+  CTrec rec( sinogram.shape(), cn, arc, ft );
 
 
   if ( nof_threads() == 1

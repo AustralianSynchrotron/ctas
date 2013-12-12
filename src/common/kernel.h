@@ -238,11 +238,11 @@ private:
 
 public:
 
-  CTrec(const Shape &sinoshape, Contrast cn, const Filter &ft);
+  CTrec(const Shape &sinoshape, Contrast cn, float arc=180, const Filter &ft=Filter());
 
   ~CTrec();
 
-  static Map reconstruct(Map &sinogram, Contrast cn, const Filter &ft=Filter(),
+  static Map reconstruct(Map &sinogram, Contrast cn, float arc=180, const Filter &ft=Filter(),
                          const float center=0, float pixelSize=1.0);
 
   const Map & reconstruct(Map &sinogram, const float center, float pixelSize=1.0);

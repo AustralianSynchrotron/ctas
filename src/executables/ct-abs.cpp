@@ -51,6 +51,7 @@ struct clargs {
   Path outmask;				///< The mask for the output file names.
   Filter filter_type;           ///< Type of the filtering function.
   Dcenter center;               ///< Rotation center.
+  float arc;
   unsigned nof_threads;              ///< Number of threads in the reconstruction.
   bool beverbose;				///< Be verbose flag
   bool SaveInt;					///< Save image as 16-bit integer.
@@ -67,6 +68,7 @@ clargs(int argc, char *argv[]) :
   nof_threads(0),
   SaveInt(false),
   outmask("reconstructed-<list>-@.tif"),
+  arc(180),
   filter_type()
 {
 
@@ -97,6 +99,11 @@ clargs(int argc, char *argv[]) :
       "Suppose we live in the ideal world.", IdealWorldOptionDesc)
 	.add(poptmx::OPTION, &center, 'c', "center",
 		 "Variable rotation center.", DcenterOptionDesc, toString(0.0))
+  .add(poptmx::OPTION, &arc, 'a', "arc",
+       "CT scan range (deg).",
+       "Arc of the CT scan in degrees: step size multiplied by number of projections."
+       " Note: this is not where the half-object 360-degree CT is handeled.",
+       toString(arc))
 	.add(poptmx::OPTION, &SaveInt,'i', "int",
       "Output image(s) as integer.", IntOptionDesc)
 	.add(poptmx::OPTION, &filter_type, 'f', "filter",
@@ -123,9 +130,12 @@ clargs(int argc, char *argv[]) :
 
   // <result mask> : one more argument may or may not exist
   if ( ! table.count(&outmask) )
-	outmask = upgrade(inlist, "reconstructed-") + "-@.tif";
+    outmask = upgrade(inlist, "reconstructed-") + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
-	outmask = outmask.dtitle() + "-@" + outmask.extension();
+    outmask = outmask.dtitle() + "-@" + outmask.extension();
+  if (arc <= 0.0)
+    exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
+
 
 }
 
@@ -141,7 +151,7 @@ int main(int argc, char *argv[]) {
     thetas=expr.thetas(),
     pixels=expr.pixels(),
     slices=expr.slices();
-  CTrec rec( expr.shape() , expr.contrast(), args.filter_type);
+  CTrec rec( expr.shape() , expr.contrast(), args.arc, args.filter_type);
   const string sliceformat = mask2format(args.outmask, slices);
   const vector<int> sliceV = slice_str2vec(args.slicedesc, slices);
   const SinoS sins(expr, sliceV, args.beverbose);

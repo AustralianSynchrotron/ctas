@@ -53,9 +53,9 @@ struct clargs {
   Filter filter_type;           ///< Type of the filtering function.
   float dd;             ///< Pixel size.
   float angle;           ///< Angle of the sino slicing.
+  float arc;
   Crop crop; ///< Crop input projection image
   Dcenter center;               ///< Rotation center.
-  unsigned nof_threads;              ///< Number of threads in the reconstruction.
   bool beverbose;       ///< Be verbose flag
   bool SaveInt;         ///< Save image as 16-bit integer.
 
@@ -67,9 +67,9 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[]) :
   beverbose(false),
+  arc(180.0),
   angle(0.0),
   crop(),
-  nof_threads(0),
   SaveInt(false),
   outmask("reconstructed-@.tif"),
   filter_type(),
@@ -92,29 +92,30 @@ clargs(int argc, char *argv[]) :
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output",
          "Output result mask.", MaskDesc, outmask)
-    .add(poptmx::OPTION, &contrast, 'C', "contrast",
+    .add(poptmx::OPTION, &contrast, 'k', "contrast",
          "Input component.",
          "Type of the contrast presented in the sinogram. " + Contrast::Desc)
     .add(poptmx::OPTION, &slicedesc, 's', "slice",
          "Slices to be processed.",
          "If the rotation angle is given the slices correspond to the rotated image."
          + SliceOptionDesc, "<all>")
-    .add(poptmx::OPTION, &angle, 'a', "angle",
+    .add(poptmx::OPTION, &angle, 't', "tilt",
          "Angle of the image slicing.", "", toString(angle))
     .add(poptmx::OPTION, &crop, 0, "crop",
          CropOptionDesc, "")
     .add(poptmx::OPTION, &center, 'c', "center",
          "Variable rotation center.", DcenterOptionDesc, toString(0.0))
+    .add(poptmx::OPTION, &arc, 'a', "arc",
+         "CT scan range (deg).",
+         "Arc of the CT scan in degrees: step size multiplied by number of projections."
+         " Note: this is not where the half-object 360-degree CT is handeled.",
+         toString(arc))
     .add(poptmx::OPTION, &SaveInt,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
     .add(poptmx::OPTION, &filter_type, 'f', "filter",
          "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
     .add(poptmx::OPTION, &dd, 'r', "resolution",
          "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
-    .add(poptmx::OPTION, &nof_threads, 't', "threads",
-         "Number of threads used in calculations.",
-         "If the option is not used the optimal number is"
-         " calculated automatically.", "<auto>")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -294,8 +295,8 @@ void *in_reconstruction_thread (void *_thread_args) {
   if ( ! distributor )
     throw_error("in thread", "Inappropriate thread function arguments.");
 
-  CTrec rec(distributor->sins->sinoShape(),
-            distributor->args.contrast, distributor->args.filter_type );
+  CTrec rec(distributor->sins->sinoShape(), distributor->args.contrast,
+            distributor->args.arc, distributor->args.filter_type );
 
   int slice;
   Map sinogram;
@@ -338,9 +339,9 @@ int main(int argc, char *argv[]) {
   if ( ! sins || ! sins->indexes().size() )
     throw_error(args.command, "No slices requested");
 
-  if ( args.nof_threads == 1 || sins->indexes().size()<=2 ) {
+  if ( sins->indexes().size()<=2 ) {
 
-    CTrec rec(sins->sinoShape(), args.contrast, args.filter_type);
+    CTrec rec(sins->sinoShape(), args.contrast, args.arc, args.filter_type);
 
     Map sinogram, result;
     const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
@@ -359,8 +360,7 @@ int main(int argc, char *argv[]) {
   }  else {
 
     slice_distributor dist(args, sins);
-
-    const int run_threads = nof_threads(args.nof_threads);
+    const int run_threads = nof_threads();
     vector<pthread_t> threads(run_threads);
 
 

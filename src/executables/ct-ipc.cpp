@@ -50,6 +50,7 @@ struct clargs {
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC method
+  float arc;
   string slicedesc;				///< String describing the slices to be CT'ed.
   Path outmask;				///< The mask for the output file names.
   Filter filter_type;           ///< Type of the filtering function.
@@ -71,6 +72,7 @@ clargs(int argc, char *argv[]) :
   alpha(0.0),
   lambda(1.0),
   dgamma(1.0),
+  arc(180),
   outmask("sino-<input list>-@.tif"),
   SaveInt(false),
   nof_threads(0),
@@ -115,6 +117,11 @@ clargs(int argc, char *argv[]) :
        "Slices to be processed.", SliceOptionDesc, "<all>")
   .add(poptmx::OPTION,   &center, 'c', "center",
        "Variable rotation center.", DcenterOptionDesc, toString(0.0))
+  .add(poptmx::OPTION, &arc, 'a', "arc",
+       "CT scan range (deg).",
+       "Arc of the CT scan in degrees: step size multiplied by number of projections."
+       " Note: this is not where the half-object 360-degree CT is handeled.",
+       toString(arc))
   .add(poptmx::OPTION,   &filter_type, 'f', "filter",
        "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
   .add(poptmx::OPTION,   &nof_threads, 't', "threads",
@@ -173,6 +180,9 @@ clargs(int argc, char *argv[]) :
 
   if (alpha < 0.0)
     exit_on_error(command, "Negative alpha parameter (given by "+table.desc(&alpha)+").");
+  if (arc <= 0.0)
+    exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
+
 
 
 }
@@ -196,7 +206,7 @@ int main(int argc, char *argv[]) {
   const string sliceformat = mask2format(args.outmask, slices);
   const vector<int> sliceV = slice_str2vec(args.slicedesc, slices);
   const SinoS sins(expr, sliceV, args.beverbose);
-  CTrec rec(expr.shape(), expr.contrast(), args.filter_type);
+  CTrec rec(expr.shape(), expr.contrast(), args.arc, args.filter_type);
 
   Map sinogram(thetas, pixels);
   Map result(thetas, pixels);

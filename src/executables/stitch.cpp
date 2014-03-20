@@ -45,11 +45,13 @@ static inline int isnan(double x){ return _isnan(x); }
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
+  vector<Path> images;       ///< images to stitch
   Path image1;               ///< Name of the first input image.
   Path image2;               ///< Name of the second input image.
   Path out_name;              ///< Name of the output image.
   bool hOrientation;           ///< Mutual orientation of images: vertical or horizontal.
   unsigned int width;                  ///< Width of the stiching region.
+  int shift;                         ///< Shift along the stitch.
   unsigned int cut1;               ///< Cut of the first image.
   unsigned int cut2;               ///< Cut of the second image.zzd
   bool beverbose;				///< Be verbose flag
@@ -61,9 +63,10 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[]) :
   width(0),
+  shift(0),
   cut1(0),
   cut2(0),
-  out_name("stitched-<input1>-<input2>"),
+  out_name("stitched-<input1>"),
   beverbose(false)
 {
 
@@ -76,17 +79,18 @@ clargs(int argc, char *argv[]) :
 
   table
 	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &image1, "image1", "First input image (left/top).", "")
-	.add(poptmx::ARGUMENT, &image2, "image2", "Second input image (right/bottom).", "")
-	.add(poptmx::ARGUMENT, &out_name, "output", "Output image.", "", out_name)
+	.add(poptmx::ARGUMENT, &images, "images", "Input images.", "")
 
 	.add(poptmx::NOTE, "OPTIONS:")
+	.add(poptmx::OPTION, &out_name, 'o', "output", "Output image.", "", out_name)
 	.add(poptmx::OPTION, &horizontal, 'r', "row",
 		 "Images are placed side by side.", "")
 	.add(poptmx::OPTION, &vertical, 'c', "column",
 		 "Images are placed top to bottom.", "")
 	.add(poptmx::OPTION, &width, 'w', "width",
 		 "Width of the transition stripe.", "", "0")
+	.add(poptmx::OPTION, &shift, 's', "shift",
+		 "Shift along the stitch.", "", "0")
 	.add(poptmx::OPTION, &cut1, '1', "cut1",
 		 "Crop first image edge.",
 		 "Width of the crop region which is cut from the right/bottom edge"
@@ -115,15 +119,12 @@ clargs(int argc, char *argv[]) :
   else
     hOrientation = horizontal;
   // <image1,2> : two required arguments.
-   if ( ! table.count(&image1) )
+   if ( table.count(&images) < 2 )
 	exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&image1)+".");
-  if ( ! table.count(&image2) )
-	exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&image2)+".");
+				  "At least two input images must be given as argument: "+table.desc(&images)+".");
   // <output> : one more argument may or may not exist
   if ( ! table.count(&out_name) )
-    out_name = image1.dir() + "stitched-" + image1.title() + "-" + image2.title() + image1.extension();
+    out_name = images[0].dir() + "stitched-" + images[0].title() + images[0].extension();
 
 }
 
@@ -135,68 +136,117 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  Map im1, im2;
-  ReadImage( args.image1, im1 );
-  ReadImage( args.image2, im2 );
+  Map imio;
+  ReadImage( args.images[0], imio );
+  const int eRows=imio.rows(),
+            eCols=imio.columns(),
+            nofims = args.images.size(),
+            & shift = args.shift;
+	
 
-  if ( args.hOrientation && im1.rows() != im2.rows() )
-    exit_on_error(args.command, "Different heights of row-stiched images.");
-  if ( ! args.hOrientation && im1.columns() != im2.columns() )
-    exit_on_error(args.command, "Different widths of column-stiched images.");
-
-  if ( args.cut1+args.width >= ( args.hOrientation ? im1.columns() : im1.rows() ) )
+  if ( args.cut1 + args.width >= ( args.hOrientation ? eCols : eRows ) )
     exit_on_error(args.command,
-	 "Crop and stitch width (" + toString(args.cut1) + "+"
-	 + toString(args.width) + "=" + toString(args.cut1+args.width) + ") "
-	 + "is greater that the image size "
-	 + toString( args.hOrientation ? im1.columns() : im1.rows() ) + ".");
-  if ( args.cut2+args.width >= ( args.hOrientation ? im2.columns() : im2.rows() ) )
+      "Crop and stitch width (" + toString(args.cut1) + "+"  + toString(args.width) + "=" + toString(args.cut1+args.width) + ") "
+      + "is greater that the size of \"" + args.images[0]+ "\" image "
+      + toString( args.hOrientation ? eCols : eRows ) + ".");
+
+  if ( nofims * args.shift >= ( args.hOrientation ? eRows : eCols ) )
     exit_on_error(args.command,
-         "Crop and stitch width (" + toString(args.cut2) + "+"
-         + toString(args.width) + "=" + toString(args.cut2+args.width) + ") "
-         + "is greater that the image size "
-         + toString( args.hOrientation ? im2.columns() : im2.rows() ) + ".");
-
-  Map out;
-  if (args.hOrientation) {
-
-    out.resize( im1.rows(),
-      im1.columns() - args.cut1 + im2.columns() - args.cut2 - args.width );
-
-    out( Range::all(), Range(0, im1.columns() - args.cut1 - args.width - 1) ) =
-      im1( Range::all(), Range(0, im1.columns() - args.cut1 - args.width - 1 ) );
-    out( Range::all(), Range( im1.columns() - args.cut1, out.columns() - 1  ) ) =
-      im2( Range::all(), Range( args.width + args.cut2, im2.columns() - 1 ) );
-
-    for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
-      float ratio = (iidx+1.0)/(args.width+1.0);
-      for (blitz::MyIndexType jidx=0; jidx < out.rows(); jidx++ )
-        out ( jidx, (blitz::MyIndexType) (im1.columns() - args.cut1 - args.width + iidx) ) =
-          (1.0-ratio) * im1( jidx, (blitz::MyIndexType) (im1.columns() - args.cut1 - args.width + iidx ) ) +
-          ratio * im2( jidx, (blitz::MyIndexType) (args.cut2 + iidx) );
-    }
-
-  } else {
-
-    out.resize( im1.rows() - args.cut1 + im2.rows() - args.cut2 - args.width,
-      im1.columns() );
-
-    out( Range(0, im1.rows() - args.cut1 - args.width - 1), Range::all() ) =
-      im1( Range(0, im1.rows() - args.cut1 - args.width - 1 ), Range::all() );
-    out( Range( im1.rows() - args.cut1, out.rows() - 1  ), Range::all() ) =
-      im2( Range( args.width + args.cut2, im2.rows() - 1 ), Range::all() );
-
-    for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
-      float ratio = (iidx+1.0)/(args.width+1.0);
-      for (blitz::MyIndexType jidx=0; jidx < out.columns(); jidx++ )
-        out ( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx) , jidx ) =
-          (1.0-ratio) * im1( (blitz::MyIndexType) ( im1.rows() - args.cut1 - args.width + iidx), jidx ) +
-          ratio * im2( (blitz::MyIndexType) (args.cut2 + iidx), jidx );
-    }
-
+      "Total shift (" + toString(shift) + "*" + toString(nofims) + "=" + toString(nofims*shift) + ") "
+      + "is greater that the size of \"" + args.images[0]+ "\" image "
+      + toString( args.hOrientation ? eRows : eCols ) + ".");
+  
+  
+  if (shift<0) {
+    Map tmp;
+    if (args.hOrientation)
+      imio.reference(imio( Range( -shift*(nofims-1), eRows-1), Range::all() ).copy());
+    else
+      imio.reference(imio( Range::all(), Range( -shift*(nofims-1), eCols-1) ).copy());
+  } else if (shift>0) {
+    if (args.hOrientation)
+      imio.reference(imio( Range( 0, eRows-shift*(nofims-1)-1 ) , Range::all() ).copy());
+    else
+      imio.reference(imio( Range::all(), Range( 0, eCols-shift*(nofims-1)-1 ) ).copy());
   }
 
-  SaveImage(args.out_name, out);
+  for ( int curim=1 ; curim < nofims; curim++ ) {
+
+    Map imadd;
+    Path imname = args.images[curim]; 
+    ReadImage(imname, imadd);
+
+    if ( args.cut2+args.width >= ( args.hOrientation ? imadd.columns() : imadd.rows() ) )
+      exit_on_error(args.command,
+         "Crop and stitch width (" + toString(args.cut2) + "+"
+         + toString(args.width) + "=" + toString(args.cut2+args.width) + ") "
+         + "is greater thain the size of \"" + imname + "\"image "
+         + toString( args.hOrientation ? imadd.columns() : imadd.rows() ) + ".");
+      
+    Map imnext;
+
+    if (args.hOrientation) {
+
+      if ( imadd.rows() != eRows )
+        exit_on_error(args.command,
+          "Rows in image \"" + imname + "\" (" + toString(imadd.rows()) + ")"
+          " is not as in the first image (" + toString(eRows) + ").");
+    
+      if (shift<0)
+        imadd.reference(imadd( Range( -shift*(nofims-1-curim), eRows+shift*curim-1 ) , Range::all() ).copy());
+      else if (shift>0)
+        imadd.reference(imadd( Range( shift*curim, eRows-shift*(nofims-1-curim)-1 ) , Range::all() ).copy());
+ 
+      imnext.resize( imio.rows(),
+        imio.columns() - args.cut1 + imadd.columns() - args.cut2 - args.width );
+      imnext( Range::all(), Range(0, imio.columns() - args.cut1 - args.width - 1) ) =
+        imio( Range::all(), Range(0, imio.columns() - args.cut1 - args.width - 1 ) );
+      imnext( Range::all(), Range( imio.columns() - args.cut1, imnext.columns() - 1  ) ) =
+        imadd( Range::all(), Range( args.width + args.cut2, imadd.columns() - 1 ) );
+
+      for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
+        float ratio = (iidx+1.0)/(args.width+1.0);
+        for (blitz::MyIndexType jidx=0; jidx < imnext.rows(); jidx++ )
+          imnext ( jidx, (blitz::MyIndexType) (imio.columns() - args.cut1 - args.width + iidx) ) =
+            (1.0-ratio) * imio( jidx, (blitz::MyIndexType) (imio.columns() - args.cut1 - args.width + iidx ) ) +
+            ratio * imadd( jidx, (blitz::MyIndexType) (args.cut2 + iidx) );
+      }
+
+    } else {
+
+      if ( imadd.columns() != eCols )
+        exit_on_error(args.command,
+          "Columns in image \"" + imname + "\" (" + toString(imadd.columns()) + ")"
+          " is not as in the first image (" + toString(eCols) + ").");
+	
+      if (shift<0)
+	imadd.reference(imadd( Range::all(), Range( -shift*(nofims-1-curim), eCols+shift*curim-1) ).copy());
+      else if (shift>0)
+	imadd.reference(imadd( Range::all(), Range( shift*curim, eCols-shift*(nofims-1-curim)-1 ) ).copy());
+
+      imnext.resize( imio.rows() - args.cut1 + imadd.rows() - args.cut2 - args.width,
+        imio.columns() );
+      
+      imnext( Range(0, imio.rows() - args.cut1 - args.width - 1), Range::all() ) =
+        imio( Range(0, imio.rows() - args.cut1 - args.width - 1 ), Range::all() );
+      imnext( Range( imio.rows() - args.cut1, imnext.rows() - 1  ), Range::all() ) =
+        imadd( Range( args.width + args.cut2, imadd.rows() - 1 ), Range::all() );
+  
+      for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
+        float ratio = (iidx+1.0)/(args.width+1.0);
+        for (blitz::MyIndexType jidx=0; jidx < imnext.columns(); jidx++ )
+          imnext ( (blitz::MyIndexType) ( imio.rows() - args.cut1 - args.width + iidx) , jidx ) =
+            (1.0-ratio) * imio( (blitz::MyIndexType) ( imio.rows() - args.cut1 - args.width + iidx), jidx ) +
+            ratio * imadd( (blitz::MyIndexType) (args.cut2 + iidx), jidx );
+      }
+
+    }
+    
+    imio.reference(imnext);
+        
+  }
+  
+  SaveImage(args.out_name, imio);
 
   exit(0);
 

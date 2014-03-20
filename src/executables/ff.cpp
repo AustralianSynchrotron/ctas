@@ -178,6 +178,18 @@ clargs(int argc, char *argv[]) :
 }
 
 
+inline void readnrot(const string &img, Map &map, const Shape & sh,
+              float angle, const Crop & crop)  {
+    ReadImage(img, map, sh);
+    if ( angle != 0.0 ) {
+      Map temp;
+      rotate(map, temp, angle, crop);
+      map=temp.copy();
+    } else {
+      cropMe(map,crop);
+    }
+}
+
 /// \MAIN{ff}
 int main(int argc, char *argv[]) {
 
@@ -201,26 +213,25 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    Map fa;
-
-    ReadImage(args.foreground_name, fa);
-    const Shape sh = fa.shape();
-    Map ba(sh), dc(sh);
-    ReadImage(args.background_name, ba, sh);
+    const Shape sh = ImageSizes(args.foreground_name);
+    Map fa(sh), ba(sh), dc(sh);
+    
+    readnrot(args.foreground_name, fa, sh, args.angle, args.crop);
+    readnrot(args.background_name, ba, sh, args.angle, args.crop);
 
     if ( ! args.dark_name.empty() )
-      ReadImage(args.dark_name, dc, sh);
+      readnrot(args.dark_name, dc, sh, args.angle, args.crop);
     else
       dc=0;
 
     if ( ! args.background_2_name.empty() ) {
       Map tmp(sh);
-      ReadImage(args.background_2_name, tmp, sh);
+      readnrot(args.background_2_name, tmp, sh, args.angle, args.crop);
       weighted(ba, ba, tmp, args.backgroundWeight);
     }
     if ( ! args.dark_2_name.empty() ) {
       Map tmp(sh);
-      ReadImage(args.dark_2_name, tmp, sh);
+      readnrot(args.dark_2_name, tmp, sh, args.angle, args.crop);
       weighted(dc, dc, tmp, args.darkWeight);
     }
 

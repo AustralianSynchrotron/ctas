@@ -977,23 +977,18 @@ void cl2map(Map & storage, cl_mem clbuffer) {
 #include<Magick++.h>
 
 
-static bool
-CtasMagickInited = false; ///< \c true if ImageMagick has been initialized.
-
-/// \brief initializes ImageMagick library
+/// \brief initializes image IO libraries
 ///
-/// Use it in all binaries to allow reading up to 10k x 10k into memory, not HDD.
-static inline void
-initMagick(){
+/// ImageMagick: allow reading up to 10k x 10k into memory, not HDD.
+/// libTIFF: suppress warnings.
+static bool
+initImageIO(){
 
 #ifdef MAGICKLIB_NAMESPACE
   using namespace MagickLib;
 #else
   using namespace MagickCore;
 #endif
-
-  if ( CtasMagickInited )
-    return;
 
   MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
   SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
@@ -1002,9 +997,12 @@ initMagick(){
   SetMagickResourceLimit ( MapResource , Msz);
   SetMagickResourceLimit ( MemoryResource , Msz);
 
-  CtasMagickInited = true;
+  // suppress libtiff warnings 
+  TIFFSetWarningHandler(0);
 
 }
+
+static const bool imageIOinited = initImageIO();
 
 
 
@@ -1261,8 +1259,6 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
 static void
 ReadImage_IM (const Path & filename, Map & storage ){
 
-  initMagick();
-
   Magick::Image imag;
   try { imag.read(filename); }
   catch ( Magick::WarningCoder err ) {}
@@ -1322,7 +1318,6 @@ ReadImage(const Path & filename, Map & storage, const Shape & shp){
 static void
 ReadImageLine_IM (const Path & filename, Line & storage, int idx){
 
-  initMagick();
   Magick::Image imag;
   try { imag.read(filename); } catch ( Magick::WarningCoder err ) {}
   if ( imag.type() != Magick::GrayscaleType )
@@ -1377,7 +1372,6 @@ static void
 ReadImageLine_IM (const Path & filename, Map & storage,
                   const vector<int> &idxs) {
 
-  initMagick();
   Magick::Image imag;
   try { imag.read(filename); } catch ( Magick::WarningCoder err ) {}
   if ( imag.type() != Magick::GrayscaleType )
@@ -1449,8 +1443,6 @@ ReadImageLine(const Path & filename, Map & storage,
 ///
 static void
 SaveImageINT_IM (const Path & filename, const Map & storage){
-
-  initMagick();
 
   const int
     width = storage.columns(),

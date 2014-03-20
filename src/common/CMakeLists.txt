@@ -33,14 +33,14 @@ else()
   message("   ImageMagick version ... >= 6.4.2")
 endif()
 # check HDRI support in ImageMagick
-execute_process(
-  COMMAND Magick++-config --version
-  COMMAND grep HDRI --quiet
-  RESULT_VARIABLE IMHDRI
-)
-if ( ${IMHDRI} EQUAL 0 )
-  message(FATAL_ERROR "Install ImageMagick library with _NO_ HDRI supprt.")
-endif()
+#execute_process(
+#  COMMAND Magick++-config --version
+#  COMMAND grep HDRI --quiet
+#  RESULT_VARIABLE IMHDRI
+#)
+#if ( ${IMHDRI} EQUAL 0 )
+#  message(FATAL_ERROR "Install ImageMagick library with _NO_ HDRI supprt.")
+#endif()
 
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 

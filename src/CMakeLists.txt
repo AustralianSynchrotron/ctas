@@ -9,7 +9,6 @@ else()
   message("--- Warning! No OpenCL implementation found. Building for CPU only.")
 endif()
 
-
 add_subdirectory(blitz-long)
 add_subdirectory(common)
 add_subdirectory(executables)

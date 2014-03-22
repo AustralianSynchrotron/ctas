@@ -35,7 +35,6 @@
 #include "../common/common.h"
 #include "../common/kernel.h"
 #include "../common/poptmx.h"
-#include "FreeImage.h"
 
 using namespace std;
 

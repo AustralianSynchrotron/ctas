@@ -9,8 +9,10 @@ add_custom_target(dist
         | bzip2 > ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${VERSION}.tar.bz2
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-set(CMAKE_C_FLAGS "-ffast-math")
-set(CMAKE_CXX_FLAGS "-ffast-math")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math")
+set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS} ${CMAKE_CXX_FLAGS} -ffast-math")
+
+
 
 include(CheckIncludeFile)
 include(CheckLibraryExists)

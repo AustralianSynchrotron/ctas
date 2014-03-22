@@ -100,8 +100,9 @@ IF( UNIX )
      
      FIND_PATH(     OPENCL_INCLUDE_DIR
                  NAMES CL/cl.h OpenCL/cl.h
-                 HINTS ENV OPENCL_DIR
-                 PATHS     /include
+                 HINTS $ENV{OPENCL_DIR}/include
+                       ENV OPENCL_DIR
+                 PATHS   /include
                          /usr/include
                          /usr/local/include
                          ~/include )
@@ -110,7 +111,8 @@ IF( UNIX )
           
      FIND_LIBRARY(    OPENCL_LIBRARY
                      NAMES OpenCL
-                     HINTS ENV OPENCL_DIR
+                     HINTS $ENV{OPENCL_DIR}/lib
+                           ENV OPENCL_DIR
                      PATHS   /lib
                              /usr/lib
                              /usr/local/lib

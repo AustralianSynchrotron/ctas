@@ -1,10 +1,12 @@
 # To make sure the internal version of blitz is used
 include_directories("../blitz-long")
 
+
 # check ImageMagick
 FIND_PACKAGE(ImageMagick REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS Magick++ REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
+
 # check it's version
 find_program(MAGICKCONFIG, Magick++-config)
 if( "${MAGICKCONFIG}" MATCHES "MAGICKCONFIG-NOTFOUND" )
@@ -44,7 +46,6 @@ endif()
 
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 
-
 FIND_PACKAGE(TIFF REQUIRED)
 
 find_library(HAVE_FFTW fftw3)
@@ -52,7 +53,7 @@ find_library(HAVE_FFTWF fftw3f)
 if( "${HAVE_FFTWF}" MATCHES "HAVE_FFTWF-NOTFOUND" )
   message(FATAL_ERROR "FFTW library with float point support not found.")
 endif()
-check_include_file(fftw3.h HAVE_FFTW3F_H)
+check_include_file(fftw3.h HAVE_FFTW3F_H ${CMAKE_CXX_FLAGS})
 if( "${HAVE_FFTWF3F_H}" MATCHES "HAVE_FFTWF3F_H-NOTFOUND" )
   message(FATAL_ERROR "Development part of the FFTW library not found (fftw3f.h).")
 endif()
@@ -65,7 +66,7 @@ find_library(HAVE_GSLCBLAS gslcblas)
 if( "${HAVE_GSLCBLAS}" MATCHES "HAVE_GSLCBLAS-NOTFOUND" )
   message(FATAL_ERROR "GSLCBLAS library not found.")
 endif()
-check_include_file(gsl/gsl_sf_bessel.h HAVE_GSL_SF_BESSEL_H)
+check_include_file(gsl/gsl_sf_bessel.h HAVE_GSL_SF_BESSEL_H ${CMAKE_CXX_FLAGS})
 if( "${HAVE_GSL_SF_BESSEL_H}" MATCHES "HAVE_GSL_SF_BESSEL_H-NOTFOUND" )
   message(FATAL_ERROR "Could not find \"gsl/gsl_sf_bessel.h\" header which must be a part of the GSL library.")
 endif()
@@ -91,7 +92,6 @@ add_library(common SHARED common.cpp ${LIMITCLINC})
 target_link_libraries(common
   Magick++
   MagickCore
-  freeimage
   tiff
   ${OPENCL_LL}
 )

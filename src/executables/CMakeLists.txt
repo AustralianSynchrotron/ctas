@@ -203,7 +203,7 @@ foreach(targ ${all_targets})
 
     set(manout "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-${targ}.1")
     add_custom_command( TARGET "${targ}" POST_BUILD
-      COMMAND LD_LIBRARY_PATH="${CMAKE_BINARY_DIR}/src/common" "./${targ}" -very-long-key-phrase-to-output-man-pages >> ${manout}
+      COMMAND LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_BINARY_DIR}/src/common "./${targ}" -very-long-key-phrase-to-output-man-pages >> ${manout}
     )
     install(FILES "${manout}" DESTINATION "${MAN_DESTINATION}")
 

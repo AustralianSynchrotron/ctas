@@ -339,42 +339,19 @@ int main(int argc, char *argv[]) {
   if ( ! sins || ! sins->indexes().size() )
     throw_error(args.command, "No slices requested");
 
-  if ( sins->indexes().size()<=2 ) {
-
-    CTrec rec(sins->sinoShape(), args.contrast, args.arc, args.filter_type);
-
-    Map sinogram, result;
-    const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
-    args.outmask.dtitle() + "-@" + args.outmask.extension() :
-    string( args.outmask ) ;
-    const string sliceformat = mask2format(outmask, sins->imageShape()(0) );
-    ProgressBar bar(args.beverbose, "reconstruction", sins->indexes().size());
-
-    for (unsigned slice=0 ; slice < sins->indexes().size() ; slice++ ) {
-      sins->sino(slice, sinogram);
-      const Map & res = rec.reconstruct(sinogram, args.center(slice+1), args.dd);
-      SaveImage( toString(sliceformat, sins->indexes()[slice]+1), res, args.SaveInt);
-      bar.update();
-    }
-
-  }  else {
-
-    slice_distributor dist(args, sins);
-    const int run_threads = nof_threads();
-    vector<pthread_t> threads(run_threads);
+  slice_distributor dist(args, sins);
+  const int run_threads = min<int>( nof_threads() , sins->indexes().size() ) ;
+  vector<pthread_t> threads(run_threads);
 
 
-    for (int ith = 0 ; ith < run_threads ; ith++)
-      if ( pthread_create( & threads[ith], NULL, in_reconstruction_thread, &dist ) )
-        throw_error("project sino in thread", "Can't create thread.");
+  for (int ith = 0 ; ith < run_threads ; ith++)
+    if ( pthread_create( & threads[ith], NULL, in_reconstruction_thread, &dist ) )
+      throw_error("project sino in thread", "Can't create thread.");
 
-    for (int ith = 0 ; ith < threads.size() ; ith++)
-      pthread_join( threads[ith], 0);
+  for (int ith = 0 ; ith < threads.size() ; ith++)
+    pthread_join( threads[ith], 0);
 
-    dist.complete_writing();
-
-  }
-
+  dist.complete_writing();
 
   delete sins;
 

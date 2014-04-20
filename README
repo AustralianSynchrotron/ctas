@@ -1,0 +1,14 @@
+Build and install as the standard cmake project. Usually like this:
+
+	mkdir build
+	cd build
+        cmake CMAKE_INSTALL_PREFIX:PATH=/usr/local ..
+	make
+	<as root>
+	make install
+
+A very outdated documentation is placed under the doc subdirectory. More up to date information on usage is provided with the --help option in all tools which can be combined with the --verbose for more information. Start with
+	ctas -h
+and continue with something like
+	ctas <tool> -h
+

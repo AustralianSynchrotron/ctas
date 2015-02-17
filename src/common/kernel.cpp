@@ -187,10 +187,10 @@ Filter::fill(Line &filt, int pixels) const {
   filt(0) = 0.25;
   for ( int pix = 1 ; pix < pixels/2 ; pix += 2)
     filt(pix) = -1.0/(pix*pix*M_PI*M_PI);
-  fftwf_plan planZ = fftwf_plan_r2r_1d (pixels, filt.data(), filt.data(),
-                                        FFTW_HC2R, FFTW_ESTIMATE);
+  
+  fftwf_plan planZ = safe_fftwf_plan_r2r_1d (pixels, filt.data(), FFTW_HC2R);
   fftwf_execute(planZ);
-  fftwf_destroy_plan(planZ);
+  safe_fftw_destroy_plan(planZ);
 
   /*
   for ( int pix = 0 ; pix < pixels ; pix++)
@@ -249,10 +249,10 @@ Filter::fill(Line &filt, int pixels) const {
       break;
 
     }
-
+    
     // Here 2.0 appears because of the R2HC-HC2R FFT pair.
     filt(pix) *= fp/2.0;
-
+    
   }
 
   return filt;
@@ -340,6 +340,7 @@ static const int TR_conf = 1 << 16;
 static inline void
 filter_line(Line &ln, const Line &f_win,
             const fftwf_plan *planF, const fftwf_plan *planB) {
+  
   float *lnp = ln.data();
   fftwf_execute_r2r( *planF, lnp, lnp);
   ln *= f_win;
@@ -550,6 +551,8 @@ const string CTrec::modname = "reconstruction";
 /// than the number of pixels (CTrec::_pixels). Must be >= 1.
 const float CTrec::zPad = 2.0;
 
+pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
+
 #ifdef OPENCL_FOUND
 
 char ctsrc[] = {
@@ -559,7 +562,6 @@ cl_program CTrec::program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
 
 cl_int CTrec::err = CL_SUCCESS;
 
-pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #endif // OPENCL_FOUND
 
@@ -582,22 +584,24 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
   _contrast(cn),
   _filter(ft)
 {
-
+  
+  filter(_filter);
+  
 #ifdef OPENCL_FOUND
   pthread_mutex_lock(&ctrec_lock);
 #endif // OPENCL_FOUND
 
   try {
 
-    filter(_filter);
-
     if (_width <= 1)
       throw_error (modname, "Number of pixels in the CT reconstruction "
                    + toString(_width) + ": less or equal to 1.");
-    planF = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_R2HC, FFTW_ESTIMATE);
-    planB = fftwf_plan_r2r_1d ((int)(_width*zPad), 0, 0, FFTW_HC2R, FFTW_ESTIMATE);
+    planF = safe_fftwf_plan_r2r_1d ((int)(_width*zPad), 0, FFTW_R2HC);
+    planB = safe_fftwf_plan_r2r_1d ((int)(_width*zPad), 0, FFTW_HC2R);
+
 
 #ifdef OPENCL_FOUND
+
     if (program) {
 
       try {
@@ -699,8 +703,8 @@ CTrec::~CTrec(){
   clReleaseKernel(kernelSino);
   pthread_mutex_unlock(&ctrec_lock);
 #endif // OPENCL_FOUND
-  fftwf_destroy_plan(planF);
-  fftwf_destroy_plan(planB);
+  safe_fftw_destroy_plan(planF);
+  safe_fftw_destroy_plan(planB);
 }
 
 
@@ -758,7 +762,7 @@ void CTrec::prepare_sino(Map &sinogram) {
 
       Line sinoline = sinogram(iTheta, blitz::Range::all());
 
-      zsinoline = 0;
+      zsinoline = 0.0;
       zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
       filter_line(zsinoline, filt_window, &planF, &planB);
       sinoline = zsinoline(blitz::Range(zShift, zShift+_width));
@@ -802,7 +806,7 @@ CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
                 " Image width: " + toString(_width) + ", the deviation"
                 " of the rotation axis from the center of the image: "
                 + toString(center) + ".");
-
+  
   prepare_sino(sinogram);
 
   reset();
@@ -983,9 +987,12 @@ CTrec::result(float pixelSize) {
 
 
 void CTrec::reset() {
+
   nextAddLineResets=false;
   projection_counter=0;
+
   _result=0.0;
+
 #ifdef OPENCL_FOUND
   if (kernelLine)
     err = clEnqueueWriteBuffer(  CL_queue, clSlice, CL_TRUE, 0,
@@ -996,6 +1003,8 @@ void CTrec::reset() {
                 + toString(err) );
 
 #endif // OPENCL_FOUND
+
+
 }
 
 
@@ -1081,8 +1090,8 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   filter.fill(f_win, pixels);
 
   fftwf_plan
-    planF = fftwf_plan_r2r_1d (pixels, 0, 0, FFTW_R2HC, FFTW_ESTIMATE),
-    planB = fftwf_plan_r2r_1d (pixels, 0, 0, FFTW_HC2R, FFTW_ESTIMATE);
+    planF = safe_fftwf_plan_r2r_1d (pixels, 0, FFTW_R2HC),
+    planB = safe_fftwf_plan_r2r_1d (pixels, 0, FFTW_HC2R);
 
   float cur_sin = sin(angle);
   float cur_cos = cos(angle);
@@ -1107,8 +1116,8 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 
   }
 
-  fftwf_destroy_plan(planF);
-  fftwf_destroy_plan(planB);
+  safe_fftw_destroy_plan(planF);
+  safe_fftw_destroy_plan(planB);
 
 }
 

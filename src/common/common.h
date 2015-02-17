@@ -61,8 +61,7 @@ static inline int isnan(double x){ return _isnan(x); }
 #endif
 
 
-void prdn( int a );
-
+int prdn( int a );
 
 
 /// \defgroup Error Error handling.

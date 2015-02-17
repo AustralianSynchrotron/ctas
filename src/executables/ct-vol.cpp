@@ -288,6 +288,10 @@ void *in_write_thread (void *_thread_args) {
 }
 
 
+
+
+
+
 void *in_reconstruction_thread (void *_thread_args) {
 
 
@@ -342,7 +346,6 @@ int main(int argc, char *argv[]) {
   slice_distributor dist(args, sins);
   const int run_threads = min<int>( nof_threads() , sins->indexes().size() ) ;
   vector<pthread_t> threads(run_threads);
-
 
   for (int ith = 0 ; ith < run_threads ; ith++)
     if ( pthread_create( & threads[ith], NULL, in_reconstruction_thread, &dist ) )

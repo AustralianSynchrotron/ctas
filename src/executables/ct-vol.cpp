@@ -310,7 +310,11 @@ void *in_reconstruction_thread (void *_thread_args) {
     int curslice = distributor->sins->indexes()[slice]+1;
     const Map & res = rec.reconstruct(sinogram, distributor->args.center(curslice),
                                distributor->args.dd);
-    distributor->put_image( res, curslice );
+    SaveImage( toString(distributor->sliceformat, curslice), res, distributor->args.SaveInt );
+    distributor->bar.update();
+    
+    // distributor->put_image( res, curslice );
+    
   }
 
 

@@ -108,10 +108,10 @@ clargs(int argc, char *argv[]) :
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-
+  
   Map arr;
   ReadImage( args.in_name, arr );
-
+  
   if (args.mMm) {
     cout << min(arr) << " " << max(arr) << endl;
     exit(0);

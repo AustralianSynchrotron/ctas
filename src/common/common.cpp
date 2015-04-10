@@ -1449,19 +1449,20 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   const int
     width = storage.columns(),
     hight = storage.rows();
-
+    
   Magick::Image imag( Magick::Geometry(width, hight), "black" );
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
   imag.depth(16);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
-
+  
   const float *data = storage.data();
   Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
+    
   Magick::ColorGray colg;
   for ( int k = 0 ; k < hight*width ; k++ )
     *pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
-
+  
   imag.syncPixels();
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
@@ -1556,7 +1557,7 @@ SaveImageINT (const Path &filename, const Map &storage,
          "Zero-sized array for image '" + filename + "': won't save." );
     return;
   }
-
+ 
   Map stor(storage.shape());
   if (minval == maxval) {
     minval = (blitz::min)(storage);
@@ -1619,9 +1620,9 @@ SaveImageINT (const Path &filename, const Map &storage,
 #endif  // OPENCL_FOUND
 
   }
-
+  
   SaveImageINT_IM(filename, stor);
-
+  
 }
 
 

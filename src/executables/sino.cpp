@@ -37,6 +37,8 @@
 #include "../common/common.h"
 #include "../common/experiment.h"
 #include <vector>
+#include <unistd.h>
+#include <fstream>
 #include "../common/poptmx.h"
 
 using namespace std;
@@ -46,6 +48,7 @@ using namespace std;
 struct clargs {
   string command;               ///< Command name as it was invoked.
   Path outmask;       ///< The mask for the output file names.
+  Path fileinlist;
   vector<Path> inlist;        ///< Array of the input images.
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float angle;           ///< Angle of the sino slicing.
@@ -69,7 +72,7 @@ clargs(int argc, char *argv[]) :
   poptmx::OptionTable table
   ("Prepares sinogram from the stack of files.",
    "Reads line(s) requested in the slice string from all input images"
-   " in the order they appear in the argument list and forms the sinograms."
+   " or file with the list and forms the sinograms."
    " All input images must be of the same size.");
 
   table
@@ -78,6 +81,9 @@ clargs(int argc, char *argv[]) :
        "List of the input images.", "")
 
   .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &fileinlist, 'l', "list",
+       "Input file with the list of the images.",
+       "If this option is used then the input arguments are ignored.")
   .add(poptmx::OPTION, &outmask, 'o', "output",
        "Output result mask or filename.",
        "Output filename if only one sinogram is requested."
@@ -104,8 +110,28 @@ clargs(int argc, char *argv[]) :
 
   command = table.name();
 
+  if ( table.count(&fileinlist) ) {
+
+    inlist.clear();
+
+    string curstring;
+    fstream input_file(fileinlist.c_str(), ios::in);
+    if ( ! input_file.is_open() )
+      throw_error("Read input list", string() +
+                  "Failed to open input file \"" + fileinlist.c_str() + "\"\n");
+
+    while (!input_file.eof()) {
+      getline(input_file, curstring);
+      if ( ! curstring.empty() )
+        inlist.push_back(curstring);
+    }
+
+    input_file.close();
+
+  }
+
   // List of input files
-  if ( table.count(&inlist) < 2 )
+  if ( inlist.size() < 2  )
     exit_on_error( command, "Less than 2 input images are specified.");
 
   angle *= M_PI/180;

@@ -46,6 +46,7 @@ endif()
 
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 
+
 FIND_PACKAGE(TIFF REQUIRED)
 
 find_library(HAVE_FFTW fftw3)

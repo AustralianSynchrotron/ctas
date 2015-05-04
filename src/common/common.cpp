@@ -711,7 +711,7 @@ ProgressBar::getwidth(){
 static bool clInited = false;
 
 bool clIsInited() {
-
+  
   if (clInited)
     return true;
 

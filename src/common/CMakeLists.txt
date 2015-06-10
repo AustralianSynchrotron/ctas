@@ -6,7 +6,6 @@ include_directories("../blitz-long")
 FIND_PACKAGE(ImageMagick 6.4.2 REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS Magick++ REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
-
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 
 FIND_PACKAGE(TIFF REQUIRED)
@@ -52,9 +51,8 @@ if (OPENCL_FOUND)
 endif()
 
 add_library(common SHARED common.cpp ${LIMITCLINC})
-target_link_libraries(common 
-  Magick++
-  MagickCore
+target_link_libraries(common
+  ${ImageMagick_LIBRARIES} 
   tiff
   ${OPENCL_LL}
 )

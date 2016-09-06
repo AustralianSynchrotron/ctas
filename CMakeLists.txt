@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 2.6)
 project (ctas)
 set(VERSION 0.6.0)
 
+#cmake_policy(SET CMP0045 OLD)
+
 SET( CMAKE_MODULE_PATH ${ctas_SOURCE_DIR}/cmake)
 
 add_custom_target(dist

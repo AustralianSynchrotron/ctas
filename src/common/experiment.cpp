@@ -44,10 +44,7 @@ const string AqSeries::modname  = "acquisition series";
 
 cl_int AqSeries::err=CL_SUCCESS;
 
-char ffsrc[] = {
-  #include "ff.cl.includeme"
-};
-cl_program AqSeries::program = initProgram( ffsrc, sizeof(ffsrc), AqSeries::modname );
+cl_program AqSeries::program = 0;
 
 
 void AqSeries::cleanCLmem() const {
@@ -193,6 +190,13 @@ AqSeries::AqSeries(const Path & filename) {
 
 
 #ifdef OPENCL_FOUND
+  if ( ! program ) { 
+    char ffsrc[] = {
+      #include "ff.cl.includeme"
+    };
+    program = initProgram( ffsrc, sizeof(ffsrc), AqSeries::modname );  
+  }
+  
   if (program) {
 
     cl_io=0;
@@ -1026,8 +1030,8 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
   ProgressBar bar(verb, "reading projections", thts);
   for ( int curproj = 0 ; curproj < thts ; curproj++){
     exp.projection(curproj, proj, sliceV);
-	data(curproj, blitz::Range::all(), blitz::Range::all()) = proj;
-	bar.update();
+    data(curproj, blitz::Range::all(), blitz::Range::all()) = proj;
+    bar.update();
   }
 
 }

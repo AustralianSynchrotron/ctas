@@ -555,10 +555,7 @@ pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef OPENCL_FOUND
 
-char ctsrc[] = {
-  #include "ct.cl.includeme"
-};
-cl_program CTrec::program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
+cl_program CTrec::program = 0;
 
 cl_int CTrec::err = CL_SUCCESS;
 
@@ -601,6 +598,15 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
 
 
 #ifdef OPENCL_FOUND
+    
+    if (!program) {
+      
+      char ctsrc[] = {
+        #include "ct.cl.includeme"
+      };
+      program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
+      
+    }
 
     if (program) {
 

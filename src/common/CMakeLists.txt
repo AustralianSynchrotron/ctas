@@ -47,7 +47,6 @@ FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
 
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 
-
 FIND_PACKAGE(TIFF REQUIRED)
 
 find_library(HAVE_FFTW fftw3)
@@ -93,8 +92,6 @@ endif()
 add_library(common SHARED common.cpp ${LIMITCLINC})
 target_link_libraries(common
   ${ImageMagick_LIBRARIES}
-  #Magick++
-  #MagickCore
   tiff
   ${OPENCL_LL}
 )

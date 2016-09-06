@@ -290,6 +290,8 @@ void *in_write_thread (void *_thread_args) {
 
 
 
+string writefails="";
+pthread_mutex_t addfail_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 void *in_reconstruction_thread (void *_thread_args) {
@@ -310,7 +312,14 @@ void *in_reconstruction_thread (void *_thread_args) {
     int curslice = distributor->sins->indexes()[slice]+1;
     const Map & res = rec.reconstruct(sinogram, distributor->args.center(curslice),
                                distributor->args.dd);
-    SaveImage( toString(distributor->sliceformat, curslice), res, distributor->args.SaveInt );
+    try { SaveImage( toString(distributor->sliceformat, curslice), res, distributor->args.SaveInt ); }
+    catch ( CtasErr err ) {
+      pthread_mutex_lock(&addfail_lock);
+      if ( ! writefails.empty()  )
+        writefails += ",";
+      writefails += toString(curslice);      
+      pthread_mutex_unlock(&addfail_lock);
+    }
     distributor->bar.update();
     
     // distributor->put_image( res, curslice );
@@ -359,6 +368,9 @@ int main(int argc, char *argv[]) {
     pthread_join( threads[ith], 0);
 
   dist.complete_writing();
+
+  if ( ! writefails.empty() ) 
+    cerr << "Fails: " << writefails << endl;
 
   delete sins;
 

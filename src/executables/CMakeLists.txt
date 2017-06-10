@@ -170,7 +170,7 @@ target_link_libraries(stitch
   poptmx
 )
 
-add_executable(transform transform.cpp)
+add_executable(trans transform.cpp)
 target_link_libraries(trans
   common
   poptmx
@@ -183,7 +183,7 @@ target_link_libraries(norm
   experiment
 )
 
-add_executable(projection projection.cpp)
+add_executable(proj projection.cpp)
 target_link_libraries(proj
   common
   poptmx

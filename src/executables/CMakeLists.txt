@@ -164,12 +164,6 @@ target_link_libraries(simulate-ipc
   lipc
 )
 
-add_executable(stitch stitch.cpp)
-target_link_libraries(stitch
-  common
-  poptmx
-)
-
 add_executable(trans transform.cpp)
 target_link_libraries(trans
   common

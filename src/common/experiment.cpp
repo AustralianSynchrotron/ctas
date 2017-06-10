@@ -298,14 +298,15 @@ AqSeries::index(int idx) const  {
 
 
 void readnrot(const string &img, Map &map, const Shape & sh,
-              float angle, const vector<int> &slices, const Crop & crop)  {
+              float angle, const vector<int> &slices, const Crop & crp)  {
   if (angle==0.0) {
     ReadImageLine(img, map, slices, sh);
-    cropMe(map,crop);
+    crop(map,crp);
   } else {
     Map temp;
     ReadImage(img, map, sh);
-    rotate(map, temp, angle, crop);
+    rotate(map, temp, angle);
+    crop(temp,crp);
     if ( ! slices.empty() ) {
       map.resize(slices.size(), temp.shape()(1));
       for ( int sls=0 ; sls < slices.size() ; sls++ )
@@ -745,20 +746,6 @@ const string MaskDesc =
   "Note that the path(s) to the files must exist: the program will not create"
   " any directory.";
 
-string
-mask2format(const string & mask, int maxslice){
-  string format(mask);
-  // replace all '%' by "%%"
-  string::size_type pos = format.find('%');
-  while ( pos != string::npos ) {
-	format.insert(pos, "%");
-	pos = format.find('%', pos+2);
-  }
-  //replace last '@' with the format expression.
-  format.replace( format.rfind('@'), 1,
-				  "%0" + toString( toString(maxslice).length() ) + "u");
-  return format;
-}
 
 
 
@@ -1037,39 +1024,6 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
 }
 
 
-/// \brief Constructs the 3D array from the list of input images.
-///
-/// @param inlist List of input files.
-/// @param slicedesc List of slices of the interest.
-/// @param _verb Show progress bar.
-///
-SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc, bool _verb) :
-   verb(_verb)
-{
-
-  if ( ! inlist.size() )
-    throw_error(modname, "Empty list of input files.");
-  _imageShape = ImageSizes(inlist[0]);
-  sliceV = slice_str2vec(slicedesc, _imageShape(0));
-  slcs = sliceV.size();
-  thts = inlist.size();
-  pxls = _imageShape(1);
-  allpix = long(thts) * long(slcs) *long(pxls);
-
-  allocateArray();
-
-  // Read images to the array.
-  Map proj(Shape(slcs,pxls));
-  ProgressBar bar(verb, "reading projections", thts);
-  for ( int curproj = 0 ; curproj < thts ; curproj++) {
-    ReadImageLine( inlist[curproj], proj, sliceV, _imageShape);
-    data(curproj, blitz::Range::all(), blitz::Range::all()) = proj;
-    bar.update();
-  }
-
-}
-
-
 
 
 /// \brief Constructs the 3D array from the list of input images.
@@ -1080,18 +1034,19 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc, bool _v
 /// @param _verb Show progress bar.
 ///
 SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
-             float angle, const Crop & crop, bool _verb) :
+             float angle, const Crop & crp, bool _verb) :
   verb(_verb)
 {
 
   if ( ! inlist.size() )
     throw_error(modname, "Empty list of input files.");
 
-  Map iar, oar;
+  Map iar, rar, car;
   ReadImage(inlist[0], iar);
   const Shape sh = iar.shape();
-  rotate(iar, oar, angle, crop);
-  _imageShape = oar.shape();
+  rotate(iar, rar, angle);
+  crop(rar, car, crp);
+  _imageShape = car.shape();
   sliceV = slice_str2vec(slicedesc, _imageShape(0));
   slcs = sliceV.size();
   thts = inlist.size();
@@ -1105,10 +1060,11 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
   ProgressBar bar(verb, "reading projections", thts);
   for ( int curproj = 0 ; curproj < thts ; curproj++) {
     ReadImage(inlist[curproj], iar, sh);
-    rotate(iar, oar, angle, crop);
+    rotate(iar, rar, angle);
+    crop(rar, car, crp);
     for ( int sls=0 ; sls < sliceV.size() ; sls++ )
       data(curproj, sls, blitz::Range::all()) =
-        oar(sliceV[sls], blitz::Range::all());
+        car(sliceV[sls], blitz::Range::all());
     bar.update();
   }
 

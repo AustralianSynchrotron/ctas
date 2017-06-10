@@ -36,12 +36,14 @@
 
 #include "../common/common.h"
 #include "../common/experiment.h"
+#include "../common/flatfield.h"
 #include <vector>
 #include <unistd.h>
 #include <fstream>
 #include "../common/poptmx.h"
 
 using namespace std;
+using namespace blitz;
 
 
 /// \CLARGS
@@ -50,9 +52,11 @@ struct clargs {
   Path outmask;       ///< The mask for the output file names.
   Path fileinlist;
   vector<Path> inlist;        ///< Array of the input images.
+  vector<Path> bgs;        ///< Array of the background images.
+  vector<Path> dfs;        ///< Array of the dark field images.
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float angle;           ///< Angle of the sino slicing.
-  Crop crop; //< Crop input projection image
+  Crop crp; //< Crop input projection image
   bool beverbose;       ///< Be verbose flag
   bool SaveInt;         ///< Save image as 16-bit integer.
 
@@ -81,9 +85,8 @@ clargs(int argc, char *argv[]) :
        "List of the input images.", "")
 
   .add(poptmx::NOTE, "OPTIONS:")
-  .add(poptmx::OPTION, &fileinlist, 'l', "list",
-       "Input file with the list of the images.",
-       "If this option is used then the input arguments are ignored.")
+  .add(poptmx::OPTION, &bgs, 'b', "bg", "Background image(s)", "")
+  .add(poptmx::OPTION, &dfs, 'd', "df", "Dark field image(s)", "")
   .add(poptmx::OPTION, &outmask, 'o', "output",
        "Output result mask or filename.",
        "Output filename if only one sinogram is requested."
@@ -94,7 +97,7 @@ clargs(int argc, char *argv[]) :
        SliceOptionDesc, "<all>")
   .add(poptmx::OPTION, &angle, 'a', "angle",
        "Angle of the image slicing.", "", toString(angle))
-  .add(poptmx::OPTION, &crop, 'c', "crop",
+  .add(poptmx::OPTION, &crp, 'c', "crop",
        CropOptionDesc, "")
   .add(poptmx::OPTION, &SaveInt,'i', "int",
        "Output image(s) as integer.", IntOptionDesc)
@@ -110,27 +113,6 @@ clargs(int argc, char *argv[]) :
 
   command = table.name();
 
-  if ( table.count(&fileinlist) ) {
-
-    inlist.clear();
-
-    string curstring;
-    fstream input_file(fileinlist.c_str(), ios::in);
-    if ( ! input_file.is_open() )
-      throw_error("Read input list", string() +
-                  "Failed to open input file \"" + fileinlist.c_str() + "\"\n");
-
-    while (!input_file.eof()) {
-      getline(input_file, curstring);
-      if ( ! curstring.empty() )
-        inlist.push_back(curstring);
-    }
-
-    input_file.close();
-
-  }
-
-  // List of input files
   if ( inlist.size() < 2  )
     exit_on_error( command, "Less than 2 input images are specified.");
 
@@ -146,36 +128,55 @@ clargs(int argc, char *argv[]) :
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  const SinoS *sins = (args.angle==0.0) ?
-  new SinoS(args.inlist, args.slicedesc, args.beverbose) :
-  new SinoS(args.inlist, args.slicedesc, args.angle, args.crop, args.beverbose);
-  if ( ! sins->indexes().size() )
+  
+  const Shape sh=ImageSizes(args.inlist[0]);
+  
+  const SinoS sins( args.inlist, args.slicedesc, args.angle, args.crp, args.beverbose );
+  if ( ! sins.indexes().size() )
     throw_error(args.command, "No sinograms requested");
+  
+  Map bgar;
+  if ( ! args.bgs.empty() ) {
+    bgar.resize(sins.imageShape());
+    Map iar(sh), rar, car;
+    for ( int curf = 0 ; curf < args.bgs.size() ; curf++) {
+      ReadImage(args.bgs[curf], iar, sh);
+      rotate(iar, rar, args.angle);
+      crop(rar, car, args.crp);
+      for ( int sls=0 ; sls < sins.indexes().size() ; sls++ )
+        bgar(sls, Range::all()) += car(sins.indexes()[sls], Range::all());
+    }
+    bgar /= args.bgs.size();
+  }
+  
+  Map dfar;
+  if ( ! args.dfs.empty() ) {
+    dfar.resize(sins.imageShape());
+    Map iar(sh), rar, car;
+    for ( int curf = 0 ; curf < args.dfs.size() ; curf++) {
+      ReadImage(args.dfs[curf], iar, sh);
+      rotate(iar, rar, args.angle);
+      crop(rar, car, args.crp);
+      for ( int sls=0 ; sls < sins.indexes().size() ; sls++ )
+        dfar(sls, Range::all()) += car(sins.indexes()[sls], Range::all());
+    }
+    dfar /= args.dfs.size();
+  }
 
   Map sinogram;
 
-  if ( sins->indexes().size() == 1 ) {
-
-    sins->sino(0, sinogram);
-    SaveImage( args.outmask, sinogram, args.SaveInt );
-
-  } else {
-
-    const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
-    args.outmask.dtitle() + "-@" + args.outmask.extension() :
-    string( args.outmask ) ;
-    const string sliceformat = mask2format(outmask, sins->imageShape()(0) );
-    ProgressBar bar(args.beverbose, "sinograms formation", sins->indexes().size());
-
-    for (unsigned slice=0 ; slice < sins->indexes().size() ; slice++ ) {
-      sins->sino(slice, sinogram);
-      SaveImage( toString(sliceformat, sins->indexes()[slice]+1), sinogram, args.SaveInt);
-      bar.update();
-    }
-
+  const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
+                        args.outmask.dtitle() + "-@" + args.outmask.extension() :
+                        string( args.outmask ) ;
+  const string sliceformat = mask2format(outmask, sins.imageShape()(0) );
+  
+  ProgressBar bar(args.beverbose, "sinograms formation", sins.indexes().size());
+  for (unsigned slice=0 ; slice < sins.indexes().size() ; slice++ ) {
+    sins.sino(slice, sinogram);
+    flatfield(sinogram, sinogram, bgar, dfar);
+    SaveImage( toString(sliceformat, sins.indexes()[slice]+1), sinogram, args.SaveInt);
+    bar.update();
   }
-
-  delete sins;
 
   exit(0);
 

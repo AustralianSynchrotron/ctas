@@ -51,7 +51,7 @@ struct clargs {
   float darkWeight;   ///< Weight of the first dark current file.
   Path output_name;       ///< Name of the output file.
   float angle;           ///< Angle of the sino slicing.
-  Crop crop; ///< Crop input projection image
+  Crop crp; ///< Crop input projection image
   string projdesc;       ///< String describing the projections to be cleaned.
   bool idealworld;        ///< Assumption of the world ideality.
   bool beverbose;       ///< Be verbose flag
@@ -71,7 +71,7 @@ clargs(int argc, char *argv[]) :
   backgroundWeight(0.5),
   darkWeight(0.5),
   angle(0.0),
-  crop()
+  crp()
 {
 
   Path FgL;
@@ -110,7 +110,7 @@ clargs(int argc, char *argv[]) :
        "Weight of the first dark current image.", "", toString(darkWeight))
   .add(poptmx::OPTION, &angle, 'a', "angle",
        "Angle of the image slicing.", "", toString(angle))
-  .add(poptmx::OPTION, &crop, 'c', "crop",
+  .add(poptmx::OPTION, &crp, 'c', "crop",
        CropOptionDesc, "")
   .add(poptmx::OPTION, &idealworld, 'w', "idealworld",
        "Suppose we live in the ideal world.", IdealWorldOptionDesc)
@@ -179,15 +179,10 @@ clargs(int argc, char *argv[]) :
 
 
 inline void readnrot(const string &img, Map &map, const Shape & sh,
-              float angle, const Crop & crop)  {
+              float angle, const Crop & crp)  {
     ReadImage(img, map, sh);
-    if ( angle != 0.0 ) {
-      Map temp;
-      rotate(map, temp, angle, crop);
-      map=temp.copy();
-    } else {
-      cropMe(map,crop);
-    }
+    rotate(map, angle);
+    crop(map, crp);
 }
 
 /// \MAIN{ff}
@@ -203,7 +198,7 @@ int main(int argc, char *argv[]) {
     vector<int> projectionsV = slice_str2vec(args.projdesc, series.thetas());
     ProgressBar bar(args.beverbose, "flat field correction", projectionsV.size());
     for (int idx=0 ; idx < projectionsV.size()  ; idx++) {
-      series.projection(projectionsV[idx] , oa, vector<int>(), args.angle, args.crop,
+      series.projection(projectionsV[idx] , oa, vector<int>(), args.angle, args.crp,
                         args.idealworld ? 1.0 : 0.0 );
       string toSave=args.output_name;
       toSave.replace( toSave.rfind('@'), 1, series.fg(projectionsV[idx]).name() );
@@ -216,22 +211,22 @@ int main(int argc, char *argv[]) {
     const Shape sh = ImageSizes(args.foreground_name);
     Map fa(sh), ba(sh), dc(sh);
     
-    readnrot(args.foreground_name, fa, sh, args.angle, args.crop);
-    readnrot(args.background_name, ba, sh, args.angle, args.crop);
+    readnrot(args.foreground_name, fa, sh, args.angle, args.crp);
+    readnrot(args.background_name, ba, sh, args.angle, args.crp);
 
     if ( ! args.dark_name.empty() )
-      readnrot(args.dark_name, dc, sh, args.angle, args.crop);
+      readnrot(args.dark_name, dc, sh, args.angle, args.crp);
     else
       dc=0;
 
     if ( ! args.background_2_name.empty() ) {
       Map tmp(sh);
-      readnrot(args.background_2_name, tmp, sh, args.angle, args.crop);
+      readnrot(args.background_2_name, tmp, sh, args.angle, args.crp);
       weighted(ba, ba, tmp, args.backgroundWeight);
     }
     if ( ! args.dark_2_name.empty() ) {
       Map tmp(sh);
-      readnrot(args.dark_2_name, tmp, sh, args.angle, args.crop);
+      readnrot(args.dark_2_name, tmp, sh, args.angle, args.crp);
       weighted(dc, dc, tmp, args.darkWeight);
     }
 

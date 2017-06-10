@@ -170,8 +170,8 @@ target_link_libraries(stitch
   poptmx
 )
 
-add_executable(rotate rotate.cpp)
-target_link_libraries(rotate
+add_executable(transform transform.cpp)
+target_link_libraries(transform
   common
   poptmx
 )
@@ -183,14 +183,19 @@ target_link_libraries(norm
   experiment
 )
 
+add_executable(projection projection.cpp)
+target_link_libraries(projection
+  common
+  poptmx
+)
 
 
 
 set( all_targets
-  multipc ipc dei edei rotate norm
+  multipc ipc dei edei transform norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts ff rc2fd f2i stitch
+  ct-line ts ff rc2fd f2i stitch projection
 )
 
 

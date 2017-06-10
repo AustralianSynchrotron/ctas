@@ -54,7 +54,7 @@ struct clargs {
   float dd;             ///< Pixel size.
   float angle;           ///< Angle of the sino slicing.
   float arc;
-  Crop crop; ///< Crop input projection image
+  Crop crp; ///< Crop input projection image
   Dcenter center;               ///< Rotation center.
   bool beverbose;       ///< Be verbose flag
   bool SaveInt;         ///< Save image as 16-bit integer.
@@ -69,7 +69,7 @@ clargs(int argc, char *argv[]) :
   beverbose(false),
   arc(180.0),
   angle(0.0),
-  crop(),
+  crp(),
   SaveInt(false),
   outmask("reconstructed-@.tif"),
   filter_type(),
@@ -101,7 +101,7 @@ clargs(int argc, char *argv[]) :
          + SliceOptionDesc, "<all>")
     .add(poptmx::OPTION, &angle, 't', "tilt",
          "Angle of the image slicing.", "", toString(angle))
-    .add(poptmx::OPTION, &crop, 0, "crop",
+    .add(poptmx::OPTION, &crp, 0, "crop",
          CropOptionDesc, "")
     .add(poptmx::OPTION, &center, 'c', "center",
          "Variable rotation center.", DcenterOptionDesc, toString(0.0))
@@ -350,14 +350,12 @@ void *in_reconstruction_thread (void *_thread_args) {
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv);
-  const SinoS *sins = (args.angle==0.0) ?
-    new SinoS(args.inlist, args.slicedesc, args.beverbose) :
-    new SinoS(args.inlist, args.slicedesc, args.angle, args.crop, args.beverbose);
-  if ( ! sins || ! sins->indexes().size() )
+  const SinoS sins(args.inlist, args.slicedesc, args.angle, args.crp, args.beverbose);
+  if ( ! sins.indexes().size() )
     throw_error(args.command, "No slices requested");
 
-  slice_distributor dist(args, sins);
-  const int run_threads = min<int>( nof_threads() , sins->indexes().size() ) ;
+  slice_distributor dist(args, &sins);
+  const int run_threads = min<int>( nof_threads() , sins.indexes().size() ) ;
   vector<pthread_t> threads(run_threads);
 
   for (int ith = 0 ; ith < run_threads ; ith++)
@@ -371,8 +369,6 @@ int main(int argc, char *argv[]) {
 
   if ( ! writefails.empty() ) 
     cerr << "Fails: " << writefails << endl;
-
-  delete sins;
 
   exit(0);
 

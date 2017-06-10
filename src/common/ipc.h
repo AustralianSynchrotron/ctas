@@ -255,7 +255,7 @@ public:
 
   inline void projection(  int itheta, Map & proj,
                            const std::vector<int> & sliceV,
-                           float angle=0, const Crop &crop = Crop() ) const {
+                           float angle=0, const Crop &crp = Crop() ) const {
 
     listD.projection(itheta, prD);
 
@@ -265,7 +265,8 @@ public:
     }
 
     proc.extract(prD, pr0, comp, dgamma);
-    rotate(pr0, prD, angle, crop);
+    rotate(pr0, prD, angle);
+    crop(prD,crp);
 
     proj.resize( Shape( sliceV.size() ? sliceV.size() : sh(0) , sh(1) ) );
     if (sliceV.size()) {
@@ -292,7 +293,7 @@ public:
   /// @param _dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
   ///
   inline void gamma(float _dgamma) {
-    if ( abs(_dgamma)>1.0 ) // should set even smaller limit
+    if ( std::abs(_dgamma)>1.0 ) // should set even smaller limit
       throw_error(modname, "Absolute value of gamma is greater than 1.0.");
     dgamma = _dgamma;
   }

@@ -64,6 +64,58 @@ static inline int isnan(double x){ return _isnan(x); }
 int prdn( int a );
 
 
+
+/// \brief Convert string to upper case
+///
+/// @param str Input string.
+///
+/// @return New string which represents input string converted into the upper case.
+///
+std::string COMMON_API
+upper(std::string str);
+
+/// \brief Convert string to lower case
+///
+/// @param str Input string.
+///
+/// @return New string which represents input string converted into the lower case.
+///
+std::string COMMON_API
+lower(std::string str);
+
+/// \brief Prints formatted message to string.
+///
+/// Like 'sprintf', but prints into the STL std::string
+///
+/// @param fmt format string.
+/// @param ... whatever goes into the format string.
+///
+/// @return New STL string with the printed expression.
+///
+// Don't use the reference type "const string &" here: will
+// not work on Windows
+std::string COMMON_API
+toString(const std::string fmt, ...);
+
+
+/// \brief Prints the value to string.
+///
+/// @param n number to be printed
+///
+/// @return string with printed number
+///
+inline std::string toString (long double   n)   { return toString("%g", n); }
+/// \cond
+inline std::string toString (double        n)   { return toString("%g", n); }
+inline std::string toString (float         n)   { return toString("%g", n); }
+inline std::string toString (long int      n)   { return toString("%i", n); }
+inline std::string toString (int           n)   { return toString("%i", n); }
+inline std::string toString (long unsigned n)   { return toString("%u", n); }
+inline std::string toString (unsigned      n)   { return toString("%u", n); }
+/// \endcond
+
+
+
 /// \defgroup Error Error handling.
 /// Functions in this group are used for the
 /// error parsing, printing, throwing and so on.
@@ -178,7 +230,7 @@ public:
   std::string extension () const; ///< Extracts the extension.
   std::string name () const;	///< Extracts file name.
 
-  bool isdir() const;			///< Tells if the path definitely represents the a directory.
+  bool isdir() const;			///< Tells if the path definitely represents a directory.
   bool isabsolute() const;		///< Tells if the path is absolute.
 
   Path & bedir();				///< Makes the path to be the directory (adds DIRSEPARATOR).
@@ -215,6 +267,16 @@ _conversion (Path* _val, const std::string & in);
 ///
 Path COMMON_API
 upgrade(const Path & path, const std::string & addthis);
+
+/// \brief Converts the mask string to the format string.
+///
+/// @param mask Mask string (read ::MaskDesc).
+/// @param maxslice Maximum allowed slice (total number of slices).
+///
+/// @return The format string which ready to be used with the fmt2s() function.
+///
+std::string COMMON_API
+mask2format(const std::string & mask, int maxslice);
 
 
 /// \brief Adds the path to the filename.
@@ -338,6 +400,11 @@ struct Crop {
   : top(t), left(l), bottom(b), right(r) {}
 };
 
+inline std::string toString (const Crop & crp)  { 
+  return toString("%ut,%ul,%ub,%ur", crp.top, crp.left, crp.bottom, crp.right);
+}
+
+
 /// \brief Compare crops.
 ///
 /// @param sh1 first crop.
@@ -364,8 +431,6 @@ operator!=( const Crop & cr1, const Crop & cr2){
   cr1.left != cr2.left || cr1.right != cr2.right;
 }
 
-
-
 std::string COMMON_API
 type_desc (Crop*);
 
@@ -375,13 +440,93 @@ _conversion (Crop* _val, const std::string & in);
 extern const std::string COMMON_API
 CropOptionDesc;
 
+/// \brief Crop the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param crop Crop resulting image
+///
+void COMMON_API
+crop(const Map & inarr, Map & outarr, const Crop & crp);
 
 /// \brief Crop the array.
 ///
-/// @param io_arr Input array.
+/// @param io_arr Input/output array.
 /// @param crop Crop resulting image
 ///
-void cropMe(Map & io_arr, const Crop & crop);
+void COMMON_API
+crop(Map & io_arr, const Crop & crp);
+
+
+
+
+
+struct Binn {
+  unsigned int x;      ///< X binning
+  unsigned int y;       ///< Y binning
+  inline Binn(unsigned int _x=1, unsigned int _y=0)
+  : x(_x), y(_y?_y:_x) {
+    if (x<1) exit_on_error("Binn", "Binning factor less than 1." );
+  }
+};
+
+inline std::string toString (const Binn & bnn) {
+  return bnn.x == bnn.y ? toString(bnn.x) : toString ("%ux%u", bnn.x, bnn.y);
+}
+
+/// \brief Compare binnings.
+///
+/// @param bn1 first binning.
+/// @param bn2 second binning.
+///
+/// @return \c true if the binnings are equal, \c false otherwise.
+///
+inline bool
+operator==( const Binn & bn1, const Binn & bn2){
+  return bn1.x == bn2.x && bn1.y == bn2.y;
+}
+
+/// \brief Compare binnings.
+///
+/// @param bn1 first binning.
+/// @param bn2 second binning.
+///
+/// @return \c true if the binnings are not equal, \c false otherwise.
+///
+inline bool
+operator!=( const Binn & bn1, const Binn & bn2){
+  return bn1.x != bn2.x || bn1.y != bn2.y;
+}
+
+
+std::string COMMON_API
+type_desc (Binn*);
+
+int COMMON_API
+_conversion (Binn* _val, const std::string & in);
+
+extern const std::string COMMON_API
+BinnOptionDesc;
+
+/// \brief Apply binning to the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param binn Binning factor
+///
+void COMMON_API
+binn(const Map & inarr, Map & outarr, const Binn & bnn);
+
+/// \brief Apply binning to the array.
+///
+/// @param io_arr Input/output array.
+/// @param binn Binning factor
+///
+void COMMON_API
+binn(Map & io_arr, const Binn & bnn);
+
+
+
 
 
 /// \brief Rotate the array.
@@ -389,32 +534,27 @@ void cropMe(Map & io_arr, const Crop & crop);
 /// @param inarr Input array.
 /// @param outarr Output array. Input and output must be different arrays.
 /// @param angle Rotation angle.
-/// @param crop Crop resulting image
 /// @param bg Values for the pixels in the resulting image not existing in
 ///        original.
 ///
-void rotate(const Map & inarr, Map & outarr, float angle,
-            const Crop & crop = Crop(), float bg=NAN);
+void COMMON_API
+rotate(const Map & inarr, Map & outarr, float angle, float bg=NAN);
 
-/// \brief Rotate selected lines of the array.
+/// \brief Rotate the array.
 ///
-/// @param inarr Input array.
-/// @param outarr Output array. Input and output must be different arrays.
-/// @param sliceV Vector of lines to output in the rotated array.
-///        The vector can be modified to leave only exclude the slices
-///        out of the image boudaries.
+/// @param io_arr Input/output array.
 /// @param angle Rotation angle.
-/// @param crop Crop resulting image
 /// @param bg Values for the pixels in the resulting image not existing in
 ///        original.
 ///
-void rotateLines(const Map & inarr, Map & outarr, std::vector<int> & sliceV,
-                 float angle, const Crop & crop = Crop(), float bg=NAN);
-
+void COMMON_API
+rotate(Map & io_arr, float angle, float bg=NAN);
 
 
 /// \brief Shape of an 2D array.
 typedef blitz::TinyVector<long int,2> Shape;
+
+inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
 
 /// \brief Compare shapes.
 ///
@@ -478,59 +618,6 @@ NeedForQuant;
 extern const std::string COMMON_API
 SeeAlsoList;
 
-
-
-/// \brief Convert string to upper case
-///
-/// @param str Input string.
-///
-/// @return New string which represents input string converted into the upper case.
-///
-std::string COMMON_API
-upper(std::string str);
-
-/// \brief Convert string to lower case
-///
-/// @param str Input string.
-///
-/// @return New string which represents input string converted into the lower case.
-///
-std::string COMMON_API
-lower(std::string str);
-
-
-/// \brief Prints formatted message to string.
-///
-/// Like 'sprintf', but prints into the STL std::string
-///
-/// @param fmt format string.
-/// @param ... whatever goes into the format string.
-///
-/// @return New STL string with the printed expression.
-///
-// Don't use the reference type "const string &" here: will
-// not work on Windows
-std::string COMMON_API
-toString(const std::string fmt, ...);
-
-
-/// \brief Prints the value to string.
-///
-/// @param n number to be printed
-///
-/// @return string with printed number
-///
-inline std::string toString (long double   n)   { return toString("%g", n); }
-/// \cond
-inline std::string toString (double        n)   { return toString("%g", n); }
-inline std::string toString (float         n)   { return toString("%g", n); }
-inline std::string toString (long int      n)   { return toString("%i", n); }
-inline std::string toString (int           n)   { return toString("%i", n); }
-inline std::string toString (long unsigned n)   { return toString("%u", n); }
-inline std::string toString (unsigned      n)   { return toString("%u", n); }
-inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
-inline std::string toString (const Crop & crp)  { return toString("%ut,%ul,%ub,%ur", crp.top, crp.left, crp.bottom, crp.right);}
-/// \endcond
 
 
 

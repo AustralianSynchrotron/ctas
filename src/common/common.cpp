@@ -40,6 +40,7 @@
 #include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
 #include<climits>
 #include <ctime>
+#include <cmath>
 #include "common.h"
 
 
@@ -296,6 +297,22 @@ _conversion (Path* _val, const string & in) {
 }
 
 
+string
+mask2format(const string & mask, int maxslice){
+  string format(mask);
+  // replace all '%' by "%%"
+  string::size_type pos = format.find('%');
+  while ( pos != string::npos ) {
+    format.insert(pos, "%");
+    pos = format.find('%', pos+2);
+  }
+  //replace last '@' with the format expression.
+  format.replace( format.rfind('@'), 1,
+                  "%0" + toString( toString(maxslice).length() ) + "u");
+  return format;
+}
+
+
 
 
 
@@ -406,65 +423,142 @@ _conversion (Crop* _val, const string & in) {
 
 
 
-void cropMe(Map & io_arr, const Crop & crop) {
+void
+crop(const Map & inarr, Map & outarr, const Crop & crp) {
 
-  if ( ! crop.left && ! crop.right && ! crop.top && ! crop.bottom )
+  if ( ! crp.left && ! crp.right && ! crp.top && ! crp.bottom ) {
+    outarr.reference(inarr);
     return;
-  if (  crop.left + crop.right >= io_arr.shape()(1)  ||
-        crop.top + crop.bottom >= io_arr.shape()(0) ) {
-    warn("Crop array", "Cropping (" + toString(crop) + ")"
-         " is larger than array size ("+toString(io_arr.shape())+")");
+  }
+  if (  crp.left + crp.right >= inarr.shape()(1)  ||
+        crp.top + crp.bottom >= inarr.shape()(0) ) {
+    warn("Crop array", "Cropping (" + toString(crp) + ")"
+         " is larger than array size ("+toString(inarr.shape())+")");
     return;
   }
 
-  Map out_arr = io_arr( blitz::Range(crop.top, io_arr.shape()(0)-1-crop.bottom ),
-                        blitz::Range(crop.left, io_arr.shape()(1)-1-crop.right ) );
+  outarr.resize( inarr.shape()(0) - crp.top  - crp.bottom,
+                 inarr.shape()(1) - crp.left - crp.right);
+  outarr = inarr( blitz::Range(crp.top, inarr.shape()(0)-1-crp.bottom ),
+                  blitz::Range(crp.left, inarr.shape()(1)-1-crp.right ) );
 
-  io_arr.resize(out_arr.shape());
-  io_arr = out_arr.copy();
+}
+
+void
+crop(Map & io_arr, const Crop & crp) {
+  Map outarr;
+  crop(io_arr, outarr, crp);
+  if( io_arr.data() == outarr.data() )
+    return;
+  io_arr.resize(outarr.shape());
+  io_arr=outarr.copy();  
+}
+
+
+
+
+string
+type_desc (Binn*) {
+  return "UINT[:UINT]";
+}
+
+int
+_conversion (Binn* _val, const string & in) {
+  
+  int x, y;
+  
+  if ( in.find_first_of(",:") !=  string::npos ) {
+    
+    int scanres = sscanf( in.c_str(), "%i:%i", &x, &y);
+    if (scanres != 2) // try , instead of :
+      scanres = sscanf( in.c_str(), "%i,%i", &x, &y);
+    if ( 2 != scanres || x<1 || y<1 )
+      return -1;      
+    
+  } else {
+    
+    int xy;
+    if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<1 )
+      return -1;
+    x=xy;
+    y=xy;
+    
+  }
+            
+  *_val = Binn(x, y);
+  return 1;
 
 }
 
 
-void rotate(const Map & inarr, Map & outarr, float angle,
-            const Crop & crop, float bg) {
-  const float maxHeight = sqrt ( inarr.shape()(0) * inarr.shape()(0) +
-                               inarr.shape()(1) * inarr.shape()(1) ) -
-                               crop.top - crop.bottom;
-  vector<int> sliceV ( (int) ceil(maxHeight) );
-  for (int i=0; i<sliceV.size(); i++)
-    sliceV[i]=i;
-  rotateLines(inarr, outarr, sliceV, angle, crop, bg);
+void
+binn(const Map & inarr, Map & outarr, const Binn & bnn) {
+
+  if ( bnn.x == 1 && bnn.y == 1 ) {
+    outarr.reference(inarr);
+    return;
+  }
+  if ( ! bnn.x || ! bnn.y ) {
+    warn("Binning aray", "Binning parameter cannot be zero.");
+    return;
+  }
+  
+  outarr.resize( inarr.shape()(0) / bnn.y , inarr.shape()(1) / bnn.x );
+  
+  for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
+    for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
+      outarr(ycur,xcur) = mean( inarr( blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1), 
+                                         blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1) ) );
+  
 }
 
+void
+binn(Map & io_arr, const Binn & bnn) {
+  Map outarr;
+  binn(io_arr, outarr, bnn);
+  if( io_arr.data() == outarr.data() )
+    return;
+  io_arr.resize(outarr.shape());
+  io_arr=outarr.copy();
+}
 
-void rotateLines(const Map & inarr, Map & outarr, vector<int> & sliceV,
-                 float angle, const Crop & crop, float bg) {
+const string BinnOptionDesc =
+  "Binning factor(s).";
 
-  const float cosa = cos(-angle), sina = sin(-angle);
+
+
+
+void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
+  
   const Shape sh = inarr.shape();
-  const int
-  rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
-  rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
-  if ( rwidth <= crop.left + crop.right ||
-       rheight <= crop.top + crop.bottom ) {
-    warn("rotate array lines",
-         "Image size (" + toString(rwidth) + "," + toString(rheight) + ")"
-         " smaller than crop region (" +
-         toString(crop.left) + "," + toString(crop.top) + "," +
-         toString(crop.right) + "," + toString(crop.bottom) + ")." );
-    outarr.resize(0,0);
+  
+  if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
+    
+    const int nof90 = round(2*angle/M_PI);
+  
+    if ( ! (nof90%4)  ) { // 360deg
+      outarr.reference(inarr);
+    } else if ( ! (nof90%2) ) { //180deg
+      outarr.resize(sh);
+      outarr=inarr.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
+    } else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) ) { // 270deg
+      outarr.resize(sh(1),sh(0));
+      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);      
+    } else { // 90deg
+      outarr.resize(sh(1),sh(0));
+      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);      
+    }
+    
     return;
+    
   }
+  
+  const float cosa = cos(-angle), sina = sin(-angle);
+  const int
+    rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
+    rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
 
-  const int maxy = rheight - crop.top - crop.bottom;
-  for ( vector<int>::iterator it = sliceV.begin() ; it != sliceV.end() ; ) {
-    int slice = *it;
-    if ( slice >= 0  && slice < maxy )    it++;
-    else                                  it=sliceV.erase(it);
-  }
-
-  const Shape  shf( sliceV.size(), rwidth - crop.left - crop.right );
+  const Shape shf(rheight, rwidth);
   outarr.resize(shf);
 
   if ( isnan(bg) ) {
@@ -477,37 +571,40 @@ void rotateLines(const Map & inarr, Map & outarr, vector<int> & sliceV,
   }
 
   const float
-  constinx = (crop.left-rwidth/2.0)*cosa - (crop.top-rheight/2.0)*sina + sh(1)/2,
-  constiny = (crop.left-rwidth/2.0)*sina + (crop.top-rheight/2.0)*cosa + sh(0)/2;
+    constinx = ( sh(1) + rheight*sina - rwidth*cosa ) / 2.0,
+    constiny = ( sh(0) - rwidth*sina - rheight*cosa ) / 2.0;
 
   for ( blitz::MyIndexType x=0 ; x < shf(1) ; x++) {
-    for ( blitz::MyIndexType iy=0 ; iy < shf(0) ; iy++) {
+    for ( blitz::MyIndexType y=0 ; y < shf(0) ; y++) {
 
-      /*
-       *      long xf = lroundl( x*cosa - y*sina + constinx );
-       *      long yf = lroundl( x*sina + y*cosa + constiny );
-       *      outarr(y,x)  =  ( xf >=0  &&  xf < sh(1)  &&  yf >=0  &&  yf < sh(0) ) ?
-       *                      inarr(yf,xf)  :  bg;
-       */
-
-      const long y = sliceV[iy];
       const float xf = x*cosa - y*sina + constinx;
       const float yf = x*sina + y*cosa + constiny;
       const blitz::MyIndexType flx = floor(xf), fly = floor(yf);
-      const float dx=xf-flx, dy=yf-fly;
 
       if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
-        outarr(iy, x)=bg;
+        outarr(y, x)=bg;
       } else {
-        float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * dx;
-        float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * dx;
-        outarr(iy, x) = v0 + (v1-v0) * dy;
+        float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * (xf-flx);
+        float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * (yf-fly);
+        outarr(y, x) = v0 + (v1-v0) * (yf-fly);
       }
 
     }
-  }
-
+  }  
+  
 }
+
+void
+rotate(Map & io_arr, float angle, float bg) { 
+  Map outarr;
+  rotate(io_arr, outarr, angle, bg);
+  if( io_arr.data() == outarr.data() )
+    return;
+  io_arr.resize(outarr.shape());
+  io_arr=outarr.copy();
+}
+
+
 
 
 const string CropOptionDesc =
@@ -660,11 +757,11 @@ ProgressBar::done(){
   string eqs(progln, '=');
 
   cout << string(waswidth+1, '\r')
-	   << ( steps ?
-			toString(fmt, steps, eqs.c_str(), "DONE. ") :
-			toString(fmt, step) + " steps. DONE." )
-	   << endl
-	   << "Successfully finished " << message << "." << endl;
+       << ( steps ?
+            toString(fmt, steps, eqs.c_str(), "DONE. ") :
+            toString(fmt, step) + " steps. DONE." )
+       << endl
+       << "Successfully finished " << message << "." << endl;
   fflush(stdout);
 
   reservedChs = 0;
@@ -976,6 +1073,8 @@ void cl2map(Map & storage, cl_mem clbuffer) {
 #  define STATIC_MAGICK
 #  define MAGICK_STATIC_LINK
 #endif
+#define MAGICKCORE_QUANTUM_DEPTH 32
+#define MAGICKCORE_HDRI_ENABLE 0
 #include<Magick++.h>
 
 
@@ -991,15 +1090,19 @@ initImageIO(){
 #else
   using namespace MagickCore;
 #endif
-
+  
   MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
   SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
   SetMagickResourceLimit ( FileResource , 1024 * 1024);
   SetMagickResourceLimit ( DiskResource , Msz);
   SetMagickResourceLimit ( MapResource , Msz);
   SetMagickResourceLimit ( MemoryResource , Msz);
-
-  // suppress libtiff warnings 
+  
+  // BUG in ImageMagick If I don'd do it here the TIFFSetWarningHandler
+  // is called later in the code and causes 
+  // ../../magick/exception.c:1036: ThrowMagickExceptionList: Assertion `exception->signature == MagickSignature' failed.
+  // whenever TIFFOpen is called  
+  try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
 
 }
@@ -1040,7 +1143,9 @@ PixelSize(const Path & filename) {
 Shape
 ImageSizes(const Path & filename){
   Magick::Image imag;
-  try { imag.ping(filename); }
+  try {
+    imag.ping(filename);
+  }
   catch ( Magick::WarningCoder err ) {}
   catch ( Magick::Exception & error) {
     throw_error("get image size", "Could not read image file\""+filename+"\"."
@@ -1084,27 +1189,10 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
 
   static const string modname = "load image tiff";
 
-  // BUG in libtiff
-  // On platforms (f.e. CentOS) the TIFFOpen function fails,
-  // while TIFFFdOpen works well. On the MS Windows the
-  // TIFFFdOpen does not work, while TIFFOpen does.
-
-  int fd=0;
-  #ifdef _WIN32
   TIFF *tif = TIFFOpen(filename.c_str(), "r");
-  #else
-  fd = open (filename.c_str(), O_RDONLY);
-  if (fd < 1)
-    throw_error(modname,
-                "Could not open file \"" + filename + "\" for reading.");
-  TIFF *tif = TIFFFdOpen(fd, filename.c_str(), "r");
-  #endif
-
-  if( ! tif ) {
-    if (fd) close(fd);
+  if( ! tif )
     throw CtasErr(CtasErr::WARN, modname,
                   "Could not read tif from file\"" + filename + "\".");
-  }
 
   uint32 width = 0, height = 0;
   uint16 spp = 0, bps = 0, fmt = 0, photo;
@@ -1324,7 +1412,7 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
   try { imag.read(filename); } catch ( Magick::WarningCoder err ) {}
   if ( imag.type() != Magick::GrayscaleType )
     warn("load imageline IM",
-		 "Input image \"" + filename + "\" is not grayscale.");
+         "Input image \"" + filename + "\" is not grayscale.");
 
   const int width = imag.columns();
   if ( idx < 0 || (unsigned) idx >= imag.rows() )
@@ -1696,14 +1784,28 @@ SaveImageFP (const Path & filename, const Map & storage){
 
 void
 SaveImage(const Path & filename, const Map & storage, bool saveint){
-  if (saveint) SaveImageINT(filename, storage);
-  else SaveImageFP(filename, storage);
+  Map stor;
+  if ( ! storage.isStorageContiguous()
+       || storage.stride() != Shape(1,1) ) {
+    stor.resize( storage.shape() );
+    stor=storage;
+  } else
+    stor.reference(storage);
+  if (saveint) SaveImageINT(filename, stor);
+  else SaveImageFP(filename, stor);
 }
 
 void
 SaveImage(const Path & filename, const Map & storage,
           float minval, float maxval ){
-  SaveImageINT(filename, storage, minval, maxval);
+  Map stor;
+  if ( ! storage.isStorageContiguous()
+       || storage.stride() != Shape(1,1) ) {
+    stor.resize( storage.shape() );
+    stor=storage;
+  } else
+    stor.reference(storage);
+  SaveImageINT(filename, stor, minval, maxval);
 }
 
 

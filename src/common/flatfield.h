@@ -65,9 +65,14 @@ flatfield(float fg, float bg, float dc=0.0){
 ///
 static inline Map &
 weighted(Map & result, const Map & in1, const Map & in2, float ratio=0.5) {
-  if ( in1.shape() != in2.shape() )
+  if      ( ratio <= 0.0 ) result.reference(in2);
+  else if ( ratio >= 1.0 ) result.reference(in1);
+  else if ( in1.shape() != in2.shape() ) 
     throw_error("Weighted array addition", "Input arrays are of different size.");
-  result = in1*ratio + in2*(1-ratio) ;
+  else {
+    result.resize(in1.shape());
+    result = in1*ratio + in2*(1-ratio) ;
+  }
   return result;
 }
 
@@ -82,7 +87,7 @@ weighted(Map & result, const Map & in1, const Map & in2, float ratio=0.5) {
 static inline void
 flatfield(Map & result, const Map & fg, const Map & bg){
   if ( ! bg.size() ) {
-    result = fg;
+    result.reference(fg);
     return;
   }
   Shape sh=fg.shape();

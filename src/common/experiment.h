@@ -64,17 +64,6 @@
 extern EXPERIMENT_API const std::string MaskDesc;
 
 
-/// \brief Converts the mask string to the format string.
-///
-/// @param mask Mask string (read ::MaskDesc).
-/// @param maxslice Maximum allowed slice (total number of slices).
-///
-/// @return The format string which ready to be used with the fmt2s() function.
-///
-std::string EXPERIMENT_API
-mask2format(const std::string & mask, int maxslice);
-
-
 /// Description of the option giving the string of slices.
 extern EXPERIMENT_API const std::string SliceOptionDesc;
 
@@ -273,9 +262,6 @@ public:
 
   /// Constructor
   SinoS(const Experiment & exp, const std::vector<int> & _sliceV, bool _verb=false);
-
-  /// Constructor
-  SinoS(const std::vector<Path> & inlist, const std::string & slicedesc, bool _verb=false);
 
   /// Constructor
   SinoS(const std::vector<Path> & inlist, const std::string & slicedesc,

@@ -171,7 +171,7 @@ target_link_libraries(stitch
 )
 
 add_executable(transform transform.cpp)
-target_link_libraries(transform
+target_link_libraries(trans
   common
   poptmx
 )
@@ -184,7 +184,7 @@ target_link_libraries(norm
 )
 
 add_executable(projection projection.cpp)
-target_link_libraries(projection
+target_link_libraries(proj
   common
   poptmx
 )
@@ -192,10 +192,10 @@ target_link_libraries(projection
 
 
 set( all_targets
-  multipc ipc dei edei transform norm
+  multipc ipc dei edei trans norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts ff rc2fd f2i stitch projection
+  ct-line ts ff rc2fd f2i proj
 )
 
 

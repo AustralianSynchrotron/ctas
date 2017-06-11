@@ -173,7 +173,12 @@ int main(int argc, char *argv[]) {
   ProgressBar bar(args.beverbose, "sinograms formation", sins.indexes().size());
   for (unsigned slice=0 ; slice < sins.indexes().size() ; slice++ ) {
     sins.sino(slice, sinogram);
-    flatfield(sinogram, sinogram, bgar, dfar);
+    Map bgsin(sinogram.shape()), dfsin(sinogram.shape());
+    for (int scur=0; scur<sinogram.shape()(0); scur++) {
+      bgsin(scur,Range::all()) = bgar(slice, Range::all());
+      dfsin(scur,Range::all()) = dfar(slice, Range::all());
+    } 
+    flatfield(sinogram, sinogram, bgsin, dfsin);
     SaveImage( toString(sliceformat, sins.indexes()[slice]+1), sinogram, args.SaveInt);
     bar.update();
   }

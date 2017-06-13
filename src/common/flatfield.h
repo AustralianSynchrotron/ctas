@@ -87,7 +87,8 @@ weighted(Map & result, const Map & in1, const Map & in2, float ratio=0.5) {
 static inline void
 flatfield(Map & result, const Map & fg, const Map & bg){
   if ( ! bg.size() ) {
-    result.reference(fg);
+    if ( &fg != &result )  // arrays are not the same 
+      result.reference(fg);
     return;
   }
   Shape sh=fg.shape();

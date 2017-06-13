@@ -1048,6 +1048,9 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
   crop(rar, car, crp);
   _imageShape = car.shape();
   sliceV = slice_str2vec(slicedesc, _imageShape(0));
+  if ( angle == 0.0 && crp.top ) 
+    for ( int sls=0 ; sls < sliceV.size() ; sls++ )
+      sliceV[sls] += crp.top;
   slcs = sliceV.size();
   thts = inlist.size();
   pxls = _imageShape(1);
@@ -1059,12 +1062,18 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
   Map proj(Shape(slcs,pxls));
   ProgressBar bar(verb, "reading projections", thts);
   for ( int curproj = 0 ; curproj < thts ; curproj++) {
-    ReadImage(inlist[curproj], iar, sh);
-    rotate(iar, rar, angle);
-    crop(rar, car, crp);
-    for ( int sls=0 ; sls < sliceV.size() ; sls++ )
-      data(curproj, sls, blitz::Range::all()) =
-        car(sliceV[sls], blitz::Range::all());
+    if ( angle == 0.0 ) {
+      ReadImageLine(inlist[curproj], iar, sliceV, sh);
+      data(curproj, blitz::Range::all(), blitz::Range::all()) =
+          iar(blitz::Range::all(), blitz::Range(crp.left, pxls-crp.right-1));
+    } else {
+      ReadImage(inlist[curproj], iar, sh);
+      rotate(iar, rar, angle);
+      crop(rar, car, crp);
+      for ( int sls=0 ; sls < sliceV.size() ; sls++ )
+        data(curproj, sls, blitz::Range::all()) =
+          car(sliceV[sls], blitz::Range::all());
+    }
     bar.update();
   }
 

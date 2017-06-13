@@ -561,7 +561,7 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
   const Shape shf(rheight, rwidth);
   outarr.resize(shf);
 
-  if ( isnan(bg) ) {
+  if ( ! isnormal(bg) ) {
     bg=0;
     bg += mean( inarr( blitz::Range::all(), 0 ) );
     bg += mean( inarr( 0, blitz::Range::all() ) );

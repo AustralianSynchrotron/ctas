@@ -119,8 +119,8 @@ int main(int argc, char *argv[]) {
 
   float mincon = args.mincon, maxcon = args.maxcon;
 
-  if ( isnan(mincon) ) mincon = min(arr);
-  if ( isnan(maxcon) ) maxcon = max(arr);
+  if ( ! isnormal(mincon) ) mincon = min(arr);
+  if ( ! isnormal(maxcon) ) maxcon = max(arr);
 
   SaveImage(args.out_name, arr, mincon, maxcon);
 

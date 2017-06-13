@@ -220,12 +220,13 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
       
       for (int acur = 0 ; acur < isz ; acur++ ) {
         const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
+        float val;
         if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1) 
-             && ! isnan( iarr[acur](coo) ) ) {
+             && isnormal( val=iarr[acur](coo) ) ) {
           const int weight = ( ish(0) - abs( 2.0*coo(0) - ish(0) + 1 ) )
                            * ( ish(1) - abs( 2.0*coo(1) - ish(1) + 1 ) );
           sweight += weight;
-          svals += iarr[acur](coo) * weight;
+          svals += val * weight;
         }
       }
       
@@ -250,7 +251,7 @@ namespace blitz {
 ///
 static inline float
 denan(float x){
-  return isnan(x) ? 0.0 : x ;
+  return isnormal(x) ? x : 0.0 ;
 }
 
 /// \cond

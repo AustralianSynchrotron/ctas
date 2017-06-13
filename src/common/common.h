@@ -58,6 +58,7 @@
 #ifdef _WIN32
 #define NAN numeric_limits<float>::quiet_NaN();
 static inline int isnan(double x){ return _isnan(x); }
+static inline int isnormal(double x){ return _isnormal(x); }
 #endif
 
 

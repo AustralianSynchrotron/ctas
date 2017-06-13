@@ -122,7 +122,7 @@ clargs(int argc, char *argv[])
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &out_name, 'o', "output", "Output image.", "", out_name)
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input images: " + CropOptionDesc, "")
-    .add(poptmx::OPTION, &crp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
+    .add(poptmx::OPTION, &fcrp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &bnn, 'b', "binn", BinnOptionDesc, "")
     .add(poptmx::OPTION, &angle,'r', "rotate", "Rotation angle.", "")
     .add(poptmx::OPTION, &origin1, 'g', "origin", "Origin of the image in the first stitch.",

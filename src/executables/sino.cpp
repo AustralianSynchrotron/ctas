@@ -138,6 +138,7 @@ int main(int argc, char *argv[]) {
   Map bgar;
   if ( ! args.bgs.empty() ) {
     bgar.resize(sins.imageShape());
+    bgar=0.0;
     Map iar(sh), rar, car;
     for ( int curf = 0 ; curf < args.bgs.size() ; curf++) {
       ReadImage(args.bgs[curf], iar, sh);
@@ -152,6 +153,7 @@ int main(int argc, char *argv[]) {
   Map dfar;
   if ( ! args.dfs.empty() ) {
     dfar.resize(sins.imageShape());
+    dfar=0.0;
     Map iar(sh), rar, car;
     for ( int curf = 0 ; curf < args.dfs.size() ; curf++) {
       ReadImage(args.dfs[curf], iar, sh);

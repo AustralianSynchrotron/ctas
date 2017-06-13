@@ -118,15 +118,14 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  Map arr, out;
+  Map arr;
   ReadImage( args.in_name, arr );
-  const Shape sh = arr.shape();
 
-  rotate(arr, out, args.angle, args.background);
+  rotate(arr, args.angle, args.background);
   crop(arr, args.crp);
   binn(arr, args.bnn);
 
-  SaveImage(args.out_name, out);
+  SaveImage(args.out_name, arr);
 
   exit(0);
 

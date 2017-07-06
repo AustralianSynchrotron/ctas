@@ -30,6 +30,7 @@
 #include "../common/common.h"
 #include "../common/flatfield.h"
 #include <math.h>
+#include <algorithm>
 #include <string.h>
 
 
@@ -90,9 +91,10 @@ struct clargs {
   float angle;                ///< Rotation angle.
   PointF2D origin1;            ///< Origin of the next image in the first stitch
   PointF2D origin2;            ///< Origin of the next image in the second stitch
-  int origin2shift;           ///< Nof images in the first shift (needed only if the second shift is requested)
-  PointF2D originF;            ///< Origin of the flipped portion  
-  string interim_name;          ///< Prefix to save interim results  
+  uint origin2shift;           ///< Nof images in the first shift (needed only if the second shift is requested)
+  PointF2D originF;            ///< Origin of the flipped portion
+  vector<uint> splits;          ///< Split pooints to separate samples.
+  string interim_name;          ///< Prefix to save interim results
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -102,7 +104,7 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[])
   : angle(0)
-  , origin2shift(0)  
+  , origin2shift(0)
   , out_name("combined-<input1>")
   , beverbose(false)
 {
@@ -110,7 +112,7 @@ clargs(int argc, char *argv[])
 
   poptmx::OptionTable table
     ("Combines multiple images to form the projection.",
-     
+
     "Transforms and stitches portions of the projection from the complex CT experiment"
     " which may include 2D tiling and 180-deg flip."
     " Transformations are applied in the following order: rotate, crop, binning." );
@@ -129,11 +131,14 @@ clargs(int argc, char *argv[])
       "Position of the next image origin (top left corner) on the current image.")
     .add(poptmx::OPTION, &origin2, 'G', "second-origin", "Origin of the image in the second stitch.",
       "Position of the next image origin (top left corner) on the current image in the second order stitch.")
-    .add(poptmx::OPTION, &origin2shift, 's', "origin-size", "Number of imasges in the first stitch.",
+    .add(poptmx::OPTION, &origin2shift, 'S', "origin-size", "Number of imasges in the first stitch.",
       "Required if and only if the second stitch is requested.")
     .add(poptmx::OPTION, &originF, 'f', "flip-origin", "Origin of the flipped portion of the image.",
       "If used, makes second half of the input images to be assigned to the flipped portion."
       " Requires even number of input images.")
+    .add(poptmx::OPTION, &splits, 's', "split", "Split point(s)",
+         "Final image can be split into sub-images to put different portions of it apart as independent files, for example to separate samples."
+         " By default splitting happens horizontally, but if the vertical split is needed, just add a 0 split point.")
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
     .add(poptmx::OPTION, &interim_name, 't', "test", "Prefix to output interim images.", "")
@@ -148,9 +153,9 @@ clargs(int argc, char *argv[])
     exit(0);
   }
   command = table.name();
-  
+
   int tiledImages = table.count(&images);
-  
+
   if ( tiledImages < 2 )
     exit_on_error(command, string () +
       "At least two input images must be given as argument: " + table.desc(&images) + ".");
@@ -182,9 +187,14 @@ clargs(int argc, char *argv[])
     exit_on_error(command, string () +
       "Total number of tiled images (" + toString(tiledImages) + ") is not a multiple of the requested first stitch size"
       " (" + toString(origin2shift) + ") given by " + table.desc(&origin2shift) + " option.");
-    
+
+  sort(splits.begin(), splits.end());
+  unique(splits.begin(), splits.end());
+  if ( splits.size() == 1 && splits.at(0) == 0 )
+    exit_on_error(command, "The list of splits contains only 0 (marking vertical splits).");
+
   angle *= M_PI/180;
-  
+
 }
 
 
@@ -192,16 +202,16 @@ using namespace blitz;
 
 
 void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
-  
+
   const int isz = iarr.size();
-  
+
   if ( isz == 0 )
     return;
   if ( isz == 1 ) {
     oarr.reference(iarr[0]);
     return;
-  }    
-  
+  }
+
   const Shape
     ish( iarr[0].shape() ),
     osh( ish(0) + abs(origin.y) * (isz-1), ish(1) + abs(origin.x) * (isz-1)),
@@ -211,17 +221,17 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
   vector< Shape > cssh (isz);
   for (int acur = 0 ; acur < isz ; acur++ )
     cssh[acur] = Shape( ssh(0) + origin.y * acur, ssh(1) + origin.x * acur );
-  
+
   for (blitz::MyIndexType ycur = 0 ; ycur < osh(0) ; ycur++ ) {
     for (blitz::MyIndexType xcur = 0 ; xcur < osh(1) ; xcur++ ) {
-      
+
       int sweight=0;
       float svals=0.0;
-      
+
       for (int acur = 0 ; acur < isz ; acur++ ) {
         const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
         float val;
-        if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1) 
+        if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1)
              && isnormal( val=iarr[acur](coo) ) ) {
           const int weight = ( ish(0) - abs( 2.0*coo(0) - ish(0) + 1 ) )
                            * ( ish(1) - abs( 2.0*coo(1) - ish(1) + 1 ) );
@@ -229,13 +239,13 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
           svals += val * weight;
         }
       }
-      
-      oarr(ycur,xcur) = sweight ? svals / sweight : NAN ;      
-      
+
+      oarr(ycur,xcur) = sweight ? svals / sweight : NAN ;
+
     }
   }
-  
-  
+
+
 }
 
 
@@ -245,9 +255,9 @@ namespace blitz {
 ///
 /// Would be used only as the blitz::Array function.
 ///
-/// @param x value to cut.
+/// @param x value to check.
 ///
-/// @return x if it is less than 1.0, 1.0 otherwise.
+/// @return x if it is normal number, 0.0 otherwise.
 ///
 static inline float
 denan(float x){
@@ -262,8 +272,7 @@ BZ_DECLARE_FUNCTION(denan);
 
 void SaveDenan(const Path & filename, const Map & storage, bool saveint=false) {
   Map outm(storage.shape());
-  outm=storage;
-  denan(outm); 
+  outm=denan(storage);
   SaveImage(filename, outm, saveint);
 }
 
@@ -272,11 +281,11 @@ void SaveDenan(const Path & filename, const Map & storage, bool saveint=false) {
 
 /// \MAIN{projection}
 int main(int argc, char *argv[]) {
-  
+
   const clargs args(argc, argv) ;
-  
+
   const Shape ish(ImageSizes(args.images[0]));
-  
+
   Map bgar;
   if ( ! args.bgs.empty() ) {
     bgar.resize(ish);
@@ -291,7 +300,7 @@ int main(int argc, char *argv[]) {
     binn(bgar, args.bnn);
     bgar /= args.bgs.size();
   }
-  
+
   Map dfar;
   if ( ! args.dfs.empty() ) {
     dfar.resize(ish);
@@ -306,10 +315,10 @@ int main(int argc, char *argv[]) {
     binn(dfar, args.bnn);
     dfar /= args.dfs.size();
   }
-  
-  
+
+
   vector<Map> allIn;
-  
+
   ProgressBar progBar(args.beverbose, "Prepare tiles input.", args.images.size());
   for ( int curproj = 0 ; curproj < args.images.size() ; curproj++) {
     Map iar, rar, car, bar;
@@ -320,28 +329,28 @@ int main(int argc, char *argv[]) {
     flatfield( bar, bar, bgar, dfar );
     allIn.push_back(bar);
     if ( ! args.interim_name.empty()
-         && ( bgar.size() || dfar.size() 
+         && ( bgar.size() || dfar.size()
               || args.angle != 0.0 || args.crp != Crop() || args.bnn != Binn() )  )
       SaveDenan( args.interim_name + "w-" + args.images[curproj].name(), bar );
     progBar.update();
   }
-  
+
   if ( args.origin1 == PointF2D()  &&  args.originF == PointF2D() ) {
-    if ( args.interim_name.empty() )      
+    if ( args.interim_name.empty() )
       warn(args.command, "Exit with no output - nothing requested.");
     exit(0);
   }
-  
+
   int nofSt=0;
   string svformat;
-  
+
   if      ( args.origin2shift )          nofSt=args.origin2shift;
   else if ( args.origin1 == PointF2D() ) nofSt=1;
   else if ( args.originF == PointF2D() ) nofSt=allIn.size();
-  else                                   nofSt=allIn.size()/2;  
+  else                                   nofSt=allIn.size()/2;
   svformat = mask2format(args.interim_name + "x-@" + args.images[0].extension(), allIn.size()/nofSt );
   vector<Map> o1Stitch;
-  ProgressBar st1Bar( args.beverbose && 1 < allIn.size()/nofSt, "Stitching", allIn.size()/nofSt); 
+  ProgressBar st1Bar( args.beverbose && 1 < allIn.size()/nofSt, "Stitching", allIn.size()/nofSt);
   for ( vector<Map>::iterator st=allIn.begin() ; st < allIn.end() ; st += nofSt ) {
     vector<Map> supply(st, st+nofSt) ;
     Map res;
@@ -351,19 +360,19 @@ int main(int argc, char *argv[]) {
       SaveDenan( toString( svformat, o1Stitch.size() ), res );
     st1Bar.update();
   }
-  
+
   if ( o1Stitch.size() > 1  &&  args.origin2 == PointF2D()  &&  args.originF == PointF2D() ) {
-    if ( args.interim_name.empty() )      
+    if ( args.interim_name.empty() )
       warn(args.command, "Exit with no output - nothing requested.");
     exit(0);
   }
-  
+
   if      ( ! args.origin2shift )        nofSt=1;
   else if ( args.originF == PointF2D() ) nofSt=o1Stitch.size();
   else                                   nofSt=o1Stitch.size()/2;
   svformat = mask2format(args.interim_name + "y-@" + args.images[0].extension(), o1Stitch.size()/nofSt );
   vector<Map> o2Stitch;
-  ProgressBar fnBar(args.beverbose && 1 < o1Stitch.size()/nofSt, "Finilizing", 1 + o1Stitch.size()/nofSt ); 
+  ProgressBar fnBar(args.beverbose && 1 < o1Stitch.size()/nofSt, "Finilizing", 1 + o1Stitch.size()/nofSt );
   for ( vector<Map>::iterator st=o1Stitch.begin() ; st < o1Stitch.end() ; st += nofSt ) {
     vector<Map> supply(st, st+nofSt) ;
     Map res;
@@ -373,7 +382,7 @@ int main(int argc, char *argv[]) {
       SaveDenan( toString( svformat, o2Stitch.size() ), res );
     fnBar.update();
   }
-  
+
   Map final;
   if        ( o2Stitch.size()==1 ) {
     final.reference(o2Stitch[0]);
@@ -381,18 +390,46 @@ int main(int argc, char *argv[]) {
     o2Stitch[1].reverseSelf(secondDim);
     if ( ! args.interim_name.empty() )
       SaveDenan(args.interim_name + "z" + args.images[0].extension() , o2Stitch[1]);
-    stitch(o2Stitch, args.originF, final);  
+    stitch(o2Stitch, args.originF, final);
     fnBar.update();
   } else {
     if ( args.interim_name.empty() )
       warn(args.command, "Request to flip-stitch more than two images. Will be ignored.");
     exit(1);
   }
-  
+
   if ( args.fcrp != Crop() )
     crop(final, args.fcrp);
-  
-  SaveImage(args.out_name, final);    
+
+  if ( args.splits.empty() ){
+    SaveImage(args.out_name, final);
+  } else {
+
+    Path outmask = args.out_name;
+    if ( string(outmask).find('@') == string::npos )
+      outmask = outmask.dtitle() + "_split@" + outmask.extension();
+    const string sliceformat = mask2format(outmask, args.splits.size() );
+
+    int fLine=0, lLine=0;
+    const int vsplit = args.splits.at(0) ? 0 : 1;
+    const int mLine = final.shape()(vsplit);
+    for (int curS = vsplit ;  curS<=args.splits.size()  ;  curS++) {
+
+      lLine = ( curS == args.splits.size()  || mLine < args.splits.at(curS) ) ?
+        mLine :  args.splits.at(curS) ;
+
+      if ( lLine > fLine ) {
+        Map toSave =  vsplit ?
+              final( blitz::Range::all(), blitz::Range(fLine, lLine) ).copy() :
+              final( blitz::Range(fLine, lLine), blitz::Range::all() ).copy();
+        SaveImage( toString(sliceformat, curS-vsplit) , toSave);
+      }
+
+      fLine=lLine+1;
+
+    }
+
+  }
 
   exit(0);
 

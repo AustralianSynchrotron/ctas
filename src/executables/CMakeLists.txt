@@ -184,6 +184,15 @@ target_link_libraries(proj
 )
 
 
+# left here for the back compatibility with old imbl4massive scripts - to go away after 2019
+add_executable(stitch stitch.cpp)
+target_link_libraries(stitch
+  common
+  poptmx
+)
+
+
+
 
 set( all_targets
   multipc ipc dei edei trans norm

@@ -195,7 +195,7 @@ target_link_libraries(stitch
 
 
 set( all_targets
-  multipc ipc dei edei trans norm
+  multipc ipc dei edei trans norm stitch
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
   ct-line ts ff rc2fd f2i proj

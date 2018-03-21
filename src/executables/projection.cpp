@@ -91,7 +91,7 @@ struct clargs {
   float angle;                ///< Rotation angle.
   PointF2D origin1;            ///< Origin of the next image in the first stitch
   PointF2D origin2;            ///< Origin of the next image in the second stitch
-  uint origin2shift;           ///< Nof images in the first shift (needed only if the second shift is requested)
+  uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
   PointF2D originF;            ///< Origin of the flipped portion
   vector<uint> splits;          ///< Split pooints to separate samples.
   string interim_name;          ///< Prefix to save interim results
@@ -104,7 +104,7 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[])
   : angle(0)
-  , origin2shift(0)
+  , origin2size(0)
   , out_name("combined-<input1>")
   , beverbose(false)
 {
@@ -131,7 +131,7 @@ clargs(int argc, char *argv[])
       "Position of the next image origin (top left corner) on the current image.")
     .add(poptmx::OPTION, &origin2, 'G', "second-origin", "Origin of the image in the second stitch.",
       "Position of the next image origin (top left corner) on the current image in the second order stitch.")
-    .add(poptmx::OPTION, &origin2shift, 'S', "origin-size", "Number of imasges in the first stitch.",
+    .add(poptmx::OPTION, &origin2size, 'S', "second-size", "Number of imasges in the second stitch.",
       "Required if and only if the second stitch is requested.")
     .add(poptmx::OPTION, &originF, 'f', "flip-origin", "Origin of the flipped portion of the image.",
       "If used, makes second half of the input images to be assigned to the flipped portion."
@@ -173,20 +173,20 @@ clargs(int argc, char *argv[])
   if ( table.count(&origin2) > table.count(&origin1) )
     exit_on_error(command, string () +
       "Options " + table.desc(&origin2) + " requires also " + table.desc(&origin1) + " option.");
-  if ( table.count(&origin2) > table.count(&origin2shift) )
+  if ( table.count(&origin2) > table.count(&origin2size) )
     exit_on_error(command, string () +
-      "Options " + table.desc(&origin2) + " requires also " + table.desc(&origin2shift) + " option.");
-  if ( table.count(&origin2shift) && ! table.count(&origin2) && ! table.count(&interim_name) )
+      "Options " + table.desc(&origin2) + " requires also " + table.desc(&origin2size) + " option.");
+  if ( table.count(&origin2size) && ! table.count(&origin2) && ! table.count(&interim_name) )
     exit_on_error(command, string () +
-      "Options " + table.desc(&origin2shift) + " must be used with either "
+      "Options " + table.desc(&origin2size) + " must be used with either "
       + table.desc(&origin2) + " or " + table.desc(&interim_name) + " options.");
-  if ( table.count(&origin2shift)  &&  origin2shift  < 2 )
+  if ( table.count(&origin2size)  &&  origin2size  < 2 )
     exit_on_error(command, string () +
-      "Requested first stitch size (" + toString(origin2shift) + ") is less than 2.");
-  if ( table.count(&origin2shift)  &&  tiledImages % origin2shift )
+      "Requested second stitch size (" + toString(origin2size) + ") is less than 2.");
+  if ( table.count(&origin2size)  &&  tiledImages % origin2size )
     exit_on_error(command, string () +
-      "Total number of tiled images (" + toString(tiledImages) + ") is not a multiple of the requested first stitch size"
-      " (" + toString(origin2shift) + ") given by " + table.desc(&origin2shift) + " option.");
+      "Total number of tiled images (" + toString(tiledImages) + ") is not a multiple of the requested second stitch size"
+      " (" + toString(origin2size) + ") given by " + table.desc(&origin2size) + " option.");
 
   sort(splits.begin(), splits.end());
   unique(splits.begin(), splits.end());
@@ -344,10 +344,10 @@ int main(int argc, char *argv[]) {
   int nofSt=0;
   string svformat;
 
-  if      ( args.origin2shift )          nofSt=args.origin2shift;
-  else if ( args.origin1 == PointF2D() ) nofSt=1;
-  else if ( args.originF == PointF2D() ) nofSt=allIn.size();
-  else                                   nofSt=allIn.size()/2;
+  if      ( args.origin2size )          nofSt = allIn.size() / args.origin2size;
+  else if ( args.origin1 == PointF2D() ) nofSt = 1;
+  else if ( args.originF == PointF2D() ) nofSt = allIn.size();
+  else                                   nofSt = allIn.size()/2;
   svformat = mask2format(args.interim_name + "x-@" + args.images[0].extension(), allIn.size()/nofSt );
   vector<Map> o1Stitch;
   ProgressBar st1Bar( args.beverbose && 1 < allIn.size()/nofSt, "Stitching", allIn.size()/nofSt);
@@ -367,7 +367,7 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  if      ( ! args.origin2shift )        nofSt=1;
+  if      ( ! args.origin2size )        nofSt=1;
   else if ( args.originF == PointF2D() ) nofSt=o1Stitch.size();
   else                                   nofSt=o1Stitch.size()/2;
   svformat = mask2format(args.interim_name + "y-@" + args.images[0].extension(), o1Stitch.size()/nofSt );

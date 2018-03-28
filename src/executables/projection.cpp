@@ -538,6 +538,7 @@ int main(int argc, char *argv[]) {
 
       lLine = ( curS == args.splits.size()  || mLine < args.splits.at(curS) ) ?
         mLine :  args.splits.at(curS) ;
+      lLine--;
 
       if ( lLine > fLine ) {
         Map toSave =  vsplit ?

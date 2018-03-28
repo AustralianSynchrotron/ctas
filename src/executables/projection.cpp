@@ -90,9 +90,12 @@ struct clargs {
   Binn bnn;                  ///< binning factor
   float angle;                ///< Rotation angle.
   PointF2D origin1;            ///< Origin of the next image in the first stitch
+  bool origin1Used;            ///< indicates if origin1 was given in options.
   PointF2D origin2;            ///< Origin of the next image in the second stitch
+  bool origin2Used;            ///< indicates if origin2 was given in options.
   uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
   PointF2D originF;            ///< Origin of the flipped portion
+  bool flipUsed;               ///< indicates if originF was given in options.
   vector<uint> splits;          ///< Split pooints to separate samples.
   string interim_name;          ///< Prefix to save interim results
   bool beverbose;             ///< Be verbose flag
@@ -105,7 +108,6 @@ clargs::
 clargs(int argc, char *argv[])
   : angle(0)
   , origin2size(0)
-  , out_name("combined-<input1>")
   , beverbose(false)
 {
 
@@ -156,12 +158,17 @@ clargs(int argc, char *argv[])
 
   int tiledImages = table.count(&images);
 
+  origin1Used=table.count(&origin1);
+  origin2Used=table.count(&origin2);
+  flipUsed=table.count(&originF);
+
   if ( tiledImages < 2 )
     exit_on_error(command, string () +
       "At least two input images must be given as argument: " + table.desc(&images) + ".");
-  // <output> : one more argument may or may not exist
-  if ( ! table.count(&out_name) )
-    out_name = "combined-" + images[0].name();
+  
+  if ( ! table.count(&out_name)  &&  ! table.count(&interim_name) )
+    exit_on_error(command, string () +
+      "Neither " + table.desc(&out_name) + " nor " + table.desc(&interim_name) + " option given.");
 
   if ( table.count(&originF) ) {
     if ( tiledImages % 2 )
@@ -276,6 +283,56 @@ void SaveDenan(const Path & filename, const Map & storage, bool saveint=false) {
   SaveImage(filename, outm, saveint);
 }
 
+Path findCommon(const vector<Path>::const_iterator bgn, const vector<Path>::const_iterator end) {
+
+  int len = bgn->length();
+  if ( bgn>=end  ||  ! len )
+    return *bgn;
+
+  for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
+    if ( len != crnt->length() ) 
+      len = 0;
+
+  if (len) {
+    string ret;
+    for ( int idxc = 0 ; idxc < len ; idxc++ ) {
+      char cchar = bgn->at(idxc);
+      for (vector<Path>::const_iterator crnt=bgn+1 ; crnt<end ; crnt++)
+        if ( cchar != crnt->at(idxc) )
+          cchar=0;
+      if (cchar)
+        ret += cchar;
+    }
+    return ret;
+  } 
+
+  bool keepGoing=true;
+  int idxp=0;
+  while ( keepGoing  &&  idxp < bgn->length() ) {
+    char cchar = bgn->at(idxp);
+    for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
+      keepGoing &= idxp < crnt->length()  &&  crnt->at(idxp) == cchar;
+    if (keepGoing)
+      idxp++;
+  }
+  const string prefix(*bgn, 0, idxp);
+
+  keepGoing=true;
+  int idxs=0;
+  while ( keepGoing  &&  idxs < bgn->length() ) {
+    char cchar = bgn->at( bgn->length() - 1 - idxs );
+    for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
+      keepGoing &= idxs < crnt->length()  &&  crnt->length() - idxs > idxp  &&  crnt->at( crnt->length() - 1 - idxs ) == cchar;
+    if (keepGoing)
+      idxs++;
+  }
+  const string suffix(*bgn, bgn->length() - idxs, idxs);
+
+  return prefix+suffix;
+
+
+}
+
 
 
 
@@ -285,6 +342,7 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
 
   const Shape ish(ImageSizes(args.images[0]));
+
 
   Map bgar;
   if ( ! args.bgs.empty() ) {
@@ -319,6 +377,7 @@ int main(int argc, char *argv[]) {
 
   vector<Map> allIn;
 
+  string svformat = mask2format("Sp@_", args.images.size());
   ProgressBar progBar(args.beverbose, "Prepare tiles input.", args.images.size());
   for ( int curproj = 0 ; curproj < args.images.size() ; curproj++) {
     Map iar, rar, car, bar;
@@ -328,87 +387,149 @@ int main(int argc, char *argv[]) {
     binn(car, bar, args.bnn);
     flatfield( bar, bar, bgar, dfar );
     allIn.push_back(bar);
-    if ( ! args.interim_name.empty()
-         && ( bgar.size() || dfar.size()
-              || args.angle != 0.0 || args.crp != Crop() || args.bnn != Binn() )  )
-      SaveDenan( args.interim_name + "w-" + args.images[curproj].name(), bar );
+    if ( ! args.interim_name.empty() ) {
+      Path curname = args.images[curproj];
+      if ( args.interim_name  ==  curname.substr(0, args.interim_name.length() ) )
+        curname.erase(0, args.interim_name.length() );
+      const Path svname = toString(svformat, allIn.size()) + curname.name();
+      SaveDenan( args.interim_name + svname.name() , bar );
+    }
     progBar.update();
   }
 
-  if ( args.origin1 == PointF2D()  &&  args.originF == PointF2D() ) {
+  if ( ! args.origin1Used  &&  ! args.flipUsed ) {
     if ( args.interim_name.empty() )
-      warn(args.command, "Exit with no output - nothing requested.");
+      warn(args.command, "Exit with no stitching output - nothing requested.");
     exit(0);
   }
 
-  int nofSt=0;
-  string svformat;
 
-  if      ( args.origin2size )          nofSt = allIn.size() / args.origin2size;
-  else if ( args.origin1 == PointF2D() ) nofSt = 1;
-  else if ( args.originF == PointF2D() ) nofSt = allIn.size();
-  else                                   nofSt = allIn.size()/2;
-  svformat = mask2format(args.interim_name + "x-@" + args.images[0].extension(), allIn.size()/nofSt );
+  Path namemask;      
+  int nofSt;
+
+  nofSt=args.images.size();
+  if ( args.flipUsed ) nofSt /= 2;
+  if ( args.origin2Used ) nofSt /= args.origin2size;
+
   vector<Map> o1Stitch;
+  vector<Path> o1images;
   ProgressBar st1Bar( args.beverbose && 1 < allIn.size()/nofSt, "Stitching", allIn.size()/nofSt);
-  for ( vector<Map>::iterator st=allIn.begin() ; st < allIn.end() ; st += nofSt ) {
-    vector<Map> supply(st, st+nofSt) ;
+
+  for ( int inidx=0 ; inidx<allIn.size() ; inidx += nofSt ) {
+
+    vector<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + nofSt) ;
     Map res;
     stitch(supply, args.origin1, res);
     o1Stitch.push_back(res);
-    if ( ! args.interim_name.empty() && nofSt!=1 )
-      SaveDenan( toString( svformat, o1Stitch.size() ), res );
+    
+    if ( nofSt == 1) {
+      o1images = args.images;
+    } else if ( ! args.interim_name.empty() ) {
+      namemask = findCommon(args.images.begin() + inidx , args.images.begin() + inidx + nofSt ).name();
+      svformat = mask2format("St1@_" + namemask, allIn.size()/nofSt );
+      const Path svname = toString( svformat, o1Stitch.size() );
+      o1images.push_back(svname.name());
+      SaveDenan(args.interim_name + svname.name(), res);
+    }
+
     st1Bar.update();
+
   }
 
-  if ( o1Stitch.size() > 1  &&  args.origin2 == PointF2D()  &&  args.originF == PointF2D() ) {
+  if ( o1Stitch.size() > 1  &&  ! args.origin2Used  &&  ! args.flipUsed ) {
     if ( args.interim_name.empty() )
       warn(args.command, "Exit with no output - nothing requested.");
     exit(0);
   }
 
-  if      ( ! args.origin2size )        nofSt=1;
-  else if ( args.originF == PointF2D() ) nofSt=o1Stitch.size();
-  else                                   nofSt=o1Stitch.size()/2;
-  svformat = mask2format(args.interim_name + "y-@" + args.images[0].extension(), o1Stitch.size()/nofSt );
+
+  nofSt=o1Stitch.size();
+  if ( args.flipUsed ) nofSt /= 2;
+
   vector<Map> o2Stitch;
+  vector<Path> o2images;
   ProgressBar fnBar(args.beverbose && 1 < o1Stitch.size()/nofSt, "Finilizing", 1 + o1Stitch.size()/nofSt );
-  for ( vector<Map>::iterator st=o1Stitch.begin() ; st < o1Stitch.end() ; st += nofSt ) {
-    vector<Map> supply(st, st+nofSt) ;
+
+  for ( int inidx=0 ; inidx<o1Stitch.size() ; inidx += nofSt ) {
+
+    vector<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + nofSt ) ;
     Map res;
     stitch(supply, args.origin2, res);
     o2Stitch.push_back(res);
-    if ( ! args.interim_name.empty() && nofSt!=1 )
-      SaveDenan( toString( svformat, o2Stitch.size() ), res );
+
+    if ( nofSt == 1 ) {
+      o2images = o1images;
+    } else if ( ! args.interim_name.empty() ) {
+      namemask = findCommon(o1images.begin() + inidx , o1images.begin() + inidx + nofSt ).name();
+      if ( namemask.substr(0,4) == "St1_" )
+        namemask = namemask.erase(0,4);
+      svformat = mask2format("St2@_" + namemask, o1Stitch.size()/nofSt );
+      const Path svname = toString( svformat, o2Stitch.size() );
+      o2images.push_back(svname.name());
+      SaveDenan(args.interim_name + svname.name(), res);
+    }
+
     fnBar.update();
+
   }
 
+
+  nofSt=o2Stitch.size();
   Map final;
-  if        ( o2Stitch.size()==1 ) {
-    final.reference(o2Stitch[0]);
-  } else if ( o2Stitch.size()==2 ) {
+
+  if ( args.flipUsed ) {
+
+    if ( nofSt != 2 ) // May it ever happen ?
+      exit_on_error(args.command, "Number of images requested to flip-stitch is not equal to two.");
+
     o2Stitch[1].reverseSelf(secondDim);
-    if ( ! args.interim_name.empty() )
-      SaveDenan(args.interim_name + "z" + args.images[0].extension() , o2Stitch[1]);
     stitch(o2Stitch, args.originF, final);
+    if ( ! args.interim_name.empty() )  {
+      SaveDenan(o2images[1], o2Stitch[1]);
+      namemask = findCommon( o2images.begin(), o2images.end() ).name();
+      if ( namemask.substr(0,4) == "St1_"  ||  namemask.substr(0,4) == "St2_")
+        namemask = namemask.erase(0,4);
+      SaveDenan( args.interim_name + "Sw_" + namemask , final);
+    }
+       
     fnBar.update();
-  } else {
-    if ( args.interim_name.empty() )
-      warn(args.command, "Request to flip-stitch more than two images. Will be ignored.");
-    exit(1);
+
+  } else if  ( nofSt==1 ) {
+    final.reference(o2Stitch[0]);
+  } else { 
+    if ( args.interim_name.empty()  &&  ! args.out_name.empty() )
+      warn(args.command, "Output is not a single image. Will be ignored.");
+    exit(0);
   }
+
 
   if ( args.fcrp != Crop() )
     crop(final, args.fcrp);
 
-  if ( args.splits.empty() ){
-    SaveImage(args.out_name, final);
+  if ( ! args.interim_name.empty() ) {
+    namemask = findCommon(args.images.begin(), args.images.end()).name();
+    if ( namemask.substr(0,4) == "St1_"  ||
+         namemask.substr(0,4) == "St2_"  ||
+         namemask.substr(0,4) == "Sw_")
+      namemask = namemask.erase(0,4);
+    if (namemask.extension().empty())
+      namemask += args.images[0].extension();
+  }
+
+  if ( args.splits.empty() ) {
+
+    if ( ! args.out_name.empty() )
+      SaveImage(args.out_name, final);
+    if ( ! args.interim_name.empty() )
+      SaveDenan( args.interim_name + "SxF_" + namemask, final );
+
   } else {
 
     Path outmask = args.out_name;
     if ( string(outmask).find('@') == string::npos )
       outmask = outmask.dtitle() + "_split@" + outmask.extension();
     const string sliceformat = mask2format(outmask, args.splits.size() );
+    svformat = mask2format(args.interim_name + "Sx@_" + namemask, args.splits.size() );
 
     int fLine=0, lLine=0;
     const int vsplit = args.splits.at(0) ? 0 : 1;
@@ -422,7 +543,10 @@ int main(int argc, char *argv[]) {
         Map toSave =  vsplit ?
               final( blitz::Range::all(), blitz::Range(fLine, lLine) ).copy() :
               final( blitz::Range(fLine, lLine), blitz::Range::all() ).copy();
-        SaveImage( toString(sliceformat, curS-vsplit) , toSave);
+        if ( ! args.out_name.empty() )
+          SaveImage( toString(sliceformat, curS-vsplit) , toSave);
+        if ( ! args.interim_name.empty() )
+          SaveDenan( toString(svformat, curS-vsplit) , toSave );
       }
 
       fLine=lLine+1;
@@ -431,7 +555,9 @@ int main(int argc, char *argv[]) {
 
   }
 
+
   exit(0);
+
 
 }
 

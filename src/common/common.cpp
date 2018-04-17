@@ -1534,9 +1534,16 @@ ReadImageLine(const Path & filename, Map & storage,
 static void
 SaveImageINT_IM (const Path & filename, const Map & storage){
 
+  if ( ! storage.size() ) {
+    warn("save image", "Zero-sized array for image.");
+    return;
+  }
+
+  Map _storage = storage.isStorageContiguous() ? storage : storage.copy() ;
+
   const int
-    width = storage.columns(),
-    hight = storage.rows();
+    width = _storage.columns(),
+    hight = _storage.rows();
     
   Magick::Image imag( Magick::Geometry(width, hight), "black" );
   imag.classType(Magick::DirectClass);
@@ -1544,7 +1551,7 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   imag.depth(16);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
   
-  const float *data = storage.data();
+  const float *data = _storage.data();
   Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
     
   Magick::ColorGray colg;
@@ -1645,11 +1652,13 @@ SaveImageINT (const Path &filename, const Map &storage,
          "Zero-sized array for image '" + filename + "': won't save." );
     return;
   }
+
+  Map _storage = storage.isStorageContiguous() ? storage : storage.copy() ;
  
-  Map stor(storage.shape());
+  Map stor(_storage.shape());
   if (minval == maxval) {
-    minval = (blitz::min)(storage);
-    maxval = (blitz::max)(storage);
+    minval = (blitz::min)(_storage);
+    maxval = (blitz::max)(_storage);
   }
   if (minval == maxval) {
 
@@ -1702,7 +1711,7 @@ SaveImageINT (const Path &filename, const Map &storage,
 #endif  // OPENCL_FOUND
 #endif  // CHECK_IF_CPU_IS_FASTER
 
-      stor = ( storage - minval ) / (maxval-minval);
+      stor = ( _storage - minval ) / (maxval-minval);
       stor = limit01(stor);
 
 
@@ -1737,9 +1746,11 @@ SaveImageFP (const Path & filename, const Map & storage){
     return;
   }
 
+  Map _storage = storage.isStorageContiguous() ? storage : storage.copy() ;
+
   const int
-    width = storage.columns(),
-    hight = storage.rows();
+    width = _storage.columns(),
+    hight = _storage.rows();
 
     // BUG in libtiff
   // On platforms (f.e. CentOS) the TIFFOpen function fails,
@@ -1772,7 +1783,7 @@ SaveImageFP (const Path & filename, const Map & storage){
   TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
   TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
-  int wret = TIFFWriteRawStrip(image, 0, (void*) storage.data(), width*hight*4);
+  int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*4);
   TIFFClose(image);
   if (fd) close(fd);
   if ( -1 == wret )

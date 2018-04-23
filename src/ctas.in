@@ -48,7 +48,8 @@ checkcom() {
 execom() {
     LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
     LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
-    exec ${exec_prefix}/$@
+    ## string below used to filter annoying warning from OpenCL in some configurations
+    exec ${exec_prefix}/$@ 2> >(egrep -v 'libOpenCL.+: no version information available'  >&2)
 }
 
 showusage() {
@@ -96,9 +97,7 @@ case "$comm" in
 esac
 
 if checkcom $comm  ; then
-    # execom $comm $@
-    ## string below used to filter annoying warning from OpenCL in some configurations 
-    execom $comm $@ 2> >(egrep -v 'libOpenCL.+: no version information available'  >&2)
+    execom $comm $@
 else
     echo "The packege does not provide command '$comm'."
     exit 1;

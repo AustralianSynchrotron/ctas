@@ -46,8 +46,8 @@ checkcom() {
 }
 
 execom() {
-    LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
-    LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
+    export LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
+    export LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
     ## string below used to filter annoying warning from OpenCL in some configurations
     exec ${exec_prefix}/$@ 2> >(egrep -v 'libOpenCL.+: no version information available'  >&2)
 }

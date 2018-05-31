@@ -1539,11 +1539,12 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     return;
   }
 
-  Map _storage = storage.isStorageContiguous() ? storage : storage.copy() ;
-
   const int
-    width = _storage.columns(),
-    hight = _storage.rows();
+    width = storage.columns(),
+    hight = storage.rows();
+
+  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
+                 ? storage : storage.copy() ;
     
   Magick::Image imag( Magick::Geometry(width, hight), "black" );
   imag.classType(Magick::DirectClass);
@@ -1652,8 +1653,13 @@ SaveImageINT (const Path &filename, const Map &storage,
          "Zero-sized array for image '" + filename + "': won't save." );
     return;
   }
+  
+  const int
+    width = storage.columns(),
+    hight = storage.rows();
 
-  Map _storage = storage.isStorageContiguous() ? storage : storage.copy() ;
+  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
+                 ? storage : storage.copy() ;
  
   Map stor(_storage.shape());
   if (minval == maxval) {
@@ -1681,13 +1687,13 @@ SaveImageINT (const Path &filename, const Map &storage,
 
       try {
 
-        clStorage = map2cl(storage, CL_MEM_READ_WRITE);
+        clStorage = map2cl(_storage, CL_MEM_READ_WRITE);
 
         setArg(limit_array_cl_kernel, 0, clStorage, modname);
         setArg(limit_array_cl_kernel, 1, minval, modname);
         setArg(limit_array_cl_kernel, 2, maxval, modname);
 
-        size_t sz = storage.size();
+        size_t sz = _storage.size();
         err = clEnqueueNDRangeKernel( CL_queue, limit_array_cl_kernel, 1,
                                       0,  & sz, 0, 0, 0, 0);
         if (err != CL_SUCCESS)
@@ -1746,13 +1752,14 @@ SaveImageFP (const Path & filename, const Map & storage){
     return;
   }
 
-  Map _storage = storage.isStorageContiguous() ? storage : storage.copy() ;
-
   const int
-    width = _storage.columns(),
-    hight = _storage.rows();
+    width = storage.columns(),
+    hight = storage.rows();
 
-    // BUG in libtiff
+  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
+                 ? storage : storage.copy() ;
+
+  // BUG in libtiff
   // On platforms (f.e. CentOS) the TIFFOpen function fails,
   // while TIFFFdOpen works well. On the MS Windows the
   // TIFFFdOpen does not work, while TIFFOpen does.
@@ -1795,28 +1802,14 @@ SaveImageFP (const Path & filename, const Map & storage){
 
 void
 SaveImage(const Path & filename, const Map & storage, bool saveint){
-  Map stor;
-  if ( ! storage.isStorageContiguous()
-       || storage.stride() != Shape(1,1) ) {
-    stor.resize( storage.shape() );
-    stor=storage;
-  } else
-    stor.reference(storage);
-  if (saveint) SaveImageINT(filename, stor);
-  else SaveImageFP(filename, stor);
+  if (saveint) SaveImageINT(filename, storage);
+  else SaveImageFP(filename, storage);
 }
 
 void
 SaveImage(const Path & filename, const Map & storage,
           float minval, float maxval ){
-  Map stor;
-  if ( ! storage.isStorageContiguous()
-       || storage.stride() != Shape(1,1) ) {
-    stor.resize( storage.shape() );
-    stor=storage;
-  } else
-    stor.reference(storage);
-  SaveImageINT(filename, stor, minval, maxval);
+  SaveImageINT(filename, storage, minval, maxval);
 }
 
 

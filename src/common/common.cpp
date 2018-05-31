@@ -1363,15 +1363,23 @@ ReadImage_IM (const Path & filename, Map & storage ){
   const int
     width = imag.columns(),
     hight = imag.rows();
-  const Magick::PixelPacket
-    * pixels = imag.getConstPixels(0,0,width,hight);
-
   storage.resize( hight, width );
+  
+  // below might be buggy - see notes in SaveImageINT_IM
+  /*
+  const Magick::PixelPacket
+    * pixels = imag.getConstPixels(0,0,width,hight);  
   float * data = storage.data();
-
   for ( int k = 0 ; k < hight*width ; k++ )
     *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
-
+  */
+  
+  /* Replacement for the buggy block */
+  for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+    for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
+      storage(curh,curw) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
+  /* end replacement */
+  
 }
 
 
@@ -1418,15 +1426,22 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
   if ( idx < 0 || (unsigned) idx >= imag.rows() )
     throw_error("load imageline IM",
                 "The index of the line to be read (" + toString(idx) + ")"
-                " is outside the image boundaries (" + toString(imag.rows()) + ").");
-
+                " is outside the image boundaries (" + toString(imag.rows()) + ").");    
+  storage.resize(width);
+  
+  // below might be buggy - see notes in SaveImageINT_IM
+  /*
   const Magick::PixelPacket
     * pixels = imag.getConstPixels(0,idx,width,1);
-  storage.resize( width );
   float * data = storage.data();
-
   for ( int k = 0 ; k < width ; k++ )
     *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
+  */
+  
+  /* Replacement for the buggy block */
+  for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+    storage(curw) = Magick::ColorGray(imag.pixelColor(curw, idx)).shade();
+  /* end replacement */
 
 }
 
@@ -1473,7 +1488,7 @@ ReadImageLine_IM (const Path & filename, Map & storage,
   const int readheight = idxs.size() ? idxs.size() : hight;
   storage.resize( readheight, width );
 
-  for ( unsigned curel = 0 ; curel < readheight ; curel++ ){
+  for ( blitz::MyIndexType curel = 0 ; curel < readheight ; curel++ ){
     int cursl = idxs.size() ? idxs[curel] : curel;
     if ( cursl >= hight ) {
       warn("load imagelines IM",
@@ -1481,10 +1496,18 @@ ReadImageLine_IM (const Path & filename, Map & storage,
            " is outside the image boundaries (" + toString(hight) + ").");
       storage(curel, blitz::Range::all() ) = 0.0;
     } else {
+      // below might be buggy - see notes in SaveImageINT_IM
+      /*
       const Magick::PixelPacket *pixels = imag.getConstPixels(0,cursl,width,1);
       for ( blitz::MyIndexType k = 0 ; k < width ; k++ )
         storage( (blitz::MyIndexType) curel, k) =
           (float) Magick::ColorGray( *pixels++  ) .shade();
+      */
+      /* Replacement for the buggy block */
+      for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+	storage(curel, curw) = Magick::ColorGray(imag.pixelColor(curw, cursl)).shade();
+      /* end replacement */
+      
     }
 
   }
@@ -1542,24 +1565,38 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   const int
     width = storage.columns(),
     hight = storage.rows();
-
-  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
-                 ? storage : storage.copy() ;
     
   Magick::Image imag( Magick::Geometry(width, hight), "black" );
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
-  imag.depth(16);
+  imag.depth(8);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
   
-  const float *data = _storage.data();
-  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
+  /*
+    // commented code suggested by IM segfaults:
+    // getPixels allocates twise as less size
+    // or sizeof(Magick::PixelPacket) is twise as large
+    // (must be a bug in some later versions of IM)
+    // I have to do the following dirty, very dirty trick.
     
+  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
+                 ? storage : storage.copy() ;
+
+  const float *data = _storage.data();
+  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);    
   Magick::ColorGray colg;
-  for ( int k = 0 ; k < hight*width ; k++ )
-    *pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
-  
+  for ( int k = 0 ; k < hight*width ; k++ ) 
+    *_pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
+  // segfaults above
   imag.syncPixels();
+  */
+  
+  /* Replacement for the buggy block */
+  for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+    for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
+      imag.pixelColor(curw, curh, Magick::ColorGray(storage(curh,curw)));    
+  /* end replacement */
+  
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
     throw_error("save image IM", "Could not write image file\""+filename+"\"."

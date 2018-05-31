@@ -165,7 +165,7 @@ clargs(int argc, char *argv[])
   if ( tiledImages < 2 )
     exit_on_error(command, string () +
       "At least two input images must be given as argument: " + table.desc(&images) + ".");
-  
+
   if ( ! table.count(&out_name)  &&  ! table.count(&interim_name) )
     exit_on_error(command, string () +
       "Neither " + table.desc(&out_name) + " nor " + table.desc(&interim_name) + " option given.");
@@ -290,7 +290,7 @@ Path findCommon(const vector<Path>::const_iterator bgn, const vector<Path>::cons
     return *bgn;
 
   for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
-    if ( len != crnt->length() ) 
+    if ( len != crnt->length() )
       len = 0;
 
   if (len) {
@@ -304,7 +304,7 @@ Path findCommon(const vector<Path>::const_iterator bgn, const vector<Path>::cons
         ret += cchar;
     }
     return ret;
-  } 
+  }
 
   bool keepGoing=true;
   int idxp=0;
@@ -353,9 +353,6 @@ int main(int argc, char *argv[]) {
       ReadImage(args.bgs[curf], iar, ish);
       bgar+=iar;
     }
-    rotate(bgar, args.angle);
-    crop(bgar, args.crp);
-    binn(bgar, args.bnn);
     bgar /= args.bgs.size();
   }
 
@@ -368,9 +365,6 @@ int main(int argc, char *argv[]) {
       ReadImage(args.dfs[curf], iar, ish);
       dfar+=iar;
     }
-    rotate(dfar, args.angle);
-    crop(dfar, args.crp);
-    binn(dfar, args.bnn);
     dfar /= args.dfs.size();
   }
 
@@ -382,10 +376,10 @@ int main(int argc, char *argv[]) {
   for ( int curproj = 0 ; curproj < args.images.size() ; curproj++) {
     Map iar, rar, car, bar;
     ReadImage(args.images[curproj], iar, ish);
+    flatfield( iar, iar, bgar, dfar );
     rotate(iar, rar, args.angle);
     crop(rar, car, args.crp);
     binn(car, bar, args.bnn);
-    flatfield( bar, bar, bgar, dfar );
     allIn.push_back(bar);
     if ( ! args.interim_name.empty() ) {
       Path curname = args.images[curproj];
@@ -404,7 +398,7 @@ int main(int argc, char *argv[]) {
   }
 
 
-  Path namemask;      
+  Path namemask;
   int nofSt;
 
   nofSt=args.images.size();
@@ -421,15 +415,28 @@ int main(int argc, char *argv[]) {
     Map res;
     stitch(supply, args.origin1, res);
     o1Stitch.push_back(res);
-    
+
     if ( nofSt == 1) {
       o1images = args.images;
     } else if ( ! args.interim_name.empty() ) {
+
       namemask = findCommon(args.images.begin() + inidx , args.images.begin() + inidx + nofSt ).name();
       svformat = mask2format("St1@_" + namemask, allIn.size()/nofSt );
       const Path svname = toString( svformat, o1Stitch.size() );
       o1images.push_back(svname.name());
-      SaveDenan(args.interim_name + svname.name(), res);
+
+      Map cres;
+      if ( ! args.origin1.x * args.origin1.y )
+          cres.reference(res);
+      else if (args.origin1.x < args.origin1.y) {
+          int crppx = abs(args.origin1.x * (supply.size()-1));
+          crop(res, cres, Crop(0, crppx, 0, crppx));
+      } else {
+          int crppx = abs(args.origin1.y * (supply.size()-1));
+          crop(res, cres, Crop(crppx, 0, crppx, 0));
+      }
+      SaveDenan(args.interim_name + svname.name(), cres);
+
     }
 
     st1Bar.update();
@@ -460,13 +467,26 @@ int main(int argc, char *argv[]) {
     if ( nofSt == 1 ) {
       o2images = o1images;
     } else if ( ! args.interim_name.empty() ) {
+
       namemask = findCommon(o1images.begin() + inidx , o1images.begin() + inidx + nofSt ).name();
       if ( namemask.substr(0,4) == "St1_" )
         namemask = namemask.erase(0,4);
       svformat = mask2format("St2@_" + namemask, o1Stitch.size()/nofSt );
       const Path svname = toString( svformat, o2Stitch.size() );
       o2images.push_back(svname.name());
-      SaveDenan(args.interim_name + svname.name(), res);
+
+      Map cres;
+      if ( ! args.origin2.x * args.origin2.y )
+          cres.reference(res);
+      else if (args.origin2.x < args.origin2.y) {
+          int crppx = abs(args.origin2.x * (supply.size()-1));
+          crop(res, cres, Crop(0, crppx, 0, crppx));
+      } else {
+          int crppx = abs(args.origin2.y * (supply.size()-1));
+          crop(res, cres, Crop(crppx, 0, crppx, 0));
+      }
+      SaveDenan(args.interim_name + svname.name(), cres);
+
     }
 
     fnBar.update();
@@ -491,12 +511,12 @@ int main(int argc, char *argv[]) {
         namemask = namemask.erase(0,4);
       SaveDenan( args.interim_name + "Sw_" + namemask , final);
     }
-       
+
     fnBar.update();
 
   } else if  ( nofSt==1 ) {
     final.reference(o2Stitch[0]);
-  } else { 
+  } else {
     if ( args.interim_name.empty()  &&  ! args.out_name.empty() )
       warn(args.command, "Output is not a single image. Will be ignored.");
     exit(0);

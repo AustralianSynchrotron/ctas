@@ -162,10 +162,6 @@ clargs(int argc, char *argv[])
   origin2Used=table.count(&origin2);
   flipUsed=table.count(&originF);
 
-  if ( tiledImages < 2 )
-    exit_on_error(command, string () +
-      "At least two input images must be given as argument: " + table.desc(&images) + ".");
-
   if ( ! table.count(&out_name)  &&  ! table.count(&interim_name) )
     exit_on_error(command, string () +
       "Neither " + table.desc(&out_name) + " nor " + table.desc(&interim_name) + " option given.");
@@ -391,13 +387,6 @@ int main(int argc, char *argv[]) {
     progBar.update();
   }
 
-  if ( ! args.origin1Used  &&  ! args.flipUsed ) {
-    if ( args.interim_name.empty() )
-      warn(args.command, "Exit with no stitching output - nothing requested.");
-    exit(0);
-  }
-
-
   Path namemask;
   int nofSt;
 
@@ -442,13 +431,6 @@ int main(int argc, char *argv[]) {
     st1Bar.update();
 
   }
-
-  if ( o1Stitch.size() > 1  &&  ! args.origin2Used  &&  ! args.flipUsed ) {
-    if ( args.interim_name.empty() )
-      warn(args.command, "Exit with no output - nothing requested.");
-    exit(0);
-  }
-
 
   nofSt=o1Stitch.size();
   if ( args.flipUsed ) nofSt /= 2;

@@ -157,6 +157,9 @@ clargs(int argc, char *argv[])
   command = table.name();
 
   int tiledImages = table.count(&images);
+  if ( ! tiledImages )
+    exit_on_error(command, "No input images given.");
+
 
   origin1Used=table.count(&origin1);
   origin2Used=table.count(&origin2);

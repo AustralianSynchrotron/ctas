@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
       Map cres;
       if ( ! args.origin1.x * args.origin1.y )
           cres.reference(res);
-      else if (args.origin1.x < args.origin1.y) {
+      else if ( abs(args.origin1.x) < abs(args.origin1.y)  ) {
           int crppx = abs(args.origin1.x * (supply.size()-1));
           crop(res, cres, Crop(0, crppx, 0, crppx));
       } else {
@@ -463,7 +463,7 @@ int main(int argc, char *argv[]) {
       Map cres;
       if ( ! args.origin2.x * args.origin2.y )
           cres.reference(res);
-      else if (args.origin2.x < args.origin2.y) {
+      else if ( abs(args.origin2.x) < abs(args.origin2.y) ) {
           int crppx = abs(args.origin2.x * (supply.size()-1));
           crop(res, cres, Crop(0, crppx, 0, crppx));
       } else {

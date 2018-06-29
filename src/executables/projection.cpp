@@ -238,7 +238,7 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
         const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
         float val;
         if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1)
-             && isnormal( val=iarr[acur](coo) ) ) {
+             && isfinite( val=iarr[acur](coo) ) ) {
           const int weight = ( ish(0) - abs( 2.0*coo(0) - ish(0) + 1 ) )
                            * ( ish(1) - abs( 2.0*coo(1) - ish(1) + 1 ) );
           sweight += weight;
@@ -267,7 +267,7 @@ namespace blitz {
 ///
 static inline float
 denan(float x){
-  return isnormal(x) ? x : 0.0 ;
+  return isfinite(x) ? x : 0.0 ;
 }
 
 /// \cond

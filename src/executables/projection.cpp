@@ -236,13 +236,12 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
 
       for (int acur = 0 ; acur < isz ; acur++ ) {
         const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
-        float val;
         if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1)
-             && isfinite( val=iarr[acur](coo) ) ) {
-          const int weight = ( ish(0) - abs( 2.0*coo(0) - ish(0) + 1 ) )
-                           * ( ish(1) - abs( 2.0*coo(1) - ish(1) + 1 ) );
+             && isfinite( iarr[acur](coo) ) ) {
+          const int weight = 1 + ( ish(0) - abs( 2*coo(0) - ish(0) + 1 ) )
+                               * ( ish(1) - abs( 2*coo(1) - ish(1) + 1 ) );
           sweight += weight;
-          svals += val * weight;
+          svals += iarr[acur](coo) * weight;
         }
       }
 

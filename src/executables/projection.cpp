@@ -236,12 +236,14 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
 
       for (int acur = 0 ; acur < isz ; acur++ ) {
         const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
-        if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1)
-             && isfinite( iarr[acur](coo) ) ) {
-          const int weight = 1 + ( ish(0) - abs( 2*coo(0) - ish(0) + 1 ) )
-                               * ( ish(1) - abs( 2*coo(1) - ish(1) + 1 ) );
-          sweight += weight;
-          svals += iarr[acur](coo) * weight;
+        if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1) ) {
+          const float varcur = iarr[acur](coo);
+          if ( isnormal(varcur) || fpclassify(varcur) == FP_ZERO ) { // WHY isfinite allows NANs and isnormal forbids 0 ?!!!
+            const int weight = 1 + ( ish(0) - abs( 2*coo(0) - ish(0) + 1 ) )
+                                 * ( ish(1) - abs( 2*coo(1) - ish(1) + 1 ) );
+            sweight += weight;
+            svals += varcur * weight;
+          } 
         }
       }
 
@@ -266,7 +268,7 @@ namespace blitz {
 ///
 static inline float
 denan(float x){
-  return isfinite(x) ? x : 0.0 ;
+  return isnormal(x) ? x : 0.0 ;
 }
 
 /// \cond

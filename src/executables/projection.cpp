@@ -370,6 +370,7 @@ int main(int argc, char *argv[]) {
 
 
   vector<Map> allIn;
+  vector<Path> iimages;
 
   string svformat = mask2format("Sp@_", args.images.size());
   ProgressBar progBar(args.beverbose, "Prepare tiles input.", args.images.size());
@@ -387,6 +388,7 @@ int main(int argc, char *argv[]) {
         curname.erase(0, args.interim_name.length() );
       const Path svname = toString(svformat, allIn.size()) + curname.name();
       SaveDenan( args.interim_name + svname.name() , bar );
+      iimages.push_back(svname.name());
     }
     progBar.update();
   }
@@ -410,7 +412,7 @@ int main(int argc, char *argv[]) {
     o1Stitch.push_back(res);
 
     if ( nofSt == 1) {
-      o1images = args.images;
+      o1images = iimages;
     } else if ( ! args.interim_name.empty() ) {
 
       namemask = findCommon(args.images.begin() + inidx , args.images.begin() + inidx + nofSt ).name();

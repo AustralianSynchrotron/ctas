@@ -91,9 +91,11 @@ flatfield(Map & result, const Map & fg, const Map & bg){
       result.reference(fg);
     return;
   }
-  Shape sh=fg.shape();
+  const Shape sh=fg.shape();
   if( sh != bg.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
+  if( sh != result.shape() )
+    result.resize(sh);
   int sz=0;
   for (blitz::MyIndexType icur=0; icur<sh(0); icur++)
     for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)

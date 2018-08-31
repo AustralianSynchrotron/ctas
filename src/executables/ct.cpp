@@ -84,10 +84,10 @@ clargs(int argc, char *argv[]) :
        "Type of the contrast presented in the sinogram. " + Contrast::Desc)
   .add(poptmx::OPTION, &center, 'c', "center",
        "Rotation center.", CenterOptionDesc, toString(center))
-  .add(poptmx::OPTION, &arc, 'a', "arc",
-       "CT scan range (deg).",
-       "Arc of the CT scan in degrees: step size multiplied by number of projections."
-       " Note: this is not where the half-object 360-degree CT is handeled.",
+  .add(poptmx::OPTION, &arc, 'a', "arcan",
+       "CT scan range (if > 1 deg), or step size (if < 1deg).",
+       "If value is greater than 1deg then it represents the arc of the CT scan."
+       " Otherwise the value is the step size.",
        toString(arc))
   .add(poptmx::OPTION, &filter_type, 'f', "filter",
        "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
@@ -134,8 +134,9 @@ int main(int argc, char *argv[]) {
 
   Map sino;
   ReadImage( args.sinogram_name, sino);
+  const float arc = args.arc > 1.0 ? args.arc : args.arc * sino.shape()(0);
   const Map rec =
-    CTrec::reconstruct(sino, args.contrast, args.arc, args.filter_type, args.center, args.dd);
+    CTrec::reconstruct(sino, args.contrast, arc, args.filter_type, args.center, args.dd);
   SaveImage(args.result_name, rec, args.SaveInt);
 
   exit(0);

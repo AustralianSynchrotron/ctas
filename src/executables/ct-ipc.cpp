@@ -117,10 +117,10 @@ clargs(int argc, char *argv[]) :
        "Slices to be processed.", SliceOptionDesc, "<all>")
   .add(poptmx::OPTION,   &center, 'c', "center",
        "Variable rotation center.", DcenterOptionDesc, toString(0.0))
-  .add(poptmx::OPTION, &arc, 'a', "arc",
-       "CT scan range (deg).",
-       "Arc of the CT scan in degrees: step size multiplied by number of projections."
-       " Note: this is not where the half-object 360-degree CT is handeled.",
+  .add(poptmx::OPTION, &arc, 'a', "arcan",
+       "CT scan range (if > 1 deg), or step size (if < 1deg).",
+       "If value is greater than 1deg then it represents the arc of the CT scan."
+       " Otherwise the value is the step size.",
        toString(arc))
   .add(poptmx::OPTION,   &filter_type, 'f', "filter",
        "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
@@ -199,14 +199,16 @@ int main(int argc, char *argv[]) {
   IPCexp expr(listD, list0, proc, args.contrast);
   expr.gamma(args.dgamma);
 
-  int
-  thetas=expr.thetas(),
-  pixels=expr.pixels(),
-  slices=expr.slices();
+  const int
+    thetas=expr.thetas(),
+    pixels=expr.pixels(),
+    slices=expr.slices();
   const string sliceformat = mask2format(args.outmask, slices);
   const vector<int> sliceV = slice_str2vec(args.slicedesc, slices);
   const SinoS sins(expr, sliceV, args.beverbose);
-  CTrec rec(expr.shape(), expr.contrast(), args.arc, args.filter_type);
+  const float arc = args.arc > 1.0 ? args.arc : args.arc * thetas;
+
+  CTrec rec(expr.shape(), expr.contrast(), arc, args.filter_type);
 
   Map sinogram(thetas, pixels);
   Map result(thetas, pixels);

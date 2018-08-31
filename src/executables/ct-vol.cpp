@@ -105,10 +105,10 @@ clargs(int argc, char *argv[]) :
          CropOptionDesc, "")
     .add(poptmx::OPTION, &center, 'c', "center",
          "Variable rotation center.", DcenterOptionDesc, toString(0.0))
-    .add(poptmx::OPTION, &arc, 'a', "arc",
-         "CT scan range (deg).",
-         "Arc of the CT scan in degrees: step size multiplied by number of projections."
-         " Note: this is not where the half-object 360-degree CT is handeled.",
+    .add(poptmx::OPTION, &arc, 'a', "arcan",
+         "CT scan range (if > 1 deg), or step size (if < 1deg).",
+         "If value is greater than 1deg then it represents the arc of the CT scan."
+         " Otherwise the value is the step size.",
          toString(arc))
     .add(poptmx::OPTION, &SaveInt,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
@@ -134,6 +134,10 @@ clargs(int argc, char *argv[]) :
 
     if ( string(outmask).find('@') == string::npos )
       outmask = outmask.dtitle() + "-@" + outmask.extension();
+    if (arc <= 0.0)
+      exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
+    else if (arc < 1.0)
+      arc *= table.count(&inlist);
 
     angle *= M_PI/180;
 

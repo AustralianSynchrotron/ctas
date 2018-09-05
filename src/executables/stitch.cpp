@@ -34,12 +34,6 @@
 
 using namespace std;
 
-#ifdef _WIN32
-#define NAN numeric_limits<float>::quiet_NaN();
-static inline int isnan(double x){ return _isnan(x); }
-#endif
-
-
 
 
 /// \CLARGS
@@ -142,7 +136,7 @@ int main(int argc, char *argv[]) {
             eCols=imio.columns(),
             nofims = args.images.size(),
             & shift = args.shift;
-	
+
 
   if ( args.cut1 + args.width >= ( args.hOrientation ? eCols : eRows ) )
     exit_on_error(args.command,
@@ -155,8 +149,8 @@ int main(int argc, char *argv[]) {
       "Total shift (" + toString(shift) + "*" + toString(nofims) + "=" + toString(nofims*shift) + ") "
       + "is greater that the size of \"" + args.images[0]+ "\" image "
       + toString( args.hOrientation ? eRows : eCols ) + ".");
-  
-  
+
+
   if (shift<0) {
     Map tmp;
     if (args.hOrientation)
@@ -173,7 +167,7 @@ int main(int argc, char *argv[]) {
   for ( int curim=1 ; curim < nofims; curim++ ) {
 
     Map imadd;
-    Path imname = args.images[curim]; 
+    Path imname = args.images[curim];
     ReadImage(imname, imadd);
 
     if ( args.cut2+args.width >= ( args.hOrientation ? imadd.columns() : imadd.rows() ) )
@@ -182,7 +176,7 @@ int main(int argc, char *argv[]) {
          + toString(args.width) + "=" + toString(args.cut2+args.width) + ") "
          + "is greater thain the size of \"" + imname + "\"image "
          + toString( args.hOrientation ? imadd.columns() : imadd.rows() ) + ".");
-      
+
     Map imnext;
 
     if (args.hOrientation) {
@@ -191,12 +185,12 @@ int main(int argc, char *argv[]) {
         exit_on_error(args.command,
           "Rows in image \"" + imname + "\" (" + toString(imadd.rows()) + ")"
           " is not as in the first image (" + toString(eRows) + ").");
-    
+
       if (shift<0)
         imadd.reference(imadd( Range( -shift*(nofims-1-curim), eRows+shift*curim-1 ) , Range::all() ).copy());
       else if (shift>0)
         imadd.reference(imadd( Range( shift*curim, eRows-shift*(nofims-1-curim)-1 ) , Range::all() ).copy());
- 
+
       imnext.resize( imio.rows(),
         imio.columns() - args.cut1 + imadd.columns() - args.cut2 - args.width );
       imnext( Range::all(), Range(0, imio.columns() - args.cut1 - args.width - 1) ) =
@@ -218,7 +212,7 @@ int main(int argc, char *argv[]) {
         exit_on_error(args.command,
           "Columns in image \"" + imname + "\" (" + toString(imadd.columns()) + ")"
           " is not as in the first image (" + toString(eCols) + ").");
-	
+
       if (shift<0)
 	imadd.reference(imadd( Range::all(), Range( -shift*(nofims-1-curim), eCols+shift*curim-1) ).copy());
       else if (shift>0)
@@ -226,12 +220,12 @@ int main(int argc, char *argv[]) {
 
       imnext.resize( imio.rows() - args.cut1 + imadd.rows() - args.cut2 - args.width,
         imio.columns() );
-      
+
       imnext( Range(0, imio.rows() - args.cut1 - args.width - 1), Range::all() ) =
         imio( Range(0, imio.rows() - args.cut1 - args.width - 1 ), Range::all() );
       imnext( Range( imio.rows() - args.cut1, imnext.rows() - 1  ), Range::all() ) =
         imadd( Range( args.width + args.cut2, imadd.rows() - 1 ), Range::all() );
-  
+
       for (blitz::MyIndexType iidx=0; iidx < args.width; iidx++) {
         float ratio = (iidx+1.0)/(args.width+1.0);
         for (blitz::MyIndexType jidx=0; jidx < imnext.columns(); jidx++ )
@@ -241,11 +235,11 @@ int main(int argc, char *argv[]) {
       }
 
     }
-    
+
     imio.reference(imnext);
-        
+
   }
-  
+
   SaveImage(args.out_name, imio);
 
   exit(0);

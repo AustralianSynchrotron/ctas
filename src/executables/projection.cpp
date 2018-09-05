@@ -29,7 +29,6 @@
 
 #include "../common/common.h"
 #include "../common/flatfield.h"
-#include <math.h>
 #include <algorithm>
 #include <string.h>
 
@@ -238,12 +237,12 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
         const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
         if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1) ) {
           const float varcur = iarr[acur](coo);
-          if ( isnormal(varcur) || fpclassify(varcur) == FP_ZERO ) { // WHY isfinite allows NANs and isnormal forbids 0 ?!!!
+          if ( fisok(varcur) ) {
             const int weight = 1 + ( ish(0) - abs( 2*coo(0) - ish(0) + 1 ) )
                                  * ( ish(1) - abs( 2*coo(1) - ish(1) + 1 ) );
             sweight += weight;
             svals += varcur * weight;
-          } 
+          }
         }
       }
 

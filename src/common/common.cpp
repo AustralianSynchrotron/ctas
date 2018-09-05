@@ -58,7 +58,7 @@ int prdn( int a ) {
   fflush(stdout);
   prevTV=nowTV;
   return 0;
-  
+
 }
 
 
@@ -69,11 +69,11 @@ int prdn( int a ) {
 /// @param mod   Sets CtasErr::module
 /// @param msg   Sets CtasErr::message
 ///
-CtasErr::CtasErr(ErrTp _terr, const string & mod, const string & msg){
-  terr = _terr;
-  module = mod;
-  message = msg;
-}
+CtasErr::CtasErr(ErrTp _terr, const string & mod, const string & msg)
+  : terr(_terr)
+  , module(mod)
+  , message(msg)
+{}
 
 /// \brief Prints the error into the standard error stream.
 void
@@ -90,6 +90,7 @@ CtasErr::report() const {
     break;
   }
   cerr << " In module \'" << module << "\'. " << message << endl;
+  cerr.flush();
 }
 
 
@@ -451,7 +452,7 @@ crop(Map & io_arr, const Crop & crp) {
   if( io_arr.data() == outarr.data() )
     return;
   io_arr.resize(outarr.shape());
-  io_arr=outarr.copy();  
+  io_arr=outarr.copy();
 }
 
 
@@ -464,27 +465,27 @@ type_desc (Binn*) {
 
 int
 _conversion (Binn* _val, const string & in) {
-  
+
   int x, y;
-  
+
   if ( in.find_first_of(",:") !=  string::npos ) {
-    
+
     int scanres = sscanf( in.c_str(), "%i:%i", &x, &y);
     if (scanres != 2) // try , instead of :
       scanres = sscanf( in.c_str(), "%i,%i", &x, &y);
     if ( 2 != scanres || x<1 || y<1 )
-      return -1;      
-    
+      return -1;
+
   } else {
-    
+
     int xy;
     if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<1 )
       return -1;
     x=xy;
     y=xy;
-    
+
   }
-            
+
   *_val = Binn(x, y);
   return 1;
 
@@ -502,14 +503,14 @@ binn(const Map & inarr, Map & outarr, const Binn & bnn) {
     warn("Binning aray", "Binning parameter cannot be zero.");
     return;
   }
-  
+
   outarr.resize( inarr.shape()(0) / bnn.y , inarr.shape()(1) / bnn.x );
-  
+
   for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
     for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
-      outarr(ycur,xcur) = mean( inarr( blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1), 
+      outarr(ycur,xcur) = mean( inarr( blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1),
                                          blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1) ) );
-  
+
 }
 
 void
@@ -529,13 +530,13 @@ const string BinnOptionDesc =
 
 
 void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
-  
+
   const Shape sh = inarr.shape();
-  
+
   if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
-    
+
     const int nof90 = round(2*angle/M_PI);
-  
+
     if ( ! (nof90%4)  ) { // 360deg
       outarr.reference(inarr);
     } else if ( ! (nof90%2) ) { //180deg
@@ -543,16 +544,16 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
       outarr=inarr.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
     } else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) ) { // 270deg
       outarr.resize(sh(1),sh(0));
-      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);      
+      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);
     } else { // 90deg
       outarr.resize(sh(1),sh(0));
-      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);      
+      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);
     }
-    
+
     return;
-    
+
   }
-  
+
   const float cosa = cos(-angle), sina = sin(-angle);
   const int
     rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
@@ -590,12 +591,12 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
       }
 
     }
-  }  
-  
+  }
+
 }
 
 void
-rotate(Map & io_arr, float angle, float bg) { 
+rotate(Map & io_arr, float angle, float bg) {
   Map outarr;
   rotate(io_arr, outarr, angle, bg);
   if( io_arr.data() == outarr.data() )
@@ -808,7 +809,7 @@ ProgressBar::getwidth(){
 static bool clInited = false;
 
 bool clIsInited() {
-  
+
   if (clInited)
     return true;
 
@@ -980,7 +981,7 @@ cl_program initProgram(char csrc[], size_t length, const string & modname) {
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build status: " + toString(err) );
     else
-      warn(modname, "   Build status: " + toString(stat) );
+      warn(modname, "   Build status: " + toString(stat));
 
     size_t len=0;
     err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
@@ -989,28 +990,30 @@ cl_program initProgram(char csrc[], size_t length, const string & modname) {
     if (buildOptions)
       err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
                                 len, buildOptions, 0);
-      if (err != CL_SUCCESS)
-        warn(modname, "Could not get OpenCL program build options: " + toString(err) );
-      else
-        warn(modname, "   Build options: " + string(buildOptions, len) );
-      if (buildOptions)
-        free(buildOptions);
+    prdn(1);
+    if (err != CL_SUCCESS)
+      warn(modname, "Could not get OpenCL program build options: " + toString(err) );
+    else
+      warn(modname, "   Build options: \"" + string(buildOptions, len) + "\"");
+    if (buildOptions)
+      free(buildOptions);
 
+    err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
+                                0, 0, &len);
+    char * buildLog = (char*) calloc(len, sizeof(char));
+    if (buildLog)
       err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
-                                  0, 0, &len);
-      char * buildLog = (char*) calloc(len, sizeof(char));
-      if (buildOptions)
-        err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
-                                    len, buildLog, 0);
-        if (err != CL_SUCCESS)
-          warn(modname, "Could not get OpenCL program build log: " + toString(err) );
-        else
-          warn(modname, "   Build log:\n" +  string(buildLog, len) );
-        if (buildLog)
-          free(buildLog);
+                                  len, buildLog, 0);
+    if (err != CL_SUCCESS)
+      warn(modname, "Could not get OpenCL program build log: " + toString(err) );
+    else
+      warn(modname, "   Build log:\n" + string(buildLog, len));
+    if (buildLog)
+      free(buildLog);
 
+    warn(modname, "\n");
 
-        return 0;
+    return 0;
 
   }
 
@@ -1025,7 +1028,7 @@ cl_mem map2cl(const Map & storage, cl_mem_flags flag) {
   cl_int err;
   const size_t iStorageSize = sizeof(cl_float) * storage.size() ;
 
-  cl_mem clStorage = clCreateBuffer ( CL_context, CL_MEM_READ_WRITE, iStorageSize, 0, &err);
+  cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
 
@@ -1090,18 +1093,18 @@ initImageIO(){
 #else
   using namespace MagickCore;
 #endif
-  
+
   MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
   SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
   SetMagickResourceLimit ( FileResource , 1024 * 1024);
   SetMagickResourceLimit ( DiskResource , Msz);
   SetMagickResourceLimit ( MapResource , Msz);
   SetMagickResourceLimit ( MemoryResource , Msz);
-  
+
   // BUG in ImageMagick If I don'd do it here the TIFFSetWarningHandler
-  // is called later in the code and causes 
+  // is called later in the code and causes
   // ../../magick/exception.c:1036: ThrowMagickExceptionList: Assertion `exception->signature == MagickSignature' failed.
-  // whenever TIFFOpen is called  
+  // whenever TIFFOpen is called
   try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
 
@@ -1364,22 +1367,22 @@ ReadImage_IM (const Path & filename, Map & storage ){
     width = imag.columns(),
     hight = imag.rows();
   storage.resize( hight, width );
-  
+
   // below might be buggy - see notes in SaveImageINT_IM
   /*
   const Magick::PixelPacket
-    * pixels = imag.getConstPixels(0,0,width,hight);  
+    * pixels = imag.getConstPixels(0,0,width,hight);
   float * data = storage.data();
   for ( int k = 0 ; k < hight*width ; k++ )
     *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
   */
-  
+
   /* Replacement for the buggy block */
   for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
     for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
       storage(curh,curw) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
   /* end replacement */
-  
+
 }
 
 
@@ -1426,9 +1429,9 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
   if ( idx < 0 || (unsigned) idx >= imag.rows() )
     throw_error("load imageline IM",
                 "The index of the line to be read (" + toString(idx) + ")"
-                " is outside the image boundaries (" + toString(imag.rows()) + ").");    
+                " is outside the image boundaries (" + toString(imag.rows()) + ").");
   storage.resize(width);
-  
+
   // below might be buggy - see notes in SaveImageINT_IM
   /*
   const Magick::PixelPacket
@@ -1437,7 +1440,7 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
   for ( int k = 0 ; k < width ; k++ )
     *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
   */
-  
+
   /* Replacement for the buggy block */
   for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
     storage(curw) = Magick::ColorGray(imag.pixelColor(curw, idx)).shade();
@@ -1507,7 +1510,7 @@ ReadImageLine_IM (const Path & filename, Map & storage,
       for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
 	storage(curel, curw) = Magick::ColorGray(imag.pixelColor(curw, cursl)).shade();
       /* end replacement */
-      
+
     }
 
   }
@@ -1565,38 +1568,38 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   const int
     width = storage.columns(),
     hight = storage.rows();
-    
+
   Magick::Image imag( Magick::Geometry(width, hight), "black" );
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
   imag.depth(8);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
-  
+
   /*
     // commented code suggested by IM segfaults:
     // getPixels allocates twise as less size
     // or sizeof(Magick::PixelPacket) is twise as large
     // (must be a bug in some later versions of IM)
     // I have to do the following dirty, very dirty trick.
-    
+
   Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
                  ? storage : storage.copy() ;
 
   const float *data = _storage.data();
-  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);    
+  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
   Magick::ColorGray colg;
-  for ( int k = 0 ; k < hight*width ; k++ ) 
+  for ( int k = 0 ; k < hight*width ; k++ )
     *_pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
   // segfaults above
   imag.syncPixels();
   */
-  
+
   /* Replacement for the buggy block */
   for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
     for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
-      imag.pixelColor(curw, curh, Magick::ColorGray(storage(curh,curw)));    
+      imag.pixelColor(curw, curh, Magick::ColorGray(storage(curh,curw)));
   /* end replacement */
-  
+
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
     throw_error("save image IM", "Could not write image file\""+filename+"\"."
@@ -1690,14 +1693,14 @@ SaveImageINT (const Path &filename, const Map &storage,
          "Zero-sized array for image '" + filename + "': won't save." );
     return;
   }
-  
+
   const int
     width = storage.columns(),
     hight = storage.rows();
 
   Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
                  ? storage : storage.copy() ;
- 
+
   Map stor(_storage.shape());
   if (minval == maxval) {
     minval = (blitz::min)(_storage);
@@ -1765,9 +1768,9 @@ SaveImageINT (const Path &filename, const Map &storage,
 #endif  // CHECK_IF_CPU_IS_FASTER
 
   }
-  
+
   SaveImageINT_IM(filename, stor);
-  
+
 }
 
 

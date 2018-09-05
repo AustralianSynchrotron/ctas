@@ -52,13 +52,17 @@
 
 #include <string>
 #include <vector>
+#include <math.h>
 #include "../blitz-long/blitz/array.h"
 //#include <blitz/array.h>
 
 #ifdef _WIN32
 #define NAN numeric_limits<float>::quiet_NaN();
-static inline int isnan(double x){ return _isnan(x); }
-static inline int isnormal(double x){ return _isnormal(x); }
+static inline int fisnan(double x){ return _isnan(x); }
+static inline int fisok(double x){ return _isnormal(x) || _fpclassify(x) == FP_ZERO; }
+#else
+// WHY isfinite allows NANs and isnormal forbids 0 ?!!!
+static inline int fisok(double x){ return isnormal(x) || fpclassify(x) == FP_ZERO; }
 #endif
 
 
@@ -401,7 +405,7 @@ struct Crop {
   : top(t), left(l), bottom(b), right(r) {}
 };
 
-inline std::string toString (const Crop & crp)  { 
+inline std::string toString (const Crop & crp)  {
   return toString("%ut,%ul,%ub,%ur", crp.top, crp.left, crp.bottom, crp.right);
 }
 
@@ -714,7 +718,7 @@ bool clIsInited();
 
 cl_program initProgram(char csrc[], size_t length, const std::string & modname);
 
-cl_mem map2cl(const Map & storage, cl_mem_flags flag = CL_MEM_READ_ONLY);
+cl_mem map2cl(const Map & storage, cl_mem_flags flag = CL_MEM_READ_WRITE);
 
 void cl2map(Map & storage, cl_mem clbuffer);
 

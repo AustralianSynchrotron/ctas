@@ -34,11 +34,6 @@
 using namespace std;
 using namespace blitz;
 
-#ifdef _WIN32
-#define NAN numeric_limits<float>::quiet_NaN();
-static inline int isnan(double x){ return _isnan(x); }
-#endif
-
 
 
 /// \CLARGS
@@ -49,7 +44,7 @@ struct clargs {
   float angle;                ///< Rotation angle.
   float background;           ///< value for the points out of the FOV.
   Crop crp;                   ///< Crop resulting image
-  Binn bnn;                   ///< Apply binning. 
+  Binn bnn;                   ///< Apply binning.
   bool beverbose;
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -62,7 +57,7 @@ clargs(int argc, char *argv[]) :
   angle(0.0),
   background(NAN),
   crp(),
-  bnn(), 
+  bnn(),
   out_name("<input>")
 {
 

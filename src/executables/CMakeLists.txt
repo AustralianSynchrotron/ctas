@@ -184,6 +184,27 @@ target_link_libraries(proj
 )
 
 
+if (OPENCL_FOUND)
+  set(FLATCL "flat.cl")
+  set(FLATCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${FLATCL}")
+  set(FLATCLINC "${CMAKE_BINARY_DIR}/${FLATCL}.includeme")
+  add_custom_command(
+    OUTPUT ${FLATCLINC}
+    COMMAND cat ${FLATCLSRC} | xxd -i > ${FLATCLINC}
+    DEPENDS ${FLATCLSRC}
+  )
+endif()
+
+add_executable(flat flat.cpp ${FLATCLINC})
+target_link_libraries(flat
+  common
+  poptmx
+  ${OPENCL_LL}
+)
+
+
+
+
 # left here for the back compatibility with old imbl4massive scripts - to go away after 2019
 add_executable(stitch stitch.cpp)
 target_link_libraries(stitch
@@ -198,7 +219,7 @@ set( all_targets
   multipc ipc dei edei trans norm stitch
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts ff rc2fd f2i proj
+  ct-line ts ff rc2fd f2i proj flat
 )
 
 

@@ -61,8 +61,8 @@
 static inline int fisnan(double x){ return _isnan(x); }
 static inline int fisok(double x){ return _isnormal(x) || _fpclassify(x) == FP_ZERO; }
 #else
-// WHY isfinite allows NANs and isnormal forbids 0 ?!!!
-static inline int fisok(double x){ return isnormal(x) || fpclassify(x) == FP_ZERO; }
+// isfinite allows NANs and isnormal forbids 0 ?!!!
+static inline int fisok(double x){ return std::isnormal(x) || std::fpclassify(x) == FP_ZERO; }
 #endif
 
 

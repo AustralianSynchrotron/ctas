@@ -188,33 +188,36 @@ int main(int argc, char *argv[]) {
   Map mask(arr.shape());
   cl2map(mask,ioIm);
   float * data = mask.data();
-  if (args.oavrg) {
 
-    float sum=0;
-    int tot=0;
-    for(size_t idx=0 ; idx < arr.size() ; idx++) {
-      const float dt = *data++;
-      if ( fisok(dt) ) {
-        tot++;// WHY isfinite allows NANs and isnormal forbids 0 ?!!!
-        sum += dt;
-      }
+  float sum=0;
+  int tot=0;
+  for(size_t idx=0 ; idx < arr.size() ; idx++) {
+    const float dt = *data++;
+    if ( fisok(dt) ) {
+      tot++;
+      sum += dt;
     }
-
-    if (tot) {
-      const float avrg = sum/tot;
-      cout << avrg << endl;
-      data=mask.data();
-      for(size_t idx=0 ; idx < arr.size() ; idx++)
-        if ( fisok(*data++) )
-          *(arr.data() + idx) *= avrg;
-    }
-
-  } else {
-    for(size_t idx=0 ; idx < arr.size() ; idx++)
-      if ( ! fisok(*data++) )
-          *(arr.data() + idx) = NAN;
   }
 
+  if ( ! tot )
+    cout << 1.0 << endl;
+  else if ( sum == 0.0 )
+    cout << 0.0 << endl;
+  else { 
+
+    const float avrg = sum/tot;
+    cout << avrg << endl;
+
+    data=mask.data();
+    for(size_t idx=0 ; idx < arr.size() ; idx++) {
+      if ( fisok(*data) && args.oavrg )
+        *(arr.data() + idx) *= avrg;
+      else if ( ! fisok(*data) && ! args.oavrg )
+        *(arr.data() + idx) /= avrg;
+      data++;
+    }
+  } 
+    
   SaveImage(args.out_name, arr);
 
   exit(0);

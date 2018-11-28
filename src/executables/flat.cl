@@ -37,6 +37,7 @@ kernel void flat (
 
 }
 
+
 kernel void minThreshold (
   global float*            ioim,
   float                    threshold )
@@ -47,6 +48,7 @@ kernel void minThreshold (
   ioim[index]=NAN;
 }
 
+
 kernel void maxThreshold (
   global float*            ioim,
   float                    threshold )
@@ -55,4 +57,38 @@ kernel void maxThreshold (
   if ( isnan(ioim[index]) || ioim[index] < threshold )
     return;
   ioim[index]=NAN;
+}
+
+
+kernel void averageArr (
+  global float*            ioim,
+  int                      size,
+  float*                   avrg )
+{
+  float sum=0;
+  int tot=0;
+  for(size_t idx=0 ; idx < size ; idx++) {
+    const float dt = *data++;
+    if (!isnan(dt)) {
+      tot++;
+      sum += dt;
+    }
+  }
+  *avrg = tot ? sum/tot : NAN;  
+}
+
+
+kernel void normdata (
+  global float*            ioim,
+  global float*            tim,
+  int                      size,
+  int                      doavrg, 
+  float                    avrg )
+{
+  const int index = get_global_id(0);
+  const int elnan = isnan(*(ioim+index));
+  if (doavrg && ! elnan)
+    *(tim+index) *= avrg;
+  else if ( ! doavrg && elnan)
+    *(tim+index) /= avrg;    
 }

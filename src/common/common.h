@@ -397,10 +397,10 @@ typedef blitz::Array<float,3> Volume;
 
 
 struct Crop {
-  unsigned int left;      ///< Crop from left
   unsigned int top;       ///< Crop from top
-  unsigned int right;     ///< Crop from right
+  unsigned int left;      ///< Crop from left
   unsigned int bottom;     ///< Crop from bottom
+  unsigned int right;     ///< Crop from right
   inline Crop(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0)
   : top(t), left(l), bottom(b), right(r) {}
 };
@@ -718,40 +718,65 @@ bool clIsInited();
 
 cl_program initProgram(char csrc[], size_t length, const std::string & modname);
 
-cl_mem map2cl(const Map & storage, cl_mem_flags flag = CL_MEM_READ_WRITE);
+cl_kernel createKernel(cl_program program, const std::string & name);
 
-void cl2map(Map & storage, cl_mem clbuffer);
+std::string kernelName(cl_kernel kern);
+
+cl_int execKernel(cl_kernel kern, size_t size=0);
 
 template <class T> void
-setArg (cl_kernel kern, cl_uint arg_idx, const T val,
-        const std::string &modname) {
-
-  if (!kern)
-    throw_error(modname, "Setting arguments for invalid OpenCL kernel.");
-
-  cl_int err =  clSetKernelArg (kern, arg_idx, sizeof(T), &val);
-
-  if (err != CL_SUCCESS) {
-
-    std::string errstr = "Could not set argument " + toString(arg_idx) +
-                         " for OpenCL kernel";
-
-    size_t len=0;
-    cl_int eerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, 0, 0, &len);
-    char *kernel_function = (char *) calloc(len, sizeof(char));
-    if (kernel_function) {
-      eerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME,
-                               len, kernel_function, 0);
-      if (eerr == CL_SUCCESS)
-        errstr += " \"" + std::string(kernel_function, len) + "\"";
-      free(kernel_function);
-    }
-
-    throw_error(modname, errstr + ": " + toString(err) );
-
-  }
-
+setArg (cl_kernel kern, cl_uint arg_idx, const T & val) {
+  const std::string kname = kernelName(kern);  
+  cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
+  if (clerr != CL_SUCCESS)
+    throw_error("setArg", "Could not set argument " + toString(arg_idx) +
+                         " for OpenCL kernel \"" + kname + "\": " + toString(clerr));
 }
+
+
+template <class T>
+cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {
+  cl_int clerr;
+  cl_mem clStorage = clCreateBuffer ( CL_context, flag, sizeof(T), 0, &clerr);
+  if (clerr != CL_SUCCESS)
+    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(clerr) );
+  return clStorage;
+}
+
+
+template <class T>
+T cl2var(const cl_mem & buff) {
+  T var;
+  cl_int clerr = clEnqueueReadBuffer(CL_queue, buff, CL_TRUE, 0, sizeof(T), &var, 0, 0, 0 );
+  if (clerr != CL_SUCCESS)
+    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(clerr) );
+  return var;
+}
+
+
+template <typename T, int N>
+cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+  cl_int err;
+  const size_t iStorageSize = sizeof(T) * storage.size() ;
+  cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
+  err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, iStorageSize, storage.data(), 0, 0, 0);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
+  return clStorage;
+}
+
+
+template <typename T, int N>
+void cl2blitz(blitz::Array<T,N> & storage, cl_mem clbuffer) {
+  cl_int err = clEnqueueReadBuffer(CL_queue, clbuffer, CL_TRUE, 0,
+                                   sizeof(T) * storage.size(),
+                                   storage.data(), 0, 0, 0 );
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
+}
+
 
 
 #endif // OPENCL_FOUND

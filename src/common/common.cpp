@@ -1022,35 +1022,47 @@ cl_program initProgram(char csrc[], size_t length, const string & modname) {
 }
 
 
-
-cl_mem map2cl(const Map & storage, cl_mem_flags flag) {
-
-  cl_int err;
-  const size_t iStorageSize = sizeof(cl_float) * storage.size() ;
-
-  cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
-
-  err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, iStorageSize,
-                               storage.data(), 0, 0, 0);
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
-
-  return clStorage;
-
+cl_kernel createKernel(cl_program program, const std::string & name) {
+  cl_int clerr;
+  cl_kernel krnl = clCreateKernel ( program, name.c_str(), &clerr);
+  if (clerr != CL_SUCCESS)
+    throw_error("createKernel",
+                "Could not create OpenCL kernel \"" + name + "\": " + toString(clerr));
 }
 
-void cl2map(Map & storage, cl_mem clbuffer) {
 
-  cl_int err;
+std::string kernelName(cl_kernel kern) {
+  if (!kern)
+    throw_error("kernelName", "Invalid OpenCL kernel.");
+  size_t len=0;
+  cl_int clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, 0, 0, &len);
+  if ( clerr != CL_SUCCESS )
+    throw_error("kernelName", "Could not get OpenCL kernel name size: " + toString(clerr));
+  char *kernel_function = (char *) calloc(len, sizeof(char));
+  std::string name;
+  if (kernel_function) {
+    clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, len, kernel_function, 0);
+    if (clerr == CL_SUCCESS) 
+      name = std::string(kernel_function, len);
+    free(kernel_function);    
+    if (clerr != CL_SUCCESS)
+      throw_error("kernelName", "Could not get OpenCL kernel name: " + toString(clerr));
+  }
+  return name;
+}
 
-  err = clEnqueueReadBuffer (CL_queue, clbuffer, CL_TRUE, 0,
-                             sizeof(cl_float) * storage.size(),
-                             storage.data(), 0, 0, 0 );
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
 
+cl_int execKernel(cl_kernel kern, size_t size) {
+  const std::string kname = kernelName(kern);  
+  cl_int clerr = size
+    ? clEnqueueNDRangeKernel( CL_queue, kern, 1, 0,  & size, 0, 0, 0, 0)
+    : clEnqueueTask(CL_queue, kern, 0, 0, 0);  
+  if (clerr != CL_SUCCESS)
+    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + kname + "\": " + toString(clerr));
+  clerr = clFinish(CL_queue);
+  if (clerr != CL_SUCCESS)
+    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + kname + "\": " + toString(clerr));
+  return clerr;  
 }
 
 

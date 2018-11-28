@@ -121,103 +121,67 @@ int main(int argc, char *argv[]) {
 
   Map arr;
   ReadImage( args.in_name, arr );
+  const size_t sz = arr.size();
+  cl_mem ioIm = blitz2cl(arr);  
 
+  cl_int clerr;
   char ctsrc[] = {
     #include "flat.cl.includeme"
   };
   cl_program program = initProgram( ctsrc, sizeof(ctsrc), "flat" );
   if (!program)
-    exit_on_error(args.command, "Failed to initiate OpenCL program.");
+    exit_on_error(args.command, "Failed to initiate OpenCL program \"flat\".");
 
-  cl_int clerr;
-
-  cl_kernel kernelFlat = clCreateKernel ( program, "flat", &clerr);
-  if (clerr != CL_SUCCESS)
-    exit_on_error(args.command, "Could not create OpenCL kernel \"flat\": " + toString(clerr) );
-
-  cl_mem ioIm = map2cl(arr);
-  setArg(kernelFlat, 0, ioIm, args.command);
-
+    
   if ( fisok(args.mincon)) {
-    cl_kernel kernelMin = clCreateKernel ( program, "minThreshold", &clerr);
-    if (clerr != CL_SUCCESS)
-      exit_on_error(args.command, "Could not create OpenCL kernel \"minThreshold\": " + toString(clerr) );
-    setArg(kernelMin, 0, ioIm, args.command);
-    setArg(kernelMin, 1, (cl_float) args.mincon, args.command);
-    size_t sz = arr.size();
-    clerr = clEnqueueNDRangeKernel( CL_queue, kernelMin, 1, 0,  & sz, 0, 0, 0, 0);
-    if (clerr != CL_SUCCESS)
-      exit_on_error(args.command, "Failed to perform \"minThreshold\" in OpenCL: " + toString(clerr) + ".");
-    clerr = clFinish(CL_queue);
-    if ( clerr != CL_SUCCESS )
-      warn(args.command, "Failed to finish OpenCL kernel \"minThreshold\": " + toString(clerr) + "." );
+    cl_kernel kernelMin = createKernel( program, "minThreshold");
+    setArg(kernelMin, 0, ioIm);
+    setArg(kernelMin, 1, (cl_float) args.mincon);
+    execKernel(kernelMin, sz);
   }
   if ( fisok(args.maxcon)) {
-    cl_kernel kernelMax = clCreateKernel ( program, "maxThreshold", &clerr);
-    if (clerr != CL_SUCCESS)
-      exit_on_error(args.command, "Could not create OpenCL kernel \"maxThreshold\": " + toString(clerr) );
-    setArg(kernelMax, 0, ioIm, args.command);
-    setArg(kernelMax, 1, (cl_float) args.maxcon, args.command);
-    size_t sz = arr.size();
-    clerr = clEnqueueNDRangeKernel( CL_queue, kernelMax, 1, 0,  & sz, 0, 0, 0, 0);
-    if (clerr != CL_SUCCESS)
-      exit_on_error(args.command, "Failed to perform \"maxThreshold\" in OpenCL: " + toString(clerr) + ".");
-    clerr = clFinish(CL_queue);
-    if ( clerr != CL_SUCCESS )
-      warn(args.command, "Failed to finish OpenCL kernel \"maxThreshold\": " + toString(clerr) + "." );
+    cl_kernel kernelMax = createKernel ( program, "maxThreshold");
+    setArg(kernelMax, 0, ioIm);
+    setArg(kernelMax, 1, (cl_float) args.maxcon);
+    execKernel(kernelMax, sz);
   }
 
 
-  cl_mem tIm = map2cl(arr);
-  setArg(kernelFlat, 1, tIm, args.command);
+  cl_mem tIm = blitz2cl(arr);
+  cl_kernel kernelFlat = createKernel ( program, "flat");
+  setArg(kernelFlat, 0, ioIm);
+  setArg(kernelFlat, 1, tIm);
+  setArg(kernelFlat, 2, (cl_int) arr.shape()(1));
+  setArg(kernelFlat, 3, (cl_int) arr.shape()(0));
+  setArg(kernelFlat, 4, (cl_int) args.rad);
+  execKernel(kernelFlat, sz);
 
-  setArg(kernelFlat, 2, (cl_int) arr.shape()(1), args.command);
-  setArg(kernelFlat, 3, (cl_int) arr.shape()(0), args.command);
-  setArg(kernelFlat, 4, (cl_int) args.rad,       args.command);
+  
+  cl_mem avrgbf = var2cl<float>();
+  cl_kernel kernelAverage = createKernel (program, "averageArr");
+  setArg(kernelAverage, 0, ioIm);
+  setArg(kernelAverage, 1, (cl_int) sz);
+  setArg(kernelAverage, 2, avrgbf);
+  execKernel(kernelAverage);
+  const float avrg = cl2var<float>(avrgbf);
 
-  size_t sz = arr.size();
-  clerr = clEnqueueNDRangeKernel( CL_queue, kernelFlat, 1, 0,  & sz, 0, 0, 0, 0);
-  if (clerr != CL_SUCCESS)
-    exit_on_error(args.command, "Failed to perform the processing in OpenCL: " + toString(clerr) + ".");
-  clerr = clFinish(CL_queue);
-  if ( clerr != CL_SUCCESS )
-    warn(args.command, "Failed to finish OpenCL kernel \"flat\": " + toString(clerr) + "." );
-
-  cl2map(arr,tIm);
-
-  Map mask(arr.shape());
-  cl2map(mask,ioIm);
-  float * data = mask.data();
-
-  float sum=0;
-  int tot=0;
-  for(size_t idx=0 ; idx < arr.size() ; idx++) {
-    const float dt = *data++;
-    if ( fisok(dt) ) {
-      tot++;
-      sum += dt;
-    }
-  }
-
-  if ( ! tot )
-    cout << 1.0 << endl;
-  else if ( sum == 0.0 )
+  
+  if (avrg == 0.0)
     cout << 0.0 << endl;
-  else { 
-
-    const float avrg = sum/tot;
+  else if ( ! fisok(avrg) )
+    cout << 1.0 << endl;
+  else {
     cout << avrg << endl;
-
-    data=mask.data();
-    for(size_t idx=0 ; idx < arr.size() ; idx++) {
-      if ( fisok(*data) && args.oavrg )
-        *(arr.data() + idx) *= avrg;
-      else if ( ! fisok(*data) && ! args.oavrg )
-        *(arr.data() + idx) /= avrg;
-      data++;
-    }
-  } 
-    
+    cl_kernel kernelNorm = createKernel ( program, "normdata");
+    setArg(kernelNorm, 0, ioIm);
+    setArg(kernelNorm, 1, tIm);  
+    setArg(kernelNorm, 2, (cl_int) sz);
+    setArg(kernelNorm, 3, (cl_int) args.oavrg );
+    setArg(kernelNorm, 4, (cl_float) avrg);
+    execKernel(kernelNorm, sz);    
+  }
+  
+  cl2blitz(arr,tIm);
   SaveImage(args.out_name, arr);
 
   exit(0);

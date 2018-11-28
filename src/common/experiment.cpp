@@ -76,13 +76,13 @@ static cl_mem allocateCLbuf( cl_mem * old_buf, const Map & arr, cl_kernel kern, 
   cl_mem buf = 0;
 
   try {
-    buf = map2cl(arr, flags);
+    buf = blitz2cl(arr, flags);
   } catch (CtasErr cterr) {
     warn(modname, "Could not put OpenCL buffer.");
     return 0;
   }
 
-  setArg(kern, arg_idx, buf, modname);
+  setArg(kern, arg_idx, buf);
 
   return buf;
 
@@ -427,13 +427,13 @@ void AqSeries::projection(int idx, Map &proj,
       bg1 = & memBgA.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 1, cl_bgA, modname);
+        setArg(kernel, 1, cl_bgA);
 #endif // OPENCL_FOUND
     } else if ( memBgA.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0) {
       bg2 = & memBgA.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 2, cl_bgA, modname);
+        setArg(kernel, 2, cl_bgA);
 #endif // OPENCL_FOUND
     } else {
       memBgA.second.resize(0,0);
@@ -444,13 +444,13 @@ void AqSeries::projection(int idx, Map &proj,
       bg1 = & memBgB.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 1, cl_bgB, modname);
+        setArg(kernel, 1, cl_bgB);
 #endif // OPENCL_FOUND
     } else if ( memBgB.first == fgs[idx].bg2  &&  fgs[idx].bg2 >= 0  &&  ! bg2) {
       bg2 = & memBgB.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 2, cl_bgB, modname);
+        setArg(kernel, 2, cl_bgB);
 #endif // OPENCL_FOUND
     } else {
       memBgB.second.resize(0,0);
@@ -517,13 +517,13 @@ void AqSeries::projection(int idx, Map &proj,
       df1 = & memDfA.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 3, cl_dfA, modname);
+        setArg(kernel, 3, cl_dfA);
 #endif // OPENCL_FOUND
     } else if ( memDfA.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0) {
       df2 = & memDfA.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 4, cl_dfA, modname);
+        setArg(kernel, 4, cl_dfA);
 #endif // OPENCL_FOUND
     } else {
       memDfA.second.resize(0,0);
@@ -534,13 +534,13 @@ void AqSeries::projection(int idx, Map &proj,
       df1 = & memDfB.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 3, cl_dfB, modname);
+        setArg(kernel, 3, cl_dfB);
 #endif // OPENCL_FOUND
     } else if ( memDfB.first == fgs[idx].df2  &&  fgs[idx].df2 >= 0  &&  ! df2) {
       df2 = & memDfB.second;
 #ifdef OPENCL_FOUND
       if ( cl_io )
-        setArg(kernel, 4, cl_dfB, modname);
+        setArg(kernel, 4, cl_dfB);
 #endif // OPENCL_FOUND
     } else {
       memDfB.second.resize(0,0);
@@ -609,47 +609,36 @@ void AqSeries::projection(int idx, Map &proj,
   if ( kernel && cl_io ) {
 
     if (bg1 && bg2) {
-      setArg(kernel, 5, fgs[idx].bgWeight, modname);
+      setArg(kernel, 5, fgs[idx].bgWeight);
     } else if (bg1) {
-      setArg(kernel, 2, (float*) 0, modname);
-      setArg(kernel, 5, 1.0f, modname);
+      setArg(kernel, 2, (float*) 0);
+      setArg(kernel, 5, 1.0f);
     } else if (bg2) {
-      setArg(kernel, 1, (float*) 0, modname);
-      setArg(kernel, 5, 0.0f, modname);
+      setArg(kernel, 1, (float*) 0);
+      setArg(kernel, 5, 0.0f);
     } else {
-      setArg(kernel, 1, (float*) 0, modname);
-      setArg(kernel, 2, (float*) 0, modname);
+      setArg(kernel, 1, (float*) 0);
+      setArg(kernel, 2, (float*) 0);
     }
 
     if (df1 && df2) {
-      setArg(kernel, 6, fgs[idx].dfWeight, modname);
+      setArg(kernel, 6, fgs[idx].dfWeight);
     } else if (df1) {
-      setArg(kernel, 4, (float*) 0, modname);
-      setArg(kernel, 6, 1.0f, modname);
+      setArg(kernel, 4, (float*) 0);
+      setArg(kernel, 6, 1.0f);
     } else if (df2) {
-      setArg(kernel, 3, (float*) 0, modname);
-      setArg(kernel, 6, 0.0f, modname);
+      setArg(kernel, 3, (float*) 0);
+      setArg(kernel, 6, 0.0f);
     } else {
-      setArg(kernel, 3, (float*) 0, modname);
-      setArg(kernel, 4, (float*) 0, modname);
+      setArg(kernel, 3, (float*) 0);
+      setArg(kernel, 4, (float*) 0);
     }
 
-    setArg(kernel, 7, cutOff, modname);
+    setArg(kernel, 7, cutOff);
 
-    size_t sz = proj.size();
-    err = clEnqueueNDRangeKernel( CL_queue, kernel, 1,
-                                  0,  & sz, 0, 0, 0, 0);
-    if ( err != CL_SUCCESS ) {
-      warn(modname, "Failed to run OpenCL kernel \"ff\": " + toString(err) + "." );
-      return;
-    }
-    err = clFinish(CL_queue);
-    if ( err != CL_SUCCESS ) {
-      warn(modname, "Failed to finish OpenCL kernel \"ff\": "  + toString(err) + "." );
-      return;
-    }
+    execKernel(kernel, proj.size());
 
-    cl2map(proj, cl_io);
+    cl2blitz(proj, cl_io);
 
     return;
 

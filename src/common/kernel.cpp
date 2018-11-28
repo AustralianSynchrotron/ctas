@@ -31,6 +31,7 @@
 #define _USE_MATH_DEFINES // for M_PI
 
 #include "kernel.h"
+#include "common.h"
 #include "poptmx.h"
 #include <algorithm>
 #include <numeric> /* partial_sum */
@@ -612,24 +613,11 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
 
       try {
 
-        kernelSino = clCreateKernel ( program, "ct_sino", &err);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not create OpenCL kernel \"ct_sino\": "
-                      + toString(err) );
-
-        kernelLine = clCreateKernel ( program, "ct_line", &err);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not create OpenCL kernel \"ct_line\": "
-                      + toString(err) );
-
-        clSlice = clCreateBuffer ( CL_context, CL_MEM_WRITE_ONLY,
-                                   sizeof(float) * _width * _width, 0, &err);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not create OpenCL buffer for ct result: "
-                      + toString(err) );
-
-        setArg(kernelSino, 0, clSlice, modname);
-        setArg(kernelLine, 0, clSlice, modname);
+        kernelSino = createKernel (program, "ct_sino");
+        kernelLine = createKernel (program, "ct_line");        
+        clSlice =  blitz2cl(_result);
+        setArg(kernelSino, 0, clSlice);
+        setArg(kernelLine, 0, clSlice);
 
         cl_image_format format = {CL_INTENSITY, CL_FLOAT};
         clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY,
@@ -638,13 +626,13 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not create OpenCL 2D image for sinogram: "
                       + toString(err) );
-        setArg(kernelSino, 1, clSinoImage, modname);
-        setArg(kernelLine, 1, clSinoImage, modname);
+        setArg(kernelSino, 1, clSinoImage);
+        setArg(kernelLine, 1, clSinoImage);
 
-        setArg(kernelSino, 2, (cl_int) _width, modname);
-        setArg(kernelLine, 2, (cl_int) _width, modname);
+        setArg(kernelSino, 2, (cl_int) _width);
+        setArg(kernelLine, 2, (cl_int) _width);
 
-        setArg(kernelSino, 3, (cl_int) _projections, modname);
+        setArg(kernelSino, 3, (cl_int) _projections);
 
         blitz::Array<cl_float2, 1> angleCache(_projections);
         for (size_t i = 0; i < _projections; i++) {
@@ -662,15 +650,15 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not write OpenCL buffer of ct angles: "
                       + toString(err) );
-        setArg(kernelSino, 5, clAngles, modname);
+        setArg(kernelSino, 5, clAngles);
 
         clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE,
                                           CL_FILTER_LINEAR, &err) ;
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not create OpenCL sampler for sinogram: "
                       + toString(err) );
-        setArg(kernelSino, 6, clSinoSampler, modname);
-        setArg(kernelLine, 5, clSinoSampler, modname);
+        setArg(kernelSino, 6, clSinoSampler);
+        setArg(kernelLine, 5, clSinoSampler);
 
       } catch (CtasErr errh) {
         warn(modname,
@@ -829,7 +817,7 @@ CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
       throw_error(modname, "Could not write OpenCL 2D image of sinogram: "
                   + toString(err) );
 
-    setArg(kernelSino, 4, (cl_float) center, modname);
+    setArg(kernelSino, 4, (cl_float) center);
 
     size_t sz = _width*_width;
     err = clEnqueueNDRangeKernel( CL_queue, kernelSino, 1,
@@ -917,24 +905,13 @@ CTrec::addLine(Line &sinoline, const float Theta, const float center) {
       throw_error(modname, "Could not write OpenCL 2D image of sinoline: "
                   + toString(err) );
 
-    setArg(kernelLine, 3, (cl_float) center, modname);
+    setArg(kernelLine, 3, (cl_float) center);
 
     cl_float2 cossin;
     cossin.s[0] = sinf(Theta);
     cossin.s[1] = cosf(Theta);
-    setArg(kernelLine, 4, cossin, modname);
-
-    size_t sz = _width*_width;
-    err = clEnqueueNDRangeKernel( CL_queue, kernelLine, 1,
-                                  0,  & sz, 0, 0, 0, 0);
-    if (err != CL_SUCCESS)
-      throw_error(modname, "Failed to perform the sinoline addition with OpenCL: "
-                  + toString(err) + ".");
-    err = clFinish(CL_queue);
-    if ( err != CL_SUCCESS )
-      throw_error(modname, "Failed to finish OpenCL kernel \"ct_line\": "
-                  + toString(err) + "." );
-
+    setArg(kernelLine, 4, cossin);    
+    execKernel(kernelLine, _width*_width);
     projection_counter++;
     return;
 
@@ -977,7 +954,7 @@ CTrec::result(float pixelSize) {
 
 #ifdef OPENCL_FOUND
   if (kernelLine) {
-    cl2map( _result, clSlice );
+    cl2blitz( _result, clSlice );
   }
 #endif // OPENCL_FOUND
 

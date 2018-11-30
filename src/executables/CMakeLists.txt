@@ -214,7 +214,6 @@ target_link_libraries(stitch
 
 
 
-
 set( all_targets
   multipc ipc dei edei trans norm stitch
   sino sino-abs sino-dei sino-edei sino-ipc

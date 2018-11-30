@@ -145,8 +145,8 @@ const Path Path::emptypath = Path();
 void
 Path::throw_unextracted(const string & element) const {
   throw_error
-	("class Path",
-	 "Could not extract " + element + " from path \"" + *this + "\".");
+        ("class Path",
+         "Could not extract " + element + " from path \"" + *this + "\".");
 }
 
 string
@@ -154,7 +154,7 @@ Path::drive () const {
 #ifdef _WIN32
   char _drive[FILENAME_MAX];
   if ( _splitpath_s( c_str(), _drive, FILENAME_MAX, 0,0,0,0,0,0 ) )
-	throw_unextracted("drive");
+        throw_unextracted("drive");
   return _drive;
 #else
   return "";
@@ -166,7 +166,7 @@ Path::dir () const {
 #ifdef _WIN32
   char _dir[FILENAME_MAX];
   if ( _splitpath_s( c_str(),0,0,_dir,FILENAME_MAX,0,0,0,0 ) )
-	throw_unextracted("directory");
+        throw_unextracted("directory");
   return drive() + _dir;
 #else
   string::size_type idx=this->rfind("/");
@@ -193,14 +193,14 @@ Path::title () const {
 #ifdef _WIN32
   char _title[FILENAME_MAX];
   if ( _splitpath_s( c_str(), 0,0,0,0, _title, FILENAME_MAX, 0,0 ) )
-	throw_unextracted("title");
+        throw_unextracted("title");
   return _title;
 #else
   string::size_type idx = name().rfind(".");
   if (idx==string::npos || idx == 0 )
-	return name();
+        return name();
   else
-	return name().substr(0, idx);
+        return name().substr(0, idx);
 #endif
 }
 
@@ -215,16 +215,16 @@ Path::extension () const {
 #ifdef _WIN32
   char _ext[FILENAME_MAX];
   if ( _splitpath_s( c_str(), 0,0,0,0,0,0, _ext, FILENAME_MAX ) )
-	throw_unextracted("extension");
+        throw_unextracted("extension");
   return _ext;
 #else
   string::size_type
-	dotidx = this->rfind("."),
-	diridx = this->rfind("/");
+        dotidx = this->rfind("."),
+        diridx = this->rfind("/");
   if ( dotidx != string::npos && ( diridx == string::npos || diridx+1 < dotidx ) )
-	return this->substr(dotidx);
+        return this->substr(dotidx);
   else
-	return "";
+        return "";
 #endif
 }
 
@@ -238,7 +238,7 @@ Path::isdir() const {
 Path &
 Path::bedir() {
   if ( ! empty() && ! isdir() )
-	*this += DIRSEPARATOR;
+        *this += DIRSEPARATOR;
   return *this;
 }
 
@@ -277,12 +277,12 @@ cdpath(const Path & dir, const Path & file){
   ddir.bedir();
 
   if ( file.empty() )
-	return ddir;
+        return ddir;
   else if ( file.isabsolute() || ddir.empty() )
-	return file;
+        return file;
   else
       // Windows version is likely to fail here. See Path operator+.
-	return ddir + file;
+        return ddir + file;
 }
 
 
@@ -343,7 +343,7 @@ Contrast::Contrast(const string & _name) {
   else if ( name == "P" || name == "PHS" || name == "PHASE" ) _contrast = PHS;
   else if ( name == "F" || name == "FLT" || name == "FILTERED" ) _contrast = FLT;
   else throw_error("contrast type", "The string \""+ _name +"\""
-				   " does not describe any known contrast.");
+                                   " does not describe any known contrast.");
 }
 
 /// \brief Type of contrast
@@ -368,8 +368,8 @@ Contrast::name() const {
   case PHS:     return "PHASE";
   case FLT:     return "FILTERED";
   default :
-	  throw_bug(__FUNCTION__);
-	  return "";
+          throw_bug(__FUNCTION__);
+          return "";
   }
 }
 
@@ -708,8 +708,8 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps) :
   reservedChs = 14 + 2*nums;
 
   fmt = steps ?
-	"%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s" :
-	string( "progress: %i" );
+        "%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s" :
+        string( "progress: %i" );
 
 }
 
@@ -727,8 +727,8 @@ ProgressBar::update(int curstep){
   step = curstep ? curstep+1 : step + 1;
 
   if ( steps && step >= steps ) {
-	done();
-	return;
+        done();
+        return;
   }
 
   string outS;
@@ -939,6 +939,9 @@ bool clIsInited() {
     return false;
   }
 
+
+//  cl_queue_properties queue_prop[] = {0};
+//  CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, 0, &err);
   CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
@@ -1024,10 +1027,11 @@ cl_program initProgram(char csrc[], size_t length, const string & modname) {
 
 cl_kernel createKernel(cl_program program, const std::string & name) {
   cl_int clerr;
-  cl_kernel krnl = clCreateKernel ( program, name.c_str(), &clerr);
+  cl_kernel kern = clCreateKernel ( program, name.c_str(), &clerr);
   if (clerr != CL_SUCCESS)
     throw_error("createKernel",
                 "Could not create OpenCL kernel \"" + name + "\": " + toString(clerr));
+  return kern;
 }
 
 
@@ -1042,9 +1046,9 @@ std::string kernelName(cl_kernel kern) {
   std::string name;
   if (kernel_function) {
     clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, len, kernel_function, 0);
-    if (clerr == CL_SUCCESS) 
+    if (clerr == CL_SUCCESS)
       name = std::string(kernel_function, len);
-    free(kernel_function);    
+    free(kernel_function);
     if (clerr != CL_SUCCESS)
       throw_error("kernelName", "Could not get OpenCL kernel name: " + toString(clerr));
   }
@@ -1053,16 +1057,13 @@ std::string kernelName(cl_kernel kern) {
 
 
 cl_int execKernel(cl_kernel kern, size_t size) {
-  const std::string kname = kernelName(kern);  
-  cl_int clerr = size
-    ? clEnqueueNDRangeKernel( CL_queue, kern, 1, 0,  & size, 0, 0, 0, 0)
-    : clEnqueueTask(CL_queue, kern, 0, 0, 0);  
+  cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 1, 0,  & size, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + kname + "\": " + toString(clerr));
+    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
   clerr = clFinish(CL_queue);
   if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + kname + "\": " + toString(clerr));
-  return clerr;  
+    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
+  return clerr;
 }
 
 
@@ -1164,7 +1165,7 @@ ImageSizes(const Path & filename){
   catch ( Magick::WarningCoder err ) {}
   catch ( Magick::Exception & error) {
     throw_error("get image size", "Could not read image file\""+filename+"\"."
-		        " Caught Magick++ exception: \""+error.what()+"\".");
+                        " Caught Magick++ exception: \""+error.what()+"\".");
   }
   return Shape( imag.rows(), imag.columns() );
 }
@@ -1496,7 +1497,7 @@ ReadImageLine_IM (const Path & filename, Map & storage,
   try { imag.read(filename); } catch ( Magick::WarningCoder err ) {}
   if ( imag.type() != Magick::GrayscaleType )
     warn("load imagelines IM",
-		 "Input image \"" + filename + "\" is not grayscale.");
+                 "Input image \"" + filename + "\" is not grayscale.");
 
   const int width = imag.columns();
   const int hight = imag.rows();
@@ -1520,7 +1521,7 @@ ReadImageLine_IM (const Path & filename, Map & storage,
       */
       /* Replacement for the buggy block */
       for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
-	storage(curel, curw) = Magick::ColorGray(imag.pixelColor(curw, cursl)).shade();
+        storage(curel, curw) = Magick::ColorGray(imag.pixelColor(curw, cursl)).shade();
       /* end replacement */
 
     }
@@ -1553,7 +1554,7 @@ ReadImageLine (const Path & filename, Map & storage,
 
 void
 ReadImageLine(const Path & filename, Map & storage,
-			  const vector<int> & idxs, const Shape & shp){
+                          const vector<int> & idxs, const Shape & shp){
   BadShape(filename, shp);
   ReadImageLine(filename, storage, idxs);
 }
@@ -1615,7 +1616,7 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
     throw_error("save image IM", "Could not write image file\""+filename+"\"."
-		        " Caught Magick++ exception: \""+error.what()+"\".");
+                        " Caught Magick++ exception: \""+error.what()+"\".");
   }
 
 
@@ -1666,16 +1667,8 @@ bool init_limit_array_cl() {
   limit_array_cl_program =
     initProgram( limit_array_src, sizeof(limit_array_src), "Limit array" );
 
-  if ( limit_array_cl_program ) {
-
-    cl_int err;
-    limit_array_cl_kernel = clCreateKernel
-                            ( limit_array_cl_program, "limit_array", &err);
-    if (err != CL_SUCCESS)
-      warn("Limit array", "Could not create OpenCL kernel \"limit_array\": "
-           + toString(err) );
-
-  }
+  if ( limit_array_cl_program )
+    limit_array_cl_kernel = createKernel(limit_array_cl_program, "limit_array");
 
   limit_array_inited = true;
   return limit_array_cl_program && limit_array_cl_kernel;
@@ -1822,15 +1815,15 @@ SaveImageFP (const Path & filename, const Map & storage){
 #else
   fd = open (filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
   if (fd < 1)
-	throw_error("save float-point image",
-				"Could not open file \"" + filename + "\" for writing.");
+        throw_error("save float-point image",
+                                "Could not open file \"" + filename + "\" for writing.");
   TIFF *image = TIFFFdOpen(fd, filename.c_str(), "w");
 #endif
 
   if( ! image ) {
-	if (fd) close(fd);
-	throw_error("save float-point image",
-				"Could create tif from file\"" + filename + "\".");
+        if (fd) close(fd);
+        throw_error("save float-point image",
+                                "Could create tif from file\"" + filename + "\".");
   }
 
   // We need to set some values for basic tags before we can add any data
@@ -1846,8 +1839,8 @@ SaveImageFP (const Path & filename, const Map & storage){
   TIFFClose(image);
   if (fd) close(fd);
   if ( -1 == wret )
-	throw_error("save 32-bit image",
-				"Could not save image to file \"" + filename + "\".");
+        throw_error("save 32-bit image",
+                                "Could not save image to file \"" + filename + "\".");
 
 }
 
@@ -1905,8 +1898,8 @@ SaveData ( const Path filename, ... ) {
     if ( storage[icur]->size() != size )
       throw_error("write data",
                   "The size of the array in the position " + toString(icur) +
-				  " (" + toString(storage[icur]->size()) + ") does not match the"
-				  " size of the first array (" + toString(size) + ").");
+                                  " (" + toString(storage[icur]->size()) + ") does not match the"
+                                  " size of the first array (" + toString(size) + ").");
 
   FILE *funcf = fopen( filename.c_str(), "w" );
   if ( ! funcf )
@@ -1918,11 +1911,11 @@ SaveData ( const Path filename, ... ) {
     while (printok && ++curarray < nof_args)
       printok = fprintf( funcf, "%G ", (*storage[curarray])(element) ) >= 0;
     if ( ! printok ||
-		 fseek (funcf, -1, SEEK_CUR) || // removes last space
-		 fprintf(funcf, "\n") < 0 ) {
+                 fseek (funcf, -1, SEEK_CUR) || // removes last space
+                 fprintf(funcf, "\n") < 0 ) {
       fclose (funcf);
       throw_error("write data", "Could not print into output file"
-				  " \"" + filename + "\" in position " + toString(element) + ".");
+                                  " \"" + filename + "\" in position " + toString(element) + ".");
     }
   }
 
@@ -1960,9 +1953,9 @@ LoadData ( const Path filename, ... ) {
       if ( fscanf( funcf, "%f ", &toread ) != 1 ) {
         fclose (funcf);
         throw_error("read data", "Could not scan float from input file"
-					" \"" + filename + "\" at line " +
-					toString(data_read[curarray].size() + 1) + ", position " +
-					toString(curarray + 1) + ".");
+                                        " \"" + filename + "\" at line " +
+                                        toString(data_read[curarray].size() + 1) + ", position " +
+                                        toString(curarray + 1) + ".");
       }
       data_read[curarray].push_back(toread);
     }

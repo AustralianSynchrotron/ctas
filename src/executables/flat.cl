@@ -63,18 +63,18 @@ kernel void maxThreshold (
 kernel void averageArr (
   global float*            ioim,
   int                      size,
-  float*                   avrg )
+  global float*                   avrg )
 {
   float sum=0;
   int tot=0;
   for(size_t idx=0 ; idx < size ; idx++) {
-    const float dt = *data++;
+    const float dt = *ioim++;
     if (!isnan(dt)) {
       tot++;
       sum += dt;
     }
   }
-  *avrg = tot ? sum/tot : NAN;  
+  *avrg = tot ? sum/tot : NAN;
 }
 
 
@@ -82,7 +82,7 @@ kernel void normdata (
   global float*            ioim,
   global float*            tim,
   int                      size,
-  int                      doavrg, 
+  int                      doavrg,
   float                    avrg )
 {
   const int index = get_global_id(0);
@@ -90,5 +90,5 @@ kernel void normdata (
   if (doavrg && ! elnan)
     *(tim+index) *= avrg;
   else if ( ! doavrg && elnan)
-    *(tim+index) /= avrg;    
+    *(tim+index) /= avrg;
 }

@@ -49,6 +49,11 @@ if ( ${DOXYGEN_FOUND} MATCHES "YES")
 endif()
 
 
+# Just a workaroun to show cl files in Qt creator
+FILE(GLOB_RECURSE OpenCLfiles "*.cl")
+add_custom_target(OpenCLsource SOURCES ${OpenCLfiles})
+
+
 add_subdirectory(src)
 
 

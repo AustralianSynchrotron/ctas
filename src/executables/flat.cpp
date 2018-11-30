@@ -119,11 +119,6 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  Map arr;
-  ReadImage( args.in_name, arr );
-  const size_t sz = arr.size();
-  cl_mem ioIm = blitz2cl(arr);  
-
   cl_int clerr;
   char ctsrc[] = {
     #include "flat.cl.includeme"
@@ -132,7 +127,13 @@ int main(int argc, char *argv[]) {
   if (!program)
     exit_on_error(args.command, "Failed to initiate OpenCL program \"flat\".");
 
-    
+
+  Map arr;
+  ReadImage( args.in_name, arr );
+  const size_t sz = arr.size();
+  cl_mem ioIm = blitz2cl(arr);
+
+
   if ( fisok(args.mincon)) {
     cl_kernel kernelMin = createKernel( program, "minThreshold");
     setArg(kernelMin, 0, ioIm);
@@ -156,7 +157,7 @@ int main(int argc, char *argv[]) {
   setArg(kernelFlat, 4, (cl_int) args.rad);
   execKernel(kernelFlat, sz);
 
-  
+
   cl_mem avrgbf = var2cl<float>();
   cl_kernel kernelAverage = createKernel (program, "averageArr");
   setArg(kernelAverage, 0, ioIm);
@@ -165,7 +166,7 @@ int main(int argc, char *argv[]) {
   execKernel(kernelAverage);
   const float avrg = cl2var<float>(avrgbf);
 
-  
+
   if (avrg == 0.0)
     cout << 0.0 << endl;
   else if ( ! fisok(avrg) )
@@ -174,13 +175,13 @@ int main(int argc, char *argv[]) {
     cout << avrg << endl;
     cl_kernel kernelNorm = createKernel ( program, "normdata");
     setArg(kernelNorm, 0, ioIm);
-    setArg(kernelNorm, 1, tIm);  
+    setArg(kernelNorm, 1, tIm);
     setArg(kernelNorm, 2, (cl_int) sz);
     setArg(kernelNorm, 3, (cl_int) args.oavrg );
     setArg(kernelNorm, 4, (cl_float) avrg);
-    execKernel(kernelNorm, sz);    
+    execKernel(kernelNorm, sz);
   }
-  
+
   cl2blitz(arr,tIm);
   SaveImage(args.out_name, arr);
 

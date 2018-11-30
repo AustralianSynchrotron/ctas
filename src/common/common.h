@@ -132,9 +132,9 @@ class COMMON_API CtasErr{
 public:
   /// Error severity
   typedef enum {
-	WARN,                        ///< Warning
-	ERR,                         ///< Error
-	FATAL                        ///< Fatal error
+        WARN,                        ///< Warning
+        ERR,                         ///< Error
+        FATAL                        ///< Fatal error
   } ErrTp ;
 
 private:
@@ -722,15 +722,14 @@ cl_kernel createKernel(cl_program program, const std::string & name);
 
 std::string kernelName(cl_kernel kern);
 
-cl_int execKernel(cl_kernel kern, size_t size=0);
+cl_int execKernel(cl_kernel kern, size_t size=1);
 
 template <class T> void
 setArg (cl_kernel kern, cl_uint arg_idx, const T & val) {
-  const std::string kname = kernelName(kern);  
   cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
   if (clerr != CL_SUCCESS)
     throw_error("setArg", "Could not set argument " + toString(arg_idx) +
-                         " for OpenCL kernel \"" + kname + "\": " + toString(clerr));
+                         " for OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
 }
 
 
@@ -756,6 +755,7 @@ T cl2var(const cl_mem & buff) {
 
 template <typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+
   cl_int err;
   const size_t iStorageSize = sizeof(T) * storage.size() ;
   cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
@@ -952,7 +952,7 @@ SaveImage(const Path & filename, const Map & storage, bool saveint=false);
 ///
 void COMMON_API
 SaveImage(const Path & filename, const Map & storage,
-          float minval, float maxval );
+	  float minval, float maxval );
 
 
 /// \brief Loads any amount of lines from data file.

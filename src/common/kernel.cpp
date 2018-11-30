@@ -188,7 +188,7 @@ Filter::fill(Line &filt, int pixels) const {
   filt(0) = 0.25;
   for ( int pix = 1 ; pix < pixels/2 ; pix += 2)
     filt(pix) = -1.0/(pix*pix*M_PI*M_PI);
-  
+
   fftwf_plan planZ = safe_fftwf_plan_r2r_1d (pixels, filt.data(), FFTW_HC2R);
   fftwf_execute(planZ);
   safe_fftw_destroy_plan(planZ);
@@ -250,10 +250,10 @@ Filter::fill(Line &filt, int pixels) const {
       break;
 
     }
-    
+
     // Here 2.0 appears because of the R2HC-HC2R FFT pair.
     filt(pix) *= fp/2.0;
-    
+
   }
 
   return filt;
@@ -341,7 +341,7 @@ static const int TR_conf = 1 << 16;
 static inline void
 filter_line(Line &ln, const Line &f_win,
             const fftwf_plan *planF, const fftwf_plan *planB) {
-  
+
   float *lnp = ln.data();
   fftwf_execute_r2r( *planF, lnp, lnp);
   ln *= f_win;
@@ -582,9 +582,9 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
   _contrast(cn),
   _filter(ft)
 {
-  
+
   filter(_filter);
-  
+
 #ifdef OPENCL_FOUND
   pthread_mutex_lock(&ctrec_lock);
 #endif // OPENCL_FOUND
@@ -599,14 +599,12 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
 
 
 #ifdef OPENCL_FOUND
-    
+
     if (!program) {
-      
       char ctsrc[] = {
         #include "ct.cl.includeme"
       };
       program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
-      
     }
 
     if (program) {
@@ -614,15 +612,15 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
       try {
 
         kernelSino = createKernel (program, "ct_sino");
-        kernelLine = createKernel (program, "ct_line");        
-        clSlice =  blitz2cl(_result);
+        kernelLine = createKernel (program, "ct_line");
+        clSlice =  blitz2cl(_result, CL_MEM_WRITE_ONLY);
         setArg(kernelSino, 0, clSlice);
         setArg(kernelLine, 0, clSlice);
-
         cl_image_format format = {CL_INTENSITY, CL_FLOAT};
-        clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY,
-                                       &format, _width, _projections, 0, 0, &err);
+        clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY, &format, _width, _projections, 0, 0, &err);
 #warning: Yes, I know it is depricated. But. The new function clCreateImage segfaults for no reason.
+//        cl_image_desc image_desc = {CL_MEM_OBJECT_IMAGE2D, _width, _projections, 0, 1, 0, 0, 0, 0, NULL};
+//        clSinoImage = clCreateImage( CL_context, CL_MEM_READ_ONLY, &format, &image_desc, 0, &err);
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not create OpenCL 2D image for sinogram: "
                       + toString(err) );
@@ -634,26 +632,21 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
 
         setArg(kernelSino, 3, (cl_int) _projections);
 
-        blitz::Array<cl_float2, 1> angleCache(_projections);
+        blitz::Array<cl_float2, 1> angles(_projections);
         for (size_t i = 0; i < _projections; i++) {
           float th = arc * M_PI * i / ( _projections * 180.0 );
-          angleCache(i).s[0] = sinf(th);
-          angleCache(i).s[1] = cosf(th);
+          angles(i).s[0] = sinf(th);
+          angles(i).s[1] = cosf(th);
         }
-        const size_t iAnglesSize = sizeof(cl_float2) * _projections;
-        clAngles = clCreateBuffer ( CL_context, CL_MEM_READ_ONLY, iAnglesSize, 0, &err);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not create OpenCL buffer for ct angles: "
-                      + toString(err) );
-        err = clEnqueueWriteBuffer(  CL_queue, clAngles, CL_TRUE, 0, iAnglesSize , angleCache.data(),
-                                     0, 0, 0);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not write OpenCL buffer of ct angles: "
-                      + toString(err) );
+        clAngles = blitz2cl(angles, CL_MEM_READ_ONLY);
         setArg(kernelSino, 5, clAngles);
 
-        clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE,
-                                          CL_FILTER_LINEAR, &err) ;
+        clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE, CL_FILTER_LINEAR, &err) ;
+//        const cl_sampler_properties sam_prop[] = {CL_SAMPLER_NORMALIZED_COORDS, CL_FALSE,
+//                                                  CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP_TO_EDGE,
+//                                                  CL_SAMPLER_FILTER_MODE, CL_FILTER_LINEAR,
+//                                                  0 };
+//        clSinoSampler = clCreateSamplerWithProperties(CL_context, sam_prop, &err) ;
         if (err != CL_SUCCESS)
           throw_error(modname, "Could not create OpenCL sampler for sinogram: "
                       + toString(err) );
@@ -800,36 +793,22 @@ CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
                 " Image width: " + toString(_width) + ", the deviation"
                 " of the rotation axis from the center of the image: "
                 + toString(center) + ".");
-  
+
   prepare_sino(sinogram);
 
   reset();
 
 #ifdef OPENCL_FOUND
   if (kernelSino) {
-
     const size_t origin[3] = {0, 0, 0};
     const size_t region[3] = { (size_t) _width, (size_t) _projections, 1};
-
     err = clEnqueueWriteImage( CL_queue, clSinoImage, CL_FALSE,
                                origin, region, 0, 0, sinogram.data(), 0, 0, 0);
     if (err != CL_SUCCESS)
-      throw_error(modname, "Could not write OpenCL 2D image of sinogram: "
-                  + toString(err) );
+      throw_error(modname, "Could not write OpenCL 2D image of sinogram: " + toString(err) );
 
     setArg(kernelSino, 4, (cl_float) center);
-
-    size_t sz = _width*_width;
-    err = clEnqueueNDRangeKernel( CL_queue, kernelSino, 1,
-                                  0,  & sz, 0, 0, 0, 0);
-    if (err != CL_SUCCESS)
-      throw_error(modname, "Failed to perform the sinogram reconstruction with OpenCL: "
-                  + toString(err) + ".");
-
-    err = clFinish(CL_queue);
-    if ( err != CL_SUCCESS )
-      throw_error(modname, "Failed to finish OpenCL kernel \"ct_sino\": "
-                  + toString(err) + "." );
+    execKernel(kernelSino, _width*_width);
 
   } else {
 #endif // OPENCL_FOUND
@@ -910,7 +889,7 @@ CTrec::addLine(Line &sinoline, const float Theta, const float center) {
     cl_float2 cossin;
     cossin.s[0] = sinf(Theta);
     cossin.s[1] = cosf(Theta);
-    setArg(kernelLine, 4, cossin);    
+    setArg(kernelLine, 4, cossin);
     execKernel(kernelLine, _width*_width);
     projection_counter++;
     return;
@@ -953,9 +932,8 @@ CTrec::result(float pixelSize) {
   }
 
 #ifdef OPENCL_FOUND
-  if (kernelLine) {
+  if (kernelLine)
     cl2blitz( _result, clSlice );
-  }
 #endif // OPENCL_FOUND
 
   // \Delta\Theta = \pi/thetas comes from the integration over \Theta.
@@ -1060,7 +1038,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 		const float angle, const int plane){
 
   if ( contrast == Contrast::ABS )
-	projection = -log(projection);
+        projection = -log(projection);
 
   int pixels = projection.columns();
   int thetas = projection.rows();
@@ -1083,7 +1061,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 
   for (blitz::MyIndexType ycur = 0 ; ycur < thetas ; ycur++) {
 
-	Line ln = projection(ycur, blitz::Range::all());
+        Line ln = projection(ycur, blitz::Range::all());
 
 	// filtering
 	filter_line(ln, f_win, &planF, &planB);

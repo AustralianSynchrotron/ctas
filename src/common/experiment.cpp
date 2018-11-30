@@ -190,25 +190,20 @@ AqSeries::AqSeries(const Path & filename) {
 
 
 #ifdef OPENCL_FOUND
-  if ( ! program ) { 
+  if ( ! program ) {
     char ffsrc[] = {
       #include "ff.cl.includeme"
     };
-    program = initProgram( ffsrc, sizeof(ffsrc), AqSeries::modname );  
+    program = initProgram( ffsrc, sizeof(ffsrc), AqSeries::modname );
   }
-  
-  if (program) {
 
+  if (program) {
     cl_io=0;
     cl_bgA=0;
     cl_bgB=0;
     cl_dfA=0;
     cl_dfB=0;
-
-    kernel = clCreateKernel ( program, "ff", &err);
-    if (err != CL_SUCCESS)
-      warn(modname, (string) "Could not create OpenCL kernel \"ff\": " + toString(err) );
-
+    kernel = createKernel(program, "ff");
   }
 #endif // OPENCL_FOUND
 
@@ -779,9 +774,9 @@ const string SliceOptionDesc=
 static inline vector<int> &
 rmadd(vector<int> & arr, int numb, bool negate){
   if (negate)
-	arr.erase( remove( arr.begin(), arr.end(), numb ), arr.end() );
+        arr.erase( remove( arr.begin(), arr.end(), numb ), arr.end() );
   else
-	arr.push_back(numb);
+        arr.push_back(numb);
   return arr;
 }
 
@@ -794,7 +789,7 @@ rmadd(vector<int> & arr, int numb, bool negate){
 static inline int str2n(const string & str){
   long idx = strtol ( str.c_str() , 0, 0);
   if ( ! idx )
-	warn("string to int", "Zero slice. Must be positive. Set to 1.");
+        warn("string to int", "Zero slice. Must be positive. Set to 1.");
   return idx ? idx-1 : 1;
 }
 
@@ -808,9 +803,9 @@ slice_str2vec(const string & sliceS, int hight){
 
   // empty string
   if ( sliceS.empty() ) {
-	for (int slice = 0 ; slice < hight ; slice++)
-	  sliceV.push_back(slice);
-	return sliceV;
+        for (int slice = 0 ; slice < hight ; slice++)
+          sliceV.push_back(slice);
+        return sliceV;
   }
 
 
@@ -887,10 +882,10 @@ slice_str2vec(const string & sliceS, int hight){
 
   // Check for global negation.
   if ( negateall |= ( subSV[0] == string(1,negatec) ) )
-	for ( int icur = 0 ; icur < hight ; icur++)
-	  sliceV.push_back(icur);
+        for ( int icur = 0 ; icur < hight ; icur++)
+          sliceV.push_back(icur);
   subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ),
-			   subSV.end() ); // no "negate" strings
+                           subSV.end() ); // no "negate" strings
 
   // adds/removes substrings into the array of slices
   vector<string>::iterator subSVi = subSV.begin();
@@ -928,21 +923,21 @@ slice_str2vec(const string & sliceS, int hight){
   sort(sliceV.begin(), sliceV.end());
   sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
   if ( sliceV.back() > hight )
-	warn("slice string",
-		 "The string describing set of slices to be reconstructed:\n"
-		 + sliceS +"\n"
-		 "Includes slices more than the height of the input image"
-		 " (" + toString(hight) + "). These slices are ignored." );
+        warn("slice string",
+                 "The string describing set of slices to be reconstructed:\n"
+                 + sliceS +"\n"
+                 "Includes slices more than the height of the input image"
+                 " (" + toString(hight) + "). These slices are ignored." );
   sliceV.erase( find_if( sliceV.begin(), sliceV.end(),
-						 bind2nd( greater<int>(), hight ) ),
-				sliceV.end() );
+                                                 bind2nd( greater<int>(), hight ) ),
+                                sliceV.end() );
 
   // last check
   if ( sliceV.empty() )
-	warn("slice string",
-		 "The string describing set of slices to be reconstructed:\n"
-		 + sliceS +"\n"
-		 "leads to the empty range of slices." );
+        warn("slice string",
+                 "The string describing set of slices to be reconstructed:\n"
+                 + sliceS +"\n"
+                 "leads to the empty range of slices." );
 
   return sliceV;
 
@@ -987,16 +982,16 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
 {
 
   if ( ! exp.thetas() )
-	throw_error(modname, "Empty experiment.");
+        throw_error(modname, "Empty experiment.");
 
   slcs = sliceV.size() ? sliceV.size() : exp.slices();
   thts = exp.thetas();
   pxls = exp.pixels();
 
   if ( sliceV.back() >= exp.slices() )
-	throw_error(modname, "The maximum slice in the requested list of slices"
-				" (" + toString(sliceV.back()+1) + ") is outside the image height"
-				" (" + toString(exp.slices()) + ").");
+        throw_error(modname, "The maximum slice in the requested list of slices"
+                                " (" + toString(sliceV.back()+1) + ") is outside the image height"
+                                " (" + toString(exp.slices()) + ").");
   allpix = long(thts) * long(slcs) *long(pxls);
 
   allocateArray();
@@ -1037,7 +1032,7 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
   crop(rar, car, crp);
   _imageShape = car.shape();
   sliceV = slice_str2vec(slicedesc, _imageShape(0));
-  if ( angle == 0.0 && crp.top ) 
+  if ( angle == 0.0 && crp.top )
     for ( int sls=0 ; sls < sliceV.size() ; sls++ )
       sliceV[sls] += crp.top;
   slcs = sliceV.size();
@@ -1072,10 +1067,10 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
 
 SinoS::~SinoS(){
   if (mapfile) {
-	munmap(data.data(), allpix*sizeof(float) );
-	close(mapfile);
+        munmap(data.data(), allpix*sizeof(float) );
+        close(mapfile);
   } else {
-	data.free();
+        data.free();
   }
 }
 
@@ -1164,8 +1159,8 @@ SinoS::sino(int idx, Map & storage) const {
 int
 SinoS::index(int idx) const  {
   if ( idx<0 || idx >= slcs )
-	throw_error (modname, "Bad index " + toString(idx) +
-				 " is outside the slices (" + toString(slcs) + ")");
+        throw_error (modname, "Bad index " + toString(idx) +
+                                 " is outside the slices (" + toString(slcs) + ")");
   return idx;
 }
 
@@ -1212,24 +1207,24 @@ Dcenter::Dcenter(const string & centerdesc) {
   char *tail;
   bcof = strtod (start, &tail);
   if (tail == start)
-	throw_error("dcenter", "String \""+ centerdesc +"\""
-				" could not be decomposed to any float number.");
+        throw_error("dcenter", "String \""+ centerdesc +"\""
+                                " could not be decomposed to any float number.");
   if ( *tail ) {
-	if ( ! *(start=tail+1) ) {
-	  warn("dcenter",
-		   "Second part of the string \""+ centerdesc +"\" is empty.");
-	  return;
-	}
-	acof = strtod (start, &tail);
-	if (tail == start)
-	  throw_error("dcenter", "Second part of the string \""+ centerdesc +"\""
-				  " : \"" + start + "\" could not be decomposed to any"
-				  " float number.");
+        if ( ! *(start=tail+1) ) {
+          warn("dcenter",
+                   "Second part of the string \""+ centerdesc +"\" is empty.");
+          return;
+        }
+        acof = strtod (start, &tail);
+        if (tail == start)
+          throw_error("dcenter", "Second part of the string \""+ centerdesc +"\""
+                                  " : \"" + start + "\" could not be decomposed to any"
+                                  " float number.");
   }
   if ( *tail )
-	warn("dcenter",
-		 "String \""+ centerdesc +"\", after decomposed into float(s)"
-		 " has remaining tail \""+tail+"\".");
+        warn("dcenter",
+                 "String \""+ centerdesc +"\", after decomposed into float(s)"
+                 " has remaining tail \""+tail+"\".");
 
 };
 

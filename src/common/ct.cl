@@ -4,7 +4,7 @@ kernel void ct_sino (
   int                      pixels,
   int                      thetas,
   float                    center,
-  global const float2*         cossins,
+  global const float2*     cossins,
   sampler_t                sampler )
 {
 

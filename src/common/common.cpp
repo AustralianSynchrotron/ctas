@@ -1723,7 +1723,7 @@ SaveImageINT (const Path &filename, const Map &storage,
 
     const string modname = "Limit array";
 
-#ifdef CHECK_IF_CPU_IS_FASTER
+// #ifdef CHECK_IF_CPU_IS_FASTER
 #ifdef OPENCL_FOUND
     if ( init_limit_array_cl() ) {
 
@@ -1760,17 +1760,17 @@ SaveImageINT (const Path &filename, const Map &storage,
 
     } else {
 #endif  // OPENCL_FOUND
-#endif  // CHECK_IF_CPU_IS_FASTER
+// #endif  // CHECK_IF_CPU_IS_FASTER
 
       stor = ( _storage - minval ) / (maxval-minval);
       stor = limit01(stor);
 
 
-#ifdef CHECK_IF_CPU_IS_FASTER
+// #ifdef CHECK_IF_CPU_IS_FASTER
 #ifdef  OPENCL_FOUND
     }
 #endif  // OPENCL_FOUND
-#endif  // CHECK_IF_CPU_IS_FASTER
+// #endif  // CHECK_IF_CPU_IS_FASTER
 
   }
 

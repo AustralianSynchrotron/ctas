@@ -1730,31 +1730,12 @@ SaveImageINT (const Path &filename, const Map &storage,
       cl_int err;
       cl_mem clStorage = 0;
 
-      try {
-
-        clStorage = map2cl(_storage, CL_MEM_READ_WRITE);
-
-        setArg(limit_array_cl_kernel, 0, clStorage, modname);
-        setArg(limit_array_cl_kernel, 1, minval, modname);
-        setArg(limit_array_cl_kernel, 2, maxval, modname);
-
-        size_t sz = _storage.size();
-        err = clEnqueueNDRangeKernel( CL_queue, limit_array_cl_kernel, 1,
-                                      0,  & sz, 0, 0, 0, 0);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Failed to perform with OpenCL: " + toString(err) + ".");
-
-        err = clFinish(CL_queue);
-        if ( err != CL_SUCCESS )
-          throw_error(modname, "Failed to finish OpenCL kernel \"limit_array\": " + toString(err) + "." );
-
-        cl2map(stor, clStorage);
-
-      } catch (...) {
-        if (clStorage)
-          clReleaseMemObject(clStorage);
-        throw;
-      }
+      clStorage = blitz2cl(_storage, CL_MEM_READ_WRITE);
+      setArg(limit_array_cl_kernel, 0, clStorage);
+      setArg(limit_array_cl_kernel, 1, minval);
+      setArg(limit_array_cl_kernel, 2, maxval);
+      execKernel(limit_array_cl_kernel, _storage.size());
+      cl2blitz(stor, clStorage);
       if (clStorage)
         clReleaseMemObject(clStorage);
 
@@ -1764,7 +1745,6 @@ SaveImageINT (const Path &filename, const Map &storage,
 
       stor = ( _storage - minval ) / (maxval-minval);
       stor = limit01(stor);
-
 
 // #ifdef CHECK_IF_CPU_IS_FASTER
 #ifdef  OPENCL_FOUND

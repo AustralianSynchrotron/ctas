@@ -242,7 +242,7 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
       for (int acur = 0 ; acur < isz ; acur++ ) {
         const Map & curar = iarr[acur];
         const Shape cursh = curar.shape();
-        const Shape coo = Shape(ycur-acur*origin.y, xcur-acur*origin.x);
+        const Shape coo = Shape(miny+ycur-acur*origin.y, minx+xcur-acur*origin.x);
         if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
           const float varcur = curar(coo);
           if ( fisok(varcur) ) {

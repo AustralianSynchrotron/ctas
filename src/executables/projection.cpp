@@ -217,15 +217,21 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
     return;
   }
 
-  const Shape
-    ish( iarr[0].shape() ),
-    osh( ish(0) + abs(origin.y) * (isz-1), ish(1) + abs(origin.x) * (isz-1)),
-    ssh( origin.y >= 0 ? 0 : osh(0) - ish(0), origin.x >= 0 ? 0 : osh(1) - ish(1) );
+  int minx=0, maxx=0, miny=0, maxy=0;
+  for (int acur = 0 ; acur < isz ; acur++ ) {
+    const float
+      orgx = acur*origin.x,
+      orgy = acur*origin.y,
+      tilx = orgx + iarr[acur].shape()(1)-1,
+      tily = orgy + iarr[acur].shape()(0)-1;
+    if (orgx < minx) minx = orgx;
+    if (tilx > maxx) maxx = tilx;
+    if (orgy < miny) miny = orgy;
+    if (tily > maxy) maxy = tily;
+  }
 
+  const Shape osh(maxy-miny+1, maxx-minx+1);
   oarr.resize(osh);
-  vector< Shape > cssh (isz);
-  for (int acur = 0 ; acur < isz ; acur++ )
-    cssh[acur] = Shape( ssh(0) + origin.y * acur, ssh(1) + origin.x * acur );
 
   for (blitz::MyIndexType ycur = 0 ; ycur < osh(0) ; ycur++ ) {
     for (blitz::MyIndexType xcur = 0 ; xcur < osh(1) ; xcur++ ) {
@@ -234,12 +240,14 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
       float svals=0.0;
 
       for (int acur = 0 ; acur < isz ; acur++ ) {
-        const Shape coo = Shape(ycur - cssh[acur](0), xcur - cssh[acur](1) );
-        if ( coo(0) >= 0 && coo(0) < ish(0) && coo(1) >= 0 && coo(1) < ish(1) ) {
-          const float varcur = iarr[acur](coo);
+        const Map & curar = iarr[acur];
+        const Shape cursh = curar.shape();
+        const Shape coo = Shape(ycur-acur*origin.y, xcur-acur*origin.x);
+        if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
+          const float varcur = curar(coo);
           if ( fisok(varcur) ) {
-            const int weight = 1 + ( ish(0) - abs( 2*coo(0) - ish(0) + 1 ) )
-                                 * ( ish(1) - abs( 2*coo(1) - ish(1) + 1 ) );
+            const int weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1 ) )
+                                 * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1 ) );
             sweight += weight;
             svals += varcur * weight;
           }
@@ -375,8 +383,14 @@ int main(int argc, char *argv[]) {
   ProgressBar progBar(args.beverbose, "Prepare tiles input.", args.images.size());
   for ( int curproj = 0 ; curproj < args.images.size() ; curproj++) {
     Map iar, rar, car, bar;
-    ReadImage(args.images[curproj], iar, ish);
-    flatfield( iar, iar, bgar, dfar );
+    ReadImage(args.images[curproj], iar);
+    if ( bgar.size() || dfar.size() ) {
+      if ( iar.shape() != ish )
+        throw_error("flatfielding",
+                    "Size of the input image \"" + args.images[curproj] + "\""
+                    " does not match that of flatfields.");
+      flatfield( iar, iar, bgar, dfar );
+    }
     rotate(iar, rar, args.angle);
     crop(rar, car, args.crp);
     binn(car, bar, args.bnn);

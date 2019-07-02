@@ -1595,8 +1595,13 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     // (must be a bug in some later versions of IM)
     // I have to do the following dirty, very dirty trick.
 
-  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
-                 ? storage : storage.copy() ;
+  Map _storage;
+  if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
+    _storage.reference(storage);
+  else {
+    _storage.resize(storage.shape());
+    _storage = storage;
+  }
 
   const float *data = _storage.data();
   Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
@@ -1703,8 +1708,13 @@ SaveImageINT (const Path &filename, const Map &storage,
     width = storage.columns(),
     hight = storage.rows();
 
-  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
-                 ? storage : storage.copy() ;
+  Map _storage;
+  if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
+    _storage.reference(storage);
+  else {
+    _storage.resize(storage.shape());
+    _storage = storage;
+  }
 
   Map stor(_storage.shape());
   if (minval == maxval) {
@@ -1781,8 +1791,13 @@ SaveImageFP (const Path & filename, const Map & storage){
     width = storage.columns(),
     hight = storage.rows();
 
-  Map _storage = storage.isStorageContiguous()  ||  storage.stride() != Shape(width,1)
-                 ? storage : storage.copy() ;
+  Map _storage;
+  if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
+    _storage.reference(storage);
+  else {
+    _storage.resize(storage.shape());
+    _storage = storage;
+  }
 
   // BUG in libtiff
   // On platforms (f.e. CentOS) the TIFFOpen function fails,

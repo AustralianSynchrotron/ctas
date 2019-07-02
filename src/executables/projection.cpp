@@ -506,7 +506,10 @@ int main(int argc, char *argv[]) {
     o2Stitch[1].reverseSelf(secondDim);
     stitch(o2Stitch, args.originF, final);
     if ( ! args.interim_name.empty() )  {
-      SaveDenan(args.interim_name + o2images[1], o2Stitch[1]);
+      Map tmp;
+      ReadImage(args.interim_name + o2images[1], tmp);
+      tmp.reverseSelf(secondDim);
+      SaveImage(args.interim_name + o2images[1], tmp);
       namemask = findCommon( o2images.begin(), o2images.end() ).name();
       if ( namemask.substr(0,4) == "St1_"  ||  namemask.substr(0,4) == "St2_")
         namemask = namemask.erase(0,4);

@@ -217,6 +217,7 @@ public:
     imagecue.push(img);
     pthread_mutex_unlock(&putake_lock);
     pthread_cond_signal(&new_data_cond);
+    return 0;
   }
 
 
@@ -288,6 +289,8 @@ void *in_write_thread (void *_thread_args) {
     pthread_cond_signal(& distributor->released_memory_cond);
   }
 
+  return 0;
+
 
 }
 
@@ -327,9 +330,10 @@ void *in_reconstruction_thread (void *_thread_args) {
     distributor->bar.update();
     
     // distributor->put_image( res, curslice );
-    
+
   }
 
+  return 0;
 
 }
 

@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 
   Map id;
   ReadImage(args.zD_name, id);
-  Shape sh=id.shape();
+  const Shape sh=id.shape();
   Map out(sh);
   IPCprocess proc(sh, args.alpha, args.dist, args.dd, args.lambda);
 
@@ -181,6 +181,7 @@ int main(int argc, char *argv[]) {
     SaveImage (args.abs_name, out, args.SaveInt);
   }
 
+  proc.~IPCprocess(); // why it does not happen automatically?
   exit(0);
 
 }

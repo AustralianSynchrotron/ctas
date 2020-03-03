@@ -119,14 +119,12 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  cl_int clerr;
   char ctsrc[] = {
-    #include "flat.cl.includeme"
+    #include "flat.cl.includeme"  
   };
   cl_program program = initProgram( ctsrc, sizeof(ctsrc), "flat" );
   if (!program)
     exit_on_error(args.command, "Failed to initiate OpenCL program \"flat\".");
-
 
   Map arr;
   ReadImage( args.in_name, arr );

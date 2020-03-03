@@ -557,7 +557,7 @@ rotate(Map & io_arr, float angle, float bg=NAN);
 
 
 /// \brief Shape of an 2D array.
-typedef blitz::TinyVector<long int,2> Shape;
+typedef blitz::TinyVector<blitz::MyIndexType,2> Shape;
 
 inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
 
@@ -716,7 +716,7 @@ cl_command_queue CL_queue;
 
 bool clIsInited();
 
-cl_program initProgram(char csrc[], size_t length, const std::string & modname);
+cl_program initProgram(const char csrc[], size_t length, const std::string & modname);
 
 cl_kernel createKernel(cl_program program, const std::string & name);
 
@@ -753,15 +753,22 @@ T cl2var(const cl_mem & buff) {
 }
 
 
-template <typename T, int N>
-cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-
+template <typename T>
+cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
   cl_int err;
-  const size_t iStorageSize = sizeof(T) * storage.size() ;
+  const size_t iStorageSize = sizeof(T) * arrSize ;
   cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
-  err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, iStorageSize, storage.data(), 0, 0, 0);
+  return clStorage;
+}
+
+
+template <typename T, int N>
+cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+  cl_int err;
+  cl_mem clStorage = clAllocArray<T>(storage.size(), flag);
+  err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * storage.size(), storage.data(), 0, 0, 0);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
   return clStorage;

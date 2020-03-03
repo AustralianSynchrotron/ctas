@@ -35,6 +35,11 @@
 #include <complex>
 #include <fftw3.h>
 
+#ifdef OPENCL_FOUND
+#include <clFFT.h>
+#endif
+
+
 #ifdef _WIN32
 #  pragma warning(disable: 4251)
 #  ifdef LIBIPC_EXPORTS
@@ -124,11 +129,29 @@ private:
   static const int zPad=3;      ///< Level of the zero-padding (ish=zPad*sh).
   blitz::Range r0;              ///< Y-Ranges of the original contrast in the zero-padded data.
   blitz::Range r1;              ///< X-Ranges of the original contrast in the zero-padded data.
+
+  #ifdef OPENCL_FOUND
+
+  static const char oclSource[]; ///< OpenCl source
+  static const cl_program oclProgram;
+  mutable cl_mem mid;                 ///< Internally used array for the zero-padded data.
+  cl_mem phsFilter;             ///< FFT filter used for the extraction of the PHS component.
+  cl_mem absFilter;             ///< FFT filter used for the extraction of the ABS component.
+  cl_mem clio;                  ///< where to upload input image
+  cl_kernel kernelReset;
+  cl_kernel kernelIO;
+  cl_kernel kernelApplyFilter;
+  clfftPlanHandle planHandle;
+
+  #else // OPENCL_FOUND
+
+  mutable CMap mid;             ///< Internally used array for the zero-padded data.
   Map phsFilter;                ///< FFT filter used for the extraction of the PHS component.
   Map absFilter;                ///< FFT filter used for the extraction of the ABS component.
-  mutable CMap mid;             ///< Internally used array for the zero-padded data.
   fftwf_plan fft_f;             ///< Forward 2D FFT plan.
   fftwf_plan fft_b;             ///< Backward 2D FFT plan
+
+  #endif // OPENCL_FOUND
 
 public:
 
@@ -142,10 +165,7 @@ public:
   IPCprocess(const Shape & _sh, float alpha, float dist, float dd=1.0, float lambda=1.0);
 
   /// Destructor.
-  inline ~IPCprocess() {
-    fftwf_destroy_plan(fft_f);
-    fftwf_destroy_plan(fft_b);
-  }
+  ~IPCprocess();
 
   /// The component extraction.
   ///

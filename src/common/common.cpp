@@ -956,7 +956,7 @@ bool clIsInited() {
 
 
 
-cl_program initProgram(char csrc[], size_t length, const string & modname) {
+cl_program initProgram(const char csrc[], size_t length, const string & modname) {
 
   if ( ! clIsInited() )
     return 0;
@@ -1121,6 +1121,8 @@ initImageIO(){
   try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
 
+  return true;
+
 }
 
 static const bool imageIOinited = initImageIO();
@@ -1134,7 +1136,7 @@ PixelSize(const Path & filename) {
   static const float defaultSize = 1.0;
   Magick::Image imag;
   try { imag.ping(filename); }    catch ( Magick::WarningCoder err ) {}
-  Magick::Geometry dens = imag.density();
+  const Magick::Geometry dens = (Magick::Geometry) imag.density();
   float res = (float) dens.width();
   if ( ! dens.isValid() || ! res ) {
     warn("pixel size", "The resolution of the image \""+ filename+ "\"" "is invalid.");

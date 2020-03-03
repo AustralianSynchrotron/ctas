@@ -75,39 +75,18 @@ endif()
 
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/common/config.h.in ${CMAKE_SOURCE_DIR}/src/common/config.h)
 
-
 add_library(poptmx SHARED poptmx.cpp)
 
-if (OPENCL_FOUND)
-  set(LIMITCL "limit.cl")
-  set(LIMITCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${LIMITCL}")
-  set(LIMITCLINC "${CMAKE_BINARY_DIR}/${LIMITCL}.includeme")
-  add_custom_command(
-    OUTPUT ${LIMITCLINC}
-    COMMAND cat ${LIMITCLSRC} | xxd -i > ${LIMITCLINC}
-    DEPENDS ${LIMITCLSRC}
-  )
-endif()
-
-add_library(common SHARED common.cpp ${LIMITCLINC})
+add_library(common SHARED common.cpp)
+target_clsrc(common limit.cl)
 target_link_libraries(common
   ${ImageMagick_LIBRARIES}
   tiff
   ${OPENCL_LL}
 )
 
-if (OPENCL_FOUND)
-  set(CTCL "ct.cl")
-  set(CTCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${CTCL}")
-  set(CTCLINC "${CMAKE_BINARY_DIR}/${CTCL}.includeme")
-  add_custom_command(
-    OUTPUT ${CTCLINC}
-    COMMAND cat ${CTCLSRC} | xxd -i > ${CTCLINC}
-    DEPENDS ${CTCLSRC}
-  )
-endif()
-
-add_library(kernel SHARED kernel.cpp ${CTCLINC})
+add_library(kernel SHARED kernel.cpp)
+target_clsrc(kernel ct.cl)
 target_link_libraries(kernel
   fftw3f
   gsl
@@ -115,30 +94,22 @@ target_link_libraries(kernel
   pthread
 )
 
+
 add_library(lipc SHARED lipc.cpp)
+target_clsrc(lipc ipc.cl)
 target_link_libraries(lipc
   fftw3f
+  ${CLFFT_LL}
 )
 
 add_library(ldei SHARED ldei.cpp)
 add_library(ledei SHARED ledei.cpp)
 
-
-if (OPENCL_FOUND)
-
-  set(FFCL "ff.cl")
-  set(FFCLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${FFCL}")
-  set(FFCLINC "${CMAKE_BINARY_DIR}/${FFCL}.includeme")
-  add_custom_command(
-    OUTPUT ${FFCLINC}
-    COMMAND cat ${FFCLSRC} | xxd -i > ${FFCLINC}
-    DEPENDS ${FFCLSRC}
-  )
-
-endif()
-
-add_library(experiment SHARED experiment.cpp ${FFCLINC})
-
+add_library(experiment SHARED experiment.cpp)
+target_clsrc(experiment ff.cl)
+target_link_libraries(experiment
+  common
+)
 
 install(TARGETS
   poptmx common kernel lipc ldei ledei experiment

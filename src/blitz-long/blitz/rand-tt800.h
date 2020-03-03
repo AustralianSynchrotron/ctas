@@ -82,6 +82,7 @@ public:
 
         y ^= (y >> 16); /* added to the 1994 version */
         k++;
+        return y;
     }
  
     double random()

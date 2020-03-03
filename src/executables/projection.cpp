@@ -246,8 +246,8 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
         if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
           const float varcur = curar(coo);
           if ( fisok(varcur) ) {
-            const int weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1 ) )
-                                 * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1 ) );
+            const int weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
+                                 * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
             sweight += weight;
             svals += varcur * weight;
           }

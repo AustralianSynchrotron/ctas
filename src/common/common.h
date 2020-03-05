@@ -765,14 +765,20 @@ cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
 
 
 template <typename T, int N>
-cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-  cl_int err;
-  cl_mem clStorage = clAllocArray<T>(storage.size(), flag);
-  err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * storage.size(), storage.data(), 0, 0, 0);
+cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+  cl_int err = 
+    clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * storage.size(), storage.data(), 0, 0, 0);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
   return clStorage;
 }
+
+template <typename T, int N>
+cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+  cl_mem clStorage = clAllocArray<T>(storage.size(), flag);
+  return blitz2cl<T,N>(storage, clStorage, flag);
+}
+
 
 
 template <typename T, int N>

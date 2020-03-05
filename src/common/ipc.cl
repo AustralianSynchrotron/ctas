@@ -21,9 +21,9 @@ kernel void filters (
     absFilter[index] = calc / (calc+alpha) ;
     phsFilter[index] = aConst / (calc+alpha) ;
   } else {
-    absFilter[index] = 1.0 / (1+alpha) ;
-    phsFilter[index] = 0.0 ;
-  }
+    absFilter[index] = 0.0 ;
+    phsFilter[index] = (alpha == 0.0) ? 0.0 : aConst / alpha;
+  } 
 
 }
 
@@ -33,7 +33,8 @@ kernel void applyFilter (
   global float*            mid )
 {
   const int index = get_global_id(0);
-  mid[index] *= filter[index];
+  mid[2*index] *= filter[index];
+  mid[2*index+1] *= filter[index];
 }
 
 

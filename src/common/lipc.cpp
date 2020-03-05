@@ -83,7 +83,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
 
   const int 
     mst0 = sh(0)*(zPad-1)/2,
-    mst1 = sh(1)*(zPad-1)/2;
+    mst1 = sh(1)*(zPad-1)/2,
+    isz = ish[0]*ish[1];
   r0 = blitz::Range (mst0, mst0+sh(0)-1);
   r1 = blitz::Range (mst1, mst1+sh(1)-1);
   alpha *= dd*dd/(M_PI*dist*lambda);
@@ -91,8 +92,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
 
   #ifdef OPENCL_FOUND
 
-  phsFilter = clAllocArray<float>(ish[0]*ish[1]);
-  absFilter = clAllocArray<float>(ish[0]*ish[1]);
+  phsFilter = clAllocArray<float>(isz);
+  absFilter = clAllocArray<float>(isz);
   cl_kernel kernelFilters = createKernel(oclProgram, "filters");
   setArg(kernelFilters, 0, absFilter);
   setArg(kernelFilters, 1, phsFilter);
@@ -100,9 +101,9 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   setArg(kernelFilters, 3, (cl_int) ish[0]);
   setArg(kernelFilters, 4, (cl_float) alpha );
   setArg(kernelFilters, 5, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist) ) ) ;
-  execKernel(kernelFilters, ish[0]*ish[1]);
+  execKernel(kernelFilters, isz);
 
-  mid = clAllocArray<float>(2*ish[0]*ish[1]);
+  mid = clAllocArray<float>(2*isz);
   kernelReset = createKernel(oclProgram, "reset");
   setArg(kernelReset, 0, mid);
 
@@ -156,7 +157,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
     }
 
   if (alpha == 0.0) // to avoid 0-division
-    absFilter( (blitz::MyIndexType) 0l, (blitz::MyIndexType) 0l) = 1.0;
+    absFilter( (blitz::MyIndexType) 0, (blitz::MyIndexType) 0) = 1.0;
   phsFilter = 1.0/(absFilter+alpha);
   absFilter *= phsFilter;
   phsFilter *= dd * dd / (4.0*M_PI*M_PI*dist);
@@ -195,17 +196,17 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) con
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
 
+  const int isz = ish[0]*ish[1];
+
 
   #ifdef OPENCL_FOUND
 
 
-  execKernel(kernelReset, ish[0]*ish[1]);
+  execKernel(kernelReset, isz);
 
   Map io(sh);
   io = in;
-  if ( CL_SUCCESS !=  
-       clEnqueueWriteBuffer(CL_queue, clio, CL_TRUE, 0, sizeof(float) * io.size(), io.data(), 0, 0, 0) )
-    throw_error(modname, "Failed to upload data to OCL buffer.");
+  blitz2cl(io, clio);
 
   setArg(kernelIO, 0, (cl_int) 1);
   execKernel(kernelIO, sh[0]*sh[1]);
@@ -214,9 +215,9 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) con
           planHandle, CLFFT_FORWARD, 1, &CL_queue, 0, NULL, NULL, &mid, NULL, NULL)  ||
        CL_SUCCESS != clFinish(CL_queue) )
     throw_error(modname, "Failed to execute clFFT plan.");
-  
+ 
   setArg(kernelApplyFilter, 0, comp == PHS ? phsFilter : absFilter);
-  execKernel(kernelApplyFilter, ish[0]*ish[1]);
+  execKernel(kernelApplyFilter, isz);
 
   if ( CL_SUCCESS != clfftEnqueueTransform(
         planHandle, CLFFT_BACKWARD, 1, &CL_queue, 0, NULL, NULL, &mid, NULL, NULL)  ||
@@ -236,12 +237,9 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) con
   mid = 0.0;
   mid(r0, r1) = 1.0 - in;
   fftwf_execute(fft_f);
-  if (comp == PHS)
-    mid  *=  phsFilter ;
-  else
-    mid  *=  absFilter ;
+  mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
-  out = real(mid(r0,r1))/(ish(0)*ish(1));
+  out = real(mid(r0,r1))/isz;
 
 
   #endif // OPENCL_FOUND

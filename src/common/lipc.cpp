@@ -92,6 +92,32 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
 
   #ifdef OPENCL_FOUND
 
+  mid = clAllocArray<float>(2*isz);
+  kernelReset = createKernel(oclProgram, "reset");
+  setArg(kernelReset, 0, mid);
+
+  clio = clAllocArray<float>(sh[0]*sh[1]);
+  kernelIO = createKernel(oclProgram, "inout");
+  setArg(kernelIO, 1, clio);
+  setArg(kernelIO, 2, mid);
+  setArg(kernelIO, 3, (cl_int) sh(1));
+  setArg(kernelIO, 4, (cl_int) ish(1));
+  setArg(kernelIO, 5, (cl_int) mst1);
+  setArg(kernelIO, 6, (cl_int) mst0);
+
+  kernelApplyAbsFilter = createKernel(oclProgram, "applyAbsFilter");
+  setArg(kernelApplyAbsFilter, 0, mid);
+  setArg(kernelApplyAbsFilter, 1, (cl_int) ish[1]);
+  setArg(kernelApplyAbsFilter, 2, (cl_int) ish[0]);
+  setArg(kernelApplyAbsFilter, 3, (cl_float) alpha );
+
+  kernelApplyPhsFilter = createKernel(oclProgram, "applyPhsFilter");
+  setArg(kernelApplyPhsFilter, 0, mid);
+  setArg(kernelApplyPhsFilter, 1, (cl_int) ish[1]);
+  setArg(kernelApplyPhsFilter, 2, (cl_int) ish[0]);
+  setArg(kernelApplyPhsFilter, 3, (cl_float) alpha );
+
+/*
   phsFilter = clAllocArray<float>(isz);
   absFilter = clAllocArray<float>(isz);
   cl_kernel kernelFilters = createKernel(oclProgram, "filters");
@@ -102,20 +128,9 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   setArg(kernelFilters, 4, (cl_float) alpha );
   setArg(kernelFilters, 5, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist) ) ) ;
   execKernel(kernelFilters, isz);
-
-  mid = clAllocArray<float>(2*isz);
-  kernelReset = createKernel(oclProgram, "reset");
-  setArg(kernelReset, 0, mid);
-
-  clio = clAllocArray<float>(sh[0]*sh[1]);
-
-  kernelIO = createKernel(oclProgram, "inout");
-  setArg(kernelIO, 1, clio);
-  setArg(kernelIO, 2, mid);
-  setArg(kernelIO, 3, (cl_int) sh(1));
-  setArg(kernelIO, 4, (cl_int) ish(1));
-  setArg(kernelIO, 5, (cl_int) mst1);
-  setArg(kernelIO, 6, (cl_int) mst0);
+  kernelApplyFilter = createKernel(oclProgram, "applyFilter");
+  setArg(kernelApplyFilter, 1, mid);
+*/
 
   clfftSetupData fftSetup;
   if ( CL_SUCCESS != clfftInitSetupData(&fftSetup) ||
@@ -123,15 +138,12 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
     throw_error(modname,  "Failed to initialize clFFT.");
 
   size_t isht[2] = {ish(0),ish(1)};
-  if ( CL_SUCCESS != clfftCreateDefaultPlan(&planHandle, CL_context, CLFFT_2D, isht ) ||
-       // CL_SUCCESS != clfftSetPlanPrecision(planHandle, CLFFT_SINGLE) ||
-       // CL_SUCCESS != clfftSetLayout(planHandle, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED) ||
-       // CL_SUCCESS != clfftSetResultLocation(planHandle, CLFFT_INPLACE) ||
-       CL_SUCCESS != clfftBakePlan(planHandle, 1, &CL_queue, NULL, NULL) )
+  if ( CL_SUCCESS != clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, isht ) ||
+       // CL_SUCCESS != clfftSetPlanPrecision(clfft_plan, CLFFT_SINGLE) ||
+       // CL_SUCCESS != clfftSetLayout(clfft_plan, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED) ||
+       // CL_SUCCESS != clfftSetResultLocation(clfft_plan, CLFFT_INPLACE) ||
+       CL_SUCCESS != clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL) )
     throw_error(modname, "Failed to create clFFT plans.");
-
-  kernelApplyFilter = createKernel(oclProgram, "applyFilter");
-  setArg(kernelApplyFilter, 1, mid);
 
 
   #else // OPENCL_FOUND
@@ -173,10 +185,12 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
 IPCprocess::~IPCprocess() {
     #ifdef OPENCL_FOUND
     clReleaseMemObject(mid);
+    clReleaseMemObject(clio);
+    /*
     clReleaseMemObject(absFilter);
     clReleaseMemObject(phsFilter);
-    clReleaseMemObject(clio);
-    if ( CL_SUCCESS !=  clfftDestroyPlan( &planHandle ) )
+    */
+    if ( CL_SUCCESS !=  clfftDestroyPlan( &clfft_plan ) )
       throw_error(modname, "Failed to destroy clFFT plans.");  
     clfftTeardown( );
     #else // OPENCL_FOUND
@@ -185,6 +199,19 @@ IPCprocess::~IPCprocess() {
     #endif // OPENCL_FOUND
 }
 
+
+#ifdef OPENCL_FOUND
+cl_int IPCprocess::clfftExec(clfftDirection dir) const {
+  cl_int err;
+  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &mid, NULL, NULL);
+  if ( CL_SUCCESS != err )
+    throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");  
+  err = clFinish(CL_queue);
+  if ( CL_SUCCESS != err )
+    throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + "."); 
+  return err; 
+}
+#endif // OPENCL_FOUND
 
 
 void
@@ -206,28 +233,23 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) con
 
   Map io(sh);
   io = in;
-  blitz2cl(io, clio);
 
+  blitz2cl(io, clio);
   setArg(kernelIO, 0, (cl_int) 1);
   execKernel(kernelIO, sh[0]*sh[1]);
 
-  if ( CL_SUCCESS != clfftEnqueueTransform(
-          planHandle, CLFFT_FORWARD, 1, &CL_queue, 0, NULL, NULL, &mid, NULL, NULL)  ||
-       CL_SUCCESS != clFinish(CL_queue) )
-    throw_error(modname, "Failed to execute clFFT plan.");
- 
+  clfftExec(CLFFT_FORWARD);
+  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, isz);  
+  /*
   setArg(kernelApplyFilter, 0, comp == PHS ? phsFilter : absFilter);
   execKernel(kernelApplyFilter, isz);
-
-  if ( CL_SUCCESS != clfftEnqueueTransform(
-        planHandle, CLFFT_BACKWARD, 1, &CL_queue, 0, NULL, NULL, &mid, NULL, NULL)  ||
-     CL_SUCCESS != clFinish(CL_queue) )
-    throw_error(modname, "Failed to execute clFFT plan.");
+  */
+  clfftExec(CLFFT_BACKWARD);
 
   setArg(kernelIO, 0, (cl_int) 0);
   execKernel(kernelIO, sh[0]*sh[1]);
-
   cl2blitz(io, clio);
+
   out = io;
 
 

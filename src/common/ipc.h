@@ -134,14 +134,21 @@ private:
 
   static const char oclSource[]; ///< OpenCl source
   static const cl_program oclProgram;
+  
   mutable cl_mem mid;                 ///< Internally used array for the zero-padded data.
-  cl_mem phsFilter;             ///< FFT filter used for the extraction of the PHS component.
-  cl_mem absFilter;             ///< FFT filter used for the extraction of the ABS component.
   cl_mem clio;                  ///< where to upload input image
   cl_kernel kernelReset;
   cl_kernel kernelIO;
+  cl_kernel kernelApplyAbsFilter;
+  cl_kernel kernelApplyPhsFilter; 
+  /*
+  cl_mem phsFilter;             ///< FFT filter used for the extraction of the PHS component.
+  cl_mem absFilter;             ///< FFT filter used for the extraction of the ABS component.
   cl_kernel kernelApplyFilter;
-  clfftPlanHandle planHandle;
+  */
+ 
+  clfftPlanHandle clfft_plan;
+  cl_int clfftExec(clfftDirection dir) const;
 
   #else // OPENCL_FOUND
 

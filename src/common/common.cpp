@@ -1744,7 +1744,7 @@ SaveImageINT (const Path &filename, const Map &storage,
       setArg(limit_array_cl_kernel, 1, minval);
       setArg(limit_array_cl_kernel, 2, maxval);
       execKernel(limit_array_cl_kernel, _storage.size());
-      cl2blitz(stor, clStorage);
+      cl2blitz(clStorage, stor);
       if (clStorage)
         clReleaseMemObject(clStorage);
 

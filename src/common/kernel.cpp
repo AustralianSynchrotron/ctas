@@ -933,7 +933,7 @@ CTrec::result(float pixelSize) {
 
 #ifdef OPENCL_FOUND
   if (kernelLine)
-    cl2blitz( _result, clSlice );
+    cl2blitz(clSlice, _result);
 #endif // OPENCL_FOUND
 
   // \Delta\Theta = \pi/thetas comes from the integration over \Theta.

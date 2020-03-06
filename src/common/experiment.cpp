@@ -633,7 +633,7 @@ void AqSeries::projection(int idx, Map &proj,
 
     execKernel(kernel, proj.size());
 
-    cl2blitz(proj, cl_io);
+    cl2blitz(cl_io, proj);
 
     return;
 

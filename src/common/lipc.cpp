@@ -201,7 +201,7 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   clfftExec(CLFFT_FORWARD);
   execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, isz);
   clfftExec(CLFFT_BACKWARD);
-  cl2blitz(io, mid);
+  cl2blitz(mid, io);
   if (out.data() != io.data())
     out = io;
 

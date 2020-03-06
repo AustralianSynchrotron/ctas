@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     execKernel(kernelNorm, sz);
   }
 
-  cl2blitz(arr,tIm);
+  cl2blitz(tIm,arr);
   SaveImage(args.out_name, arr);
 
   exit(0);

@@ -782,7 +782,7 @@ cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ
 
 
 template <typename T, int N>
-void cl2blitz(blitz::Array<T,N> & storage, cl_mem clbuffer) {
+void cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
   cl_int err = clEnqueueReadBuffer(CL_queue, clbuffer, CL_TRUE, 0,
                                    sizeof(T) * storage.size(),
                                    storage.data(), 0, 0, 0 );

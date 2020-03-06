@@ -124,33 +124,15 @@ private:
   static const std::string modname;	///< Module name.
 
   Shape sh;                     ///< Shape of the input contrasts.
-  Shape ish;                    ///< Shape of the zero-padded contrasts.
-
-  // zerro-padding makes almost no difference (of order 1e-5...-9)
-  static const int zPad=3;      ///< Level of the zero-padding (ish=zPad*sh).
-  blitz::Range r0;              ///< Y-Ranges of the original contrast in the zero-padded data.
-  blitz::Range r1;              ///< X-Ranges of the original contrast in the zero-padded data.
 
   #ifdef OPENCL_FOUND
 
   static const char oclSource[]; ///< OpenCl source
-  static const cl_program oclProgram;
+  static const cl_program oclProgram; 
   
   mutable cl_mem mid;                 ///< Internally used array for the zero-padded data.
-  cl_mem clio;                  ///< where to upload input image
-  cl_kernel kernelReset;
-  cl_kernel kernelIO;
   cl_kernel kernelApplyAbsFilter;
   cl_kernel kernelApplyPhsFilter; 
-  cl_kernel kernelApplyZAbsFilter;
-  cl_kernel kernelApplyZPhsFilter; 
-
-  /*
-  cl_mem phsFilter;             ///< FFT filter used for the extraction of the PHS component.
-  cl_mem absFilter;             ///< FFT filter used for the extraction of the ABS component.
-  cl_kernel kernelApplyFilter;
-  */
-
   clfftPlanHandle clfft_plan;
   cl_int clfftExec(clfftDirection dir) const;
 

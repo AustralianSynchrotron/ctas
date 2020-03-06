@@ -66,7 +66,7 @@ static inline int fisok(double x){ return std::isnormal(x) || std::fpclassify(x)
 #endif
 
 
-void prdn( const std::string & str );
+void prdn( const std::string & str = std::string() );
 
 
 

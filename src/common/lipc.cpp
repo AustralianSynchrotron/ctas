@@ -65,8 +65,7 @@ const cl_program IPCprocess::oclProgram =
 
 IPCprocess::IPCprocess( const Shape & _sh, float alpha,
                         float dist, float dd, float lambda) :
-  sh(_sh),
-  ish(sh(0)*zPad, sh(1)*zPad)
+  sh(_sh)
 {
 
   if (sh(0) < 3 || sh(1) < 3)
@@ -81,70 +80,31 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   if (alpha < 0.0)
     throw_error(modname, "Alpha parameter of the MBA is less than 0." );
 
-  const int 
-    mst0 = sh(0)*(zPad-1)/2,
-    mst1 = sh(1)*(zPad-1)/2,
-    isz = ish[0]*ish[1];
-  r0 = blitz::Range (mst0, mst0+sh(0)-1);
-  r1 = blitz::Range (mst1, mst1+sh(1)-1);
+  const int isz = sh[0]*sh[1];
   alpha *= dd*dd/(M_PI*dist*lambda);
-
 
   #ifdef OPENCL_FOUND
 
   mid = clAllocArray<float>(2*isz);
-  kernelReset = createKernel(oclProgram, "reset");
-  setArg(kernelReset, 0, mid);
-
-  clio = clAllocArray<float>(sh[0]*sh[1]);
-  kernelIO = createKernel(oclProgram, "inout");
-  setArg(kernelIO, 1, clio);
-  setArg(kernelIO, 2, mid);
-  setArg(kernelIO, 3, (cl_int) sh(1));
-  setArg(kernelIO, 4, (cl_int) ish(1));
-  setArg(kernelIO, 5, (cl_int) mst1);
-  setArg(kernelIO, 6, (cl_int) mst0);
-
   kernelApplyAbsFilter = createKernel(oclProgram, "applyAbsFilter");
   setArg(kernelApplyAbsFilter, 0, mid);
-  setArg(kernelApplyAbsFilter, 1, (cl_int) ish[1]);
-  setArg(kernelApplyAbsFilter, 2, (cl_int) ish[0]);
+  setArg(kernelApplyAbsFilter, 1, (cl_int) sh[1]);
+  setArg(kernelApplyAbsFilter, 2, (cl_int) sh[0]);
   setArg(kernelApplyAbsFilter, 3, (cl_float) alpha );
-  kernelApplyZAbsFilter = createKernel(oclProgram, "applyZAbsFilter");
-  setArg(kernelApplyZAbsFilter, 0, mid);
 
   kernelApplyPhsFilter = createKernel(oclProgram, "applyPhsFilter");
   setArg(kernelApplyPhsFilter, 0, mid);
-  setArg(kernelApplyPhsFilter, 1, (cl_int) ish[1]);
-  setArg(kernelApplyPhsFilter, 2, (cl_int) ish[0]);
+  setArg(kernelApplyPhsFilter, 1, (cl_int) sh[1]);
+  setArg(kernelApplyPhsFilter, 2, (cl_int) sh[0]);
   setArg(kernelApplyPhsFilter, 3, (cl_float) alpha );
   setArg(kernelApplyPhsFilter, 4, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist) ) ) ;
-  kernelApplyZPhsFilter = createKernel(oclProgram, "applyZPhsFilter");
-  setArg(kernelApplyZPhsFilter, 0, mid);
-  setArg(kernelApplyZPhsFilter, 1, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist*alpha) ) ) ;
-
-
-/*
-  phsFilter = clAllocArray<float>(isz);
-  absFilter = clAllocArray<float>(isz);
-  cl_kernel kernelFilters = createKernel(oclProgram, "filters");
-  setArg(kernelFilters, 0, absFilter);
-  setArg(kernelFilters, 1, phsFilter);
-  setArg(kernelFilters, 2, (cl_int) ish[1]);
-  setArg(kernelFilters, 3, (cl_int) ish[0]);
-  setArg(kernelFilters, 4, (cl_float) alpha );
-  setArg(kernelFilters, 5, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist) ) ) ;
-  execKernel(kernelFilters, isz);
-  kernelApplyFilter = createKernel(oclProgram, "applyFilter");
-  setArg(kernelApplyFilter, 1, mid);
-*/
 
   clfftSetupData fftSetup;
   if ( CL_SUCCESS != clfftInitSetupData(&fftSetup) ||
        CL_SUCCESS != clfftSetup(&fftSetup) )
     throw_error(modname,  "Failed to initialize clFFT.");
 
-  size_t isht[2] = {ish(0),ish(1)};
+  const size_t isht[2] = {sh(0),sh(1)};
   if ( CL_SUCCESS != clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, isht ) ||
        // CL_SUCCESS != clfftSetPlanPrecision(clfft_plan, CLFFT_SINGLE) ||
        // CL_SUCCESS != clfftSetLayout(clfft_plan, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED) ||
@@ -156,32 +116,31 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   #else // OPENCL_FOUND
 
 
-  mid.resize(ish);
-  phsFilter.resize(ish);
-  absFilter.resize(ish);
+  mid.resize(sh);
+  phsFilter.resize(sh);
+  absFilter.resize(sh);
 
   fftwf_complex* midd = (fftwf_complex*) (void*) mid.data(); // Bad trick!
-  fft_f = fftwf_plan_dft_2d ( ish(0), ish(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  fft_b = fftwf_plan_dft_2d ( ish(0), ish(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  fft_f = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  fft_b = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
 
   // prepare the filters
-  for (blitz::MyIndexType i = 0; i < ish(0); i++)
-    for (blitz::MyIndexType j = 0; j < ish(1); j++) {
+  for (long i = 0; i < sh(0); i++)
+    for (long j = 0; j < sh(1); j++) {
       float ei, ej;
-      ei = i/float(ish(0));
-      ej = j/float(ish(1));
+      ei = i/float(sh(0));
+      ej = j/float(sh(1));
       if (ei>0.5) ei = 1.0 - ei;
       if (ej>0.5) ej = 1.0 - ej;
       absFilter(i,j) = ei*ei + ej*ej;
     }
-
   if (alpha == 0.0) // to avoid 0-division
-    absFilter(0, 0) = 1.0;
+    absFilter(0l, 0l) = 1.0;
   phsFilter = 1.0/(absFilter+alpha);
   absFilter *= phsFilter;
   phsFilter *= dd * dd / (4.0*M_PI*M_PI*dist);
   if (alpha == 0.0)
-    phsFilter(0, 0) = 0.0;
+    phsFilter(0l, 0l) = 0.0;
 
 
   #endif // OPENCL_FOUND
@@ -192,11 +151,6 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
 IPCprocess::~IPCprocess() {
     #ifdef OPENCL_FOUND
     clReleaseMemObject(mid);
-    clReleaseMemObject(clio);
-    /*
-    clReleaseMemObject(absFilter);
-    clReleaseMemObject(phsFilter);
-    */
     if ( CL_SUCCESS !=  clfftDestroyPlan( &clfft_plan ) )
       throw_error(modname, "Failed to destroy clFFT plans.");  
     clfftTeardown( );
@@ -230,45 +184,36 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
 
-  const int isz = ish[0]*ish[1];
+  const int isz = sh[0]*sh[1];
 
 
   #ifdef OPENCL_FOUND
 
+  Map io;
+  if ( out.isStorageContiguous()  &&  out.stride() == Shape(sh(0),1) )
+    io.reference(out);
+  else {
+    io.resize(sh);
+  }
+  io = 1-in;
 
-  execKernel(kernelReset, isz);
-
-  Map io(sh);
-  io = in;
-
-  blitz2cl(io, clio);
-  setArg(kernelIO, 0, (cl_int) 1);
-  execKernel(kernelIO, sh[0]*sh[1]);
-
+  blitz2cl(io, mid);
   clfftExec(CLFFT_FORWARD);
   execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, isz);
-  /*
-  setArg(kernelApplyFilter, 0, comp == PHS ? phsFilter : absFilter);
-  execKernel(kernelApplyFilter, isz);
-  */
-
   clfftExec(CLFFT_BACKWARD);
-
-  setArg(kernelIO, 0, (cl_int) 0);
-  execKernel(kernelIO, sh[0]*sh[1]);
-  cl2blitz(io, clio);
-  out = io;
+  cl2blitz(io, mid);
+  if (out.data() != io.data())
+    out = io;
 
 
   #else // OPENCL_FOUND
 
 
-  mid = 0.0;
-  mid(r0, r1) = 1.0 - in;
+  mid = 1.0 - in;
   fftwf_execute(fft_f);
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
-  out = real(mid(r0,r1))/isz;
+  out = real(mid)/isz;
 
 
   #endif // OPENCL_FOUND

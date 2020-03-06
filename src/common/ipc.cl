@@ -45,24 +45,18 @@ kernel void applyPhsFilter (
   global float*            mid,
   int                      xx,
   int                      yy,
-  float                    alpha )
+  float                    alpha,
+  float                    aConst )
 {
   const int index = get_global_id(0);
   const int j = index / xx;
   const int i = index % xx;
 
-  float filter;
-  if (index) {
-    float ei, ej;
-    ei = i / (float) xx;
-    ej = j / (float) yy;
-    if (ei>0.5) ei = 1.0 - ei;
-    if (ej>0.5) ej = 1.0 - ej;
-    float calc = ei*ei + ej*ej;
-    filter = 1 / (calc+alpha) ;
-  } else {
-    filter = (alpha == 0.0) ? 0.0 : 1 / alpha;
-  } 
+  float ei = i / (float) xx;
+  float ej = j / (float) yy;
+  if (ei>0.5) ei = 1.0 - ei;
+  if (ej>0.5) ej = 1.0 - ej;
+  const float filter = index ? aConst / (ei*ei + ej*ej + alpha) : ( alpha == 0.0 ? 0.0 : aConst / alpha );
 
   mid[2*index] *= filter;
   mid[2*index+1] *= filter;
@@ -78,18 +72,26 @@ kernel void applyAbsFilter (
   const int index = get_global_id(0);
   const int j = index / xx;
   const int i = index % xx;
-
-  float ei, ej;
-  ei = i / (float) xx;
-  ej = j / (float) yy;
+  
+  float ei = i / (float) xx;
+  float ej = j / (float) yy;
   if (ei>0.5) ei = 1.0 - ei;
   if (ej>0.5) ej = 1.0 - ej;
-  float calc = ei*ei + ej*ej;
-  const float filter = index ? calc / (calc+alpha) : 0.0 ;
+  const float filter = index ? 1 / (1 + alpha / (ei*ei + ej*ej) ) : 0.0 ;
 
   mid[2*index] *= filter;
   mid[2*index+1] *= filter;
   
+}
+
+kernel void applyZAbsFilter (global float* mid) {
+  mid[0] = 0;
+  mid[1] = 0;  
+}
+
+kernel void applyZPhsFilter (global float* mid, float zConst) {
+  mid[0] *= zConst;
+  mid[1] *= zConst;
 }
 
 

@@ -126,6 +126,7 @@ private:
   Shape sh;                     ///< Shape of the input contrasts.
   Shape ish;                    ///< Shape of the zero-padded contrasts.
 
+  // zerro-padding makes almost no difference (of order 1e-5...-9)
   static const int zPad=3;      ///< Level of the zero-padding (ish=zPad*sh).
   blitz::Range r0;              ///< Y-Ranges of the original contrast in the zero-padded data.
   blitz::Range r1;              ///< X-Ranges of the original contrast in the zero-padded data.
@@ -141,12 +142,15 @@ private:
   cl_kernel kernelIO;
   cl_kernel kernelApplyAbsFilter;
   cl_kernel kernelApplyPhsFilter; 
+  cl_kernel kernelApplyZAbsFilter;
+  cl_kernel kernelApplyZPhsFilter; 
+
   /*
   cl_mem phsFilter;             ///< FFT filter used for the extraction of the PHS component.
   cl_mem absFilter;             ///< FFT filter used for the extraction of the ABS component.
   cl_kernel kernelApplyFilter;
   */
- 
+
   clfftPlanHandle clfft_plan;
   cl_int clfftExec(clfftDirection dir) const;
 
@@ -182,10 +186,11 @@ public:
   ///           absorption correction (I/I_0) do it in prior.
   /// @param out Resulting array.
   /// @param comp Component to be extracted.
-  /// @param dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
+  /// @param param ABS: dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
+  ///              PHS: alpha * lambda. 
   ///
   /// @note the arrays ::in and ::out must not be the same.
-  void extract(const Map & in, Map & out, Component comp, float dgamma=1.0) const ;
+  void extract(const Map & in, Map & out, Component comp, const float param) const ;
 
   /// Desired shape of the input arrays.
   ///

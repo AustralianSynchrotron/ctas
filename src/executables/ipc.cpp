@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
   }
 
   if( ! args.phs_name.empty() ) { // MBA
-    proc.extract(id, out, IPCprocess::PHS);
+    proc.extract(id, out, IPCprocess::PHS, args.alpha == 0.0 ? 0.0 : args.lambda / args.alpha );
     SaveImage(args.phs_name, out, args.SaveInt);
   }
   if( ! args.abs_name.empty() ) { // BAC

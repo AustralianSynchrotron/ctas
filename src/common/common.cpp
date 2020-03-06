@@ -50,15 +50,13 @@ using namespace std;
 const clock_t startTV = clock();
 clock_t prevTV = startTV;
 
-int prdn( int a ) {
+void prdn( const string & str ) {
   clock_t nowTV = clock();
   double start_elapsed = double( nowTV - startTV ) / CLOCKS_PER_SEC;
   double prev_elapsed = double( nowTV - prevTV ) / CLOCKS_PER_SEC;
-  printf("DONE %i:  %f  %f\n", a, prev_elapsed, start_elapsed);
+  printf("DONE %s:  %f  %f\n", str.c_str(), prev_elapsed, start_elapsed);
   fflush(stdout);
   prevTV=nowTV;
-  return 0;
-
 }
 
 
@@ -993,7 +991,6 @@ cl_program initProgram(const char csrc[], size_t length, const string & modname)
     if (buildOptions)
       err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
                                 len, buildOptions, 0);
-    prdn(1);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build options: " + toString(err) );
     else

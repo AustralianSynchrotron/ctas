@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
       Path outPath;
 
       if( ! args.phs_name.empty() ) { // MBA
-        proc.extract(in, out, IPCprocess::PHS);
+        proc.extract(in, out, IPCprocess::PHS, args.alpha == 0.0 ? 0.0 : args.lambda / args.alpha);
         outPath = upgrade(args.zD_name[i], args.phs_name);
         SaveImage(outPath, out, args.SaveInt);
       }

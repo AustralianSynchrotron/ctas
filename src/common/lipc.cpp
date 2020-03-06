@@ -110,12 +110,19 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   setArg(kernelApplyAbsFilter, 1, (cl_int) ish[1]);
   setArg(kernelApplyAbsFilter, 2, (cl_int) ish[0]);
   setArg(kernelApplyAbsFilter, 3, (cl_float) alpha );
+  kernelApplyZAbsFilter = createKernel(oclProgram, "applyZAbsFilter");
+  setArg(kernelApplyZAbsFilter, 0, mid);
 
   kernelApplyPhsFilter = createKernel(oclProgram, "applyPhsFilter");
   setArg(kernelApplyPhsFilter, 0, mid);
   setArg(kernelApplyPhsFilter, 1, (cl_int) ish[1]);
   setArg(kernelApplyPhsFilter, 2, (cl_int) ish[0]);
   setArg(kernelApplyPhsFilter, 3, (cl_float) alpha );
+  setArg(kernelApplyPhsFilter, 4, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist) ) ) ;
+  kernelApplyZPhsFilter = createKernel(oclProgram, "applyZPhsFilter");
+  setArg(kernelApplyZPhsFilter, 0, mid);
+  setArg(kernelApplyZPhsFilter, 1, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist*alpha) ) ) ;
+
 
 /*
   phsFilter = clAllocArray<float>(isz);
@@ -169,12 +176,12 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
     }
 
   if (alpha == 0.0) // to avoid 0-division
-    absFilter( (blitz::MyIndexType) 0, (blitz::MyIndexType) 0) = 1.0;
+    absFilter(0, 0) = 1.0;
   phsFilter = 1.0/(absFilter+alpha);
   absFilter *= phsFilter;
   phsFilter *= dd * dd / (4.0*M_PI*M_PI*dist);
   if (alpha == 0.0)
-    phsFilter( (blitz::MyIndexType) 0, (blitz::MyIndexType) 0) = 0.0;
+    phsFilter(0, 0) = 0.0;
 
 
   #endif // OPENCL_FOUND
@@ -215,7 +222,7 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
 
 
 void
-IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) const {
+IPCprocess::extract(const Map & in, Map & out, Component comp, const float param) const {
 
   if ( sh != out.shape() )
     out.resize(sh);
@@ -239,17 +246,17 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) con
   execKernel(kernelIO, sh[0]*sh[1]);
 
   clfftExec(CLFFT_FORWARD);
-  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, isz);  
+  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, isz);
   /*
   setArg(kernelApplyFilter, 0, comp == PHS ? phsFilter : absFilter);
   execKernel(kernelApplyFilter, isz);
   */
+
   clfftExec(CLFFT_BACKWARD);
 
   setArg(kernelIO, 0, (cl_int) 0);
   execKernel(kernelIO, sh[0]*sh[1]);
   cl2blitz(io, clio);
-
   out = io;
 
 
@@ -267,12 +274,12 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, float dgamma) con
   #endif // OPENCL_FOUND
 
 
-  float bmean = mean(out(blitz::Range::all(), 0)) + mean(out(blitz::Range::all(), sh(1)-1))
-              + mean(out(0, blitz::Range::all())) + mean(out(sh(0)-1, blitz::Range::all()));
+  const float bmean = mean(out(blitz::Range::all(), 0)) + mean(out(blitz::Range::all(), sh(1)-1))
+                    + mean(out(0, blitz::Range::all())) + mean(out(sh(0)-1, blitz::Range::all()));
   out -= bmean/4.0;
-  if (comp == ABS)
-    out = in/(1 - dgamma*out);
-
+  if (comp == ABS) out = in / (1 - param*out);
+  //else              out += param / (4*M_PI); 
+    
 }
 
 

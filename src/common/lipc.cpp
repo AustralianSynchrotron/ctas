@@ -105,12 +105,13 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
     throw_error(modname,  "Failed to initialize clFFT.");
 
   const size_t isht[2] = {sh(0),sh(1)};
-  if ( CL_SUCCESS != clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, isht ) ||
+  cl_int err;
+  if ( CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, isht)) ||
        // CL_SUCCESS != clfftSetPlanPrecision(clfft_plan, CLFFT_SINGLE) ||
        // CL_SUCCESS != clfftSetLayout(clfft_plan, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED) ||
        // CL_SUCCESS != clfftSetResultLocation(clfft_plan, CLFFT_INPLACE) ||
-       CL_SUCCESS != clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL) )
-    throw_error(modname, "Failed to create clFFT plans.");
+       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) )
+    throw_error(modname, "Failed to create clFFT plans: " + toString(err) );
 
 
   #else // OPENCL_FOUND

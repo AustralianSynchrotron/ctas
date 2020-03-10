@@ -233,7 +233,7 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   out -= bmean/4.0;
   if (comp == ABS)   out = in / (1 - param*out);
   else if (param>0)  out *= param; 
-  else               out = 1 / (1 + param*out);
+  else               out = exp(param*out);
 
 }
 

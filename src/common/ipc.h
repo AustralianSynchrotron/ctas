@@ -124,13 +124,14 @@ private:
   static const std::string modname;	///< Module name.
 
   Shape sh;                     ///< Shape of the input contrasts.
+  mutable CMap mid;             ///< Internally used array for the zero-padded data.
 
   #ifdef OPENCL_FOUND
 
   static const char oclSource[]; ///< OpenCl source
   static const cl_program oclProgram; 
   
-  mutable cl_mem mid;                 ///< Internally used array for the zero-padded data.
+  mutable cl_mem clmid;                 ///< Internally used array for the zero-padded data.
   cl_kernel kernelApplyAbsFilter;
   cl_kernel kernelApplyPhsFilter; 
   clfftPlanHandle clfft_plan;
@@ -138,7 +139,6 @@ private:
 
   #else // OPENCL_FOUND
 
-  mutable CMap mid;             ///< Internally used array for the zero-padded data.
   Map phsFilter;                ///< FFT filter used for the extraction of the PHS component.
   Map absFilter;                ///< FFT filter used for the extraction of the ABS component.
   fftwf_plan fft_f;             ///< Forward 2D FFT plan.
@@ -151,11 +151,10 @@ public:
   /// Constructor.
   ///
   /// @param _sh Shape of the input contrasts.
-  /// @param alpha \f$\alpha\f$ parameter of the MBA. Theoretically of the (\f$\beta/\delta\f$) order.
-  /// @param dist Object-to-detector distance.
-  /// @param dd Pixel size.
-  /// @param lambda Wavelength (needed only if \f$\alpha\f$!=0).
-  IPCprocess(const Shape & _sh, float alpha, float dist, float dd=1.0, float lambda=1.0);
+  /// @param d2b Ratio of the (\f$\delta/\beta\f$). Must be supplied multiplied by
+  ///            M_PI * dist * lambda / dd^2
+             
+  IPCprocess(const Shape & _sh, float d2b);
 
   /// Destructor.
   ~IPCprocess();
@@ -169,10 +168,10 @@ public:
   /// @param out Resulting array.
   /// @param comp Component to be extracted.
   /// @param param ABS: dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
-  ///              PHS: alpha * lambda. 
+  ///              PHS: multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ). 
   ///
   /// @note the arrays ::in and ::out must not be the same.
-  void extract(const Map & in, Map & out, Component comp, const float param) const ;
+  void extract(const Map & in, Map & out, Component comp, const float param=1.0) const ;
 
   /// Desired shape of the input arrays.
   ///

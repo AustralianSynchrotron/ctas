@@ -44,13 +44,13 @@ clargs(int argc, char *argv[]) :
 	.add(poptmx::NOTE, "ARGUMENTS:")
 	.add(poptmx::ARGUMENT, &outIm, "out", "output", "output image")
     .add(poptmx::NOTE, "OPTIONS:")
-	.add(poptmx::OPTION, &lambda, 'l', "lambda", "Wavelength (A)", "", toString(lambda))
+	.add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength (A)", "", toString(lambda))
 	.add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)", "")
-	.add(poptmx::OPTION, &dd, 'p', "pixel", "Pixel size (micron)", "", toString(dd))
+	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size (micron)", "", toString(dd))
 	.add(poptmx::OPTION, &theta, 't', "theta", "Rotation angle (radian)", "", toString(theta))
 	.add(poptmx::OPTION, &x, 'x', "xsize", "X size (pixels)", "", "ysize")
     .add(poptmx::OPTION, &y, 'y', "ysize", "Y size (pixels)", "", "xsize")
-	.add(poptmx::OPTION, &bd, 'k', "bd", "beta/delta ratio", "", toString(bd))
+	.add(poptmx::OPTION, &bd, 'd', "d2b", "delta/beta ratio", "", toString(bd))
 	.add(poptmx::OPTION, &SaveInt,'i', "int",
       "Output image(s) as integer.", IntOptionDesc)
 	.add_standard_options(&beverbose);

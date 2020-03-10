@@ -46,7 +46,7 @@ struct clargs {
   Path z0_list;				///< File with the list of minus input contrasts.
   Path zD_list;				///< File with the list of plus input contrasts.
   float dd;
-  float alpha;
+  float d2b;
   float dist;
   float dgamma;
   float lambda;
@@ -65,7 +65,7 @@ clargs(int argc, char *argv[]) :
   contrast(IPCprocess::PHS),
   z0_list(""),
   dd(1.0),
-  alpha(0.0),
+  d2b(0.0),
   dgamma(1.0),
   lambda(1.0),
   outmask("sino-<input list>-@.tif"),
@@ -95,16 +95,16 @@ clargs(int argc, char *argv[]) :
 		 "Output result mask.", MaskDesc, outmask)
 	.add(poptmx::OPTION, &contrast, 'C', "contrast",
 		 "Type of the contrast component.",
-		 "The component of the contrast to extract via the (E)DEI method"
+		 "The component of the contrast to extract via the IPC method"
 		 " and then reconstruct. " + IPCprocess::componentDesc, toString(contrast))
 	.add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
          "More correctly the distance from the contact print plane and the detector plane where the image"
          " given by the argument " + table.desc(&zD_list) + " was taken. " + NeedForQuant)
 	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
          NeedForQuant, toString(dd))
-	.add(poptmx::OPTION, &alpha, 'l', "alpha", "The alpha-parameter of the MBA.", "", toString(alpha))
+	.add(poptmx::OPTION, &d2b, 'd', "d2b", "delta/beta ratio.", "", toString(d2b))
     .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
-         "Only needed together with " + table.desc(&alpha) + ".", toString(lambda))
+         "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
 	.add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
          "Must be a value around 1.0 (theoretical).", toString(dgamma))
 	.add(poptmx::OPTION, &slicedesc, 's', "slice",
@@ -151,16 +151,16 @@ clargs(int argc, char *argv[]) :
 
   if (lambda <= 0.0)
 	exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
-  if ( table.count(&lambda) && ! table.count(&alpha) )
+  if ( table.count(&lambda) && ! table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
-         " with the alpha parameter (given by "+table.desc(&alpha)+").");
-  if ( ! table.count(&lambda) && table.count(&alpha) )
+         " with the alpha parameter (given by "+table.desc(&d2b)+").");
+  if ( ! table.count(&lambda) && table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
-         " the alpha parameter (given by "+table.desc(&alpha)+") for the correct results.");
+         " the alpha parameter (given by "+table.desc(&d2b)+") for the correct results.");
   lambda /= 1.0E10; // convert A -> m
 
-  if (alpha < 0.0)
-	exit_on_error(command, "Negative alpha parameter (given by "+table.desc(&alpha)+").");
+  if (d2b < 0.0)
+	exit_on_error(command, "Negative alpha parameter (given by "+table.desc(&d2b)+").");
 
 
 
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv);
   const AqSeries listD(args.zD_list);
   const AqSeries list0(args.z0_list);
-  IPCprocess proc(listD.shape(), args.alpha, args.dist, args.dd, args.lambda);
+  IPCprocess proc(listD.shape(), M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ) );
   IPCexp expr(listD, list0, proc, args.contrast);
   expr.gamma(args.dgamma);
 

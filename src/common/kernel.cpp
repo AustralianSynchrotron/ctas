@@ -285,7 +285,7 @@ const string FilterOptionDesc=
   "    KAISER\n"
   "    GAUSS\n"
   "Optional float value is required only if the filter is KAISER or GAUSS"
-  " and represents the \\alpha parameter of the KAISER filter or \\sigma"
+  " and represents the \\d2b parameter of the KAISER filter or \\sigma"
   " parameter of the GAUSS filter. Description of the filtering functions"
   " and their graphs can be found in the html documentation.";
 

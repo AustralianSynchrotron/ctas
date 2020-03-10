@@ -12,20 +12,9 @@
 #define _USE_MATH_DEFINES // for M_PI
 
 #include "ipc.h"
+#include <vector>
 #include <unistd.h>
-
-
-long process_size_in_pages(void)
-{
-  long s = -1;
-  FILE *f = fopen("/proc/self/statm", "r");
-  if (!f) return -1;
-  // if for any reason the fscanf fails, s is still -1,
-  //      with errno appropriately set.
-  fscanf(f, "%ld", &s);
-  fclose (f);
-  return s * ( getpagesize() / 1024.0 / 1024.0 );
-}
+#include <utility>
 
 using namespace std;
 
@@ -51,6 +40,7 @@ const string IPCprocess::componentDesc =
   "A, ABS, ABSORPTION - for the absorption contrast\n"
   "P, PHS, PHASE      - for the phase contrast";
 
+
 #ifdef OPENCL_FOUND
 
 const char IPCprocess::oclSource[] = {
@@ -60,58 +50,87 @@ const char IPCprocess::oclSource[] = {
 const cl_program IPCprocess::oclProgram =
   initProgram( IPCprocess::oclSource, sizeof(IPCprocess::oclSource), "IPC on OCL" );
 
+static int ipow(int base, int exp) {
+  int result = 1;
+  for (;;)  {
+    if (exp & 1)
+      result *= base;
+    exp >>= 1;
+    if (!exp)
+      break;
+    base *= base;
+  }
+  return result;
+}
+
+static vector<int> factor(int n, const vector<int> & primes) {
+  vector<int> f(primes.size(), 0);
+  for (int i = 0; i < primes.size(); ++i) {
+    while (0< n && !(n % primes[i])) {
+      n /= primes[i];
+      ++f[i]; } }
+  // append the "remainder"
+  f.push_back(n);
+  return f;
+}
+
+static int closest_factorable(int n, const vector<int> & primes) {
+  int d = 0;
+  vector<int> r;
+  while (true) {
+    r = factor(n + d, primes);
+    if (r[r.size() - 1] == 1) { break; }
+    ++d;
+  }
+  r.pop_back();
+  int fnl = 1;
+  for (int cprm=0 ; cprm<primes.size() ; cprm++)
+    fnl *= ipow(primes[cprm],r[cprm]);
+  return fnl; 
+}
+
 #endif // OPENCL_FOUND
 
 
-IPCprocess::IPCprocess( const Shape & _sh, float alpha,
-                        float dist, float dd, float lambda) :
+IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   sh(_sh)
 {
 
   if (sh(0) < 3 || sh(1) < 3)
     throw_error(modname, "Insufficient size requested: (" + toString(sh) + ")."
                 " Must be at least (" + toString(Shape(3,3)) + ").");
-  if (dist <= 0.0)
-    throw_error(modname, "Distance from object is less or equal to 0." );
-  if (dd <= 0.0)
-    throw_error(modname, "Pixel size is less or equal to 0." );
-  if (lambda <= 0.0)
-    throw_error(modname, "Wavelength is less or equal to 0." );
-  if (alpha < 0.0)
-    throw_error(modname, "Alpha parameter of the MBA is less than 0." );
+  if (d2b < 0.0)
+    throw_error(modname, "Delata to Beta ratio is less than 0." );
+  if (d2b == 0.0) // trivial case handled in extract via picking mid.size() == 0
+    return;
 
-  const int isz = sh[0]*sh[1];
-  alpha *= dd*dd/(M_PI*dist*lambda);
 
   #ifdef OPENCL_FOUND
 
-  mid = clAllocArray<float>(2*isz);
+
+  const size_t msh[2] = {closest_factorable(sh(1), {2,3,5,7}), closest_factorable(sh(0), {2,3,5,7})};
+  mid.resize(msh[1], msh[0]);
+
+  clmid = clAllocArray<float>(2*mid.size());
   kernelApplyAbsFilter = createKernel(oclProgram, "applyAbsFilter");
-  setArg(kernelApplyAbsFilter, 0, mid);
-  setArg(kernelApplyAbsFilter, 1, (cl_int) sh[1]);
-  setArg(kernelApplyAbsFilter, 2, (cl_int) sh[0]);
-  setArg(kernelApplyAbsFilter, 3, (cl_float) alpha );
+  setArg(kernelApplyAbsFilter, 0, clmid);
+  setArg(kernelApplyAbsFilter, 1, (cl_int) msh[0]);
+  setArg(kernelApplyAbsFilter, 2, (cl_int) msh[1]);
+  setArg(kernelApplyAbsFilter, 3, (cl_float) d2b );
 
   kernelApplyPhsFilter = createKernel(oclProgram, "applyPhsFilter");
-  setArg(kernelApplyPhsFilter, 0, mid);
-  setArg(kernelApplyPhsFilter, 1, (cl_int) sh[1]);
-  setArg(kernelApplyPhsFilter, 2, (cl_int) sh[0]);
-  setArg(kernelApplyPhsFilter, 3, (cl_float) alpha );
-  setArg(kernelApplyPhsFilter, 4, (cl_float) ( dd * dd / (4.0*M_PI*M_PI*dist) ) ) ;
+  setArg(kernelApplyPhsFilter, 0, clmid);
+  setArg(kernelApplyPhsFilter, 1, (cl_int) msh[0]);
+  setArg(kernelApplyPhsFilter, 2, (cl_int) msh[1]);
+  setArg(kernelApplyPhsFilter, 3, (cl_float) d2b );
 
+  cl_int err; 
   clfftSetupData fftSetup;
-  if ( CL_SUCCESS != clfftInitSetupData(&fftSetup) ||
-       CL_SUCCESS != clfftSetup(&fftSetup) )
-    throw_error(modname,  "Failed to initialize clFFT.");
-
-  const size_t isht[2] = {sh(0),sh(1)};
-  cl_int err;
-  if ( CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, isht)) ||
-       // CL_SUCCESS != clfftSetPlanPrecision(clfft_plan, CLFFT_SINGLE) ||
-       // CL_SUCCESS != clfftSetLayout(clfft_plan, CLFFT_COMPLEX_INTERLEAVED, CLFFT_COMPLEX_INTERLEAVED) ||
-       // CL_SUCCESS != clfftSetResultLocation(clfft_plan, CLFFT_INPLACE) ||
+  if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
+       CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
+       CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, msh)) ||
        CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) )
-    throw_error(modname, "Failed to create clFFT plans: " + toString(err) );
+    throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
 
 
   #else // OPENCL_FOUND
@@ -122,8 +141,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
   absFilter.resize(sh);
 
   fftwf_complex* midd = (fftwf_complex*) (void*) mid.data(); // Bad trick!
-  fft_f = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  fft_b = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  fft_f = fftwf_plan_dft_2d ( sh(1), sh(0), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  fft_b = fftwf_plan_dft_2d ( sh(1), sh(0), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
 
   // prepare the filters
   for (long i = 0; i < sh(0); i++)
@@ -135,14 +154,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
       if (ej>0.5) ej = 1.0 - ej;
       absFilter(i,j) = ei*ei + ej*ej;
     }
-  if (alpha == 0.0) // to avoid 0-division
-    absFilter(0l, 0l) = 1.0;
-  phsFilter = 1.0/(absFilter+alpha);
+  phsFilter = d2b/(d2b*absFilter+1);
   absFilter *= phsFilter;
-  phsFilter *= dd * dd / (4.0*M_PI*M_PI*dist);
-  if (alpha == 0.0)
-    phsFilter(0l, 0l) = 0.0;
-
 
   #endif // OPENCL_FOUND
 
@@ -151,7 +164,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float alpha,
 
 IPCprocess::~IPCprocess() {
     #ifdef OPENCL_FOUND
-    clReleaseMemObject(mid);
+    clReleaseMemObject(clmid);
     if ( CL_SUCCESS !=  clfftDestroyPlan( &clfft_plan ) )
       throw_error(modname, "Failed to destroy clFFT plans.");  
     clfftTeardown( );
@@ -165,7 +178,7 @@ IPCprocess::~IPCprocess() {
 #ifdef OPENCL_FOUND
 cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   cl_int err;
-  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &mid, NULL, NULL);
+  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid, NULL, NULL);
   if ( CL_SUCCESS != err )
     throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");  
   err = clFinish(CL_queue);
@@ -179,42 +192,37 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
 void
 IPCprocess::extract(const Map & in, Map & out, Component comp, const float param) const {
 
-  if ( sh != out.shape() )
-    out.resize(sh);
   if ( in.shape() != sh )
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
-
-  const int isz = sh[0]*sh[1];
-
+  if ( sh != out.shape() )
+    out.resize(sh);
+  if (!mid.size()) { // d2b was 0.0
+    if ( comp == PHS ) 
+      out = 0.0;
+    else
+      out = in;
+    return;
+  }
+    
+  mid = 1.0;
+  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
 
   #ifdef OPENCL_FOUND
 
-  Map io;
-  if ( out.isStorageContiguous()  &&  out.stride() == Shape(sh(0),1) )
-    io.reference(out);
-  else {
-    io.resize(sh);
-  }
-  io = 1-in;
-
-  blitz2cl(io, mid);
+  blitz2cl(mid, clmid);
   clfftExec(CLFFT_FORWARD);
-  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, isz);
+  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, mid.size());
   clfftExec(CLFFT_BACKWARD);
-  cl2blitz(mid, io);
-  if (out.data() != io.data())
-    out = io;
-
+  cl2blitz(clmid, mid);
+  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));  
 
   #else // OPENCL_FOUND
 
-
-  mid = 1.0 - in;
   fftwf_execute(fft_f);
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
-  out = real(mid)/isz;
+  out = real(mid)/mid.size();
 
 
   #endif // OPENCL_FOUND
@@ -223,9 +231,10 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   const float bmean = mean(out(blitz::Range::all(), 0)) + mean(out(blitz::Range::all(), sh(1)-1))
                     + mean(out(0, blitz::Range::all())) + mean(out(sh(0)-1, blitz::Range::all()));
   out -= bmean/4.0;
-  if (comp == ABS) out = in / (1 - param*out);
-  //else              out += param / (4*M_PI); 
-    
+  if (comp == ABS)   out = in / (1 - param*out);
+  else if (param>0)  out *= param; 
+  else               out = 1 / (1 + param*out);
+
 }
 
 

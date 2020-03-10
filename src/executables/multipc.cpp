@@ -46,7 +46,7 @@ struct clargs {
   Path phs_name;                ///< Output name prefix of the phase contrast.
   Path abs_name;                ///< Output name prefix of the absorption contrast.
   float dd;                     ///< Pixel size.
-  float alpha;                  ///< \f$\alpha\f$ parameter of the MBA.
+  float d2b;                  ///< \f$\d2b\f$ parameter of the MBA.
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC method
@@ -60,7 +60,7 @@ struct clargs {
 
 clargs::clargs(int argc, char *argv[]) :
   dd(1.0),
-  alpha(0.0),
+  d2b(0.0),
   lambda(1.0),
   dgamma(1.0),
   SaveInt(false),
@@ -79,14 +79,14 @@ clargs::clargs(int argc, char *argv[]) :
   .add(poptmx::NOTE, "OPTIONS:")
   .add(poptmx::OPTION, &phs_name, 'p', "phase", "Image prefix to output the phase component", "", "<NONE>")
   .add(poptmx::OPTION, &abs_name, 'a', "absorption", "Image prefix to output the absorption component", "", "<NONE>")
-  .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
+	.add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
          "More correctly the distance from the contact print plane and the detector plane where the image"
          " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
-  .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
+	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
          NeedForQuant, toString(dd))
-  .add(poptmx::OPTION, &alpha, 'l', "alpha", "The alpha-parameter of the MBA.", "", toString(alpha))
+	.add(poptmx::OPTION, &d2b, 'd', "d2b", "delta/beta ratio.", "", toString(d2b))
     .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
-         "Only needed together with " + table.desc(&alpha) + ".", toString(lambda))
+         "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
   .add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
          "Must be a value around 1.0 (theoretical).", toString(dgamma))
   .add(poptmx::OPTION, &SaveInt,'i', "int",
@@ -126,16 +126,16 @@ clargs::clargs(int argc, char *argv[]) :
 
   if (lambda <= 0.0)
     exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
-  if ( table.count(&lambda) && ! table.count(&alpha) )
+  if ( table.count(&lambda) && ! table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
-         " with the alpha parameter (given by "+table.desc(&alpha)+").");
-  if ( ! table.count(&lambda) && table.count(&alpha) )
+         " with the alpha parameter (given by "+table.desc(&d2b)+").");
+  if ( ! table.count(&lambda) && table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
-         " the alpha parameter (given by "+table.desc(&alpha)+") for the correct results.");
+         " the alpha parameter (given by "+table.desc(&d2b)+") for the correct results.");
   lambda /= 1.0E10; // convert A -> m
 
-  if (alpha < 0.0)
-    exit_on_error(command, "Negative alpha parameter (given by "+table.desc(&alpha)+").");
+  if (d2b < 0.0)
+    exit_on_error(command, "Negative alpha parameter (given by "+table.desc(&d2b)+").");
 
 }
 
@@ -148,10 +148,10 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
 
   const Shape sh = ImageSizes(args.zD_name[0]);
-  IPCprocess proc(sh, args.alpha, args.dist, args.dd, args.lambda);
+  IPCprocess proc(sh, M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ) );
   Map in(sh), out(sh);
 
-  if( ! args.abs_name.empty() && args.alpha == 0.0 )
+  if( ! args.abs_name.empty() && args.d2b == 0.0 )
     warn (args.command, "The \\alpha parameter of the BAC is zero."
                         " Always produces (almost) flat absorption.");
 
@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
       Path outPath;
 
       if( ! args.phs_name.empty() ) { // MBA
-        proc.extract(in, out, IPCprocess::PHS, args.alpha == 0.0 ? 0.0 : args.lambda / args.alpha);
+        proc.extract(in, out, IPCprocess::PHS, args.dd * args.dd / (4.0*M_PI*M_PI * args.dist) );
         outPath = upgrade(args.zD_name[i], args.phs_name);
         SaveImage(outPath, out, args.SaveInt);
       }

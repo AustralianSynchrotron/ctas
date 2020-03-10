@@ -46,8 +46,9 @@ struct clargs {
   Path zD_name;                 ///< contrasts at the distance.
   Path phs_name;                ///< Output name of the phase contrast.
   Path abs_name;                ///< Output name of the absorption contrast.
+  float phs_norm;               ///< Variants of phs output
   float dd;                     ///< Pixel size.
-  float alpha;                  ///< \f$\alpha\f$ parameter of the MBA.
+  float d2b;                  ///< \f$\d2b\f$ parameter of the MBA.
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC method
@@ -61,9 +62,11 @@ struct clargs {
 
 clargs::clargs(int argc, char *argv[]) :
   z0_name(""),
+  phs_norm(0.0),
   dd(1.0),
-  alpha(0.0),
+  d2b(0.0),
   lambda(1.0),
+  dist(1.0),
   dgamma(1.0),
   SaveInt(false),
   beverbose(false)
@@ -81,18 +84,22 @@ clargs::clargs(int argc, char *argv[]) :
 	.add(poptmx::ARGUMENT, &z0_name, "0-intensity", "Contrast taken in the contact print plane"
          " (clean absorption contrast).", "", "<NONE>")
 
-    .add(poptmx::NOTE, "OPTIONS:")
-	.add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
-	.add(poptmx::OPTION, &abs_name, 'a', "absorption",
+  .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &abs_name, 'a', "absorption",
          "Image name to output the absorption component", "", "<NONE>")
+	.add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
+  .add(poptmx::OPTION, &phs_norm, 'P', "phaseout", "Variants of phase component output.",
+         "If 0 (default) - outputs real physical value, "
+         "if >0 - multiplied by P*z/(r/2.0*pi)^2 and "
+         "if <0 - as >0 adding 1.")
 	.add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
          "More correctly the distance from the contact print plane and the detector plane where the image"
          " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
 	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
          NeedForQuant, toString(dd))
-	.add(poptmx::OPTION, &alpha, 'l', "alpha", "The alpha-parameter of the MBA.", "", toString(alpha))
+	.add(poptmx::OPTION, &d2b, 'd', "d2b", "delta/beta ratio.", "", toString(d2b))
     .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
-         "Only needed together with " + table.desc(&alpha) + ".", toString(lambda))
+         "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
 	.add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
          "Must be a value around 1.0 (theoretical).", toString(dgamma))
 	.add(poptmx::OPTION, &SaveInt,'i', "int",
@@ -132,16 +139,16 @@ clargs::clargs(int argc, char *argv[]) :
 
   if (lambda <= 0.0)
 	exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
-  if ( table.count(&lambda) && ! table.count(&alpha) )
+  if ( table.count(&lambda) && ! table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
-         " with the alpha parameter (given by "+table.desc(&alpha)+").");
-  if ( ! table.count(&lambda) && table.count(&alpha) )
+         " with the d2b parameter (given by "+table.desc(&d2b)+").");
+  if ( ! table.count(&lambda) && table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
-         " the alpha parameter (given by "+table.desc(&alpha)+") for the correct results.");
+         " the d2b parameter (given by "+table.desc(&d2b)+") for the correct results.");
   lambda /= 1.0E10; // convert A -> m
 
-  if (alpha < 0.0)
-	exit_on_error(command, "Negative alpha parameter (given by "+table.desc(&alpha)+").");
+  if (d2b < 0.0)
+	  exit_on_error(command, "Negative d2b parameter (given by "+table.desc(&d2b)+").");
 
 }
 
@@ -157,12 +164,12 @@ int main(int argc, char *argv[]) {
   ReadImage(args.zD_name, id);
   const Shape sh=id.shape();
   Map out(sh);
-  IPCprocess proc(sh, args.alpha, args.dist, args.dd, args.lambda);
+  IPCprocess proc(sh, M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ) );
 
   if ( ! args.z0_name.empty() ) {
-    if (args.alpha != 0.0)
+    if (args.d2b != 0.0)
       warn (args.command, "Both the contrast in the contact print plane (pure absorption) and"
-            " \\alpha parameter of the MBA are given: two overlapping methods to correct the"
+            " \\d2b parameter of the MBA are given: two overlapping methods to correct the"
             " absorption.");
     Map i0;
     ReadImage(args.z0_name, i0);
@@ -170,12 +177,15 @@ int main(int argc, char *argv[]) {
   }
 
   if( ! args.phs_name.empty() ) { // MBA
-    proc.extract(id, out, IPCprocess::PHS, args.alpha == 0.0 ? 0.0 : args.lambda / args.alpha );
+    float coeff = args.dd * args.dd / (4.0*M_PI*M_PI * args.dist);\
+    if ( args.phs_norm > 0.0 )
+      coeff = 1 / args.phs_norm;
+    proc.extract(id, out, IPCprocess::PHS, coeff );
     SaveImage(args.phs_name, out, args.SaveInt);
   }
   if( ! args.abs_name.empty() ) { // BAC
-    if (args.alpha == 0.0)
-      warn (args.command, "The \\alpha parameter of the BAC is zero."
+    if (args.d2b == 0.0)
+      warn (args.command, "The \\d2b parameter of the BAC is zero."
             " Always produces (almost) flat absorption.");
     proc.extract (id, out, IPCprocess::ABS, args.dgamma);
     SaveImage (args.abs_name, out, args.SaveInt);

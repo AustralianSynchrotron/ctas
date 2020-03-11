@@ -90,8 +90,8 @@ clargs::clargs(int argc, char *argv[]) :
 	.add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
   .add(poptmx::OPTION, &phs_norm, 'P', "phaseout", "Variants of phase component output.",
          "If 0 (default) - outputs real physical value, "
-         "if >0 - the value is multiplied by 4*P*z*(pi/r)^2 and "
-         "if <0 - exponent of the value multiplied by P.")
+         "if >0 - the value is multiplied by P*4*pi/(w*d) and "
+         "if <0 - exponent of the negated value obtained as P>0.")
 	.add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
          "More correctly the distance from the contact print plane and the detector plane where the image"
          " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
@@ -177,9 +177,10 @@ int main(int argc, char *argv[]) {
   }
 
   if( ! args.phs_name.empty() ) { // MBA
-    float coeff = args.dd * args.dd / (4.0*M_PI*M_PI * args.dist);
+    float coeff = args.dd * args.dd / (4*M_PI*M_PI * args.dist); 
+    //float coeff = args.dd * args.dd / (M_PI * args.dist * args.lambda);
     if ( args.phs_norm != 0.0 )
-      coeff = 1 / args.phs_norm;
+      coeff *= 4 * M_PI * args.phs_norm / (args.lambda * args.d2b);
     proc.extract(id, out, IPCprocess::PHS, coeff );
     SaveImage(args.phs_name, out, args.SaveInt);
   }

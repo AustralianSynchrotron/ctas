@@ -17,7 +17,7 @@ kernel void applyAbsFilter (
 {
   const int index = get_global_id(0);
   const float aconst = d2b * calc(index, xx, yy);
-  const float filter = aconst / (1 + aconst );
+  const float filter = aconst / ( aconst + 1 );
   mid[2*index] *= filter;
   mid[2*index+1] *= filter;  
 }

@@ -5,6 +5,8 @@ project (ctas)
 set(VERSION 0.7.0)
 
 SET(CMAKE_MODULE_PATH ${ctas_SOURCE_DIR}/cmake)
+set(CMAKE_C_STANDARD "11")
+set(CMAKE_CXX_STANDARD "11")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math")
 set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS} ${CMAKE_CXX_FLAGS} -ffast-math")
 

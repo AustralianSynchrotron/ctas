@@ -128,13 +128,13 @@ clargs(int argc, char *argv[]) :
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  
+
   const Shape sh=ImageSizes(args.inlist[0]);
-  
+
   const SinoS sins( args.inlist, args.slicedesc, args.angle, args.crp, args.beverbose );
   if ( ! sins.indexes().size() )
     throw_error(args.command, "No sinograms requested");
-  
+
   Map bgar, bgsin;
   if ( ! args.bgs.empty() ) {
     bgar.resize(sins.imageShape());
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
     }
     bgar /= args.bgs.size();
   }
-  
+
   Map dfar, dfsin;
   if ( ! args.dfs.empty() ) {
     dfar.resize(sins.imageShape());
@@ -173,18 +173,20 @@ int main(int argc, char *argv[]) {
                         args.outmask.dtitle() + "-@" + args.outmask.extension() :
                         string( args.outmask ) ;
   const string sliceformat = mask2format(outmask, sins.imageShape()(0) );
-  
+
   ProgressBar bar(args.beverbose, "sinograms formation", sins.indexes().size());
   for (unsigned slice=0 ; slice < sins.indexes().size() ; slice++ ) {
     sins.sino(slice, sinogram);
-    if ( bgsin.size() )    
-      for (int scur=0; scur<sinogram.shape()(0); scur++) 
+    if ( bgsin.size() )
+      for (int scur=0; scur<sinogram.shape()(0); scur++)
         bgsin(scur,Range::all()) = bgar(slice, Range::all());
-    if ( dfsin.size() )    
-      for (int scur=0; scur<sinogram.shape()(0); scur++) 
+    if ( dfsin.size() )
+      for (int scur=0; scur<sinogram.shape()(0); scur++)
         dfsin(scur,Range::all()) = dfar(slice, Range::all());
     flatfield(sinogram, sinogram, bgsin, dfsin);
-    SaveImage( toString(sliceformat, sins.indexes()[slice]+1), sinogram, args.SaveInt);
+    const Path fileName = sins.indexes().size() > 1  ?  args.outmask :
+                          toString(sliceformat, sins.indexes()[slice]+1);
+    SaveImage(fileName, sinogram, args.SaveInt);
     bar.update();
   }
 

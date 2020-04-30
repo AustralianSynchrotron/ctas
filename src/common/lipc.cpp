@@ -86,7 +86,7 @@ static int closest_factorable(int n, const vector<int> & primes) {
   int fnl = 1;
   for (int cprm=0 ; cprm<primes.size() ; cprm++)
     fnl *= ipow(primes[cprm],r[cprm]);
-  return fnl; 
+  return fnl;
 }
 
 #endif // OPENCL_FOUND
@@ -124,7 +124,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   setArg(kernelApplyPhsFilter, 2, (cl_int) msh[1]);
   setArg(kernelApplyPhsFilter, 3, (cl_float) d2b );
 
-  cl_int err; 
+  cl_int err;
   clfftSetupData fftSetup;
   if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
        CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
@@ -165,8 +165,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
 IPCprocess::~IPCprocess() {
     #ifdef OPENCL_FOUND
     clReleaseMemObject(clmid);
-    if ( CL_SUCCESS !=  clfftDestroyPlan( &clfft_plan ) )
-      throw_error(modname, "Failed to destroy clFFT plans.");  
+    clfftDestroyPlan(&clfft_plan);
     clfftTeardown( );
     #else // OPENCL_FOUND
     fftwf_destroy_plan(fft_f);
@@ -180,11 +179,11 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   cl_int err;
   err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid, NULL, NULL);
   if ( CL_SUCCESS != err )
-    throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");  
+    throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");
   err = clFinish(CL_queue);
   if ( CL_SUCCESS != err )
-    throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + "."); 
-  return err; 
+    throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
+  return err;
 }
 #endif // OPENCL_FOUND
 
@@ -198,13 +197,13 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   if ( sh != out.shape() )
     out.resize(sh);
   if (!mid.size()) { // d2b was 0.0
-    if ( comp == PHS ) 
+    if ( comp == PHS )
       out = 0.0;
     else
       out = in;
     return;
   }
-    
+
   mid = 1.0;
   mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
 
@@ -215,7 +214,7 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, mid.size());
   clfftExec(CLFFT_BACKWARD);
   cl2blitz(clmid, mid);
-  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));  
+  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));
 
   #else // OPENCL_FOUND
 

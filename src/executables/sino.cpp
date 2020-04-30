@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
         dfsin(scur,Range::all()) = dfar(slice, Range::all());
     flatfield(sinogram, sinogram, bgsin, dfsin);
     const Path fileName = sins.indexes().size() > 1  ?  args.outmask :
-                          toString(sliceformat, sins.indexes()[slice]+1);
+                          Path(toString(sliceformat, sins.indexes()[slice]+1));
     SaveImage(fileName, sinogram, args.SaveInt);
     bar.update();
   }

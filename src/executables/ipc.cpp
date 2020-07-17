@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
   }
 
   if( ! args.phs_name.empty() ) { // MBA
-    float coeff = args.dd * args.dd / (4*M_PI*M_PI * args.dist); 
+    float coeff = args.dd * args.dd / (4*M_PI*M_PI * args.dist);
     //float coeff = args.dd * args.dd / (M_PI * args.dist * args.lambda);
     if ( args.phs_norm != 0.0 )
       coeff *= 4 * M_PI * args.phs_norm / (args.lambda * args.d2b);

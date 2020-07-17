@@ -347,7 +347,6 @@ Path findCommon(const vector<Path>::const_iterator bgn, const vector<Path>::cons
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-
   const Shape ish(ImageSizes(args.images[0]));
 
 
@@ -389,7 +388,7 @@ int main(int argc, char *argv[]) {
         throw_error("flatfielding",
                     "Size of the input image \"" + args.images[curproj] + "\""
                     " does not match that of flatfields.");
-      flatfield( iar, iar, bgar, dfar );
+      flatfield( iar, iar, bgar, dfar, NAN);
     }
     rotate(iar, rar, args.angle);
     crop(rar, car, args.crp);

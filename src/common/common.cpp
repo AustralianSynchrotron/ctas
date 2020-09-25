@@ -1581,19 +1581,6 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     width = storage.columns(),
     hight = storage.rows();
 
-  Magick::Image imag( Magick::Geometry(width, hight), "black" );
-  imag.classType(Magick::DirectClass);
-  imag.type( Magick::GrayscaleType );
-  imag.depth(8);
-  imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
-
-
-    // commented code suggested by IM segfaults:
-    // getPixels allocates twise as less size
-    // or sizeof(Magick::PixelPacket) is twise as large
-    // (must be a bug in some later versions of IM)
-    // I have to do the following dirty, very dirty trick.
-
   Map _storage;
   if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
     _storage.reference(storage);
@@ -1602,21 +1589,19 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     _storage = storage;
   }
 
-  const float *data = _storage.data();
+  Magick::Image imag( Magick::Geometry(width, hight), "black" );
+  imag.classType(Magick::DirectClass);
+  imag.type( Magick::GrayscaleType );
+  imag.depth(8);
+  imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
   Magick::Pixels view(imag);
   Magick::Quantum * pixels = view.get(0,0,width,hight);
   Magick::ColorGray colg;
+
+  const float *data = _storage.data();
   for ( int k = 0 ; k < hight*width ; k++ )
     *pixels++ = QuantumRange * *data++ ;
-  // segfaults above
   view.sync();
-  /**/
-
-  /* Replacement for the buggy block */
-  //for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
-  //  for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
-  //    imag.pixelColor(curw, curh, Magick::ColorGray(storage(curh,curw)));
-  /* end replacement */
 
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {

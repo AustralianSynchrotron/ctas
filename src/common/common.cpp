@@ -1087,7 +1087,7 @@ cl_int execKernel(cl_kernel kern, size_t size) {
 #  define MAGICK_STATIC_LINK
 #endif
 #define MAGICKCORE_QUANTUM_DEPTH 32
-#define MAGICKCORE_HDRI_ENABLE 0
+#define MAGICKCORE_HDRI_ENABLE 1
 #include<Magick++.h>
 
 
@@ -1104,12 +1104,12 @@ initImageIO(){
   using namespace MagickCore;
 #endif
 
-  MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
-  SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
-  SetMagickResourceLimit ( FileResource , 1024 * 1024);
-  SetMagickResourceLimit ( DiskResource , Msz);
-  SetMagickResourceLimit ( MapResource , Msz);
-  SetMagickResourceLimit ( MemoryResource , Msz);
+  //MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
+  //SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
+  //SetMagickResourceLimit ( FileResource , 1024 * 1024);
+  //SetMagickResourceLimit ( DiskResource , Msz);
+  //SetMagickResourceLimit ( MapResource , Msz);
+  //SetMagickResourceLimit ( MemoryResource , Msz);
 
   // BUG in ImageMagick If I don'd do it here the TIFFSetWarningHandler
   // is called later in the code and causes
@@ -1587,7 +1587,7 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   imag.depth(8);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
 
-  /*
+
     // commented code suggested by IM segfaults:
     // getPixels allocates twise as less size
     // or sizeof(Magick::PixelPacket) is twise as large
@@ -1603,18 +1603,19 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   }
 
   const float *data = _storage.data();
-  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
+  Magick::Pixels view(imag);
+  Magick::Quantum * pixels = view.get(0,0,width,hight);
   Magick::ColorGray colg;
   for ( int k = 0 ; k < hight*width ; k++ )
-    *_pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
+    *pixels++ = QuantumRange * *data++ ;
   // segfaults above
-  imag.syncPixels();
-  */
+  view.sync();
+  /**/
 
   /* Replacement for the buggy block */
-  for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
-    for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
-      imag.pixelColor(curw, curh, Magick::ColorGray(storage(curh,curw)));
+  //for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+  //  for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
+  //    imag.pixelColor(curw, curh, Magick::ColorGray(storage(curh,curw)));
   /* end replacement */
 
   try { imag.write(filename); }

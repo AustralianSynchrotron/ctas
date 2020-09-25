@@ -3,11 +3,11 @@ __kernel void limit_array(__global float* arr,
                           const float maximum)
 {
   int l = get_global_id(0);
-  float element = arr[l];
-  if ( element <= minimum )
+  const float element = arr[l];
+  if ( arr[l] <= minimum )
     arr[l] = 0;
-  else if ( element >= maximum )
+  else if ( arr[l] >= maximum )
     arr[l] = 1.0;
   else
-    arr[l] = ( element - minimum ) / ( maximum - minimum ) ;
+    arr[l] = ( arr[l] - minimum ) / ( maximum - minimum ) ;
 }

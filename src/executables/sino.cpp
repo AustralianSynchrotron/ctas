@@ -58,6 +58,11 @@ struct clargs {
   float angle;           ///< Angle of the sino slicing.
   Crop crp; //< Crop input projection image
   bool beverbose;       ///< Be verbose flag
+  int width;
+  float centre;
+  float amplitude;
+  float period;
+  float phase;
   bool SaveInt;         ///< Save image as 16-bit integer.
 
   /// \CLARGSF
@@ -70,8 +75,15 @@ clargs(int argc, char *argv[]) :
   angle(0.0),
   beverbose(false),
   SaveInt(false),
-  outmask("sino_@.tif")
+  outmask("sino_@.tif"),
+  width(0),
+  centre(0),
+  amplitude(0),
+  period(0),
+  phase(0)
 {
+
+  const string sino_eq("image_X = C + image_W / 2 + A * cos( pi * ( F + image_Y / T )");
 
   poptmx::OptionTable table
   ("Prepares sinogram from the stack of files.",
@@ -96,9 +108,20 @@ clargs(int argc, char *argv[]) :
        "If the rotation angle is given the slices correspond to the rotated image." +
        SliceOptionDesc, "<all>")
   .add(poptmx::OPTION, &angle, 'a', "angle",
-       "Angle of the image slicing.", "", toString(angle))
+       "Angle (deg) of the image slicing.", "", toString(angle))
   .add(poptmx::OPTION, &crp, 'c', "crop",
        CropOptionDesc, "")
+
+  .add(poptmx::OPTION, &width, 'w', "width",
+       "Width of the output sinogram", "", "<image width>")
+  .add(poptmx::OPTION, &centre, 'C', "centre",
+       "Centre of the sinogram", CenterOptionDesc + " C in " + sino_eq + ". Width may get recalculated to fit into the image.", toString(center))
+  .add(poptmx::OPTION, &width, 'A', "amplitude",
+       "Amplitude of the rotating sino", "A in " + sino_eq, toString(amplitude))
+  .add(poptmx::OPTION, &width, 'P', "period",
+       "Half period of the rotating sino", "T in " + sino_eq, "<image height>")
+  .add(poptmx::OPTION, &width, 'F', "phase",
+       "Phase (in pi) of the rotating sino", "F in " + sino_eq, toString(phase))
   .add(poptmx::OPTION, &SaveInt,'i', "int",
        "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)

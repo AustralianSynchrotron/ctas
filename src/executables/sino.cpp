@@ -115,7 +115,8 @@ clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &width, 'w', "width",
        "Width of the output sinogram", "", "<image width>")
   .add(poptmx::OPTION, &centre, 'C', "centre",
-       "Centre of the sinogram", CenterOptionDesc + " C in " + sino_eq + ". Width may get recalculated to fit into the image.", toString(center))
+      "Centre of the sinogram", DcenterOptionDesc + " C in " + sino_eq + "."
+        " Width may get recalculated to fit into the image.", toString(centre))
   .add(poptmx::OPTION, &width, 'A', "amplitude",
        "Amplitude of the rotating sino", "A in " + sino_eq, toString(amplitude))
   .add(poptmx::OPTION, &width, 'P', "period",

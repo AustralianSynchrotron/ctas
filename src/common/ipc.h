@@ -129,11 +129,12 @@ private:
   #ifdef OPENCL_FOUND
 
   static const char oclSource[]; ///< OpenCl source
-  static const cl_program oclProgram; 
-  
+  static const cl_program oclProgram;
+
   mutable cl_mem clmid;                 ///< Internally used array for the zero-padded data.
   cl_kernel kernelApplyAbsFilter;
-  cl_kernel kernelApplyPhsFilter; 
+  cl_kernel kernelApplyPhsFilter;
+  cl_kernel kernelApply00;
   clfftPlanHandle clfft_plan;
   cl_int clfftExec(clfftDirection dir) const;
 
@@ -153,7 +154,7 @@ public:
   /// @param _sh Shape of the input contrasts.
   /// @param d2b Ratio of the (\f$\delta/\beta\f$). Must be supplied multiplied by
   ///            M_PI * dist * lambda / dd^2
-             
+
   IPCprocess(const Shape & _sh, float d2b);
 
   /// Destructor.
@@ -168,7 +169,7 @@ public:
   /// @param out Resulting array.
   /// @param comp Component to be extracted.
   /// @param param ABS: dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
-  ///              PHS: multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ). 
+  ///              PHS: multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ).
   ///
   /// @note the arrays ::in and ::out must not be the same.
   void extract(const Map & in, Map & out, Component comp, const float param=1.0) const ;
@@ -211,13 +212,18 @@ toString(IPCprocess::Component comp) {
 
 
 
+const std::string
+d2bOptionDesc = "delta/beta ratio (0 for no absorption).";
+
+
+
 /// \cond
 #ifdef _H_EXPERIMENT_H_
 /// \endcond
 
 /// \ingroup experiment
 /// \brief Class which extracts IPC-processed projections from the input data.
-class IPCexp : public Experiment {
+class IPC_API IPCexp : public Experiment {
 private:
 
   static const std::string modname;  ///< Name of the module.
@@ -243,8 +249,8 @@ public:
   /// @param _comp Component to be extracted.
   ///
 
-  inline IPCexp(const AqSeries & _listD, const AqSeries & _list0,
-                const IPCprocess & _proc, IPCprocess::Component _comp)  :
+  IPCexp(const AqSeries & _listD, const AqSeries & _list0,
+                const IPCprocess & _proc, IPCprocess::Component _comp)   :
     Experiment(_listD.shape(), _listD.thetas()),
     list0(_list0),
     listD(_listD),
@@ -266,21 +272,18 @@ public:
     component(_comp);
   }
 
-  inline void projection(  int itheta, Map & proj,
+
+  void projection(  int itheta, Map & proj,
                            const std::vector<int> & sliceV,
                            float angle=0, const Crop &crp = Crop() ) const {
-
     listD.projection(itheta, prD);
-
     if (list0.size()) {
       list0.projection(itheta, pr0);
       prD /= unzero(pr0);
     }
-
     proc.extract(prD, pr0, comp, dgamma);
     rotate(pr0, prD, angle);
     crop(prD,crp);
-
     proj.resize( Shape( sliceV.size() ? sliceV.size() : sh(0) , sh(1) ) );
     if (sliceV.size()) {
       for(int icur = 0 ; icur<sliceV.size() ; icur++)
@@ -289,8 +292,8 @@ public:
     } else {
       proj = prD;
     }
-
   }
+
 
   /// Sets the component to be extracted and the corresponding contrast type.
   ///

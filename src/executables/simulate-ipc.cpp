@@ -17,7 +17,7 @@ struct clargs {
   float dist;                   ///< Object-to-detector distance.
   int x;                        ///< X-size of the image.
   int y;                        ///< Y-size of the image.
-  float bd;                     ///< The ration (\f$\beta/\delta\f$).
+  float d2b;                     ///< The ration (\f$\beta/\delta\f$).
   bool beverbose;				///< Be verbose flag
   bool SaveInt;					///< Save image as 16-bit integer.
 
@@ -33,7 +33,7 @@ clargs(int argc, char *argv[]) :
   dd(1.0),
   lambda(1.0),
   theta(0.0),
-  bd(0.0)
+  d2b(0.0)
 {
 
 
@@ -49,10 +49,9 @@ clargs(int argc, char *argv[]) :
 	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size (micron)", "", toString(dd))
 	.add(poptmx::OPTION, &theta, 't', "theta", "Rotation angle (radian)", "", toString(theta))
 	.add(poptmx::OPTION, &x, 'x', "xsize", "X size (pixels)", "", "ysize")
-    .add(poptmx::OPTION, &y, 'y', "ysize", "Y size (pixels)", "", "xsize")
-	.add(poptmx::OPTION, &bd, 'd', "d2b", "delta/beta ratio", "", toString(bd))
-	.add(poptmx::OPTION, &SaveInt,'i', "int",
-      "Output image(s) as integer.", IntOptionDesc)
+  .add(poptmx::OPTION, &y, 'y', "ysize", "Y size (pixels)", "", "xsize")
+	.add(poptmx::OPTION, &d2b, 'd', "d2b", "delta/beta ratio (0 for no absorption).", "", toString(d2b))
+	.add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
 	.add_standard_options(&beverbose);
 
   if ( ! table.parse(argc,argv) )
@@ -65,32 +64,31 @@ clargs(int argc, char *argv[]) :
 
 
   if ( ! table.count(&outIm) )
-	exit_on_error(command, "Missing required argument: "+table.desc(&outIm)+".");
+  	exit_on_error(command, "Missing required argument: "+table.desc(&outIm)+".");
 
   if ( ! table.count(&dist) )
-	exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
+  	exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
   if (dist < 0.0)
-	exit_on_error(command, "Negative distance (given by "+table.desc(&dist)+").");
+  	exit_on_error(command, "Negative distance (given by "+table.desc(&dist)+").");
   dist /= 1.0E3;
 
   if (lambda <= 0.0)
-	exit_on_error(command, "Negative wavelength (given by "+table.desc(&lambda)+").");
+  	exit_on_error(command, "Negative wavelength (given by "+table.desc(&lambda)+").");
   lambda /= 1.0E10;
 
   if (dd <= 0.0)
-	exit_on_error(command, "Negative pixel size (given by "+table.desc(&dd)+").");
+  	exit_on_error(command, "Negative pixel size (given by "+table.desc(&dd)+").");
   dd /= 1.0E6;
 
-  if (bd < 0.0)
-	exit_on_error(command, "Negative ratio beta/delta (given by "+table.desc(&bd)+").");
+  if (d2b < 0.0)
+  	exit_on_error(command, "Negative ratio beta/delta (given by "+table.desc(&d2b)+").");
 
   if (table.count(&x) && !table.count(&y))
     y=x;
   if (table.count(&y) && !table.count(&x))
     x=y;
   if ( ! (table.count(&x) + table.count(&y)) )
-	exit_on_error(command, "Missing required argument: "+table.desc(&x)+" or "
-                  +table.desc(&y)+".");
+	  exit_on_error(command, "Missing required argument: "+table.desc(&x)+" or "+table.desc(&y)+".");
 
 
 
@@ -101,19 +99,14 @@ clargs(int argc, char *argv[]) :
 
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
-
   const clargs args(argc, argv) ;
-
-  
   Shape sh(args.y, args.x);
   Map intensity(sh);
   CMap tif(sh);
-  simulateTif( tif, sh, args.bd, args.theta, args.dd, args.lambda);
+  simulateTif( tif, sh, args.d2b, args.theta, args.dd, args.lambda);
   propagate(tif, intensity, args.dd, args.lambda, args.dist);
   SaveImage(args.outIm, intensity, args.SaveInt);
-
   exit(0);
-
 }
 
 

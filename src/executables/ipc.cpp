@@ -97,8 +97,8 @@ clargs::clargs(int argc, char *argv[]) :
          " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
 	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
          NeedForQuant, toString(dd))
-	.add(poptmx::OPTION, &d2b, 'd', "d2b", "delta/beta ratio.", "", toString(d2b))
-    .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
+	.add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
+  .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
          "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
 	.add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
          "Must be a value around 1.0 (theoretical).", toString(dgamma))
@@ -179,19 +179,15 @@ int main(int argc, char *argv[]) {
   if( ! args.phs_name.empty() ) { // MBA
     float coeff = args.dd * args.dd / (4*M_PI*M_PI * args.dist);
     //float coeff = args.dd * args.dd / (M_PI * args.dist * args.lambda);
-    if ( args.phs_norm != 0.0 )
+    if ( args.phs_norm != 0.0  &&  args.d2b != 0.0 )
       coeff *= 4 * M_PI * args.phs_norm / (args.lambda * args.d2b);
     proc.extract(id, out, IPCprocess::PHS, coeff );
     SaveImage(args.phs_name, out, args.SaveInt);
   }
   if( ! args.abs_name.empty() ) { // BAC
-    if (args.d2b == 0.0)
-      warn (args.command, "The \\d2b parameter of the BAC is zero."
-            " Always produces (almost) flat absorption.");
     proc.extract (id, out, IPCprocess::ABS, args.dgamma);
     SaveImage (args.abs_name, out, args.SaveInt);
   }
-
   proc.~IPCprocess(); // why it does not happen automatically?
   exit(0);
 

@@ -101,8 +101,6 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
                 " Must be at least (" + toString(Shape(3,3)) + ").");
   if (d2b < 0.0)
     throw_error(modname, "Delata to Beta ratio is less than 0." );
-  if (d2b == 0.0) // trivial case handled in extract via picking mid.size() == 0
-    return;
 
 
   #ifdef OPENCL_FOUND
@@ -123,6 +121,9 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   setArg(kernelApplyPhsFilter, 1, (cl_int) msh[0]);
   setArg(kernelApplyPhsFilter, 2, (cl_int) msh[1]);
   setArg(kernelApplyPhsFilter, 3, (cl_float) d2b );
+
+  kernelApply00 = createKernel(oclProgram, "apply00");
+  setArg(kernelApplyPhsFilter, 0, clmid);
 
   cl_int err;
   clfftSetupData fftSetup;
@@ -154,8 +155,13 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
       if (ej>0.5) ej = 1.0 - ej;
       absFilter(i,j) = ei*ei + ej*ej;
     }
-  phsFilter = d2b/(d2b*absFilter+1);
-  absFilter *= phsFilter;
+  if ( d2b == 0.0 ) {
+    phsFilter = 1/absFilter;
+    absFilter = 0.0;
+  } else {
+    phsFilter = d2b/(d2b*absFilter+1);
+    absFilter *= phsFilter;
+  }
 
   #endif // OPENCL_FOUND
 
@@ -196,13 +202,6 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
                 " does not match the expected one (" +toString(sh)+ ")." );
   if ( sh != out.shape() )
     out.resize(sh);
-  if (!mid.size()) { // d2b was 0.0
-    if ( comp == PHS )
-      out = 0.0;
-    else
-      out = in;
-    return;
-  }
 
   mid = 1.0;
   mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
@@ -211,7 +210,9 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
 
   blitz2cl(mid, clmid);
   clfftExec(CLFFT_FORWARD);
-  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, mid.size());
+  // -1 in the next string is here to exclude 0,0 which is done in apply00
+  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, mid.size() - 1);
+  execKernel( kernelApply00, 1);
   clfftExec(CLFFT_BACKWARD);
   cl2blitz(clmid, mid);
   out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));
@@ -289,18 +290,17 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
 
 
 void
-simulateTif( CMap & tif, const Shape & sh, float bd,
+simulateTif( CMap & tif, const Shape & sh, float d2b,
              float theta, float dd, float lambda) {
 
   // Prepare spherical phantoms.
 
   Line beta(3), delta(3);
   delta = 2.9e-7, 6.0e-7, 0.9e-7;
-  beta = bd*delta;
-  //bd = 0 - no absorption
-  //bd = 0.01 - weak absorption
-  //bd = 0.1 - strong absorption
-
+  if (d2b == 0.0)
+    beta = 0.0;
+  else
+    beta = delta/d2b;
 
   //const float r[3] = {0.1, 0.04, 0.01};
   const float r[3] = {0.225, 0.1, 0.05};
@@ -330,3 +330,5 @@ simulateTif( CMap & tif, const Shape & sh, float bd,
   }
 
 }
+
+

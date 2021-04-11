@@ -111,11 +111,10 @@ clargs(int argc, char *argv[]) :
        "Angle (deg) of the image slicing.", "", toString(angle))
   .add(poptmx::OPTION, &crp, 'c', "crop",
        CropOptionDesc, "")
-
   .add(poptmx::OPTION, &width, 'w', "width",
        "Width of the output sinogram", "", "<image width>")
   .add(poptmx::OPTION, &centre, 'C', "centre",
-       "Centre of the sinogram", CenterOptionDesc + " C in " + sino_eq + ". Width may get recalculated to fit into the image.", toString(center))
+       "Centre of the sinogram (0 is the image centre)", "C in " + sino_eq + ". Width may get recalculated to fit into the image.", toString(centre))
   .add(poptmx::OPTION, &width, 'A', "amplitude",
        "Amplitude of the rotating sino", "A in " + sino_eq, toString(amplitude))
   .add(poptmx::OPTION, &width, 'P', "period",
@@ -126,7 +125,6 @@ clargs(int argc, char *argv[]) :
        "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
-
   if ( ! table.parse(argc,argv) )
     exit(0);
   if ( ! table.count() ) {

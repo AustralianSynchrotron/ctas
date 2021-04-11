@@ -606,6 +606,11 @@ operator!=( const Shape & sh1, const Shape & sh2){
 /// @{
 
 
+/// Description of the option giving the rotation center.
+extern const std::string COMMON_API
+CenterOptionDesc;
+
+
 /// Description of the -i, --int option used in many modules.
 extern const std::string COMMON_API
 IntOptionDesc;

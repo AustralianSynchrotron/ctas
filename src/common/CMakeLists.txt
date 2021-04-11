@@ -45,6 +45,8 @@ FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
 #  message(FATAL_ERROR "Install ImageMagick library with _NO_ HDRI supprt.")
 #endif()
 
+message("IMLB ${ImageMagick_LIBRARIES}")
+message("IMHD ${ImageMagick_INCLUDE_DIRS}")
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 
 FIND_PACKAGE(TIFF REQUIRED)

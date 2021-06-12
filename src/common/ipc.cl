@@ -39,3 +39,4 @@ kernel void apply00(global float* mid)
   mid[0] = 0.0;
   mid[1] = 0.0;
 }
+

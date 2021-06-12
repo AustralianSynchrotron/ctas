@@ -547,28 +547,17 @@ project_sino( const Map &sinogram, Map &result, float center, int threads ) {
 
 
 const string CTrec::modname = "reconstruction";
-
-/// The filtering is performed in the domain this times wider
-/// than the number of pixels (CTrec::_pixels). Must be >= 1.
-const float CTrec::zPad = 2.0;
-
 pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
-
 #ifdef OPENCL_FOUND
-
 cl_program CTrec::program = 0;
-
 cl_int CTrec::err = CL_SUCCESS;
-
-
 #endif // OPENCL_FOUND
-
-
 
 
 CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) :
   _width(sinoshape(1)),
   _projections(sinoshape(0)),
+  _zidth(pow(2, ceil(log2(2*_width-1)))),
   projection_counter(0),
   nextAddLineResets(true),
   _result(_width,_width),
@@ -594,8 +583,8 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
     if (_width <= 1)
       throw_error (modname, "Number of pixels in the CT reconstruction "
                    + toString(_width) + ": less or equal to 1.");
-    planF = safe_fftwf_plan_r2r_1d ((int)(_width*zPad), 0, FFTW_R2HC);
-    planB = safe_fftwf_plan_r2r_1d ((int)(_width*zPad), 0, FFTW_HC2R);
+    planF = safe_fftwf_plan_r2r_1d (_zidth, 0, FFTW_R2HC);
+    planB = safe_fftwf_plan_r2r_1d (_zidth, 0, FFTW_HC2R);
 
 
 #ifdef OPENCL_FOUND
@@ -740,9 +729,9 @@ void CTrec::prepare_sino(Map &sinogram) {
     sinogram = -log(sinogram);
   }
 
-  const int zShift = (int)(_width*(zPad-1)/2);
+  const int zShift = ( _zidth - _width ) / 2;
   const int thetas = sinogram.rows();
-  Line zsinoline(_width*zPad); // zero-padded sinoline.
+  Line zsinoline(_zidth); // zero-padded sinoline.
 
   if ( _contrast != Contrast::FLT ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
@@ -858,8 +847,8 @@ CTrec::addLine(Line &sinoline, const float Theta, const float center) {
 
   if ( _contrast != Contrast::FLT ) {
 
-    const int zShift = (int)(_width*(zPad-1)/2);
-    Line zsinoline((int)(_width*zPad)); // zero-padded sinoline.
+    const int zShift = ( _zidth - _width ) / 2;
+    Line zsinoline(_zidth); // zero-padded sinoline.
 
     zsinoline = 0;
     zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
@@ -1017,10 +1006,10 @@ CTrec::contrast(Contrast cn){
 ///
 void
 CTrec::filter(const Filter & ft) {
-  filt_window.resize((int)(_width*zPad));
+  filt_window.resize(_zidth);
   _filter = ft;
   _filter.fill(filt_window);
-  filt_window *= zPad;
+  filt_window *= _zidth / (float) _width;
   if ( _contrast == Contrast::REF )
     filt_window(0)=0.0;
 }

@@ -106,7 +106,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   #ifdef OPENCL_FOUND
 
 
-  const size_t msh[2] = {closest_factorable(sh(1), {2,3,5,7}), closest_factorable(sh(0), {2,3,5,7})};
+  const size_t msh[2] = {closest_factorable(2*sh(1)-1, {2,3,5,7}),
+                         closest_factorable(2*sh(0)-1, {2,3,5,7})};
   mid.resize(msh[1], msh[0]);
 
   clmid = clAllocArray<float>(2*mid.size());
@@ -123,7 +124,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   setArg(kernelApplyPhsFilter, 3, (cl_float) d2b );
 
   kernelApply00 = createKernel(oclProgram, "apply00");
-  setArg(kernelApplyPhsFilter, 0, clmid);
+  setArg(kernelApply00, 0, clmid);
 
   cl_int err;
   clfftSetupData fftSetup;
@@ -306,6 +307,8 @@ simulateTif( CMap & tif, const Shape & sh, float d2b,
   const float r[3] = {0.225, 0.1, 0.05};
   const float xr[3] = {0.015, 0.075, -0.1};
   const float yr[3] = {0.015, -0.05, 0.05};
+  const float zr[3] = {0.00, 0.015, 0.2};
+
 
   const int D = min(sh(0),sh(1));
 
@@ -318,7 +321,7 @@ simulateTif( CMap & tif, const Shape & sh, float d2b,
       for (blitz::MyIndexType j = 0 ; j<sh(1); j++) {
         float y = i/(float(D)-1) - 0.5*sh(0)/float(D);
         float x = j/(float(D)-1) - 0.5*sh(1)/float(D);
-        float xxr = xr[cur] * cos(theta);
+        float xxr = xr[cur] * cos(theta) + zr[cur] * sin(theta);
         float yyr = yr[cur];
         float rr  = r[cur]*r[cur];
         float hh = (x-xxr)*(x-xxr) + (y-yyr)*(y-yyr);

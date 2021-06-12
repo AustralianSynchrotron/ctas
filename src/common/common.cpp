@@ -1589,11 +1589,14 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     _storage = storage;
   }
 
-  Magick::Image imag( Magick::Geometry(width, hight), "black" );
+  //Magick::Image imag( Magick::Geometry(width, hight), "black" );
+  Magick::Image imag( width, hight, "I", Magick::FloatPixel, _storage.data() );
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
   imag.depth(8);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
+
+  /*
   Magick::Pixels view(imag);
   Magick::Quantum * pixels = view.get(0,0,width,hight);
   Magick::ColorGray colg;
@@ -1602,6 +1605,7 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   for ( int k = 0 ; k < hight*width ; k++ )
     *pixels++ = QuantumRange * *data++ ;
   view.sync();
+  */
 
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {

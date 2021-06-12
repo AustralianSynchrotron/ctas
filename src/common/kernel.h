@@ -61,13 +61,13 @@ inline fftwf_plan safe_fftwf_plan_r2r_1d(int n, float *inout, fftw_r2r_kind kind
   pthread_mutex_lock(&fftw_lock);
   fftwf_plan ret = fftwf_plan_r2r_1d(n, inout, inout, kind, FFTW_ESTIMATE);
   pthread_mutex_unlock(&fftw_lock);
-  return ret;  
+  return ret;
 }
 
 inline void safe_fftw_destroy_plan(fftwf_plan plan) {
   pthread_mutex_lock(&fftw_lock);
   fftwf_destroy_plan(plan);
-  pthread_mutex_unlock(&fftw_lock);    
+  pthread_mutex_unlock(&fftw_lock);
 }
 
 
@@ -209,10 +209,9 @@ class KERNEL_API CTrec {
 
 private:
 
-  static const float zPad;    ///< Zero-padding coefficient.
-
+  const int _projections;    ///< Number of projections in sinogram.
   const int _width;          ///< Width of the reconstructed image.
-  const int _projections;          ///< Number of projections in sinogram.
+  const int _zidth;          ///< zero-padded width
 
   int projection_counter;          ///< Counting projections.
   bool nextAddLineResets;          ///< If true, resets _result to 0 on next addLine.

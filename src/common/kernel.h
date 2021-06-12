@@ -310,12 +310,6 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 		const float center, const Contrast contrast,
 		const float angle, const int plane);
 
-
-
-/// Description of the option giving the rotation center.
-extern KERNEL_API const std::string CenterOptionDesc;
-
-
 /// \brief Number of threads for the process.
 ///
 /// @param _threads Requested number of threads (0 for auto).

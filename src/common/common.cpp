@@ -609,11 +609,17 @@ rotate(Map & io_arr, float angle, float bg) {
 const string CropOptionDesc =
   "top:left:bottom:right. Cropping from the edges of the image.";
 
-
-
-
-
-
+const string CenterOptionDesc=
+  "Deviation of the rotation axis from the center of the sinogram.\n"
+  "Allows you to erase some minor artifacts in the reconstructed image"
+  " which come from the inaccurate rotation position. In most real"
+  " CT or TS experiments the rotation center of the sample"
+  " is not exactly in the center of the recoded projection. Moreover,"
+  " the rotation axis may be inclined from the vertical orientation."
+  " If the inclination of the rotation axis is noticeable for your desired"
+  " spatial resolution then you should rotate the images before the actual"
+  " reconstruction. You can do it in the batch using \"mogrify\" command"
+  " from the ImageMagick package with the -rotate option.";
 
 const std::string IntOptionDesc =
   "If this option is not set, the output format defaults to the"
@@ -1595,23 +1601,44 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   imag.type( Magick::GrayscaleType );
   imag.depth(8);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
+<<<<<<< HEAD
 
   /*
   Magick::Pixels view(imag);
   Magick::Quantum * pixels = view.get(0,0,width,hight);
   Magick::ColorGray colg;
+=======
+>>>>>>> 4dc2851306592e2bfb2ff7447718df1c11102daf
 
+/*
+  //Magick::Pixels view(imag);
+  //Magick::Quantum * pixels = view.get(0,0,width,hight);
+  imag.modifyImage();
+  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
+  Magick::ColorGray colg;
   const float *data = _storage.data();
+<<<<<<< HEAD
   for ( int k = 0 ; k < hight*width ; k++ )
     *pixels++ = QuantumRange * *data++ ;
   view.sync();
   */
+=======
+  for ( int k = 0 ; k < hight*width ; k++ ) {
+    //*pixels++ = QuantumRange * *data++ ;
+    *pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
+  }
+  //view.sync();
+  imag.syncPixels();
+*/
+>>>>>>> 4dc2851306592e2bfb2ff7447718df1c11102daf
 
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
     throw_error("save image IM", "Could not write image file\""+filename+"\"."
                         " Caught Magick++ exception: \""+error.what()+"\".");
   }
+
+
 
 
 }
@@ -1752,7 +1779,6 @@ SaveImageINT (const Path &filename, const Map &storage,
 // #endif  // CHECK_IF_CPU_IS_FASTER
 
   }
-
   SaveImageINT_IM(filename, stor);
 
 }

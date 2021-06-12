@@ -1080,14 +1080,4 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 
 
 
-const string CenterOptionDesc=
-  "Deviation of the rotation axis from the center of the sinogram.\n"
-  "Allows you to erase some minor artifacts in the reconstructed image"
-  " which come from the inaccurate rotation position. In most real"
-  " CT or TS experiments the rotation center of the sample"
-  " is not exactly in the center of the recoded projection. Moreover,"
-  " the rotation axis may be inclined from the vertical orientation."
-  " If the inclination of the rotation axis is noticeable for your desired"
-  " spatial resolution then you should rotate the images before the actual"
-  " reconstruction. You can do it in the batch using \"mogrify\" command"
-  " from the ImageMagick package with the -rotate option.";
+

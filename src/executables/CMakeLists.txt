@@ -67,13 +67,6 @@ target_link_libraries(sino-ipc
 )
 
 
-add_executable(ff ff.cpp)
-target_link_libraries(ff
-  common
-  poptmx
-  experiment
-)
-
 add_executable(rc2fd rc2fd.cpp)
 target_link_libraries(rc2fd
   common
@@ -195,21 +188,18 @@ endif()
 
 
 
-
-# left here for the back compatibility with old imbl4massive scripts - to go away after 2019
-add_executable(stitch stitch.cpp)
-target_link_libraries(stitch
+add_executable(test test.cpp)
+target_link_libraries(test
   common
   poptmx
 )
-
 
 
 set( all_targets
   multipc ipc dei edei trans norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts ff rc2fd f2i proj
+  ct-line ts rc2fd f2i proj
 )
 
 

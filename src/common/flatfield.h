@@ -50,10 +50,11 @@
 /// @return intensity of the pixel with the subtracted background.
 ///
 static inline float
-flatfield(float fg, float bg, float dc, float zer=1.0){
-  if ( dc >= bg ) return zer;
+flatfield(float fg, float bg, float dc, float db=-1, float zer=0.0){
+  if ( db < 0 ) db = dc;
+  if ( db >= bg ) return zer;
   else if (dc >= fg ) return 0.0;
-  else return (fg-dc)/(bg-dc);
+  else return (fg-dc)/(bg-db);
 }
 
 
@@ -100,7 +101,7 @@ flatfield(Map & result, const Map & fg, const Map & bg){
   int sz=0;
   for (blitz::MyIndexType icur=0; icur<sh(0); icur++)
     for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)
-      result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), 0);
+      result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), 0.0, 0.0, 0.0);
 }
 
 
@@ -113,19 +114,19 @@ flatfield(Map & result, const Map & fg, const Map & bg){
 /// @param zer value to output on dc >= bg
 ///
 static inline void
-flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc, const float zer=1.0){
+flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc, const Map & db, const float zer=1.0){
   if ( ! dc.size() ) {
     flatfield(result, fg, bg);
     return;
   }
   const Shape sh=fg.shape();
-  if( sh != bg.shape() || sh != dc.shape() )
+  if( sh != bg.shape() || sh != dc.shape() || sh != db.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
   if( sh != result.shape() )
     result.resize(sh);
   for (blitz::MyIndexType icur=0; icur<sh(0); icur++)
     for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)
-      result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), dc(icur,jcur), zer);
+      result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), dc(icur,jcur), db(icur,jcur), zer);
 }
 
 

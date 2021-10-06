@@ -32,13 +32,14 @@
 #  define _CRT_SECURE_NO_WARNINGS 1 // needed to avoid wornings in MS VC++
 #endif
 
-#include<algorithm>
+#include <algorithm>
 #include <stdarg.h>
 #include <string.h> // for memcpy
 #include <unistd.h>
 #include <tiffio.h>
+#include <H5Cpp.h>
 #include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
-#include<climits>
+#include <climits>
 #include <ctime>
 #include <cmath>
 #include "common.h"
@@ -1097,6 +1098,7 @@ cl_int execKernel(cl_kernel kern, size_t size) {
 #include<Magick++.h>
 
 
+
 /// \brief initializes image IO libraries
 ///
 /// ImageMagick: allow reading up to 10k x 10k into memory, not HDD.
@@ -1129,8 +1131,6 @@ initImageIO(){
 }
 
 static const bool imageIOinited = initImageIO();
-
-
 
 
 
@@ -1595,51 +1595,16 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     _storage = storage;
   }
 
-  //Magick::Image imag( Magick::Geometry(width, hight), "black" );
   Magick::Image imag( width, hight, "I", Magick::FloatPixel, _storage.data() );
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
   imag.depth(8);
   imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
-<<<<<<< HEAD
-
-  /*
-  Magick::Pixels view(imag);
-  Magick::Quantum * pixels = view.get(0,0,width,hight);
-  Magick::ColorGray colg;
-=======
->>>>>>> 4dc2851306592e2bfb2ff7447718df1c11102daf
-
-/*
-  //Magick::Pixels view(imag);
-  //Magick::Quantum * pixels = view.get(0,0,width,hight);
-  imag.modifyImage();
-  Magick::PixelPacket * pixels = imag.getPixels(0,0,width,hight);
-  Magick::ColorGray colg;
-  const float *data = _storage.data();
-<<<<<<< HEAD
-  for ( int k = 0 ; k < hight*width ; k++ )
-    *pixels++ = QuantumRange * *data++ ;
-  view.sync();
-  */
-=======
-  for ( int k = 0 ; k < hight*width ; k++ ) {
-    //*pixels++ = QuantumRange * *data++ ;
-    *pixels++ = Magick::PixelPacket( ( colg.shade( *data++ ), colg ) );
-  }
-  //view.sync();
-  imag.syncPixels();
-*/
->>>>>>> 4dc2851306592e2bfb2ff7447718df1c11102daf
-
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
     throw_error("save image IM", "Could not write image file\""+filename+"\"."
                         " Caught Magick++ exception: \""+error.what()+"\".");
   }
-
-
-
 
 }
 

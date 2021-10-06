@@ -858,7 +858,7 @@ void COMMON_API
 BadShape(const Path & filename, const Shape & shp);
 
 
-/// \brief Load image from preopened object.
+/// \brief Load image.
 ///
 /// Similar to ReadImage(), but uses preopened image object to read.
 ///

@@ -83,6 +83,7 @@ struct clargs {
   vector<Path> images;        ///< images to combine
   vector<Path> bgs;        ///< Array of the background images.
   vector<Path> dfs;        ///< Array of the dark field images.
+  vector<Path> dbs;        ///< Array of the dark field images for backgrounds.
   Path out_name;              ///< Name of the output image.
   Crop crp;                  ///< Crop input projection image
   Crop fcrp;                  ///< Crop final projection image
@@ -142,6 +143,7 @@ clargs(int argc, char *argv[])
          " By default splitting happens horizontally, but if the vertical split is needed, just add a 0 split point.")
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
+    .add(poptmx::OPTION, &dbs, 'F', "db", "Dark field image(s) for backgrounds", "Dark fields")
     .add(poptmx::OPTION, &interim_name, 't', "test", "Prefix to output interim images.", "")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -374,6 +376,19 @@ int main(int argc, char *argv[]) {
     dfar /= args.dfs.size();
   }
 
+  Map dbar;
+  if ( args.dbs.empty() ) {
+    dbar.reference(dfar);
+  } else {
+    dbar.resize(ish);
+    dbar=0.0;
+    for ( int curf = 0 ; curf < args.dbs.size() ; curf++) {
+      Map iar;
+      ReadImage(args.dbs[curf], iar, ish);
+      dbar+=iar;
+    }
+    dbar /= args.dbs.size();
+  }
 
   vector<Map> allIn;
   vector<Path> iimages;
@@ -388,7 +403,7 @@ int main(int argc, char *argv[]) {
         throw_error("flatfielding",
                     "Size of the input image \"" + args.images[curproj] + "\""
                     " does not match that of flatfields.");
-      flatfield( iar, iar, bgar, dfar, NAN);
+      flatfield( iar, iar, bgar, dfar, dbar, 1.0);
     }
     rotate(iar, rar, args.angle);
     crop(rar, car, args.crp);

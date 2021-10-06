@@ -27,7 +27,6 @@
 ///
 
 #include "experiment.h"
-#include "flatfield.h"
 #include "poptmx.h"
 #include <algorithm>
 #include <unistd.h>
@@ -660,7 +659,7 @@ void AqSeries::projection(int idx, Map &proj,
   else
     bg=1+df;
 
-  flatfield(proj, proj, bg, df);
+  flatfield(proj, proj, bg, df, df);
 
   if ( cutOff>0.0 )
     for (blitz::MyIndexType icur=0; icur<proj.shape()(0); icur++)

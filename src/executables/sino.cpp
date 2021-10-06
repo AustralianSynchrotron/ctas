@@ -54,6 +54,7 @@ struct clargs {
   vector<Path> inlist;        ///< Array of the input images.
   vector<Path> bgs;        ///< Array of the background images.
   vector<Path> dfs;        ///< Array of the dark field images.
+  vector<Path> dbs;        ///< Array of the dark field images for the backgrounds.
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float angle;           ///< Angle of the sino slicing.
   Crop crp; //< Crop input projection image
@@ -99,6 +100,7 @@ clargs(int argc, char *argv[]) :
   .add(poptmx::NOTE, "OPTIONS:")
   .add(poptmx::OPTION, &bgs, 'b', "bg", "Background image(s)", "")
   .add(poptmx::OPTION, &dfs, 'd', "df", "Dark field image(s)", "")
+  .add(poptmx::OPTION, &dbs, 'f', "db", "Dark field image(s) for backgrounds", "")
   .add(poptmx::OPTION, &outmask, 'o', "output",
        "Output result mask or filename.",
        "Output filename if only one sinogram is requested."
@@ -114,12 +116,8 @@ clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &width, 'w', "width",
        "Width of the output sinogram", "", "<image width>")
   .add(poptmx::OPTION, &centre, 'C', "centre",
-<<<<<<< HEAD
-       "Centre of the sinogram (0 is the image centre)", "C in " + sino_eq + ". Width may get recalculated to fit into the image.", toString(centre))
-=======
       "Centre of the sinogram", DcenterOptionDesc + " C in " + sino_eq + "."
         " Width may get recalculated to fit into the image.", toString(centre))
->>>>>>> f814a10a1bc48d9be66e545de40276f3763619ea
   .add(poptmx::OPTION, &width, 'A', "amplitude",
        "Amplitude of the rotating sino", "A in " + sino_eq, toString(amplitude))
   .add(poptmx::OPTION, &width, 'P', "period",
@@ -193,6 +191,27 @@ int main(int argc, char *argv[]) {
     dfar /= args.dfs.size();
   }
 
+
+  Map dbar, dbsin;
+  if ( args.dbs.empty() ) {
+    dbar.reference(dfar);
+    dbsin.reference(dfsin);
+  } else {
+    dbar.resize(sins.imageShape());
+    dbsin.resize(sins.sinoShape());
+    dbar=0.0;
+    Map iar(sh), rar, car;
+    for ( int curf = 0 ; curf < args.dbs.size() ; curf++) {
+      ReadImage(args.dbs[curf], iar, sh);
+      rotate(iar, rar, args.angle);
+      crop(rar, car, args.crp);
+      for ( int sls=0 ; sls < sins.indexes().size() ; sls++ )
+        dbar(sls, Range::all()) += car(sins.indexes()[sls], Range::all());
+    }
+    dbar /= args.dbs.size();
+  }
+
+
   Map sinogram;
 
   const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
@@ -209,7 +228,7 @@ int main(int argc, char *argv[]) {
     if ( dfsin.size() )
       for (int scur=0; scur<sinogram.shape()(0); scur++)
         dfsin(scur,Range::all()) = dfar(slice, Range::all());
-    flatfield(sinogram, sinogram, bgsin, dfsin);
+    flatfield(sinogram, sinogram, bgsin, dfsin, dbsin);
     const Path fileName = sins.indexes().size() == 1  ?  args.outmask :
                           Path(toString(sliceformat, sins.indexes()[slice]+1));
     SaveImage(fileName, sinogram, args.SaveInt);

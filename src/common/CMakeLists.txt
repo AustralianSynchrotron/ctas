@@ -45,11 +45,12 @@ FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
 #  message(FATAL_ERROR "Install ImageMagick library with _NO_ HDRI supprt.")
 #endif()
 
-message("IMLB ${ImageMagick_LIBRARIES}")
-message("IMHD ${ImageMagick_INCLUDE_DIRS}")
 include_directories("${ImageMagick_INCLUDE_DIRS}")
 
 FIND_PACKAGE(TIFF REQUIRED)
+FIND_PACKAGE(HDF5 REQUIRED COMPONENTS HL CXX)
+include_directories("${HDF5_INCLUDE_DIRS}")
+
 
 find_library(HAVE_FFTW fftw3)
 find_library(HAVE_FFTWF fftw3f)
@@ -82,6 +83,7 @@ add_library(poptmx SHARED poptmx.cpp)
 add_library(common SHARED common.cpp)
 target_clsrc(common limit.cl)
 target_link_libraries(common
+  ${HDF5_LIBRARIES}
   ${ImageMagick_LIBRARIES}
   tiff
   ${OPENCL_LL}

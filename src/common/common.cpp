@@ -42,7 +42,10 @@
 #include <climits>
 #include <ctime>
 #include <cmath>
+#include <ctype.h>
 #include "common.h"
+#include "poptmx.h"
+
 
 
 using namespace std;
@@ -60,6 +63,13 @@ void prdn( const string & str ) {
   prevTV=nowTV;
 }
 
+template<class T>
+std::ostream & operator<<(std::ostream & o, const std::vector<T> & x) {
+  o << '[';
+  for (T val: x)
+    o << val << ' ';
+  o << ']';
+}
 
 
 /// \brief Constructor.
@@ -1196,6 +1206,111 @@ BadShape(const Path & filename, const Shape & shp){
 }
 
 
+static vector<string> 
+split (string s, string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    string token;
+    vector<string> res;
+    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back (token);
+    }
+    res.push_back (s.substr (pos_start));
+    return res;
+}
+
+
+/// Loads an HDF5 image.
+///
+/// @param filedesc HDF5 file and description of the dataset slice
+/// @param storage The array to store the image.
+///
+static void
+ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
+
+  // File naming
+  vector<string> hdfRd = split(filedesc, ":");
+  if ( hdfRd.size() != 3 )
+    throw CtasErr(CtasErr::WARN, "HDF read",
+                  "Could not read hdf from file\"" + filedesc + "\".");
+  string &filen=hdfRd[0], &datan=hdfRd[1], &sindex=hdfRd[2];
+
+  if ( H5::H5File::isHdf5(filen) <=0 )
+    throw CtasErr(CtasErr::WARN, "HDF read",
+                  "File \"" + filedesc + "\" either does not exist or is not an HDF5 format.");
+
+  int sliceDim;
+  if ( isdigit(sindex.at(0)) )
+    sindex = "Z" + sindex;
+  switch ( sindex.at(0) ) {
+    case 'x':
+    case 'X':
+      sliceDim=2;  break;
+    case 'y':
+    case 'Y':
+      sliceDim=1;  break;
+    case 'z':
+    case 'Z':
+      sliceDim=0;  break;
+    default:
+      exit_on_error("HDF read", "Failed parsing index component of the file \"" + filedesc + "\" .");
+  }
+  sindex.erase(0,1);
+  int index;
+  if ( ! poptmx::conversion<int>(&index, sindex) )
+    throw warn("HDF read", "Third field in\"" + filedesc + "\" is not an integer index.");
+
+  try {
+
+    H5::H5File hdfFile(filen, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+    H5::DataSet dataset = hdfFile.openDataSet(datan);
+
+    H5::DataSpace dataspace = dataset.getSpace();
+    const int rank = dataspace.getSimpleExtentNdims();
+    if ( rank != 2  &&  rank != 3 )
+      throw CtasErr(CtasErr::ERR, "HDF read", "dataset is not 2D or 3D.");
+    blitz::Array<hsize_t, 1> icnts(rank), ioffs(rank), ocnts(2), ooffs(2);
+    ioffs=0;
+    ooffs=0;
+    dataspace.getSimpleExtentDims( icnts.data(), NULL);
+    if ( rank == 3 ) {
+      ioffs(sliceDim)=index;
+      icnts(sliceDim)=1;
+      int idx=0, odx=0;
+      while (idx<rank) {
+        if (idx != sliceDim)
+          ocnts(odx++) = icnts(idx);
+        idx++;
+      }
+    }
+    dataspace.selectHyperslab( H5S_SELECT_SET, icnts.data(), ioffs.data() );
+
+    storage.resize(ocnts(0), ocnts(1));
+    Map _storage;
+    if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(ocnts(1),1) )
+      _storage.reference(storage);
+    else
+      _storage.resize(storage.shape());
+    H5::DataSpace memspace( 2, ocnts.data() );
+    memspace.selectHyperslab( H5S_SELECT_SET, ocnts.data(), ooffs.data());
+
+    dataset.read( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+    if ( sliceDim == 2)
+      storage.transposeSelf(blitz::secondDim, blitz::firstDim);
+    if ( storage.data() != _storage.data() )
+      storage = _storage;
+      
+  } catch( ... ) {
+    exit_on_error("HDF read", "Failed to read HDF5 from " + filedesc);
+  } 
+
+  
+}
+
+
+
+
 
 /// Loads an image (lines) using TIFF library.
 ///
@@ -1406,11 +1521,14 @@ ReadImage_IM (const Path & filename, Map & storage ){
 
 void
 ReadImage (const Path & filename, Map & storage ){
-  try { ReadImage_TIFF(filename, storage); }
+  try { ReadImage_HDF5(filename, storage); }
   catch (CtasErr err) {
-    if (err.type() != CtasErr::WARN)
-      throw;
-    ReadImage_IM(filename, storage);
+    try { ReadImage_TIFF(filename, storage); }
+    catch (CtasErr err) {
+      if (err.type() != CtasErr::WARN)
+        throw;
+      ReadImage_IM(filename, storage);
+    }
   }
 }
 

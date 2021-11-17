@@ -66,10 +66,6 @@ static inline int fisok(double x){ return std::isnormal(x) || std::fpclassify(x)
 #endif
 
 
-void prdn( const std::string & str = std::string() );
-
-
-
 /// \brief Convert string to upper case
 ///
 /// @param str Input string.
@@ -119,6 +115,9 @@ inline std::string toString (long unsigned n)   { return toString("%u", n); }
 inline std::string toString (unsigned      n)   { return toString("%u", n); }
 /// \endcond
 
+
+void prdn( const std::string & str = std::string() );
+template<class T> void prdn( const T & val ) { prdn(toString(val)); } ;
 
 
 /// \defgroup Error Error handling.
@@ -801,6 +800,8 @@ void cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
 
 
 /// @}
+
+
 
 
 

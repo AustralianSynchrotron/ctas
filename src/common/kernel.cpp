@@ -296,7 +296,7 @@ type_desc (Filter *) {
 
 bool
 _conversion (Filter *_val, const string &in) {
-  float alsig;
+  float alsig;  
   std::string::size_type idx=in.find(':');
   if (idx == std::string::npos) {
     *_val = Filter(in);

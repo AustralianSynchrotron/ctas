@@ -395,6 +395,93 @@ typedef blitz::Array<float,3> Volume;
 
 
 
+
+
+
+
+
+
+
+struct Crop3 {
+  unsigned int top;       ///< Crop3 from top
+  unsigned int left;      ///< Crop3 from left
+  unsigned int bottom;     ///< Crop3 from bottom
+  unsigned int right;     ///< Crop3 from right
+  unsigned int face;     ///< Crop3 from bottom
+  unsigned int back;     ///< Crop3 from right
+
+  inline Crop3(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0, unsigned int f=0, unsigned int k=0)
+  : top(t), left(l), bottom(b), right(r) , face(f), back(b) {}
+};
+
+inline std::string toString (const Crop3 & crp)  {
+  return toString("%ut,%ul,%ub,%ur,%uf,%uk", crp.top, crp.left, crp.bottom, crp.right, crp.face, crp.back);
+}
+
+
+/// \brief Compare crops.
+///
+/// @param sh1 first crop.
+/// @param sh2 second crop.
+///
+/// @return \c true if the crops are equal, \c false otherwise.
+///
+inline bool
+operator==( const Crop3 & cr1, const Crop3 & cr2){
+  return cr1.bottom == cr2.bottom && cr1.top == cr2.top &&
+         cr1.left == cr2.left && cr1.right == cr2.right &&
+         cr1.face == cr2.face && cr1.back == cr2.back;
+}
+
+/// \brief Compare crops.
+///
+/// @param sh1 first crop.
+/// @param sh2 second crop.
+///
+/// @return \c false if the crops are equal, \c true otherwise.
+///
+inline bool
+operator!=( const Crop3 & cr1, const Crop3 & cr2){
+  return cr1.bottom != cr2.bottom || cr1.top != cr2.top ||
+  cr1.left != cr2.left || cr1.right != cr2.right ||
+  cr1.face != cr2.face || cr1.back != cr2.back;
+}
+
+std::string COMMON_API
+type_desc (Crop3*);
+
+int COMMON_API
+_conversion (Crop3* _val, const std::string & in);
+
+extern const std::string COMMON_API
+Crop3OptionDesc;
+
+/// \brief Crop3 the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param crop Crop3 resulting image
+///
+void COMMON_API
+crop(const Volume & inarr, Volume & outarr, const Crop3 & crp);
+
+/// \brief Crop3 the array.
+///
+/// @param io_arr Input/output array.
+/// @param crop Crop3 resulting image
+///
+void COMMON_API
+crop(Volume & io_arr, const Crop3 & crp);
+
+
+
+
+
+
+
+
+
+
 struct Crop {
   unsigned int top;       ///< Crop from top
   unsigned int left;      ///< Crop from left
@@ -465,12 +552,91 @@ crop(Map & io_arr, const Crop & crp);
 
 
 
+
+
+
+
+
+
+
+
+
+
+struct Binn3 {
+  unsigned int x;      ///< X binning
+  unsigned int y;       ///< Y binning
+  unsigned int z;       ///< Z binning
+  inline Binn3(unsigned int _x=1, unsigned int _y=1, unsigned int _z=1)
+  : x(_x)
+  , y(_y) 
+  , z(_z) {
+    if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
+  }
+};
+
+inline std::string toString (const Binn3 & bnn) {
+  return bnn.x == bnn.y && bnn.x == bnn.z ? toString(bnn.x) : toString ("%ux%ux%u", bnn.x, bnn.y, bnn.z);
+}
+
+/// \brief Compare binnings.
+///
+/// @param bn1 first binning.
+/// @param bn2 second binning.
+///
+/// @return \c true if the binnings are equal, \c false otherwise.
+///
+inline bool
+operator==( const Binn3 & bn1, const Binn3 & bn2){
+  return bn1.x == bn2.x && bn1.y == bn2.y && bn1.z == bn2.z;
+}
+
+/// \brief Compare binnings.
+///
+/// @param bn1 first binning.
+/// @param bn2 second binning.
+///
+/// @return \c true if the binnings are not equal, \c false otherwise.
+///
+inline bool
+operator!=( const Binn3 & bn1, const Binn3 & bn2){
+  return bn1.x != bn2.x || bn1.y != bn2.y || bn1.z != bn2.z;
+}
+
+
+std::string COMMON_API
+type_desc (Binn3*);
+
+int COMMON_API
+_conversion (Binn3* _val, const std::string & in);
+
+extern const std::string COMMON_API
+Binn3OptionDesc;
+
+/// \brief Apply binning to the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param binn Binning factor
+///
+void COMMON_API
+binn(const Volume & inarr, Volume & outarr, const Binn3 & bnn);
+
+/// \brief Apply binning to the array.
+///
+/// @param io_arr Input/output array.
+/// @param binn Binning factor
+///
+void COMMON_API
+binn(Volume & io_arr, const Binn3 & bnn);
+
+
+
 struct Binn {
   unsigned int x;      ///< X binning
   unsigned int y;       ///< Y binning
-  inline Binn(unsigned int _x=1, unsigned int _y=0)
-  : x(_x), y(_y?_y:_x) {
-    if (x<1) exit_on_error("Binn", "Binning factor less than 1." );
+  inline Binn(unsigned int _x=1, unsigned int _y=1)
+  : x(_x), y(_y) {
+    if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
   }
 };
 
@@ -528,6 +694,8 @@ binn(const Map & inarr, Map & outarr, const Binn & bnn);
 ///
 void COMMON_API
 binn(Map & io_arr, const Binn & bnn);
+
+
 
 
 
@@ -802,6 +970,23 @@ void cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
 /// @}
 
 
+extern const std::string SliceOptionDesc;
+
+/// \brief Constructs the array of slices.
+///
+/// Constructs the array of slices to be processed from the slice string
+/// (read ::SliceOptionDesc for more details).
+///
+/// @param sliceS Input ::SliceOptionDesc "slice string".
+/// @param hight Height of the input projection(s).
+///
+/// @return The vector consisting of the numbers of slices to be processed.
+///         The vector is sorted and duplicates are removed.
+///
+std::vector<int> COMMON_API
+slice_str2vec(const std::string & sliceS, int hight);
+
+
 
 
 
@@ -942,6 +1127,21 @@ ReadImageLine(const Path & filename, Map & storage,
 void COMMON_API
 ReadImageLine(const Path & filename, Map & storage,
 			  const std::vector<int> & idxs, const Shape & shp);
+
+
+
+
+/// Description of the output result mask.
+extern const std::string COMMON_API MaskDesc;
+
+void COMMON_API
+ReadVolume(const std::vector<Path> & filelist, Volume & storage);
+
+inline void COMMON_API
+ReadVolume(const Path & filename, Volume & storage) {
+  ReadVolume(std::vector<Path>(1, filename), storage );
+}
+
 
 
 /// \brief Save the array into image.

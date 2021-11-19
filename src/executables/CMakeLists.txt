@@ -187,6 +187,13 @@ if(OPENCL_FOUND)
 endif()
 
 
+add_executable(3d22d 3d22d.cpp)
+target_link_libraries(3d22d
+  common
+  poptmx
+)
+
+
 
 add_executable(test test.cpp)
 target_link_libraries(test
@@ -199,7 +206,7 @@ set( all_targets
   multipc ipc dei edei trans norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts rc2fd f2i proj
+  ct-line ts rc2fd f2i proj 3d22d 
 )
 
 

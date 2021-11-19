@@ -58,31 +58,6 @@
 ///
 /// @{
 
-
-
-/// Description of the output result mask.
-extern EXPERIMENT_API const std::string MaskDesc;
-
-
-/// Description of the option giving the string of slices.
-extern EXPERIMENT_API const std::string SliceOptionDesc;
-
-
-/// \brief Constructs the array of slices.
-///
-/// Constructs the array of slices to be processed from the slice string
-/// (read ::SliceOptionDesc for more details).
-///
-/// @param sliceS Input ::SliceOptionDesc "slice string".
-/// @param hight Height of the input projection(s).
-///
-/// @return The vector consisting of the numbers of slices to be processed.
-///         The vector is sorted and duplicates are removed.
-///
-std::vector<int> EXPERIMENT_API
-slice_str2vec(const std::string & sliceS, int hight);
-
-
 /// \brief Parsing file of the acquisition series.
 ///
 /// This class parses and stores the list of foreground-background pairs

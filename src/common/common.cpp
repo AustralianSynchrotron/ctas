@@ -414,6 +414,78 @@ _conversion (Contrast* _val, const string & in) {
 }
 
 
+
+
+
+
+
+string
+type_desc (Crop3*){
+  return "UINT:UINT:UINT:UINT:UINT:UINT";
+}
+
+int
+_conversion (Crop3* _val, const string & in) {
+  int l, r, t, b, f, k;
+  int scanres = sscanf( in.c_str(), "%i:%i:%i:%i:%i:%i", &t, &l, &b, &r, &f, &k);
+  if (scanres != 4) // try , instead of :
+    scanres = sscanf( in.c_str(), "%i,%i,%i,%i,%i,%i", &t, &l, &b, &r, &f, &k);
+  if ( 4 != scanres || l<0 || r<0 || t<0 || b<0 || f<0 || k<0 )
+    return -1;
+  *_val = Crop3(t, l, b, r, f , k);
+  return 1;
+}
+
+
+
+void
+crop(const Volume & inarr, Volume & outarr, const Crop3 & crp) {
+
+  if ( ! crp.left && ! crp.right && ! crp.top && ! crp.bottom && ! crp.face && ! crp.back ) {
+    outarr.reference(inarr);
+    return;
+  }
+  if (  crp.left + crp.right >= inarr.shape()(2)  ||
+        crp.top + crp.bottom >= inarr.shape()(1)  ||
+        crp.face + crp.back >= inarr.shape()(0) ) {
+    warn("Crop3 array", "Cropping (" + toString(crp) + ")"
+         " is larger than array size.");
+    return;
+  }
+
+  outarr.resize( inarr.shape()(0) - crp.face  - crp.back,
+                 inarr.shape()(1) - crp.top  - crp.bottom,
+                 inarr.shape()(2) - crp.left - crp.right);
+  outarr = inarr( blitz::Range(crp.face, inarr.shape()(0)-1-crp.back),
+                  blitz::Range(crp.top, inarr.shape()(0)-1-crp.bottom ),
+                  blitz::Range(crp.left, inarr.shape()(1)-1-crp.right ) );
+
+}
+
+void
+crop(Volume & io_arr, const Crop3 & crp) {
+  Volume outarr;
+  crop(io_arr, outarr, crp);
+  if( io_arr.data() == outarr.data() )
+    return;
+  io_arr.resize(outarr.shape());
+  io_arr=outarr.copy();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 string
 type_desc (Crop*){
   return "UINT:UINT:UINT:UINT";
@@ -467,6 +539,83 @@ crop(Map & io_arr, const Crop & crp) {
 
 
 
+const std::string Binn3OptionDesc =
+  "3D Binning factor(s) X:Y:Z. If zero - averages over the whole dimension.";
+
+
+string
+type_desc (Binn3*) {
+  return "UINT[:UINT:UINT]";
+}
+
+int
+_conversion (Binn3* _val, const string & in) {
+
+  int x=0, y=0, z=0;
+
+  if ( in.find_first_of(",:") !=  string::npos ) {
+
+    int scanres = sscanf( in.c_str(), "%i:%i:%i", &x, &y, &z);
+    if (scanres != 3) // try , instead of :
+      scanres = sscanf( in.c_str(), "%i,%i,%i", &x, &y, &z);
+    if ( 3 != scanres || x<0 || y<0 || z<0)
+      return -1;
+
+  } else {
+    int xy;
+    if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<0 )
+      return -1;
+    x=xy;
+    y=xy;
+    z=xy;
+
+  }
+
+  *_val = Binn3(x, y, z);
+  return 1;
+
+}
+
+
+void
+binn(const Volume & inarr, Volume & outarr, const Binn3 & bnn) {
+
+  if ( bnn.x == 1 && bnn.y == 1 && bnn.z == 1) {
+    outarr.reference(inarr); 
+    return;
+  }
+
+  outarr.resize( bnn.z  ?  inarr.shape()(0) / bnn.z  :  1
+               , bnn.y  ?  inarr.shape()(1) / bnn.y  :  1
+               , bnn.x  ?  inarr.shape()(2) / bnn.x  :  1 );
+
+  for (blitz::MyIndexType zcur = 0 ; zcur < outarr.shape()(0) ; zcur++ )
+    for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(1) ; ycur++ )
+      for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(2) ; xcur++ )
+        outarr(zcur,ycur,xcur) = mean( 
+          inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  blitz::Range::all()
+               , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
+               , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
+
+}
+
+void
+binn(Volume & io_arr, const Binn3 & bnn) {
+  Volume outarr;
+  binn(io_arr, outarr, bnn);
+  if( io_arr.data() == outarr.data() )
+    return;
+  io_arr.resize(outarr.shape());
+  io_arr=outarr.copy();
+}
+
+
+
+
+
+const string BinnOptionDesc =
+  "2D Binning factor(s) X:Y. If zero - averages over the whole dimension.";
+
 string
 type_desc (Binn*) {
   return "UINT[:UINT]";
@@ -482,13 +631,13 @@ _conversion (Binn* _val, const string & in) {
     int scanres = sscanf( in.c_str(), "%i:%i", &x, &y);
     if (scanres != 2) // try , instead of :
       scanres = sscanf( in.c_str(), "%i,%i", &x, &y);
-    if ( 2 != scanres || x<1 || y<1 )
+    if ( 2 != scanres || x<0 || y<0 )
       return -1;
 
   } else {
 
     int xy;
-    if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<1 )
+    if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<0 )
       return -1;
     x=xy;
     y=xy;
@@ -508,17 +657,15 @@ binn(const Map & inarr, Map & outarr, const Binn & bnn) {
     outarr.reference(inarr);
     return;
   }
-  if ( ! bnn.x || ! bnn.y ) {
-    warn("Binning aray", "Binning parameter cannot be zero.");
-    return;
-  }
 
-  outarr.resize( inarr.shape()(0) / bnn.y , inarr.shape()(1) / bnn.x );
+  outarr.resize( bnn.y  ?  inarr.shape()(0) / bnn.y  :  1
+               , bnn.x  ?  inarr.shape()(1) / bnn.x  :  1 );
 
   for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
     for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
-      outarr(ycur,xcur) = mean( inarr( blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1),
-                                         blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1) ) );
+      outarr(ycur,xcur) = mean( 
+        inarr( bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
+             , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
 
 }
 
@@ -531,9 +678,6 @@ binn(Map & io_arr, const Binn & bnn) {
   io_arr.resize(outarr.shape());
   io_arr=outarr.copy();
 }
-
-const string BinnOptionDesc =
-  "Binning factor(s).";
 
 
 
@@ -618,7 +762,13 @@ rotate(Map & io_arr, float angle, float bg) {
 
 
 const string CropOptionDesc =
-  "top:left:bottom:right. Cropping from the edges of the image.";
+  "top:left:bottom:right. Cropping from the edges of image.";
+
+
+
+const string Crop3OptionDesc =
+  "top:left:bottom:right:face:back. 3D Cropping from the edges of volume.";
+
 
 const string CenterOptionDesc=
   "Deviation of the rotation axis from the center of the sinogram.\n"
@@ -1088,6 +1238,217 @@ cl_int execKernel(cl_kernel kern, size_t size) {
 
 
 
+const string SliceOptionDesc=
+  "The string describing the slices in the image stack which are to be"
+  " processed. Must be a string consisting only of numbers, commas ','"
+  " minus signs '-' and the character 'n'. First the string is divided"
+  " into the substrings separated by comas and each substring is"
+  " processed on it's own:\n"
+  "    The string consisting only of numbers is read as the integer and"
+  " added to the list of the reconstructed slices.\n"
+  "    The string with the minus sign surrounded by the numbers adds all"
+  " slices in the range into the list.\n"
+  "    If the string starts with the minus then the range start is"
+  " assumed to be 1.\n"
+  "    If minus is the last character in the string then the range"
+  " finishes at the maximum slice number.\n"
+  "    If the string has negation prefix 'n' then the slice(s) are"
+  " excluded from the previously formed list.\n"
+  "    If all substrings have 'n' prefix or the first substring contains"
+  " only it, then the meaning of the whole string is \"all except ...\".\n"
+  "    Two and more negations are interpreted as a single one.\n"
+  "    If no slice string is given then all slices are reconstructed.\n"
+  "For example the following string:\n"
+  "    9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915\n"
+  "requests processing of the slices with numbers 1, 2, 4, 6, 9, 20 to 400,"
+  " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
+
+
+/// \brief Adds or removes the element into the array.
+///
+/// Adds or removes the element numb to/from the array depending on negation.
+///
+/// @param arr The array to be updated.
+/// @param numb The element to be added/removed to/from the array.
+/// @param negate If \c true then removes, if \c false then adds to the array.
+///
+/// @return Updated array.
+///
+static inline vector<int> &
+rmadd(vector<int> & arr, int numb, bool negate){
+  if (negate)
+        arr.erase( remove( arr.begin(), arr.end(), numb ), arr.end() );
+  else
+        arr.push_back(numb);
+  return arr;
+}
+
+/// \brief Parses the string to non-negative integer.
+///
+/// @param str The string to parse.
+///
+/// @return The result of parsing.
+///
+static inline int str2n(const string & str){
+  long idx = strtol ( str.c_str() , 0, 0);
+  if ( ! idx )
+        warn("string to int", "Zero slice. Must be positive. Set to 1.");
+  return idx ? idx-1 : 1;
+}
+
+
+
+
+vector<int>
+slice_str2vec(const string & sliceS, int hight){
+
+  const char negatec = 'n';
+  const string permitted_chars = string("0123456789,-") + negatec ;
+
+  vector<int> sliceV; // the array to be returned as the result.
+
+  // empty string
+  if ( sliceS.empty() ) {
+        for (int slice = 0 ; slice < hight ; slice++)
+          sliceV.push_back(slice);
+        return sliceV;
+  }
+
+
+  // construct the vector of substrings and checks for the global negation.
+  vector<string> subSV;
+  bool negateall = true; // turns to false if an unnegated substring found.
+  string::size_type startidx=0, endidx;
+  do{
+
+	// extract substring
+	endidx = sliceS.find(',', startidx);
+	string subS = sliceS.substr(startidx, ( endidx == string::npos ?
+											sliceS.length() :
+											endidx-startidx) );
+	startidx=endidx+1;
+
+	// checks for the non permitted characters
+	if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
+	  warn("slice string", "Substring \""+ subS +"\" in the "
+		   " string describing set of slices to be reconstructed:\n"
+		   + sliceS +"\n"
+		   "has character(s) not from the permitted set"
+		   " \""+ permitted_chars +"\". Skipping the substring.");
+	  subS.erase();
+	}
+
+	// check it and add to the vector of substrings.
+	if ( ! subS.empty() ) {
+
+	  const string initS = subS; 
+
+	  // modifies in regards to the negatec
+	  string::size_type lastneg = subS.rfind(negatec);
+	  if ( lastneg != string::npos ) {
+		if ( lastneg != 0 ) {
+		  warn("slice string", "Suspicious substring \""+ initS +"\" in the"
+			   " string describing set of slices to be reconstructed:\n"
+			   + sliceS +"\n"
+			   "it has '" + negatec + "' character not in the first position."
+			   " Moving it to the begining. Is it what you meant?");
+		  // moves all negatec's to the beginning and erases it's duplicates.
+		  subS.erase
+			( subS.begin(),
+			  stable_partition( subS.begin(), subS.end(),
+								bind2nd(equal_to<char>(),negatec) ) - 1 );
+		}
+	  } else {
+		negateall = false;
+	  }
+
+	  // modifies in regards to '-'
+	  if ( count(subS.begin(), subS.end(), '-') > 1 ) {
+		warn("slice string", "Substring \""+ initS +"\" in the "
+			 " string describing set of slices to be reconstructed:\n"
+			 + sliceS +"\n"
+			 "has more than one minus sign '-'. Everything between first"
+			 " and last minuses is ignored. Is it what you meant?");
+		subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
+	  }
+	  // make sure minus is surrounded by numbers.
+	  if ( subS[0] == '-' )
+		subS = "1" + subS;
+	  if ( subS.substr(0,2) == "n-" )
+		subS.insert(1,"1");
+	  if ( subS[subS.length()-1] == '-' )
+		subS = subS + toString(hight);
+
+	  subSV.push_back(subS);
+
+	}
+
+  } while ( string::npos != endidx );
+
+
+  // Check for global negation.
+  if ( negateall |= ( subSV[0] == string(1,negatec) ) )
+        for ( int icur = 0 ; icur < hight ; icur++)
+          sliceV.push_back(icur);
+  subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ),
+                           subSV.end() ); // no "negate" strings
+
+  // adds/removes substrings into the array of slices
+  vector<string>::iterator subSVi = subSV.begin();
+  const vector<string>::iterator subSVe=subSV.end();
+
+
+  while ( subSVi != subSVe ) {
+
+  	bool negatethis = (*subSVi)[0]==negatec;
+  	if (negatethis) (*subSVi).erase(0,1);
+  	negatethis |= negateall;
+  
+  	string::size_type minuspos = (*subSVi).find('-');
+  	if ( minuspos != string::npos ) {
+  	  int
+  		rangeB = str2n( (*subSVi).substr(0,minuspos) ),
+  		rangeE = str2n( (*subSVi).substr(minuspos+1) );
+  	  if ( rangeB > rangeE ) swap(rangeB,rangeE);
+  	  if ( rangeB == rangeE )
+  		warn("slice string", "One of the substrings with ranges"
+  			 " in the string describing set of slices to be reconstructed:\n"
+  			 + sliceS +"\n"
+  			 "has equal ends of the ranges. Is it what you meant?");
+  	  for (int curS = rangeB ; curS <= rangeE ; curS++ )
+  		rmadd(sliceV, curS, negatethis);
+  	} else {
+  	  rmadd(sliceV, str2n( *subSVi ), negatethis );
+  	}
+  
+  	subSVi++;
+
+  }
+
+  // sort and remove duplicates, too large numbers
+  sort(sliceV.begin(), sliceV.end());
+  sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
+  if ( sliceV.back() > hight )
+        warn("slice string",
+                 "The string describing set of slices to be reconstructed:\n"
+                 + sliceS +"\n"
+                 "Includes slices more than the height of the input image"
+                 " (" + toString(hight) + "). These slices are ignored." );
+  sliceV.erase( find_if( sliceV.begin(), sliceV.end(),
+                                                 bind2nd( greater<int>(), hight ) ),
+                                sliceV.end() );
+
+  // last check
+  if ( sliceV.empty() )
+        warn("slice string",
+                 "The string describing set of slices to be reconstructed:\n"
+                 + sliceS +"\n"
+                 "leads to the empty range of slices." );
+
+  return sliceV;
+
+}
+
 
 
 
@@ -1144,6 +1505,103 @@ static const bool imageIOinited = initImageIO();
 
 
 
+
+struct HDF5parse {
+
+  Path name;
+  string data;
+  vector<int> indices;
+  Shape shape;
+  int sliceDim;
+
+  HDF5parse(const string & filedesc) :
+    name(),
+    data()
+  {
+
+    const string modmname = "HDF parse";
+
+    vector<string> hdfRd = split(filedesc, ":");
+    if ( hdfRd.size() < 2 )
+      throw CtasErr(CtasErr::WARN, modmname,
+                    "Could not read hdf from file \"" + filedesc + "\".");
+
+    name=hdfRd[0];
+    if ( H5::H5File::isHdf5(name) <=0 )
+      throw CtasErr(CtasErr::WARN, modmname,
+                    "File \"" + filedesc + "\" either does not exist or is not an HDF5 format.");
+
+    data=hdfRd[1];
+
+    string sindex  =  hdfRd.size() < 3  ||  hdfRd[2].empty()   ?   "Z"  :  hdfRd[2] ;
+    switch ( sindex.at(0) ) {
+      case 'x':
+      case 'X':
+        sliceDim=2;  sindex.erase(0,1); break;
+      case 'y':
+      case 'Y':
+        sliceDim=1;  sindex.erase(0,1); break;
+      case 'z':
+      case 'Z':
+        sliceDim=0;  sindex.erase(0,1); break;
+      default:
+        sliceDim=0;
+    }
+
+    try {
+
+      H5::H5File hdfFile(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+      H5::DataSet dataset = hdfFile.openDataSet(data);
+      H5::DataSpace dataspace = dataset.getSpace();
+      const int rank = dataspace.getSimpleExtentNdims();
+      blitz::Array<hsize_t, 1> cnts(rank);
+      dataspace.getSimpleExtentDims( cnts.data(), NULL);
+      if ( rank == 2 ) {
+        indices.push_back(0);
+        shape = Shape(cnts(0), cnts(1));
+      } else if ( rank == 3 ) {
+        int idx=0, odx=0;
+        while (idx<rank) {
+          if (idx != sliceDim)
+            shape(odx++) = cnts(idx);
+          idx++;
+        }
+        indices = slice_str2vec(sindex, cnts(sliceDim));
+      } else {
+        throw CtasErr(CtasErr::ERR, "HDF size", "Dataset is not 2D or 3D in " + filedesc);
+      }
+
+    } catch( ... ) {
+      exit_on_error("HDF size", "Error getting info from " + filedesc);
+    }
+
+  }
+
+  private :
+
+  vector<string> split (string s, string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    string token;
+    vector<string> res;
+    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
+      token = s.substr (pos_start, pos_end - pos_start);
+      pos_start = pos_end + delim_len;
+      res.push_back (token);
+    }
+    res.push_back (s.substr (pos_start));
+    return res;
+  }
+
+};
+
+
+
+
+
+
+
+
+
 float
 PixelSize(const Path & filename) {
   static const float defaultSize = 1.0;
@@ -1173,16 +1631,27 @@ PixelSize(const Path & filename) {
 
 Shape
 ImageSizes(const Path & filename){
-  Magick::Image imag;
-  try {
-    imag.ping(filename);
+  
+  try { 
+
+    const HDF5parse fileInfo(filename);
+    return fileInfo.shape;
+
+  } catch (CtasErr err) {
+
+    Magick::Image imag;
+    try {
+      imag.ping(filename);
+    }
+    catch ( Magick::WarningCoder err ) {}
+    catch ( Magick::Exception & error) {
+      throw_error("get image size", "Could not read image file\""+filename+"\"."
+                          " Caught Magick++ exception: \""+error.what()+"\".");
+    }
+    return Shape( imag.rows(), imag.columns() );
+
   }
-  catch ( Magick::WarningCoder err ) {}
-  catch ( Magick::Exception & error) {
-    throw_error("get image size", "Could not read image file\""+filename+"\"."
-                        " Caught Magick++ exception: \""+error.what()+"\".");
-  }
-  return Shape( imag.rows(), imag.columns() );
+
 }
 
 
@@ -1206,19 +1675,6 @@ BadShape(const Path & filename, const Shape & shp){
 }
 
 
-static vector<string> 
-split (string s, string delimiter) {
-    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-    string token;
-    vector<string> res;
-    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
-        token = s.substr (pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        res.push_back (token);
-    }
-    res.push_back (s.substr (pos_start));
-    return res;
-}
 
 
 /// Loads an HDF5 image.
@@ -1229,60 +1685,25 @@ split (string s, string delimiter) {
 static void
 ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
 
-  // File naming
-  vector<string> hdfRd = split(filedesc, ":");
-  if ( hdfRd.size() != 3 )
-    throw CtasErr(CtasErr::WARN, "HDF read",
-                  "Could not read hdf from file\"" + filedesc + "\".");
-  string &filen=hdfRd[0], &datan=hdfRd[1], &sindex=hdfRd[2];
-
-  if ( H5::H5File::isHdf5(filen) <=0 )
-    throw CtasErr(CtasErr::WARN, "HDF read",
-                  "File \"" + filedesc + "\" either does not exist or is not an HDF5 format.");
-
-  int sliceDim;
-  if ( isdigit(sindex.at(0)) )
-    sindex = "Z" + sindex;
-  switch ( sindex.at(0) ) {
-    case 'x':
-    case 'X':
-      sliceDim=2;  break;
-    case 'y':
-    case 'Y':
-      sliceDim=1;  break;
-    case 'z':
-    case 'Z':
-      sliceDim=0;  break;
-    default:
-      exit_on_error("HDF read", "Failed parsing index component of the file \"" + filedesc + "\" .");
-  }
-  sindex.erase(0,1);
-  int index;
-  if ( ! poptmx::conversion<int>(&index, sindex) )
-    throw warn("HDF read", "Third field in\"" + filedesc + "\" is not an integer index.");
-
   try {
 
-    H5::H5File hdfFile(filen, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
-    H5::DataSet dataset = hdfFile.openDataSet(datan);
+    const HDF5parse fileInfo(filedesc);
+    if (fileInfo.indices.size() != 1)
+      throw_error("HDF read", "Number of images to read is not equal to 1 from " + filedesc);
 
+    H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+    H5::DataSet dataset = hdfFile.openDataSet(fileInfo.data);
     H5::DataSpace dataspace = dataset.getSpace();
     const int rank = dataspace.getSimpleExtentNdims();
-    if ( rank != 2  &&  rank != 3 )
-      throw CtasErr(CtasErr::ERR, "HDF read", "dataset is not 2D or 3D.");
     blitz::Array<hsize_t, 1> icnts(rank), ioffs(rank), ocnts(2), ooffs(2);
     ioffs=0;
     ooffs=0;
     dataspace.getSimpleExtentDims( icnts.data(), NULL);
     if ( rank == 3 ) {
-      ioffs(sliceDim)=index;
-      icnts(sliceDim)=1;
-      int idx=0, odx=0;
-      while (idx<rank) {
-        if (idx != sliceDim)
-          ocnts(odx++) = icnts(idx);
-        idx++;
-      }
+      ioffs(fileInfo.sliceDim) = fileInfo.indices[0];
+      icnts(fileInfo.sliceDim) = 1;
+      ocnts(0) = fileInfo.shape(0);
+      ocnts(1) = fileInfo.shape(1);
     }
     dataspace.selectHyperslab( H5S_SELECT_SET, icnts.data(), ioffs.data() );
 
@@ -1296,8 +1717,8 @@ ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
     memspace.selectHyperslab( H5S_SELECT_SET, ocnts.data(), ooffs.data());
 
     dataset.read( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
-    if ( sliceDim == 2)
-      storage.transposeSelf(blitz::secondDim, blitz::firstDim);
+    //if ( fileInfo.sliceDim == 2)
+    //  storage.transposeSelf(blitz::secondDim, blitz::firstDim);
     if ( storage.data() != _storage.data() )
       storage = _storage;
       
@@ -1681,6 +2102,106 @@ ReadImageLine(const Path & filename, Map & storage,
   BadShape(filename, shp);
   ReadImageLine(filename, storage, idxs);
 }
+
+
+
+
+
+
+
+
+const std::string MaskDesc =
+  "Used when there is a need to describe a stack of output files. In this case"
+  " the special character represents the number of the output file in the stack."
+  " The result mask is a string which forms the names of the processed slices."
+  " The mask should (but not must) contain the '@' character which denotes the"
+  " position where the slice number will be inserted:\n"
+  "    If there is no '@' in the mask, it is inserted together with the '-'"
+  " prefix right before the file extension (if any) or at the end of the mask"
+  " (if no extension).\n"
+  "    If there are more than one '@' character in the mask, only the last of"
+  " them is replaced by the slice number.\n"
+  "For example the mask\n"
+  "    ../path/to/@/result/rec-@-@@.png\n"
+  "produces file names similar to this (for the 13th slice):\n"
+  "    ../path/to/@/result/rec-@-@013.png\n"
+  "Note that the path(s) to the files must exist: the program will not create"
+  " any directory.";
+
+
+
+
+
+
+void
+ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
+
+  if ( ! filelist.size() ) {
+    storage.free();
+    return;
+  }
+
+  int thirdsize = 0;
+  const Shape sh(ImageSizes(filelist[0]));
+  Map slice(sh);
+    
+  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
+    const int hdfsize = HDF5parse(*curI).indices.size();
+    thirdsize +=  hdfsize > 0  ?  hdfsize  :  1;
+  }
+  storage.resize(thirdsize, sh(0), sh(1) );
+
+  int idx = 0;
+  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
+
+    const HDF5parse fileInfo(*curI);
+    
+    if ( fileInfo.indices.size() > 0 ) {
+
+      if ( fileInfo.shape != sh )
+        exit_on_error("Reading volume", "Missmatching shape of the input images.");
+        
+      H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+      H5::DataSet dataset = hdfFile.openDataSet(fileInfo.data);
+      H5::DataSpace dataspace = dataset.getSpace();
+      const int rank = dataspace.getSimpleExtentNdims();
+      blitz::Array<hsize_t, 1> icnts(rank), ioffs(rank), ocnts(2), ooffs(2);
+      ioffs=0;
+      ooffs=0;
+      ocnts(0) = fileInfo.shape(0);
+      ocnts(1) = fileInfo.shape(1);
+      dataspace.getSimpleExtentDims( icnts.data(), NULL);
+      if ( rank == 3 ) 
+        icnts(fileInfo.sliceDim) = 1;
+
+      H5::DataSpace memspace( 2, ocnts.data() );
+      memspace.selectHyperslab( H5S_SELECT_SET, ocnts.data(), ooffs.data());
+
+      for (int idxV=0 ; idxV<fileInfo.indices.size() ; idxV++ ) {
+        if ( rank == 3 )
+          ioffs(fileInfo.sliceDim) = fileInfo.indices[idxV];
+        dataspace.selectHyperslab( H5S_SELECT_SET, icnts.data(), ioffs.data() );    
+        dataset.read( slice.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+        storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;  
+      }
+
+
+    } else {
+      ReadImage(*curI, slice, sh);
+      storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
+      idx++;
+    }
+  }
+    
+
+
+
+
+
+}
+
+
+
 
 
 

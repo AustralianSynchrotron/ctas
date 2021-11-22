@@ -1552,7 +1552,11 @@ struct HDF5parse {
 
     try {
 
+      #ifdef H5F_ACC_SWMR_READ
       H5::H5File hdfFile(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+      #else
+      H5::H5File hdfFile(name, H5F_ACC_RDONLY);
+      #endif
       H5::DataSet dataset = hdfFile.openDataSet(data);
       H5::DataSpace dataspace = dataset.getSpace();
       const int rank = dataspace.getSimpleExtentNdims();
@@ -1694,7 +1698,11 @@ ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
     if ( ! fileInfo.indices.size() )
       throw_error("HDF read", "Number of images to read is not equal to 1 from " + filedesc);
 
+    #ifdef H5F_ACC_SWMR_READ
     H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+    #else
+    H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY);
+    #endif
     H5::DataSet dataset = hdfFile.openDataSet(fileInfo.data);
     H5::DataSpace dataspace = dataset.getSpace();
     const int rank = dataspace.getSimpleExtentNdims();
@@ -2170,8 +2178,12 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
 
       if ( fileInfo.shape != sh )
         exit_on_error("Reading volume", "Missmatching shape of the input images.");
-        
+
+      #ifdef H5F_ACC_SWMR_READ
       H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+      #else
+      H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY);
+      #endif
       H5::DataSet dataset = hdfFile.openDataSet(fileInfo.data);
       H5::DataSpace dataspace = dataset.getSpace();
       const int rank = dataspace.getSimpleExtentNdims();
@@ -2201,7 +2213,7 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
       storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
       idx++;
     }
-    
+
   }
     
 

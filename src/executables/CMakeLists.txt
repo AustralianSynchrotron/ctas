@@ -195,11 +195,11 @@ target_link_libraries(3d22d
 
 
 
-add_executable(test test.cpp)
-target_link_libraries(test
-  common
-  poptmx
-)
+#add_executable(test test.cpp)
+#target_link_libraries(test
+#  common
+#  poptmx
+#)
 
 
 set( all_targets

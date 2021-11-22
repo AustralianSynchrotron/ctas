@@ -987,7 +987,8 @@ std::vector<int> COMMON_API
 slice_str2vec(const std::string & sliceS, int hight);
 
 
-
+Path COMMON_API
+imageFile(const std::string & filedesc);
 
 
 /// \defgroup IO Image and data file handling.

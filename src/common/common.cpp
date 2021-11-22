@@ -1505,6 +1505,10 @@ static const bool imageIOinited = initImageIO();
 
 
 
+Path imageFile(const std::string & filedesc) {
+  return filedesc.substr(0 , filedesc.find(":"));
+}
+
 
 struct HDF5parse {
 
@@ -1522,15 +1526,13 @@ struct HDF5parse {
     const string modmname = "HDF parse";
 
     vector<string> hdfRd = split(filedesc, ":");
-    if ( hdfRd.size() < 2 )
+    if ( hdfRd.size() < 2  ||  hdfRd.size() > 3 )
       throw CtasErr(CtasErr::WARN, modmname,
                     "Could not read hdf from file \"" + filedesc + "\".");
-
-    name=hdfRd[0];
-    if ( H5::H5File::isHdf5(name) <=0 )
+    if ( H5::H5File::isHdf5(hdfRd[0]) <=0 )
       throw CtasErr(CtasErr::WARN, modmname,
                     "File \"" + filedesc + "\" either does not exist or is not an HDF5 format.");
-
+    name=hdfRd[0];
     data=hdfRd[1];
 
     string sindex  =  hdfRd.size() < 3  ||  hdfRd[2].empty()   ?   "Z"  :  hdfRd[2] ;
@@ -1685,10 +1687,11 @@ BadShape(const Path & filename, const Shape & shp){
 static void
 ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
 
+  const HDF5parse fileInfo(filedesc);
+
   try {
 
-    const HDF5parse fileInfo(filedesc);
-    if (fileInfo.indices.size() != 1)
+    if ( ! fileInfo.indices.size() )
       throw_error("HDF read", "Number of images to read is not equal to 1 from " + filedesc);
 
     H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
@@ -2145,18 +2148,25 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
   const Shape sh(ImageSizes(filelist[0]));
   Map slice(sh);
     
-  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
-    const int hdfsize = HDF5parse(*curI).indices.size();
-    thirdsize +=  hdfsize > 0  ?  hdfsize  :  1;
-  }
+  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) 
+    try {
+      thirdsize += HDF5parse(*curI).indices.size();
+    } catch (...) {
+      thirdsize++;
+    }
   storage.resize(thirdsize, sh(0), sh(1) );
+  if ( ! storage.size() ) 
+    return;
+
 
   int idx = 0;
   for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
 
-    const HDF5parse fileInfo(*curI);
+
     
-    if ( fileInfo.indices.size() > 0 ) {
+    try {
+
+      const HDF5parse fileInfo(*curI);
 
       if ( fileInfo.shape != sh )
         exit_on_error("Reading volume", "Missmatching shape of the input images.");
@@ -2186,11 +2196,12 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
       }
 
 
-    } else {
+    } catch (...) {
       ReadImage(*curI, slice, sh);
       storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
       idx++;
     }
+    
   }
     
 

@@ -83,7 +83,7 @@ struct clargs {
   vector<Path> images;        ///< images to combine
   vector<Path> bgs;        ///< Array of the background images.
   vector<Path> dfs;        ///< Array of the dark field images.
-  vector<Path> dbs;        ///< Array of the dark field images for backgrounds.
+  vector<Path> gfs;        ///< Array of the dark field images for backgrounds.
   Path out_name;              ///< Name of the output image.
   Crop crp;                  ///< Crop input projection image
   Crop fcrp;                  ///< Crop final projection image
@@ -143,7 +143,7 @@ clargs(int argc, char *argv[])
          " By default splitting happens horizontally, but if the vertical split is needed, just add a 0 split point.")
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
-    .add(poptmx::OPTION, &dbs, 'F', "db", "Dark field image(s) for backgrounds", "Dark fields")
+    .add(poptmx::OPTION, &gfs, 'F', "gf", "Dark field image(s) for backgrounds", "Dark fields")
     .add(poptmx::OPTION, &interim_name, 't', "test", "Prefix to output interim images.", "")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -292,8 +292,13 @@ void SaveDenan(const Path & filename, const Map & storage, bool saveint=false) {
   SaveImage(filename, outm, saveint);
 }
 
-Path findCommon(const vector<Path>::const_iterator bgn, const vector<Path>::const_iterator end) {
+Path findCommon(const vector<Path>::const_iterator _bgn, const vector<Path>::const_iterator _end) {
 
+  vector<Path> touse;  
+  for (vector<Path>::const_iterator crnt=_bgn ; crnt<_end ; crnt++)
+    touse.push_back(imageFile(*crnt));
+  const vector<Path>::const_iterator bgn = touse.begin(),
+                                     end = touse.end();
   int len = bgn->length();
   if ( bgn>=end  ||  ! len )
     return *bgn;
@@ -376,18 +381,18 @@ int main(int argc, char *argv[]) {
     dfar /= args.dfs.size();
   }
 
-  Map dbar;
-  if ( args.dbs.empty() ) {
-    dbar.reference(dfar);
+  Map gfar;
+  if ( args.gfs.empty() ) {
+    gfar.reference(gfar);
   } else {
-    dbar.resize(ish);
-    dbar=0.0;
-    for ( int curf = 0 ; curf < args.dbs.size() ; curf++) {
+    gfar.resize(ish);
+    gfar=0.0;
+    for ( int curf = 0 ; curf < args.gfs.size() ; curf++) {
       Map iar;
-      ReadImage(args.dbs[curf], iar, ish);
-      dbar+=iar;
+      ReadImage(args.gfs[curf], iar, ish);
+      gfar+=iar;
     }
-    dbar /= args.dbs.size();
+    gfar /= args.gfs.size();
   }
 
   vector<Map> allIn;
@@ -403,17 +408,17 @@ int main(int argc, char *argv[]) {
         throw_error("flatfielding",
                     "Size of the input image \"" + args.images[curproj] + "\""
                     " does not match that of flatfields.");
-      flatfield( iar, iar, bgar, dfar, dbar, 1.0);
+      flatfield( iar, iar, bgar, dfar, gfar, 1.0);
     }
     rotate(iar, rar, args.angle);
     crop(rar, car, args.crp);
     binn(car, bar, args.bnn);
     allIn.push_back(bar);
     if ( ! args.interim_name.empty() ) {
-      Path curname = args.images[curproj];
+      Path curname = imageFile(args.images[curproj]);
       if ( args.interim_name  ==  curname.substr(0, args.interim_name.length() ) )
         curname.erase(0, args.interim_name.length() );
-      const Path svname = toString(svformat, allIn.size()) + curname.name();
+      const Path svname = toString(svformat, allIn.size()) + curname.title() + ".tif";
       SaveDenan( args.interim_name + svname.name() , bar );
       iimages.push_back(svname.name());
     }
@@ -442,7 +447,7 @@ int main(int argc, char *argv[]) {
       o1images = iimages;
     } else if ( ! args.interim_name.empty() ) {
 
-      namemask = findCommon(args.images.begin() + inidx , args.images.begin() + inidx + nofSt ).name();
+      namemask = findCommon(args.images.begin() + inidx , args.images.begin() + inidx + nofSt ).title() + ".tif";
       svformat = mask2format("St1@_" + namemask, allIn.size()/nofSt );
       const Path svname = toString( svformat, o1Stitch.size() );
       o1images.push_back(svname.name());
@@ -483,7 +488,7 @@ int main(int argc, char *argv[]) {
       o2images = o1images;
     } else if ( ! args.interim_name.empty() ) {
 
-      namemask = findCommon(o1images.begin() + inidx , o1images.begin() + inidx + nofSt ).name();
+      namemask = findCommon(o1images.begin() + inidx , o1images.begin() + inidx + nofSt ).title() + ".tif";
       if ( namemask.substr(0,4) == "St1_" )
         namemask = namemask.erase(0,4);
       svformat = mask2format("St2@_" + namemask, o1Stitch.size()/nofSt );
@@ -524,7 +529,7 @@ int main(int argc, char *argv[]) {
       ReadImage(args.interim_name + o2images[1], tmp);
       tmp.reverseSelf(secondDim);
       SaveImage(args.interim_name + o2images[1], tmp);
-      namemask = findCommon( o2images.begin(), o2images.end() ).name();
+      namemask = findCommon( o2images.begin(), o2images.end() ).title() + ".tif";
       if ( namemask.substr(0,4) == "St1_"  ||  namemask.substr(0,4) == "St2_")
         namemask = namemask.erase(0,4);
       SaveDenan( args.interim_name + "Sw_" + namemask , final);
@@ -545,7 +550,7 @@ int main(int argc, char *argv[]) {
     crop(final, args.fcrp);
 
   if ( ! args.interim_name.empty() ) {
-    namemask = findCommon(args.images.begin(), args.images.end()).name();
+    namemask = findCommon(args.images.begin(), args.images.end()).title() + ".tif";
     if ( namemask.substr(0,4) == "St1_"  ||
          namemask.substr(0,4) == "St2_"  ||
          namemask.substr(0,4) == "Sw_")

@@ -578,24 +578,36 @@ _conversion (Binn3* _val, const string & in) {
 
 
 void
-binn(const Volume & inarr, Volume & outarr, const Binn3 & bnn) {
+binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
-  if ( bnn.x == 1 && bnn.y == 1 && bnn.z == 1) {
+  if ( ibnn.x == 1 && ibnn.y == 1 && ibnn.z == 1) {
     outarr.reference(inarr); 
     return;
   }
-
-  outarr.resize( bnn.z  ?  inarr.shape()(0) / bnn.z  :  1
-               , bnn.y  ?  inarr.shape()(1) / bnn.y  :  1
-               , bnn.x  ?  inarr.shape()(2) / bnn.x  :  1 );
+  Binn3 bnn( ibnn.x ? ibnn.x : inarr.shape()(0) ,
+             ibnn.y ? ibnn.y : inarr.shape()(1) ,
+             ibnn.z ? ibnn.z : inarr.shape()(2) );
+  const float bsz = bnn.x * bnn.y * bnn.z;
+  outarr.resize( inarr.shape()(0) / bnn.z 
+               , inarr.shape()(1) / bnn.y 
+               , inarr.shape()(2) / bnn.x );
 
   for (blitz::MyIndexType zcur = 0 ; zcur < outarr.shape()(0) ; zcur++ )
     for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(1) ; ycur++ )
-      for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(2) ; xcur++ )
-        outarr(zcur,ycur,xcur) = mean( 
-          inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  blitz::Range::all()
-               , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
-               , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
+      for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(2) ; xcur++ ) 
+        // BUG in blitz? But the following fails.
+        //outarr(zcur,ycur,xcur) = mean( 
+        //  inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  blitz::Range::all()
+        //       , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
+        //       , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
+      {
+        float sum=0;
+        for (int zbcur = 0 ; zbcur < bnn.z ; zbcur++ )
+          for (int ybcur = 0 ; ybcur < bnn.y ; ybcur++ )
+            for (int xbcur = 0 ; xbcur < bnn.x ; xbcur++ ) 
+              sum += inarr(zcur+zbcur,ycur+ybcur,xcur+xbcur); 
+        outarr(zcur,ycur,xcur) = sum / bsz;
+      }    
 
 }
 
@@ -606,7 +618,7 @@ binn(Volume & io_arr, const Binn3 & bnn) {
   if( io_arr.data() == outarr.data() )
     return;
   io_arr.resize(outarr.shape());
-  io_arr=outarr.copy();
+  io_arr=outarr;
 }
 
 

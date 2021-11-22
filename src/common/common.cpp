@@ -1249,9 +1249,9 @@ const string SliceOptionDesc=
   "    The string with the minus sign surrounded by the numbers adds all"
   " slices in the range into the list.\n"
   "    If the string starts with the minus then the range start is"
-  " assumed to be 1.\n"
+  " assumed to be 0.\n"
   "    If minus is the last character in the string then the range"
-  " finishes at the maximum slice number.\n"
+  " finishes at the maximum slice number - 1.\n"
   "    If the string has negation prefix 'n' then the slice(s) are"
   " excluded from the previously formed list.\n"
   "    If all substrings have 'n' prefix or the first substring contains"
@@ -1260,7 +1260,7 @@ const string SliceOptionDesc=
   "    If no slice string is given then all slices are reconstructed.\n"
   "For example the following string:\n"
   "    9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915\n"
-  "requests processing of the slices with numbers 1, 2, 4, 6, 9, 20 to 400,"
+  "requests processing of the slices with numbers 0, 1, 2, 4, 6, 9, 20 to 400,"
   " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
 
 
@@ -1290,10 +1290,11 @@ rmadd(vector<int> & arr, int numb, bool negate){
 /// @return The result of parsing.
 ///
 static inline int str2n(const string & str){
-  long idx = strtol ( str.c_str() , 0, 0);
-  if ( ! idx )
-        warn("string to int", "Zero slice. Must be positive. Set to 1.");
-  return idx ? idx-1 : 1;
+  return strtol ( str.c_str() , 0, 0);
+  //long idx = strtol ( str.c_str() , 0, 0);
+  //if ( ! idx )
+  //      warn("string to int", "Zero slice. Must be positive. Set to 1.");
+  //return idx ? idx-1 : 1;
 }
 
 
@@ -1319,70 +1320,70 @@ slice_str2vec(const string & sliceS, int hight){
   vector<string> subSV;
   bool negateall = true; // turns to false if an unnegated substring found.
   string::size_type startidx=0, endidx;
-  do{
+  do {  
 
-	// extract substring
-	endidx = sliceS.find(',', startidx);
-	string subS = sliceS.substr(startidx, ( endidx == string::npos ?
-											sliceS.length() :
-											endidx-startidx) );
-	startidx=endidx+1;
-
-	// checks for the non permitted characters
-	if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
-	  warn("slice string", "Substring \""+ subS +"\" in the "
-		   " string describing set of slices to be reconstructed:\n"
-		   + sliceS +"\n"
-		   "has character(s) not from the permitted set"
-		   " \""+ permitted_chars +"\". Skipping the substring.");
-	  subS.erase();
-	}
-
-	// check it and add to the vector of substrings.
-	if ( ! subS.empty() ) {
-
-	  const string initS = subS; 
-
-	  // modifies in regards to the negatec
-	  string::size_type lastneg = subS.rfind(negatec);
-	  if ( lastneg != string::npos ) {
-		if ( lastneg != 0 ) {
-		  warn("slice string", "Suspicious substring \""+ initS +"\" in the"
-			   " string describing set of slices to be reconstructed:\n"
-			   + sliceS +"\n"
-			   "it has '" + negatec + "' character not in the first position."
-			   " Moving it to the begining. Is it what you meant?");
-		  // moves all negatec's to the beginning and erases it's duplicates.
-		  subS.erase
-			( subS.begin(),
-			  stable_partition( subS.begin(), subS.end(),
-								bind2nd(equal_to<char>(),negatec) ) - 1 );
-		}
-	  } else {
-		negateall = false;
-	  }
-
-	  // modifies in regards to '-'
-	  if ( count(subS.begin(), subS.end(), '-') > 1 ) {
-		warn("slice string", "Substring \""+ initS +"\" in the "
-			 " string describing set of slices to be reconstructed:\n"
-			 + sliceS +"\n"
-			 "has more than one minus sign '-'. Everything between first"
-			 " and last minuses is ignored. Is it what you meant?");
-		subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
-	  }
-	  // make sure minus is surrounded by numbers.
-	  if ( subS[0] == '-' )
-		subS = "1" + subS;
-	  if ( subS.substr(0,2) == "n-" )
-		subS.insert(1,"1");
-	  if ( subS[subS.length()-1] == '-' )
-		subS = subS + toString(hight);
-
-	  subSV.push_back(subS);
-
-	}
-
+  	// extract substring
+  	endidx = sliceS.find(',', startidx);
+  	string subS = sliceS.substr(startidx, ( endidx == string::npos ?
+  											sliceS.length() :
+  											endidx-startidx) );
+  	startidx=endidx+1;
+  
+  	// checks for the non permitted characters
+  	if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
+  	  warn("slice string", "Substring \""+ subS +"\" in the "
+  		   " string describing set of slices to be reconstructed:\n"
+  		   + sliceS +"\n"
+  		   "has character(s) not from the permitted set"
+  		   " \""+ permitted_chars +"\". Skipping the substring.");
+  	  subS.erase();
+  	}
+  
+  	// check it and add to the vector of substrings.
+  	if ( ! subS.empty() ) {
+  
+  	  const string initS = subS; 
+  
+  	  // modifies in regards to the negatec
+  	  string::size_type lastneg = subS.rfind(negatec);
+  	  if ( lastneg != string::npos ) {
+  		  if ( lastneg != 0 ) {
+  		    warn("slice string", "Suspicious substring \""+ initS +"\" in the"
+  		  	   " string describing set of slices to be reconstructed:\n"
+  		  	   + sliceS +"\n"
+  		  	   "it has '" + negatec + "' character not in the first position."
+  		  	   " Moving it to the begining. Is it what you meant?");
+  		    // moves all negatec's to the beginning and erases it's duplicates.
+  		    subS.erase
+  		  	( subS.begin(),
+  		  	  stable_partition( subS.begin(), subS.end(),
+  		  						bind2nd(equal_to<char>(),negatec) ) - 1 );
+  		  }
+  	  } else {
+  		  negateall = false;
+  	  }
+  
+  	  // modifies in regards to '-'
+  	  if ( count(subS.begin(), subS.end(), '-') > 1 ) {
+  	  	warn("slice string", "Substring \""+ initS +"\" in the "
+  	  		 " string describing set of slices to be reconstructed:\n"
+  	  		 + sliceS +"\n"
+  	  		 "has more than one minus sign '-'. Everything between first"
+  	  		 " and last minuses is ignored. Is it what you meant?");
+  	  	subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
+  	  }
+  	  // make sure minus is surrounded by numbers.
+  	  if ( subS[0] == '-' )
+  		  subS = "0" + subS;
+  	  if ( subS.substr(0,2) == "n-" )
+  		  subS.insert(1,"0");
+  	  if ( subS[subS.length()-1] == '-' )
+  		  subS = subS + toString(hight-1);
+  
+  	  subSV.push_back(subS);
+  
+  	}
+  
   } while ( string::npos != endidx );
 
 
@@ -1397,26 +1398,25 @@ slice_str2vec(const string & sliceS, int hight){
   vector<string>::iterator subSVi = subSV.begin();
   const vector<string>::iterator subSVe=subSV.end();
 
-
   while ( subSVi != subSVe ) {
 
   	bool negatethis = (*subSVi)[0]==negatec;
   	if (negatethis) (*subSVi).erase(0,1);
-  	negatethis |= negateall;
+    	negatethis |= negateall;
   
   	string::size_type minuspos = (*subSVi).find('-');
   	if ( minuspos != string::npos ) {
   	  int
-  		rangeB = str2n( (*subSVi).substr(0,minuspos) ),
-  		rangeE = str2n( (*subSVi).substr(minuspos+1) );
+  		  rangeB = str2n( (*subSVi).substr(0,minuspos) ),
+  		  rangeE = str2n( (*subSVi).substr(minuspos+1) );
   	  if ( rangeB > rangeE ) swap(rangeB,rangeE);
   	  if ( rangeB == rangeE )
-  		warn("slice string", "One of the substrings with ranges"
-  			 " in the string describing set of slices to be reconstructed:\n"
-  			 + sliceS +"\n"
-  			 "has equal ends of the ranges. Is it what you meant?");
+  	  	warn("slice string", "One of the substrings with ranges"
+  		  	 " in the string describing set of slices to be reconstructed:\n"
+  		  	 + sliceS +"\n"
+  		  	 "has equal ends of the ranges. Is it what you meant?");
   	  for (int curS = rangeB ; curS <= rangeE ; curS++ )
-  		rmadd(sliceV, curS, negatethis);
+  		  rmadd(sliceV, curS, negatethis);
   	} else {
   	  rmadd(sliceV, str2n( *subSVi ), negatethis );
   	}
@@ -1428,15 +1428,15 @@ slice_str2vec(const string & sliceS, int hight){
   // sort and remove duplicates, too large numbers
   sort(sliceV.begin(), sliceV.end());
   sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
-  if ( sliceV.back() > hight )
+  if ( sliceV.back() >= hight )
         warn("slice string",
                  "The string describing set of slices to be reconstructed:\n"
                  + sliceS +"\n"
-                 "Includes slices more than the height of the input image"
+                 "Includes slices beyond the height of the input image"
                  " (" + toString(hight) + "). These slices are ignored." );
   sliceV.erase( find_if( sliceV.begin(), sliceV.end(),
-                                                 bind2nd( greater<int>(), hight ) ),
-                                sliceV.end() );
+                         bind2nd( greater<int>(), hight-1 ) ),
+                         sliceV.end() );
 
   // last check
   if ( sliceV.empty() )
@@ -2145,7 +2145,7 @@ const std::string MaskDesc =
 
 
 void
-ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
+ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
 
   if ( ! filelist.size() ) {
     storage.free();
@@ -2167,6 +2167,8 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
     return;
 
 
+
+  ProgressBar bar(verbose, "Reading volume", thirdsize); 
   int idx = 0;
   for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
 
@@ -2205,6 +2207,7 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
         dataspace.selectHyperslab( H5S_SELECT_SET, icnts.data(), ioffs.data() );    
         dataset.read( slice.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
         storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;  
+        bar.update();
       }
 
 
@@ -2212,6 +2215,7 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage) {
       ReadImage(*curI, slice, sh);
       storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
       idx++;
+      bar.update();
     }
 
   }

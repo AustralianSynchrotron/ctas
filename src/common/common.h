@@ -1136,11 +1136,11 @@ ReadImageLine(const Path & filename, Map & storage,
 extern const std::string COMMON_API MaskDesc;
 
 void COMMON_API
-ReadVolume(const std::vector<Path> & filelist, Volume & storage);
+ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose=false);
 
 inline void COMMON_API
-ReadVolume(const Path & filename, Volume & storage) {
-  ReadVolume(std::vector<Path>(1, filename), storage );
+ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
+  ReadVolume(std::vector<Path>(1, filename), storage, verbose );
 }
 
 

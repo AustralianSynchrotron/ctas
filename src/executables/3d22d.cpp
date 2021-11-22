@@ -35,7 +35,9 @@
 
 using namespace std;
 
-
+const string DimSliceOptionDesc = "[slice dimension][slice(s)]]"
+" with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"
+" and [slice(s)]. " + SliceOptionDesc;
 
 
 /// \CLARGS
@@ -45,6 +47,7 @@ struct clargs {
   Path outmask;              ///< Name of the output image.
   Crop3 crp;                  ///< Crop input projection image
   Binn3 bnn;                  ///< binning factor
+  string slicedesc;       ///< String describing the slices to be sino'ed.
   bool SaveInt;         ///< Save image as 16-bit integer.
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
@@ -67,14 +70,16 @@ clargs(int argc, char *argv[])
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
-    .add(poptmx::ARGUMENT, &images,    "images", "Input combination of 2D and 3D images.", "")
-    
+    .add(poptmx::ARGUMENT, &images,    "images", "Input combination of 2D and 3D images.",
+         "Either 2D images understood by the IM or HDF5. HDF5 format as follows:\n"
+         "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc )    
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
        "Output filename if only one sinogram is requested."
        " Output mask otherwise. " + MaskDesc, outmask)
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume: " + Crop3OptionDesc, "")
     .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
+    .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
     .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -103,21 +108,59 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
 
   Volume ivol;
-  ReadVolume(args.images, ivol);
+  ReadVolume(args.images, ivol, args.beverbose);
   crop(ivol,args.crp);
   binn(ivol,args.bnn); 
 
-  const blitz::TinyVector<blitz::MyIndexType, 3> sh(ivol.shape()); 
+  const blitz::TinyVector<blitz::MyIndexType, 3> vsh(ivol.shape()); 
   const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
                           args.outmask.dtitle() + "-@" + args.outmask.extension() :
                           string( args.outmask ) ;
-  const string sliceformat = mask2format(outmask, sh(0) );
 
-  Map cur(sh(1),sh(2));
-  ProgressBar bar(args.beverbose, "Saving slices", sh(0) );
-  for (unsigned slice=0 ; slice < sh(0) ; slice++ ) {
-    const Path fileName = sh(0) == 1  ?  args.outmask : Path(toString(sliceformat, slice));
-    cur = ivol(slice, blitz::Range::all(), blitz::Range::all());
+  int sliceDim;
+  Shape ssh;
+  string sindex = args.slicedesc.size()  ?  args.slicedesc  :  "Z";
+  switch ( sindex.at(0) ) {
+    case 'x':
+    case 'X':
+      sindex.erase(0,1);
+      sliceDim=2;
+      ssh = Shape(vsh(0),vsh(1));
+      break;
+    case 'y':
+    case 'Y':
+      sindex.erase(0,1);
+      sliceDim=1;
+      ssh = Shape(vsh(0),vsh(2));
+      break;
+    case 'z':
+    case 'Z':
+      sindex.erase(0,1);
+    default:      
+      sliceDim=0;
+      ssh = Shape(vsh(1),vsh(2));
+  }
+  
+  const int sliceSz = vsh(sliceDim);
+  const string sliceformat = mask2format(outmask, sliceSz);
+  const vector<int>indices = slice_str2vec(sindex, sliceSz);
+
+
+  Map cur(ssh);
+  ProgressBar bar(args.beverbose, "Saving slices", indices.size() );
+  for (unsigned slice=0 ; slice < indices.size() ; slice++ ) {
+    const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice)); 
+    switch ( sliceDim ) {
+        case 2:
+          cur = ivol(blitz::Range::all(), blitz::Range::all(), indices.at(slice));
+          break;
+        case 1:
+          cur = ivol(blitz::Range::all(), indices.at(slice), blitz::Range::all());
+          break;
+        case 0:
+          cur = ivol(indices.at(slice), blitz::Range::all(), blitz::Range::all());
+          break;
+    }
     SaveImage(fileName, cur , args.SaveInt);
     bar.update();
   }

@@ -605,7 +605,7 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
         for (int zbcur = 0 ; zbcur < bnn.z ; zbcur++ )
           for (int ybcur = 0 ; ybcur < bnn.y ; ybcur++ )
             for (int xbcur = 0 ; xbcur < bnn.x ; xbcur++ ) 
-              sum += inarr(zcur+zbcur,ycur+ybcur,xcur+xbcur); 
+              sum += inarr( zcur*bnn.z+zbcur, ycur*bnn.y+ybcur, xcur*bnn.x+xbcur ); 
         outarr(zcur,ycur,xcur) = sum / bsz;
       }    
 

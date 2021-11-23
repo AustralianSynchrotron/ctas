@@ -48,6 +48,8 @@ struct clargs {
   Crop3 crp;                  ///< Crop input projection image
   Binn3 bnn;                  ///< binning factor
   string slicedesc;       ///< String describing the slices to be sino'ed.
+  float mincon;         ///< Black intensity.
+  float maxcon;         ///< White intensity.
   bool SaveInt;         ///< Save image as 16-bit integer.
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
@@ -58,6 +60,8 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[])
   : outmask ("slice.tif")
+  , mincon(NAN)
+  , maxcon(NAN)
   , SaveInt(false)
   , beverbose(false)
 {
@@ -72,11 +76,18 @@ clargs(int argc, char *argv[])
     .add(poptmx::NOTE, "ARGUMENTS:")
     .add(poptmx::ARGUMENT, &images,    "images", "Input combination of 2D and 3D images.",
          "Either 2D images understood by the IM or HDF5. HDF5 format as follows:\n"
-         "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc )    
+         "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc ) 
+
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
        "Output filename if only one sinogram is requested."
        " Output mask otherwise. " + MaskDesc, outmask)
+    .add(poptmx::OPTION, &mincon, 'm', "min",
+       "Pixel value corresponding to black.",
+       " All values below this will turn black.", "<minimum>")
+    .add(poptmx::OPTION, &maxcon, 'M', "max",
+       "Pixel value corresponding to white.",
+       " All values above this will turn white.", "<maximum>")
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume: " + Crop3OptionDesc, "")
     .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
@@ -144,7 +155,10 @@ int main(int argc, char *argv[]) {
   const int sliceSz = vsh(sliceDim);
   const string sliceformat = mask2format(outmask, sliceSz);
   const vector<int>indices = slice_str2vec(sindex, sliceSz);
-
+  const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
+  const float 
+    mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
+    maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
 
   Map cur(ssh);
   ProgressBar bar(args.beverbose, "Saving slices", indices.size() );
@@ -161,7 +175,10 @@ int main(int argc, char *argv[]) {
           cur = ivol(indices.at(slice), blitz::Range::all(), blitz::Range::all());
           break;
     }
-    SaveImage(fileName, cur , args.SaveInt);
+    if (toInt)
+      SaveImage(fileName, cur , mincon, maxcon);
+    else
+      SaveImage(fileName, cur);
     bar.update();
   }
 

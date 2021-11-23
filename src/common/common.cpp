@@ -2277,7 +2277,7 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
   imag.depth(8);
-  imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
+  //imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
   try { imag.write(filename); }
   catch ( Magick::Exception & error) {
     throw_error("save image IM", "Could not write image file\""+filename+"\"."

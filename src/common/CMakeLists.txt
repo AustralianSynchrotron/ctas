@@ -82,6 +82,7 @@ add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED common.cpp)
 target_clsrc(common limit.cl)
+target_clsrc(common binn.cl)
 target_link_libraries(common
   ${HDF5_LIBRARIES}
   ${ImageMagick_LIBRARIES}

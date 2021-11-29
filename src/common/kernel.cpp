@@ -52,37 +52,7 @@
 
 using namespace std;
 
-
-long
-nof_threads(long _threads) {
-  if (_threads)
-    return _threads;
-
-#ifdef _WIN32
-#ifndef _SC_NPROCESSORS_ONLN
-  SYSTEM_INFO info;
-  GetSystemInfo(&info);
-#define sysconf(a) info.dwNumberOfProcessors
-#define _SC_NPROCESSORS_ONLN
-#endif
-#endif
-
-  long nProcessorsOnline = sysconf(_SC_NPROCESSORS_ONLN);
-  if (nProcessorsOnline == -1) {
-    warn ("thread number",
-          "Unable to read online processor count.");
-    return 1;
-  } else {
-    return nProcessorsOnline;
-  }
-}
-
-
-
-
-
 const string Filter::modname="filter";
-
 
 /// \brief Constructor.
 ///

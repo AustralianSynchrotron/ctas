@@ -43,6 +43,8 @@
 #include <ctime>
 #include <cmath>
 #include <ctype.h>
+#include <unordered_map>
+
 #include "common.h"
 #include "poptmx.h"
 
@@ -62,15 +64,6 @@ void prdn( const string & str ) {
   fflush(stdout);
   prevTV=nowTV;
 }
-
-template<class T>
-std::ostream & operator<<(std::ostream & o, const std::vector<T> & x) {
-  o << '[';
-  for (T val: x)
-    o << val << ' ';
-  o << ']';
-}
-
 
 /// \brief Constructor.
 ///
@@ -539,6 +532,22 @@ crop(Map & io_arr, const Crop & crp) {
 
 
 
+
+
+
+#ifdef OPENCL_FOUND
+
+const char binnSource[] = {
+  #include "binn.cl.includeme"
+};
+
+const cl_program binnProgram =
+  initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
+
+#endif
+
+
+
 const std::string Binn3OptionDesc =
   "3D Binning factor(s) X:Y:Z. If zero - averages over the whole dimension.";
 
@@ -581,33 +590,93 @@ void
 binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
   if ( ibnn.x == 1 && ibnn.y == 1 && ibnn.z == 1) {
-    outarr.reference(inarr); 
+    outarr.reference(inarr);
     return;
   }
-  Binn3 bnn( ibnn.x ? ibnn.x : inarr.shape()(0) ,
+  Binn3 bnn( ibnn.x ? ibnn.x : inarr.shape()(2) ,
              ibnn.y ? ibnn.y : inarr.shape()(1) ,
-             ibnn.z ? ibnn.z : inarr.shape()(2) );
+             ibnn.z ? ibnn.z : inarr.shape()(0) );
+  Shape3 osh(inarr.shape()(0) / bnn.z
+               , inarr.shape()(1) / bnn.y
+               , inarr.shape()(2) / bnn.x);
+  outarr.resize(osh);
   const float bsz = bnn.x * bnn.y * bnn.z;
-  outarr.resize( inarr.shape()(0) / bnn.z 
-               , inarr.shape()(1) / bnn.y 
-               , inarr.shape()(2) / bnn.x );
 
-  for (blitz::MyIndexType zcur = 0 ; zcur < outarr.shape()(0) ; zcur++ )
-    for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(1) ; ycur++ )
-      for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(2) ; xcur++ ) 
+#ifdef OPENCL_FOUND
+
+  try {
+
+    cl_mem clinarr = blitz2clfi(inarr);
+    cl_mem cloutarr = clAllocFImage(osh);
+    cl_kernel kernelBinn3 = createKernel(binnProgram, "binn3");
+
+    setArg(kernelBinn3, 0, clinarr);
+    setArg(kernelBinn3, 1, cloutarr);
+    setArg(kernelBinn3, 2, (cl_int) bnn.z);
+    setArg(kernelBinn3, 3, (cl_int) bnn.y);
+    setArg(kernelBinn3, 4, (cl_int) bnn.x);
+
+    execKernel(kernelBinn3, osh);
+    cl2blitz(cloutarr, outarr);
+
+  }  catch (...) { // full volume was too big for the gpu
+
+    Map inslice(inarr.shape()(1), inarr.shape()(0));
+    cl_mem clinslice = clAllocFImage(inslice.shape());
+    Map outslice(osh(1), osh(0));
+    cl_mem cloutslice = clAllocFImage(outslice.shape());
+    Map tmpslice(osh(1), osh(0));
+    cl_mem cltmpslice = clAllocFImage(outslice.shape());
+
+    cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
+    setArg(kernelBinn2, 0, clinslice);
+    setArg(kernelBinn2, 1, cltmpslice);
+    setArg(kernelBinn2, 2, (cl_int) bnn.y);
+    setArg(kernelBinn2, 3, (cl_int) bnn.x);
+
+    cl_kernel kernelAddTo = createKernel(binnProgram, "addToSecond");
+    setArg(kernelAddTo, 0, cltmpslice);
+    setArg(kernelAddTo, 1, cloutslice);
+
+    cl_kernel kernelMulti = createKernel(binnProgram, "multiplyImage");
+    setArg(kernelMulti, 0, cloutslice);
+    setArg(kernelMulti, 1, (cl_float) bnn.z);
+
+    for (int z = 0  ;  z < osh(0)  ;  z++ ) {
+      fillClImage(cloutslice, 0);
+      for (int cz=0 ; cz<bnn.z ; cz++) {
+        inslice = inarr(z*bnn.z+cz, blitz::Range::all(), blitz::Range::all());
+        blitz2clfi(inslice, clinslice, CL_MEM_READ_ONLY);
+        execKernel(kernelBinn2, outslice.shape());
+        execKernel(kernelAddTo, outslice.shape());
+      }
+      execKernel(kernelMulti, outslice.shape());
+      clfi2blitz(cloutslice, outslice);
+      outarr(z, blitz::Range::all(), blitz::Range::all()) = outslice;
+    }
+
+  }
+
+#else // OPENCL_FOUND
+
+  for (blitz::MyIndexType zcur = 0 ; zcur < osh(0) ; zcur++ )
+    for (blitz::MyIndexType ycur = 0 ; ycur < osh(1) ; ycur++ )
+      for (blitz::MyIndexType xcur = 0 ; xcur < osh(2) ; xcur++ )
         // BUG in blitz? But the following fails.
-        //outarr(zcur,ycur,xcur) = mean( 
+        //outarr(zcur,ycur,xcur) = mean(
         //  inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  blitz::Range::all()
         //       , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
-        //       , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
+        //       , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ));
       {
         float sum=0;
         for (int zbcur = 0 ; zbcur < bnn.z ; zbcur++ )
           for (int ybcur = 0 ; ybcur < bnn.y ; ybcur++ )
-            for (int xbcur = 0 ; xbcur < bnn.x ; xbcur++ ) 
-              sum += inarr( zcur*bnn.z+zbcur, ycur*bnn.y+ybcur, xcur*bnn.x+xbcur ); 
+            for (int xbcur = 0 ; xbcur < bnn.x ; xbcur++ )
+              sum += inarr( zcur*bnn.z+zbcur, ycur*bnn.y+ybcur, xcur*bnn.x+xbcur );
         outarr(zcur,ycur,xcur) = sum / bsz;
-      }    
+      }
+
+#endif // OPENCL_FOUND
 
 }
 
@@ -663,21 +732,39 @@ _conversion (Binn* _val, const string & in) {
 
 
 void
-binn(const Map & inarr, Map & outarr, const Binn & bnn) {
+binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
 
-  if ( bnn.x == 1 && bnn.y == 1 ) {
+  if ( ibnn.x == 1 && ibnn.y == 1 ) {
     outarr.reference(inarr);
     return;
   }
+  Binn bnn( ibnn.x ? ibnn.x : inarr.shape()(1) ,
+            ibnn.y ? ibnn.y : inarr.shape()(0) );
+  outarr.resize(inarr.shape()(0) / bnn.y, inarr.shape()(1) / bnn.x);
 
-  outarr.resize( bnn.y  ?  inarr.shape()(0) / bnn.y  :  1
-               , bnn.x  ?  inarr.shape()(1) / bnn.x  :  1 );
+#ifdef OPENCL_FOUND
+
+  cl_mem clinarr = blitz2clfi(inarr);
+  cl_mem cloutarr = clAllocFImage(outarr.shape());
+  cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
+
+  setArg(kernelBinn2, 0, clinarr);
+  setArg(kernelBinn2, 1, cloutarr);
+  setArg(kernelBinn2, 2, (cl_int) bnn.y);
+  setArg(kernelBinn2, 3, (cl_int) bnn.x);
+
+  execKernel(kernelBinn2, outarr.shape());
+  cl2blitz(cloutarr, outarr);
+
+#else // OPENCL_FOUND
 
   for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
     for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
-      outarr(ycur,xcur) = mean( 
+      outarr(ycur,xcur) = mean(
         inarr( bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
              , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
+
+#endif // OPENCL_FOUND
 
 }
 
@@ -869,25 +956,10 @@ toString(const string fmt, ...){
 ///
 ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps) :
   showme(_showme), message(_message), steps(_steps) {
-
   if ( ! showme ) return;
-
   step = 0;
   waswidth = 0;
   reservedChs = 0;
-
-  cout << "Starting process";
-  if (steps) cout << " (" + toString(steps) + " steps)";
-  cout << ": " << message << "." << endl;
-  fflush(stdout);
-
-  int nums = toString(steps).length();
-  reservedChs = 14 + 2*nums;
-
-  fmt = steps ?
-        "%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s" :
-        string( "progress: %i" );
-
 }
 
 /// \brief Updates the progress bar.
@@ -897,7 +969,22 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps) :
 void
 ProgressBar::update(int curstep){
 
-  if ( !showme || !reservedChs ) return; // Uninitialized progress bar.
+  if ( !showme ) return; // Uninitialized progress bar.
+
+  if ( !reservedChs ) {
+
+    cout << "Starting process";
+    if (steps) cout << " (" + toString(steps) + " steps)";
+    cout << ": " << message << "." << endl;
+    fflush(stdout);
+
+    int nums = toString(steps).length();
+    reservedChs = 14 + 2*nums;
+    fmt = steps ?
+          "%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s" :
+          string( "progress: %i" );
+
+  }
 
   int progln = getwidth() - reservedChs;
   if ( progln <= 3 )  return; // if we have a very narrow terminal
@@ -972,6 +1059,146 @@ ProgressBar::getwidth(){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+long nof_threads(long _threads) {
+  if (_threads)
+    return _threads;
+
+#ifdef _WIN32
+#ifndef _SC_NPROCESSORS_ONLN
+  SYSTEM_INFO info;
+  GetSystemInfo(&info);
+#define sysconf(a) info.dwNumberOfProcessors
+#define _SC_NPROCESSORS_ONLN
+#endif
+#endif
+
+  long nProcessorsOnline = sysconf(_SC_NPROCESSORS_ONLN);
+  if (nProcessorsOnline == -1) {
+    warn ("thread number",
+          "Unable to read online processor count.");
+    return 1;
+  } else {
+    return nProcessorsOnline;
+  }
+
+}
+
+static const int run_threads = nof_threads();
+
+
+class ThreadDistributor {
+
+private :
+
+  static pthread_mutex_t lock;
+  long int currentidx;
+  std::vector<pthread_t> threads;
+
+  void * arg;
+  bool (*sub_routine0) ();
+  bool (*sub_routine1) (long int);
+  bool (*sub_routine2) (void *, long int);
+  bool sub_routine (long int idx) {
+    if (sub_routine0) return sub_routine0();
+    if (sub_routine1) return sub_routine1(idx);
+    if (sub_routine2) return sub_routine2(arg, idx);
+    return false;
+  }
+
+  inline ThreadDistributor( bool (*_sub_routine0)(),
+                     bool (*_sub_routine1)(long int),
+                     bool (*_sub_routine2) (void *, long int),
+                     void * _arg)
+    : currentidx(0)
+    , arg(_arg)
+    , sub_routine0(_sub_routine0)
+    , sub_routine1(_sub_routine1)
+    , sub_routine2(_sub_routine2)
+  {}
+
+  ThreadDistributor( bool (*_sub_routine)() ) : ThreadDistributor(_sub_routine, 0, 0, 0) {}
+  ThreadDistributor( bool (*_sub_routine)(long int) ) : ThreadDistributor(0, _sub_routine, 0, 0) {}
+  ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg ) : ThreadDistributor(0, 0, _sub_routine, _arg) {}
+
+  long int distribute() {
+    long int idx;
+    pthread_mutex_lock( & lock );
+    idx = currentidx++;
+    pthread_mutex_unlock( & lock );
+    return idx;
+  }
+
+
+  static void * in_thread (void * vdist) {
+    ThreadDistributor * dist = (ThreadDistributor*) vdist;
+    while ( dist->sub_routine(dist->distribute()) ) {}
+    return 0;
+  }
+
+
+  void start() {
+    pthread_t thread;
+    for (int ith = 0 ; ith < run_threads ; ith++)
+      if ( pthread_create( & thread, NULL, in_thread, this ) )
+        warn("Thread operation", "Can't create thread.");
+      else
+        threads.push_back(thread);
+  }
+
+  void finish() {
+    for (int ith = 0 ; ith < threads.size() ; ith++)
+      pthread_join( threads[ith], 0);
+  }
+
+
+public:
+
+  static void execute( bool (*_thread_routine) (void *, long int), void * _arg ) {
+    ThreadDistributor dist(_thread_routine, _arg);
+    dist.start();
+    dist.finish();
+  }
+
+  static void execute( bool (*_thread_routine) (long int)) {
+    ThreadDistributor dist(_thread_routine);
+    dist.start();
+    dist.finish();
+  }
+
+  static void execute( bool (*_thread_routine)()) {
+    ThreadDistributor dist(_thread_routine);
+    dist.start();
+    dist.finish();
+  }
+
+};
+
+
+pthread_mutex_t ThreadDistributor::lock = PTHREAD_MUTEX_INITIALIZER;
+
+
+void execute_in_thread( bool (*_thread_routine) (void *, long int), void * _arg ) {
+  ThreadDistributor::execute(_thread_routine, _arg);
+}
+
+void execute_in_thread( bool (*_thread_routine) (long int)) {
+  ThreadDistributor::execute(_thread_routine);
+}
+
+void execute_in_threads( bool (*_thread_routine)()) {
+  ThreadDistributor::execute(_thread_routine);
+}
 
 
 
@@ -1242,6 +1469,102 @@ cl_int execKernel(cl_kernel kern, size_t size) {
   return clerr;
 }
 
+cl_int execKernel(cl_kernel kern, const Shape & sh) {
+  size_t sizes[2] = {size_t(sh(1)), size_t(sh(0))};
+  cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 2, 0, sizes, 0, 0, 0, 0);
+  if (clerr != CL_SUCCESS)
+    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
+  clerr = clFinish(CL_queue);
+  if (clerr != CL_SUCCESS)
+    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
+  return clerr;
+}
+
+cl_int execKernel(cl_kernel kern, const Shape3 & sh) {
+  size_t sizes[3] = {size_t(sh(2)), size_t(sh(1)), size_t(sh(0))};
+  cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 3, 0, sizes, 0, 0, 0, 0);
+  if (clerr != CL_SUCCESS)
+    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
+  clerr = clFinish(CL_queue);
+  if (clerr != CL_SUCCESS)
+    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
+  return clerr;
+}
+
+
+cl_mem clAllocFImage(const Shape sh, cl_mem_flags flag) {
+  cl_int err;
+  const cl_image_desc ifdesc(
+    { CL_MEM_OBJECT_IMAGE2D, size_t(sh(1)), size_t(sh(0)), 1, 1, 0, 0, 0, 0, {0} } ) ;
+  cl_mem clImage = clCreateImage( CL_context, flag, &clfimage_format, &ifdesc, 0, &err);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not create OpenCL image: " + toString(err) );
+  return clImage;
+}
+
+cl_mem blitz2clfi(const Map & storage, cl_mem clStorage, cl_mem_flags flag) {
+  const size_t origin[3] = {0,0,0};
+  const size_t region[3] = {size_t(storage.shape()(1)), size_t(storage.shape()(0)),1};
+  cl_int err = clEnqueueWriteImage( CL_queue, clStorage, CL_TRUE, origin, region
+                                  , 0, 0, storage.data(), 0, 0, 0);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not write OpenCL image: " + toString(err) );
+  return clStorage;
+}
+
+cl_mem blitz2clfi(const Map & storage, cl_mem_flags flag) {
+  cl_mem clStorage = clAllocFImage(storage.shape(), flag);
+  return blitz2clfi(storage, clStorage, flag);
+}
+
+
+cl_mem clAllocFImage(const Shape3 sh, cl_mem_flags flag) {
+  cl_int err;
+  const cl_image_desc ifdesc(
+    { CL_MEM_OBJECT_IMAGE3D, size_t(sh(2)), size_t(sh(1)), size_t(sh(0)), 1, 0, 0, 0, 0, {0} } ) ;
+  cl_mem clImage = clCreateImage( CL_context, flag, &clfimage_format, &ifdesc, 0, &err);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not create OpenCL image: " + toString(err) );
+  return clImage;
+}
+
+cl_mem blitz2clfi(const Volume & storage, cl_mem clStorage, cl_mem_flags flag) {
+  const size_t origin[3] = {0,0,0};
+  const size_t region[3] = {size_t(storage.shape()(2)),
+                            size_t(storage.shape()(1)),
+                            size_t(storage.shape()(0))};
+  cl_int err = clEnqueueWriteImage( CL_queue, clStorage, CL_TRUE, origin, region
+                                  , 0, 0, storage.data(), 0, 0, 0);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not write OpenCL image: " + toString(err) );
+  return clStorage;
+}
+
+cl_mem blitz2clfi(const Volume & storage, cl_mem_flags flag) {
+  cl_mem clStorage = clAllocFImage(storage.shape(), flag);
+  return blitz2clfi(storage, clStorage, flag);
+}
+
+
+cl_int fillClImage(cl_mem image, float val) {
+
+  const size_t origin[3] = {0,0,0};
+  size_t region[3];
+  cl_int clerr;
+  if (  CL_SUCCESS != (clerr = clGetImageInfo(image, CL_IMAGE_WIDTH,   sizeof(size_t), region,   0) )
+     || CL_SUCCESS != (clerr = clGetImageInfo(image, CL_IMAGE_HEIGHT,  sizeof(size_t), region+1, 0) )
+     || CL_SUCCESS != (clerr = clGetImageInfo(image, CL_IMAGE_DEPTH,   sizeof(size_t), region+2, 0) )  )
+    throw_error("execFill", "Failed to get image parameter: " + toString(clerr));
+
+  clerr = clEnqueueFillImage(CL_queue, image, &val, origin, region, 0, 0, 0);
+  if (clerr != CL_SUCCESS)
+    throw_error("execFill", "Failed to execute OpenCL image fill: " + toString(clerr));
+  clerr = clFinish(CL_queue);
+  if (clerr != CL_SUCCESS)
+    throw_error("execFill", "Failed to finish OpenCL image fill: " + toString(clerr));
+  return clerr;
+
+}
 
 
 
@@ -1332,7 +1655,7 @@ slice_str2vec(const string & sliceS, int hight){
   vector<string> subSV;
   bool negateall = true; // turns to false if an unnegated substring found.
   string::size_type startidx=0, endidx;
-  do {  
+  do {
 
   	// extract substring
   	endidx = sliceS.find(',', startidx);
@@ -1340,7 +1663,7 @@ slice_str2vec(const string & sliceS, int hight){
   											sliceS.length() :
   											endidx-startidx) );
   	startidx=endidx+1;
-  
+
   	// checks for the non permitted characters
   	if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
   	  warn("slice string", "Substring \""+ subS +"\" in the "
@@ -1350,12 +1673,12 @@ slice_str2vec(const string & sliceS, int hight){
   		   " \""+ permitted_chars +"\". Skipping the substring.");
   	  subS.erase();
   	}
-  
+
   	// check it and add to the vector of substrings.
   	if ( ! subS.empty() ) {
-  
-  	  const string initS = subS; 
-  
+
+  	  const string initS = subS;
+
   	  // modifies in regards to the negatec
   	  string::size_type lastneg = subS.rfind(negatec);
   	  if ( lastneg != string::npos ) {
@@ -1374,7 +1697,7 @@ slice_str2vec(const string & sliceS, int hight){
   	  } else {
   		  negateall = false;
   	  }
-  
+
   	  // modifies in regards to '-'
   	  if ( count(subS.begin(), subS.end(), '-') > 1 ) {
   	  	warn("slice string", "Substring \""+ initS +"\" in the "
@@ -1391,11 +1714,11 @@ slice_str2vec(const string & sliceS, int hight){
   		  subS.insert(1,"0");
   	  if ( subS[subS.length()-1] == '-' )
   		  subS = subS + toString(hight-1);
-  
+
   	  subSV.push_back(subS);
-  
+
   	}
-  
+
   } while ( string::npos != endidx );
 
 
@@ -1415,7 +1738,7 @@ slice_str2vec(const string & sliceS, int hight){
   	bool negatethis = (*subSVi)[0]==negatec;
   	if (negatethis) (*subSVi).erase(0,1);
     	negatethis |= negateall;
-  
+
   	string::size_type minuspos = (*subSVi).find('-');
   	if ( minuspos != string::npos ) {
   	  int
@@ -1432,7 +1755,7 @@ slice_str2vec(const string & sliceS, int hight){
   	} else {
   	  rmadd(sliceV, str2n( *subSVi ), negatethis );
   	}
-  
+
   	subSVi++;
 
   }
@@ -1522,57 +1845,103 @@ Path imageFile(const std::string & filedesc) {
 }
 
 
-struct HDF5parse {
+
+
+
+
+vector<string> split (string s, string delimiter) {
+  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+  string token;
+  vector<string> res;
+  while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
+    token = s.substr (pos_start, pos_end - pos_start);
+    pos_start = pos_end + delim_len;
+    res.push_back (token);
+  }
+  res.push_back (s.substr (pos_start));
+  return res;
+}
+
+
+struct HDFdesc {
 
   Path name;
   string data;
-  vector<int> indices;
-  Shape shape;
   int sliceDim;
+  string slices;
 
-  HDF5parse(const string & filedesc) :
-    name(),
-    data()
-  {
+  HDFdesc(const string & filedesc)  {
 
-    const string modmname = "HDF parse";
-
+    const string modmname = "HDF desc";
     vector<string> hdfRd = split(filedesc, ":");
     if ( hdfRd.size() < 2  ||  hdfRd.size() > 3 )
       throw CtasErr(CtasErr::WARN, modmname,
                     "Could not read hdf from file \"" + filedesc + "\".");
-    if ( H5::H5File::isHdf5(hdfRd[0]) <=0 )
-      throw CtasErr(CtasErr::WARN, modmname,
-                    "File \"" + filedesc + "\" either does not exist or is not an HDF5 format.");
     name=hdfRd[0];
     data=hdfRd[1];
-
-    string sindex  =  hdfRd.size() < 3  ||  hdfRd[2].empty()   ?   "Z"  :  hdfRd[2] ;
-    switch ( sindex.at(0) ) {
+    slices  =  hdfRd.size() < 3  ||  hdfRd[2].empty()   ?   "Z"  :  hdfRd[2] ;
+    switch ( slices.at(0) ) {
       case 'x':
       case 'X':
-        sliceDim=2;  sindex.erase(0,1); break;
+        sliceDim=2;  slices.erase(0,1); break;
       case 'y':
       case 'Y':
-        sliceDim=1;  sindex.erase(0,1); break;
+        sliceDim=1;  slices.erase(0,1); break;
       case 'z':
       case 'Z':
-        sliceDim=0;  sindex.erase(0,1); break;
+        sliceDim=0;  slices.erase(0,1); break;
       default:
         sliceDim=0;
     }
 
+  }
+
+  string id() const {return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ; }
+
+};
+
+
+
+
+struct HDFread : public HDFdesc {
+
+public :
+
+  vector<int> indices;
+  Shape shape;
+
+private :
+
+  H5::H5File hdfFile;
+  H5::DataSet dataset;
+  H5::DataSpace dataspace;
+  int rank;
+  blitz::Array<hsize_t, 1> cnts, offs;
+  H5::DataSpace memspace;
+
+public :
+
+
+  HDFread(const string & filedesc)
+    : HDFdesc(filedesc)
+#ifdef H5F_ACC_SWMR_READ
+    , hdfFile(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ)
+#else
+    , hdfFile(name, H5F_ACC_RDONLY)
+#endif
+    , dataset(hdfFile.openDataSet(data))
+    , dataspace(dataset.getSpace())
+    , rank(dataspace.getSimpleExtentNdims())
+    , cnts(rank)
+    , offs(rank)
+    , memspace()
+  {
+
+    const string modmname = "HDF parse";
+
     try {
 
-      #ifdef H5F_ACC_SWMR_READ
-      H5::H5File hdfFile(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
-      #else
-      H5::H5File hdfFile(name, H5F_ACC_RDONLY);
-      #endif
-      H5::DataSet dataset = hdfFile.openDataSet(data);
-      H5::DataSpace dataspace = dataset.getSpace();
-      const int rank = dataspace.getSimpleExtentNdims();
-      blitz::Array<hsize_t, 1> cnts(rank);
+      offs=0;
       dataspace.getSimpleExtentDims( cnts.data(), NULL);
       if ( rank == 2 ) {
         indices.push_back(0);
@@ -1584,30 +1953,43 @@ struct HDF5parse {
             shape(odx++) = cnts(idx);
           idx++;
         }
-        indices = slice_str2vec(sindex, cnts(sliceDim));
+        indices = slice_str2vec(slices, cnts(sliceDim));
+        cnts(sliceDim) = 1;
       } else {
-        throw CtasErr(CtasErr::ERR, "HDF size", "Dataset is not 2D or 3D in " + filedesc);
+        throw CtasErr(CtasErr::ERR, modmname, "Dataset is not 2D or 3D in " + filedesc);
       }
 
+      hsize_t ocnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))};
+      hsize_t ooffs[2] = {0, 0};
+      memspace.setExtentSimple( 2, ocnts );
+      memspace.selectHyperslab( H5S_SELECT_SET, ocnts, ooffs);
+
     } catch( ... ) {
-      exit_on_error("HDF size", "Error getting info from " + filedesc);
+      exit_on_error(modmname, "Error getting info from " + filedesc);
     }
 
   }
 
-  private :
+  void read(int idx, Map & storage) {
 
-  vector<string> split (string s, string delimiter) {
-    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-    string token;
-    vector<string> res;
-    while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
-      token = s.substr (pos_start, pos_end - pos_start);
-      pos_start = pos_end + delim_len;
-      res.push_back (token);
-    }
-    res.push_back (s.substr (pos_start));
-    return res;
+    if ( idx >= indices.size() )
+      throw_error("HDF read", "Index is beyond slices to read from " + name);
+
+    if ( rank == 3 )
+      offs(sliceDim) = indices[idx];
+    dataspace.selectHyperslab( H5S_SELECT_SET, cnts.data(), offs.data() );
+
+    storage.resize(shape);
+    Map _storage;
+    if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(shape(1),1) )
+      _storage.reference(storage);
+    else
+      _storage.resize(storage.shape());
+
+    dataset.read( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+    if ( storage.data() != _storage.data() )
+      storage = _storage;
+
   }
 
 };
@@ -1649,11 +2031,10 @@ PixelSize(const Path & filename) {
 
 Shape
 ImageSizes(const Path & filename){
-  
-  try { 
 
-    const HDF5parse fileInfo(filename);
-    return fileInfo.shape;
+  try {
+
+    return HDFread(filename).shape;
 
   } catch (CtasErr err) {
 
@@ -1702,54 +2083,11 @@ BadShape(const Path & filename, const Shape & shp){
 ///
 static void
 ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
-
-  const HDF5parse fileInfo(filedesc);
-
   try {
-
-    if ( ! fileInfo.indices.size() )
-      throw_error("HDF read", "Number of images to read is not equal to 1 from " + filedesc);
-
-    #ifdef H5F_ACC_SWMR_READ
-    H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
-    #else
-    H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY);
-    #endif
-    H5::DataSet dataset = hdfFile.openDataSet(fileInfo.data);
-    H5::DataSpace dataspace = dataset.getSpace();
-    const int rank = dataspace.getSimpleExtentNdims();
-    blitz::Array<hsize_t, 1> icnts(rank), ioffs(rank), ocnts(2), ooffs(2);
-    ioffs=0;
-    ooffs=0;
-    dataspace.getSimpleExtentDims( icnts.data(), NULL);
-    if ( rank == 3 ) {
-      ioffs(fileInfo.sliceDim) = fileInfo.indices[0];
-      icnts(fileInfo.sliceDim) = 1;
-      ocnts(0) = fileInfo.shape(0);
-      ocnts(1) = fileInfo.shape(1);
-    }
-    dataspace.selectHyperslab( H5S_SELECT_SET, icnts.data(), ioffs.data() );
-
-    storage.resize(ocnts(0), ocnts(1));
-    Map _storage;
-    if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(ocnts(1),1) )
-      _storage.reference(storage);
-    else
-      _storage.resize(storage.shape());
-    H5::DataSpace memspace( 2, ocnts.data() );
-    memspace.selectHyperslab( H5S_SELECT_SET, ocnts.data(), ooffs.data());
-
-    dataset.read( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
-    //if ( fileInfo.sliceDim == 2)
-    //  storage.transposeSelf(blitz::secondDim, blitz::firstDim);
-    if ( storage.data() != _storage.data() )
-      storage = _storage;
-      
+    HDFread(filedesc).read(0,storage);
   } catch( ... ) {
     exit_on_error("HDF read", "Failed to read HDF5 from " + filedesc);
-  } 
-
-  
+  }
 }
 
 
@@ -2156,8 +2494,85 @@ const std::string MaskDesc =
 
 
 
+
+
+struct ReadVolArgs {
+
+  vector< pair<Path,int> > slicelist;
+  Volume & storage;
+  Shape sh;
+  ProgressBar bar;
+  pthread_mutex_t proglock;
+  unordered_map<string,HDFread> hdfs;
+
+  ReadVolArgs(const std::vector<Path> & filelist, Volume & _storage, bool verbose=false)
+    : storage(_storage)
+    , bar(verbose , "reading volume")
+    , proglock(PTHREAD_MUTEX_INITIALIZER)
+  {
+    if ( ! filelist.size() ) {
+      storage.free();
+      return;
+    }
+    sh = ImageSizes(filelist[0]);
+    for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+      try {
+          hdfs.insert({*curI,HDFread(*curI)});
+          HDFread & hdf = hdfs.at(*curI);
+          for ( int hidx=0 ; hidx < hdf.indices.size() ; hidx++) {
+            slicelist.push_back(make_pair(*curI,hdf.indices.at(hidx)));
+          }
+      } catch (...) {
+        prdn(*curI);
+        slicelist.push_back(make_pair(*curI,0));
+      }
+    bar.setSteps(slicelist.size());
+    storage.resize(slicelist.size(), sh(0), sh(1) );
+    if ( ! storage.size() )
+      return;
+
+  }
+
+};
+
+
+bool inThread_readVol (void * _thread_args, long int idx) {
+
+  ReadVolArgs *  dist = (ReadVolArgs*) _thread_args;
+  if (!dist)
+    throw_error("read thread", "Inappropriate thread function arguments.");
+  if ( idx >= dist->slicelist.size())
+    return false;
+  Map slice(dist->sh);
+
+  const pair<Path,int> & slpr = dist->slicelist.at(idx);
+  if (dist->hdfs.count(slpr.first)) {
+    HDFread & hdf = dist->hdfs.at(slpr.first);
+    if ( hdf.shape != dist->sh )
+      throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
+    hdf.read(slpr.second, slice);
+  } else {
+    ReadImage(slpr.first, slice, dist->sh);
+  }
+
+  dist->storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
+  pthread_mutex_lock(&dist->proglock);
+  dist->bar.update();
+  pthread_mutex_unlock(&dist->proglock);
+  return true;
+
+}
+
+
 void
 ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
+  ReadVolArgs readArgs(filelist, storage, verbose);
+  execute_in_thread(inThread_readVol, &readArgs);
+}
+
+
+void
+ReadVolumeSeq(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
 
   if ( ! filelist.size() ) {
     storage.free();
@@ -2167,79 +2582,41 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
   int thirdsize = 0;
   const Shape sh(ImageSizes(filelist[0]));
   Map slice(sh);
-    
-  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) 
+  unordered_map<string,HDFread> hdfs;
+
+  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
     try {
-      thirdsize += HDF5parse(*curI).indices.size();
+        hdfs.insert({*curI,HDFread(*curI)});
+        thirdsize += hdfs.at(*curI).indices.size();
     } catch (...) {
-      thirdsize++;
+        thirdsize++;
     }
   storage.resize(thirdsize, sh(0), sh(1) );
-  if ( ! storage.size() ) 
+  if ( ! storage.size() )
     return;
 
-
-
-  ProgressBar bar(verbose, "Reading volume", thirdsize); 
+  ProgressBar bar(verbose, "Reading volume", thirdsize);
   int idx = 0;
   for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
 
-
-    
-    try {
-
-      const HDF5parse fileInfo(*curI);
-
-      if ( fileInfo.shape != sh )
-        exit_on_error("Reading volume", "Missmatching shape of the input images.");
-
-      #ifdef H5F_ACC_SWMR_READ
-      H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
-      #else
-      H5::H5File hdfFile(fileInfo.name, H5F_ACC_RDONLY);
-      #endif
-      H5::DataSet dataset = hdfFile.openDataSet(fileInfo.data);
-      H5::DataSpace dataspace = dataset.getSpace();
-      const int rank = dataspace.getSimpleExtentNdims();
-      blitz::Array<hsize_t, 1> icnts(rank), ioffs(rank), ocnts(2), ooffs(2);
-      ioffs=0;
-      ooffs=0;
-      ocnts(0) = fileInfo.shape(0);
-      ocnts(1) = fileInfo.shape(1);
-      dataspace.getSimpleExtentDims( icnts.data(), NULL);
-      if ( rank == 3 ) 
-        icnts(fileInfo.sliceDim) = 1;
-
-      H5::DataSpace memspace( 2, ocnts.data() );
-      memspace.selectHyperslab( H5S_SELECT_SET, ocnts.data(), ooffs.data());
-
-      for (int idxV=0 ; idxV<fileInfo.indices.size() ; idxV++ ) {
-        if ( rank == 3 )
-          ioffs(fileInfo.sliceDim) = fileInfo.indices[idxV];
-        dataspace.selectHyperslab( H5S_SELECT_SET, icnts.data(), ioffs.data() );    
-        dataset.read( slice.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
-        storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;  
+    if (hdfs.count(*curI)) {
+      HDFread & hdf = hdfs.at(*curI);
+      if ( hdf.shape != sh )
+        throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
+      for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
+        hdf.read(idxV, slice);
+        storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;
         bar.update();
       }
-
-
-    } catch (...) {
+    } else {
       ReadImage(*curI, slice, sh);
-      storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
-      idx++;
+      storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;
       bar.update();
     }
 
   }
-    
-
-
-
-
 
 }
-
-
 
 
 
@@ -2625,3 +3002,80 @@ LoadData ( const Path filename, ... ) {
   }
 
 }
+
+
+
+
+
+
+/*
+
+struct SaveVolArgs {
+
+  const vector<Path> & names;
+  const Shape2D imgsh;
+  const Path out_filled;
+  const Path out_inverted;
+  const Path out_mask;
+  const uint8_t color;
+  ProgressBar bar;
+  pthread_mutex_t proglock;
+
+  SaveVolArgs(const vector<Path> & _names, bool verbose=false, uint8_t _color=0,
+              const Path & _out_filled=Path(), const Path & _out_inverted=Path(), const Path & _out_mask=Path() )
+    : names(_names)
+    , imgsh(volsh(1),volsh(2))
+    , out_filled(_out_filled)
+    , out_inverted(_out_inverted)
+    , out_mask(_out_mask)
+    , color(_color)
+    , bar(verbose , "saving volume", volsh(0))
+    , proglock(PTHREAD_MUTEX_INITIALIZER)
+  {
+    if (names.size() != volsh(0))
+      throw_error("Saving volume", "Number of files not matching array size.");
+    if ( out_filled.empty() && out_inverted.empty() && out_mask.empty() )
+      throw_error("Saving volume", "Nothing to output.");
+  }
+
+};
+
+
+bool inThread_saveVol (void * _thread_args, long int idx) {
+
+  SaveVolArgs *  dist = (SaveVolArgs*) _thread_args;
+  if (!dist)
+    throw_error("read thread", "Inappropriate thread function arguments.");
+  if ( idx >= dist->names.size() )
+    return false;
+
+  const Map8U wmg = wvol (idx, Range::all(), Range::all());
+  Map8U img(dist->imgsh);
+
+  if ( ! dist->out_filled.empty() ) {
+    for ( long int sh0 = 0 ; sh0 < dist->imgsh(0) ; sh0++)
+      for ( long int sh1 = 0 ; sh1 < dist->imgsh(1) ; sh1++)
+        img(sh0, sh1) =  ( wmg(sh0, sh1) & FILLED ) ? ivol( idx, sh0, sh1 ) : dist->color ;
+    SaveImage(dist->out_filled + dist->names[idx].name(), img);
+  }
+  if ( ! dist->out_inverted.empty() ) {
+    for ( long int sh0 = 0 ; sh0 < dist->imgsh(0) ; sh0++)
+      for ( long int sh1 = 0 ; sh1 < dist->imgsh(1) ; sh1++)
+        img(sh0, sh1) =  ( wmg(sh0, sh1) & FILLED ) ? dist->color : ivol( idx, sh0, sh1 ) ;
+    SaveImage(dist->out_inverted + dist->names[idx].name(), img);
+  }
+  if ( ! dist->out_mask.empty() ) {
+    SaveImage(dist->out_mask + dist->names[idx].name(), wmg);
+  }
+
+  pthread_mutex_lock(&dist->proglock);
+  dist->bar.update();
+  pthread_mutex_unlock(&dist->proglock);
+
+  return true;
+
+}
+
+ */
+
+

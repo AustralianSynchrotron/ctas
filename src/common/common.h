@@ -120,6 +120,18 @@ void prdn( const std::string & str = std::string() );
 template<class T> void prdn( const T & val ) { prdn(toString(val)); } ;
 
 
+template<class T>
+std::ostream & operator<<(std::ostream & o, const std::vector<T> & x) {
+  o << '[';
+  for (T val: x)
+    o << val << ' ';
+  o << ']';
+  return o;
+}
+
+
+
+
 /// \defgroup Error Error handling.
 /// Functions in this group are used for the
 /// error parsing, printing, throwing and so on.
@@ -137,9 +149,9 @@ public:
   } ErrTp ;
 
 private:
-  std::string message;               ///< The message which describes the error
-  std::string module;                ///< Name of the module where the error happened
   ErrTp terr;                   ///< Error severity
+  std::string module;                ///< Name of the module where the error happened
+  std::string message;               ///< The message which describes the error
 
 public:
   inline CtasErr(ErrTp _terr, const std::string & mod, const std::string & msg);
@@ -568,7 +580,7 @@ struct Binn3 {
   unsigned int z;       ///< Z binning
   inline Binn3(unsigned int _x=1, unsigned int _y=1, unsigned int _z=1)
   : x(_x)
-  , y(_y) 
+  , y(_y)
   , z(_z) {
     if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
   }
@@ -723,6 +735,38 @@ void COMMON_API
 rotate(Map & io_arr, float angle, float bg=NAN);
 
 
+
+/// \brief Shape of an 2D array.
+typedef blitz::TinyVector<blitz::MyIndexType,3> Shape3;
+
+inline std::string toString (const Shape3 & shp) { return toString("%u, %u, %u", shp(2), shp(1), shp(0));}
+
+/// \brief Compare shapes.
+///
+/// @param sh1 first shape.
+/// @param sh2 second shape.
+///
+/// @return \c true if the shapes are equal, \c false otherwise.
+///
+inline bool
+operator==( const Shape3 & sh1, const Shape3 & sh2){
+  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1)  &&  sh1(2)==sh2(2) );
+}
+
+/// \brief Compare shapes.
+///
+/// @param sh1 first shape.
+/// @param sh2 second shape.
+///
+/// @return \c false if the shapes are equal, \c true otherwise.
+///
+inline bool
+operator!=( const Shape3 & sh1, const Shape3 & sh2){
+  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1)  ||  sh1(2)!=sh2(2) );
+}
+
+
+
 /// \brief Shape of an 2D array.
 typedef blitz::TinyVector<blitz::MyIndexType,2> Shape;
 
@@ -823,6 +867,7 @@ public:
 
   ProgressBar(bool _showme=false, const std::string & _message="", int _steps=0);
 
+  void setSteps(int _steps) {steps=_steps;}
   void update(int curstep=0);	///< Updates the progress bar
   void done();					///< Finalizes the progress bar.
 
@@ -886,6 +931,8 @@ cl_device_id CL_device;
 cl_context CL_context;
 cl_command_queue CL_queue;
 
+const cl_image_format clfimage_format({CL_DEPTH, CL_FLOAT});
+
 bool clIsInited();
 
 cl_program initProgram(const char csrc[], size_t length, const std::string & modname);
@@ -895,6 +942,13 @@ cl_kernel createKernel(cl_program program, const std::string & name);
 std::string kernelName(cl_kernel kern);
 
 cl_int execKernel(cl_kernel kern, size_t size=1);
+
+cl_int execKernel(cl_kernel kern, const Shape & sh);
+
+cl_int execKernel(cl_kernel kern, const Shape3 & sh);
+
+cl_int fillClImage(cl_mem image, float val);
+
 
 template <class T> void
 setArg (cl_kernel kern, cl_uint arg_idx, const T & val) {
@@ -938,19 +992,19 @@ cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
 
 template <typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-  cl_int err = 
+  cl_int err =
     clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * storage.size(), storage.data(), 0, 0, 0);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
   return clStorage;
 }
 
+
 template <typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
   cl_mem clStorage = clAllocArray<T>(storage.size(), flag);
   return blitz2cl<T,N>(storage, clStorage, flag);
 }
-
 
 
 template <typename T, int N>
@@ -961,6 +1015,23 @@ void cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
 }
+
+
+cl_mem clAllocFImage(const Shape sh, cl_mem_flags flag=CL_MEM_READ_WRITE);
+
+cl_mem blitz2clfi(const Map & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE);
+
+cl_mem blitz2clfi(const Map & storage, cl_mem_flags flag=CL_MEM_READ_WRITE);
+
+cl_mem clAllocFImage(const Shape3 sh, cl_mem_flags flag=CL_MEM_READ_WRITE);
+
+cl_mem blitz2clfi(const Volume & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE);
+
+cl_mem blitz2clfi(const Volume & storage, cl_mem_flags flag=CL_MEM_READ_WRITE);
+
+void clfi2blitz(cl_mem clStorage, Map & storage);
+
+void clfi2blitz(cl_mem clStorage, Volume & storage);
 
 
 
@@ -1201,5 +1272,27 @@ void COMMON_API
 SaveData(const Path filename, ... );
 
 /// @}
+
+
+
+/// \brief Number of threads for the process.
+///
+/// @param _threads Requested number of threads (0 for auto).
+///
+/// @return Number of threads for the architecture where the process is running
+/// if automatic number of threads was requested and just _threads if set in stone.
+///
+long COMMON_API
+nof_threads(long _threads=0);
+
+void execute_in_thread( bool (*_thread_routine) (void *, long int), void * _arg );
+void execute_in_thread( bool (*_thread_routine) (long int));
+void execute_in_thread( bool (*_thread_routine)());
+
+bool inThread_readVol (void * _thread_args, long int idx);
+
+//bool inThread_saveVol (void * _thread_args, long int idx) ;
+
+
 
 #endif // _H_CTAS_H_

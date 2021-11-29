@@ -310,16 +310,6 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 		const float center, const Contrast contrast,
 		const float angle, const int plane);
 
-/// \brief Number of threads for the process.
-///
-/// @param _threads Requested number of threads (0 for auto).
-///
-/// @return Number of threads for the architecture where the process is running
-/// if automatic number of threads was requested and just _threads if set in stone.
-///
-long KERNEL_API
-nof_threads(long _threads=0);
-
 
 /// @}
 

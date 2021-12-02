@@ -931,6 +931,13 @@ cl_device_id CL_device;
 cl_context CL_context;
 cl_command_queue CL_queue;
 
+struct CLmem {
+    cl_mem cl;
+    CLmem(cl_mem _cl) : cl(_cl) {}
+    ~CLmem() { clReleaseMemObject(cl); }
+};
+
+
 const cl_image_format clfimage_format({CL_R, CL_FLOAT});
 
 bool clIsInited();

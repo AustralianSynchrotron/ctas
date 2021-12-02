@@ -61,8 +61,8 @@
 static inline int fisnan(double x){ return _isnan(x); }
 static inline int fisok(double x){ return _isnormal(x) || _fpclassify(x) == FP_ZERO; }
 #else
-// isfinite allows NANs and isnormal forbids 0 ?!!!
-static inline int fisok(double x){ return std::isnormal(x) || std::fpclassify(x) == FP_ZERO; }
+// without optimize attribute the comparison to FP_ZERO gives true for x=NaN on GCC with optimization. WTF?!!!
+__attribute__((optimize("O0"))) static inline bool fisok(double x){ return std::isnormal(x) || ( std::fpclassify(x) == FP_ZERO ) ; }
 #endif
 
 
@@ -931,7 +931,7 @@ cl_device_id CL_device;
 cl_context CL_context;
 cl_command_queue CL_queue;
 
-const cl_image_format clfimage_format({CL_DEPTH, CL_FLOAT});
+const cl_image_format clfimage_format({CL_R, CL_FLOAT});
 
 bool clIsInited();
 
@@ -946,8 +946,6 @@ cl_int execKernel(cl_kernel kern, size_t size=1);
 cl_int execKernel(cl_kernel kern, const Shape & sh);
 
 cl_int execKernel(cl_kernel kern, const Shape3 & sh);
-
-cl_int fillClImage(cl_mem image, float val);
 
 
 template <class T> void
@@ -1016,6 +1014,17 @@ void cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
     throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
 }
 
+template <typename T>
+cl_int fillClArray(cl_mem clStorage, size_t size, T val) {
+  cl_int clerr = clEnqueueFillBuffer(CL_queue, clStorage, &val, sizeof(T), 0, sizeof(T) * size, 0,0,0);
+  if (clerr != CL_SUCCESS)
+    throw_error("Fill CL buffer", "Failed to fill the buffer: " + toString(clerr));
+  return clerr;
+}
+
+
+/*
+cl_int fillClImage(cl_mem image, float val);
 
 cl_mem clAllocFImage(const Shape sh, cl_mem_flags flag=CL_MEM_READ_WRITE);
 
@@ -1032,7 +1041,7 @@ cl_mem blitz2clfi(const Volume & storage, cl_mem_flags flag=CL_MEM_READ_WRITE);
 void clfi2blitz(cl_mem clStorage, Map & storage);
 
 void clfi2blitz(cl_mem clStorage, Volume & storage);
-
+*/
 
 
 #endif // OPENCL_FOUND

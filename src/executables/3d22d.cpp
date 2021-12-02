@@ -119,9 +119,7 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
 
   Volume ivol;
-  prdn(0);
   ReadVolume(args.images, ivol, args.beverbose);
-  prdn(1);
   crop(ivol,args.crp);
   binn(ivol,args.bnn); 
 

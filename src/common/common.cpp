@@ -52,7 +52,6 @@
 
 using namespace std;
 
-
 const clock_t startTV = clock();
 clock_t prevTV = startTV;
 
@@ -600,21 +599,24 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
                , inarr.shape()(1) / bnn.y
                , inarr.shape()(2) / bnn.x);
   outarr.resize(osh);
-  const float bsz = bnn.x * bnn.y * bnn.z;
 
 #ifdef OPENCL_FOUND
 
   try {
 
-    cl_mem clinarr = blitz2clfi(inarr);
-    cl_mem cloutarr = clAllocFImage(osh);
+    cl_mem clinarr = blitz2cl(inarr);
+    cl_mem cloutarr = clAllocArray<float>(outarr.size());
     cl_kernel kernelBinn3 = createKernel(binnProgram, "binn3");
 
     setArg(kernelBinn3, 0, clinarr);
     setArg(kernelBinn3, 1, cloutarr);
-    setArg(kernelBinn3, 2, (cl_int) bnn.z);
+    setArg(kernelBinn3, 2, (cl_int) bnn.x);
     setArg(kernelBinn3, 3, (cl_int) bnn.y);
-    setArg(kernelBinn3, 4, (cl_int) bnn.x);
+    setArg(kernelBinn3, 4, (cl_int) bnn.z);
+    setArg(kernelBinn3, 5, (cl_int) inarr.shape()(2));
+    setArg(kernelBinn3, 6, (cl_int) inarr.shape()(1));
+    setArg(kernelBinn3, 7, (cl_int) osh(2));
+    setArg(kernelBinn3, 8, (cl_int) osh(1));
 
     execKernel(kernelBinn3, osh);
     cl2blitz(cloutarr, outarr);
@@ -622,36 +624,38 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
   }  catch (...) { // full volume was too big for the gpu
 
     Map inslice(inarr.shape()(1), inarr.shape()(0));
-    cl_mem clinslice = clAllocFImage(inslice.shape());
+    cl_mem clinslice = clAllocArray<float>(inslice.size());
     Map outslice(osh(1), osh(0));
-    cl_mem cloutslice = clAllocFImage(outslice.shape());
+    cl_mem cloutslice = clAllocArray<float>(outslice.size());
     Map tmpslice(osh(1), osh(0));
-    cl_mem cltmpslice = clAllocFImage(outslice.shape());
+    cl_mem cltmpslice = clAllocArray<float>(outslice.size());
 
     cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
     setArg(kernelBinn2, 0, clinslice);
     setArg(kernelBinn2, 1, cltmpslice);
-    setArg(kernelBinn2, 2, (cl_int) bnn.y);
-    setArg(kernelBinn2, 3, (cl_int) bnn.x);
+    setArg(kernelBinn2, 2, (cl_int) bnn.x);
+    setArg(kernelBinn2, 3, (cl_int) bnn.y);
+    setArg(kernelBinn2, 4, (cl_int) inslice.shape()(1));
+    setArg(kernelBinn2, 5, (cl_int) outslice.shape()(1));
 
     cl_kernel kernelAddTo = createKernel(binnProgram, "addToSecond");
     setArg(kernelAddTo, 0, cltmpslice);
     setArg(kernelAddTo, 1, cloutslice);
 
-    cl_kernel kernelMulti = createKernel(binnProgram, "multiplyImage");
+    cl_kernel kernelMulti = createKernel(binnProgram, "multiplyArray");
     setArg(kernelMulti, 0, cloutslice);
     setArg(kernelMulti, 1, (cl_float) bnn.z);
 
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
-      fillClImage(cloutslice, 0);
+      fillClArray(cloutslice, outslice.size(), 0);
       for (int cz=0 ; cz<bnn.z ; cz++) {
         inslice = inarr(z*bnn.z+cz, blitz::Range::all(), blitz::Range::all());
-        blitz2clfi(inslice, clinslice, CL_MEM_READ_ONLY);
+        blitz2cl(inslice, clinslice);
         execKernel(kernelBinn2, outslice.shape());
-        execKernel(kernelAddTo, outslice.shape());
+        execKernel(kernelAddTo, outslice.size());
       }
       execKernel(kernelMulti, outslice.shape());
-      clfi2blitz(cloutslice, outslice);
+      cl2blitz(cloutslice, outslice);
       outarr(z, blitz::Range::all(), blitz::Range::all()) = outslice;
     }
 
@@ -659,6 +663,7 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
 #else // OPENCL_FOUND
 
+  const size_t bsz = bnn.x * bnn.y * bnn.z;
   for (blitz::MyIndexType zcur = 0 ; zcur < osh(0) ; zcur++ )
     for (blitz::MyIndexType ycur = 0 ; ycur < osh(1) ; ycur++ )
       for (blitz::MyIndexType xcur = 0 ; xcur < osh(2) ; xcur++ )
@@ -744,14 +749,16 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
 
 #ifdef OPENCL_FOUND
 
-  cl_mem clinarr = blitz2clfi(inarr);
-  cl_mem cloutarr = clAllocFImage(outarr.shape());
+  cl_mem clinarr = blitz2cl(inarr);
+  cl_mem cloutarr = clAllocArray<float>(outarr.size());
   cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
 
   setArg(kernelBinn2, 0, clinarr);
   setArg(kernelBinn2, 1, cloutarr);
-  setArg(kernelBinn2, 2, (cl_int) bnn.y);
-  setArg(kernelBinn2, 3, (cl_int) bnn.x);
+  setArg(kernelBinn2, 2, (cl_int) bnn.x);
+  setArg(kernelBinn2, 3, (cl_int) bnn.y);
+  setArg(kernelBinn2, 4, (cl_int) inarr.shape()(1));
+  setArg(kernelBinn2, 5, (cl_int) outarr.shape()(1));
 
   execKernel(kernelBinn2, outarr.shape());
   cl2blitz(cloutarr, outarr);
@@ -1492,6 +1499,8 @@ cl_int execKernel(cl_kernel kern, const Shape3 & sh) {
 }
 
 
+/*
+
 cl_mem clAllocFImage(const Shape sh, cl_mem_flags flag) {
   cl_int err;
   const cl_image_desc ifdesc(
@@ -1546,27 +1555,60 @@ cl_mem blitz2clfi(const Volume & storage, cl_mem_flags flag) {
 }
 
 
-cl_int fillClImage(cl_mem image, float val) {
-
-  const size_t origin[3] = {0,0,0};
-  size_t region[3];
+static void clImageInfo(cl_mem image, size_t region[3]) {
   cl_int clerr;
   if (  CL_SUCCESS != (clerr = clGetImageInfo(image, CL_IMAGE_WIDTH,   sizeof(size_t), region,   0) )
      || CL_SUCCESS != (clerr = clGetImageInfo(image, CL_IMAGE_HEIGHT,  sizeof(size_t), region+1, 0) )
      || CL_SUCCESS != (clerr = clGetImageInfo(image, CL_IMAGE_DEPTH,   sizeof(size_t), region+2, 0) )  )
     throw_error("execFill", "Failed to get image parameter: " + toString(clerr));
+}
 
-  clerr = clEnqueueFillImage(CL_queue, image, &val, origin, region, 0, 0, 0);
+
+cl_int fillClImage(cl_mem image, float val) {
+  const size_t origin[3] = {0,0,0};
+  size_t region[3];
+  const cl_float4 valc = {{val,0,0,0}};
+  clImageInfo(image, region);
+  int clerr = clEnqueueFillImage(CL_queue, image, &valc, origin, region, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execFill", "Failed to execute OpenCL image fill: " + toString(clerr));
   clerr = clFinish(CL_queue);
   if (clerr != CL_SUCCESS)
     throw_error("execFill", "Failed to finish OpenCL image fill: " + toString(clerr));
   return clerr;
-
 }
 
 
+void clfi2blitz(cl_mem image, Map & storage) {
+  const size_t origin[3] = {0,0,0};
+  size_t region[3];
+  clImageInfo(image, region);
+  if ( region[2] > 1 )
+    throw_error("Read CLimage", "Can't read 3D image into Map array.");
+  storage.resize(region[1], region[0]);
+  if ( ! storage.size() )
+    throw_error("Read CLimage", "Empty image.");
+  cl_int clerr = clEnqueueReadImage(CL_queue, image, CL_TRUE, origin, region
+                                    , 0, 0, storage.data(), 0, 0, 0);
+  if (clerr != CL_SUCCESS)
+    throw_error("Read CLimage", "Failed to read image.");
+}
+
+void clfi2blitz(cl_mem image, Volume & storage) {
+  const size_t origin[3] = {0,0,0};
+  size_t region[3];
+  clImageInfo(image, region);
+  storage.resize(region[2], region[1], region[0]);
+  if ( ! storage.size() )
+    throw_error("Read CLimage", "Empty image.");
+  cl_int clerr = clEnqueueReadImage(CL_queue, image, CL_TRUE, origin, region
+                                    , 0, 0, storage.data(), 0, 0, 0);
+  if (clerr != CL_SUCCESS)
+    throw_error("Read CLimage", "Failed to read image.");
+}
+
+
+*/
 
 #endif // OPENCL_FOUND
 
@@ -2565,14 +2607,14 @@ bool inThread_readVol (void * _thread_args, long int idx) {
 
 
 void
-ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
+ReadVolumePar(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
   ReadVolArgs readArgs(filelist, storage, verbose);
   execute_in_thread(inThread_readVol, &readArgs);
 }
 
 
 void
-ReadVolumeSeq(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
+ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
 
   if ( ! filelist.size() ) {
     storage.free();

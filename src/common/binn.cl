@@ -1,96 +1,68 @@
 
 
 kernel void  binn2(
-  read_only image2d_t      in,
-  image2d_t                out,
+  global float*            in,
+  global float*            out,
   int                      bx,
-  int                      by )
+  int                      by,
+  int                      iszx,
+  int                      oszx)
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
   float sum = 0;
-  for (int cy = 0 ; cy < by ; cy++)
+  for (int cy = 0 ; cy < by ; cy++) {
+    int offy = (y*by + cy)*iszx;
     for (int cx = 0 ; cx < bx ; cx++)
-      sum += read_imagef(in, (int2)(x*bx + cx, y*by + cy)).s0;
-  write_image(out, (int2)(x,y), (float4)(sum/(bx*by),0,0,0));
+      sum += in[x*bx + cx + offy];
+  }
+  out[x + y*oszx] = sum/(bx*by);
 }
 
 
 kernel void  binn3(
-  read_only image3d_t      in,
-  image3d_t                out,
+  global float*            in,
+  global float*            out,
   int                      bx,
   int                      by,
-  int                      bz )
+  int                      bz,
+  int                      iszx,
+  int                      iszy,
+  int                      oszx,
+  int                      oszy)
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
   const int z = get_global_id(2);
   float sum = 0;
-  for (int cz = 0 ; cz < bz ; cz++)
-    for (int cy = 0 ; cy < by ; cy++)
-      for (int cx = 0 ; cx < bx ; cx++)
-        sum += read_imagef(in, (int3)(x*bx + cx, y*by + cy, z*bz + cz)).s0;
-  write_image(out, (int3)(x,y,z), (float4)(sum/(bz*bx*by),0,0,0));
+  for (int cz = 0 ; cz < bz ; cz++) {
+    int off = iszy * iszx * (z*bz+cz);
+    for (int cy = 0 ; cy < by ; cy++) {
+      off += iszx * (y*by+cy);
+      for (int cx = 0 ; cx < bx ; cx++) {
+        sum += in[x*bx + cx + off];
+        in[x*bx + cx + off] = -1;
+      }
+    }
+  }
+  out[x + y*oszx + z*oszy*oszx] = sum / (bx*by*bz);
 }
+
 
 
 kernel void  addToSecond(
-  read_only image2d_t      in,
-  image2d_t                inout)
-{
-  const int x = get_global_id(0);
-  const int y = get_global_id(1);
-  write_image(inout, (int2)(x,y), read_image(inout, (int2)(x,y)) + read_image(in, (int2)(x,y) );
-}
-
-
-kernel void  multiplyImage(
-  image2d_t      inout,
-  float          coeff)
-{
-  const int x = get_global_id(0);
-  const int y = get_global_id(1);
-  write_image(inout, (int2)(x,y), coeff * read_image(inout, (int2)(x,y)) );
-}
-
-
-
-kernel void  binn2b(
-  global float*            in,
-  global float*            out,
-  int                      xx,
-  int                      yy,
-  int                      bx,
-  int                      by )
+  global float*          in,
+  global float*          inout)
 {
   const int idx = get_global_id(0);
-  const int i = bx * idx % xx;
-  const int j = by * idx / xx;
-  float sum = 0;
-  for (int cy = 0 ; cy < by ; cy++)
-    for (int cx = 0 ; cx < bx ; cx++)
-      sum += in[ i+cx + (j+cy)*xx ];
-  out[idx] = sum / (bx*by);
+  inout[idx] += in[idx];
 }
 
 
-kernel void  binn3b(
-  global float*            in,
-  global float*            out,
-  int                      xx,
-  int                      yy,
-  int                      zz,
-  int                      bx,
-  int                      by,
-  int                      bz)
+kernel void  multiplyArray(
+  global float*      inout,
+  float              coeff)
 {
-  const int idx = get_global_id(0);
-  const int i = bx * idx % xx;
-  const int j = by * idx / xx;
-  float sum = 0;
-  for (int cy = 0 ; cy < by ; cy++)
-    for (int cx = 0 ; cx < bx ; cx++)
-      sum += in[ i+cx + (j+cy)*xx ];
-  out[idx] = sum / (bx*by);
+  inout[get_global_id(0)] *= coeff;
 }
+

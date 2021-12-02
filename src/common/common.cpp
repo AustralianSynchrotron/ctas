@@ -2128,7 +2128,7 @@ ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
   try {
     HDFread(filedesc).read(0,storage);
   } catch( ... ) {
-    exit_on_error("HDF read", "Failed to read HDF5 from " + filedesc);
+    throw CtasErr(CtasErr::ERR, "HDF read", "Failed to read HDF5 from " + filedesc);
   }
 }
 

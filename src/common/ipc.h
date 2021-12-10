@@ -206,7 +206,7 @@ toString(IPCprocess::Component comp) {
   switch (comp) {
   case IPCprocess::ABS : return "absorption";
   case IPCprocess::PHS : return "phase";
-  default : throw_error("IPC component name", "Unknown component.");
+  default : throw_error("IPC component name", "Unknown component."); return "";
   }
 }
 

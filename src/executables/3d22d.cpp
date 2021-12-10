@@ -76,7 +76,7 @@ clargs(int argc, char *argv[])
     .add(poptmx::NOTE, "ARGUMENTS:")
     .add(poptmx::ARGUMENT, &images,    "images", "Input combination of 2D and 3D images.",
          "Either 2D images understood by the IM or HDF5. HDF5 format as follows:\n"
-         "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc ) 
+         "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc )
 
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
@@ -119,11 +119,13 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
 
   Volume ivol;
+  prdn(0);
   ReadVolume(args.images, ivol, args.beverbose);
+  prdn(1);
   crop(ivol,args.crp);
-  binn(ivol,args.bnn); 
+  binn(ivol,args.bnn);
 
-  const blitz::TinyVector<blitz::MyIndexType, 3> vsh(ivol.shape()); 
+  const blitz::TinyVector<blitz::MyIndexType, 3> vsh(ivol.shape());
   const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
                           args.outmask.dtitle() + "-@" + args.outmask.extension() :
                           string( args.outmask ) ;
@@ -147,23 +149,23 @@ int main(int argc, char *argv[]) {
     case 'z':
     case 'Z':
       sindex.erase(0,1);
-    default:      
+    default:
       sliceDim=0;
       ssh = Shape(vsh(1),vsh(2));
   }
-  
+
   const int sliceSz = vsh(sliceDim);
   const string sliceformat = mask2format(outmask, sliceSz);
   const vector<int>indices = slice_str2vec(sindex, sliceSz);
   const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
-  const float 
+  const float
     mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
     maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
 
   Map cur(ssh);
   ProgressBar bar(args.beverbose, "Saving slices", indices.size() );
   for (unsigned slice=0 ; slice < indices.size() ; slice++ ) {
-    const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice)); 
+    const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice));
     switch ( sliceDim ) {
         case 2:
           cur = ivol(blitz::Range::all(), blitz::Range::all(), indices.at(slice));
@@ -184,7 +186,7 @@ int main(int argc, char *argv[]) {
 
   exit(0);
 
-  
+
 
 
 

@@ -1350,10 +1350,8 @@ bool clIsInited() {
     return false;
   }
 
-
-//  cl_queue_properties queue_prop[] = {0};
-//  CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, 0, &err);
-  CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
+  CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, NULL, &err);
+  //CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
     return false;
@@ -1699,73 +1697,73 @@ slice_str2vec(const string & sliceS, int hight){
   string::size_type startidx=0, endidx;
   do {
 
-  	// extract substring
-  	endidx = sliceS.find(',', startidx);
-  	string subS = sliceS.substr(startidx, ( endidx == string::npos ?
-  											sliceS.length() :
-  											endidx-startidx) );
-  	startidx=endidx+1;
+    // extract substring
+    endidx = sliceS.find(',', startidx);
+    string subS = sliceS.substr(startidx, ( endidx == string::npos ?
+                        sliceS.length() :
+                        endidx-startidx) );
+    startidx=endidx+1;
 
-  	// checks for the non permitted characters
-  	if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
-  	  warn("slice string", "Substring \""+ subS +"\" in the "
-  		   " string describing set of slices to be reconstructed:\n"
-  		   + sliceS +"\n"
-  		   "has character(s) not from the permitted set"
-  		   " \""+ permitted_chars +"\". Skipping the substring.");
-  	  subS.erase();
-  	}
+    // checks for the non permitted characters
+    if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
+      warn("slice string", "Substring \""+ subS +"\" in the "
+         " string describing set of slices to be reconstructed:\n"
+         + sliceS +"\n"
+         "has character(s) not from the permitted set"
+         " \""+ permitted_chars +"\". Skipping the substring.");
+      subS.erase();
+    }
 
-  	// check it and add to the vector of substrings.
-  	if ( ! subS.empty() ) {
+    // check it and add to the vector of substrings.
+    if ( ! subS.empty() ) {
 
-  	  const string initS = subS;
+      const string initS = subS;
 
-  	  // modifies in regards to the negatec
-  	  string::size_type lastneg = subS.rfind(negatec);
-  	  if ( lastneg != string::npos ) {
-  		  if ( lastneg != 0 ) {
-  		    warn("slice string", "Suspicious substring \""+ initS +"\" in the"
-  		  	   " string describing set of slices to be reconstructed:\n"
-  		  	   + sliceS +"\n"
-  		  	   "it has '" + negatec + "' character not in the first position."
-  		  	   " Moving it to the begining. Is it what you meant?");
-  		    // moves all negatec's to the beginning and erases it's duplicates.
-  		    subS.erase
-  		  	( subS.begin(),
-  		  	  stable_partition( subS.begin(), subS.end(),
-  		  						bind2nd(equal_to<char>(),negatec) ) - 1 );
-  		  }
-  	  } else {
-  		  negateall = false;
-  	  }
+      // modifies in regards to the negatec
+      string::size_type lastneg = subS.rfind(negatec);
+      if ( lastneg != string::npos ) {
+        if ( lastneg != 0 ) {
+          warn("slice string", "Suspicious substring \""+ initS +"\" in the"
+             " string describing set of slices to be reconstructed:\n"
+             + sliceS +"\n"
+             "it has '" + negatec + "' character not in the first position."
+             " Moving it to the begining. Is it what you meant?");
+          // moves all negatec's to the beginning and erases it's duplicates.
+          subS.erase
+          ( subS.begin(),
+            stable_partition( subS.begin(), subS.end(),
+                    bind2nd(equal_to<char>(),negatec) ) - 1 );
+        }
+      } else {
+        negateall = false;
+      }
 
-  	  // modifies in regards to '-'
-  	  if ( count(subS.begin(), subS.end(), '-') > 1 ) {
-  	  	warn("slice string", "Substring \""+ initS +"\" in the "
-  	  		 " string describing set of slices to be reconstructed:\n"
-  	  		 + sliceS +"\n"
-  	  		 "has more than one minus sign '-'. Everything between first"
-  	  		 " and last minuses is ignored. Is it what you meant?");
-  	  	subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
-  	  }
-  	  // make sure minus is surrounded by numbers.
-  	  if ( subS[0] == '-' )
-  		  subS = "0" + subS;
-  	  if ( subS.substr(0,2) == "n-" )
-  		  subS.insert(1,"0");
-  	  if ( subS[subS.length()-1] == '-' )
-  		  subS = subS + toString(hight-1);
+      // modifies in regards to '-'
+      if ( count(subS.begin(), subS.end(), '-') > 1 ) {
+        warn("slice string", "Substring \""+ initS +"\" in the "
+           " string describing set of slices to be reconstructed:\n"
+           + sliceS +"\n"
+           "has more than one minus sign '-'. Everything between first"
+           " and last minuses is ignored. Is it what you meant?");
+        subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
+      }
+      // make sure minus is surrounded by numbers.
+      if ( subS[0] == '-' )
+        subS = "0" + subS;
+      if ( subS.substr(0,2) == "n-" )
+        subS.insert(1,"0");
+      if ( subS[subS.length()-1] == '-' )
+        subS = subS + toString(hight-1);
 
-  	  subSV.push_back(subS);
+      subSV.push_back(subS);
 
-  	}
+    }
 
   } while ( string::npos != endidx );
 
 
   // Check for global negation.
-  if ( negateall |= ( subSV[0] == string(1,negatec) ) )
+  if ( ( negateall |= ( subSV[0] == string(1,negatec) ) ) )
         for ( int icur = 0 ; icur < hight ; icur++)
           sliceV.push_back(icur);
   subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ),
@@ -1777,28 +1775,28 @@ slice_str2vec(const string & sliceS, int hight){
 
   while ( subSVi != subSVe ) {
 
-  	bool negatethis = (*subSVi)[0]==negatec;
-  	if (negatethis) (*subSVi).erase(0,1);
-    	negatethis |= negateall;
+    bool negatethis = (*subSVi)[0]==negatec;
+    if (negatethis) (*subSVi).erase(0,1);
+      negatethis |= negateall;
 
-  	string::size_type minuspos = (*subSVi).find('-');
-  	if ( minuspos != string::npos ) {
-  	  int
-  		  rangeB = str2n( (*subSVi).substr(0,minuspos) ),
-  		  rangeE = str2n( (*subSVi).substr(minuspos+1) );
-  	  if ( rangeB > rangeE ) swap(rangeB,rangeE);
-  	  if ( rangeB == rangeE )
-  	  	warn("slice string", "One of the substrings with ranges"
-  		  	 " in the string describing set of slices to be reconstructed:\n"
-  		  	 + sliceS +"\n"
-  		  	 "has equal ends of the ranges. Is it what you meant?");
-  	  for (int curS = rangeB ; curS <= rangeE ; curS++ )
-  		  rmadd(sliceV, curS, negatethis);
-  	} else {
-  	  rmadd(sliceV, str2n( *subSVi ), negatethis );
-  	}
+    string::size_type minuspos = (*subSVi).find('-');
+    if ( minuspos != string::npos ) {
+      int
+        rangeB = str2n( (*subSVi).substr(0,minuspos) ),
+        rangeE = str2n( (*subSVi).substr(minuspos+1) );
+      if ( rangeB > rangeE ) swap(rangeB,rangeE);
+      if ( rangeB == rangeE )
+        warn("slice string", "One of the substrings with ranges"
+           " in the string describing set of slices to be reconstructed:\n"
+           + sliceS +"\n"
+           "has equal ends of the ranges. Is it what you meant?");
+      for (int curS = rangeB ; curS <= rangeE ; curS++ )
+        rmadd(sliceV, curS, negatethis);
+    } else {
+      rmadd(sliceV, str2n( *subSVi ), negatethis );
+    }
 
-  	subSVi++;
+    subSVi++;
 
   }
 
@@ -1962,7 +1960,6 @@ private :
   H5::DataSpace memspace;
 
 public :
-
 
   HDFread(const string & filedesc)
     : HDFdesc(filedesc)
@@ -2154,8 +2151,8 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
     throw CtasErr(CtasErr::WARN, modname,
                   "Could not read tif from file\"" + filename + "\".");
 
-  uint32 width = 0, height = 0;
-  uint16 spp = 0, bps = 0, fmt = 0, photo;
+  uint32_t width = 0, height = 0;
+  uint16_t spp = 0, bps = 0, fmt = 0, photo;
 
   if ( ! TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &width) )
     throw warn(modname,
@@ -2217,7 +2214,7 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
 
   for (uint curidx = 0; curidx < readheight; curidx++) {
 
-    uint32 row = idxs.size() ? idxs[curidx] : curidx;
+    uint32_t row = idxs.size() ? idxs[curidx] : curidx;
 
     if ( row >= height || row < 0 ) {
 
@@ -2244,19 +2241,19 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       switch (fmt) {
       case SAMPLEFORMAT_UINT :
         if (bps==8)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint8);
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint8_t);
         else if (bps==16)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint16);
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint16_t);
         else if (bps==32)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint32);
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint32_t);
         break;
       case SAMPLEFORMAT_INT :
         if (bps==8)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int8);
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int8_t);
         else if (bps==16)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int16);
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int16_t);
         else if (bps==32)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int32);
+          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int32_t);
         break;
       case SAMPLEFORMAT_IEEEFP :
         storage(curidx, blitz::Range::all()) = blitzArrayFromData(float);
@@ -2552,27 +2549,35 @@ struct ReadVolArgs {
     , bar(verbose , "reading volume")
     , proglock(PTHREAD_MUTEX_INITIALIZER)
   {
+
     if ( ! filelist.size() ) {
       storage.free();
       return;
     }
+
+    size_t curSz=0;
     sh = ImageSizes(filelist[0]);
     for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       try {
-          hdfs.insert({*curI,HDFread(*curI)});
-          HDFread & hdf = hdfs.at(*curI);
-          for ( int hidx=0 ; hidx < hdf.indices.size() ; hidx++) {
-            slicelist.push_back(make_pair(*curI,hdf.indices.at(hidx)));
-          }
+        hdfs.insert({*curI,HDFread(*curI)});
+        HDFread & hdf = hdfs.at(*curI);
+        slicelist.push_back(make_pair(*curI,curSz));
+        curSz += hdf.indices.size();
       } catch (...) {
-        prdn(*curI);
-        slicelist.push_back(make_pair(*curI,0));
+        slicelist.push_back(make_pair(*curI,curSz));
+        curSz++;
       }
-    bar.setSteps(slicelist.size());
-    storage.resize(slicelist.size(), sh(0), sh(1) );
+    bar.setSteps(curSz);
+    storage.resize(curSz, sh(0), sh(1));
     if ( ! storage.size() )
       return;
 
+  }
+
+  void update_bar() {
+    pthread_mutex_lock(&proglock);
+    bar.update();
+    pthread_mutex_unlock(&proglock);
   }
 
 };
@@ -2585,22 +2590,24 @@ bool inThread_readVol (void * _thread_args, long int idx) {
     throw_error("read thread", "Inappropriate thread function arguments.");
   if ( idx >= dist->slicelist.size())
     return false;
-  Map slice(dist->sh);
 
+  Map slice(dist->sh);
   const pair<Path,int> & slpr = dist->slicelist.at(idx);
   if (dist->hdfs.count(slpr.first)) {
     HDFread & hdf = dist->hdfs.at(slpr.first);
     if ( hdf.shape != dist->sh )
       throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
-    hdf.read(slpr.second, slice);
+    for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
+      hdf.read(idxV, slice);
+      dist->storage(slpr.second+idxV, blitz::Range::all(), blitz::Range::all()) = slice;
+      dist->update_bar();
+    }
   } else {
     ReadImage(slpr.first, slice, dist->sh);
+    dist->storage(slpr.second, blitz::Range::all(), blitz::Range::all()) = slice;
+    dist->update_bar();
   }
 
-  dist->storage(idx, blitz::Range::all(), blitz::Range::all()) = slice;
-  pthread_mutex_lock(&dist->proglock);
-  dist->bar.update();
-  pthread_mutex_unlock(&dist->proglock);
   return true;
 
 }
@@ -2782,9 +2789,7 @@ SaveImageINT (const Path &filename, const Map &storage,
     return;
   }
 
-  const int
-    width = storage.columns(),
-    hight = storage.rows();
+  const int width = storage.columns();
 
   Map _storage;
   if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )

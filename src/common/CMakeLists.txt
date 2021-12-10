@@ -120,3 +120,6 @@ install(TARGETS
   poptmx common kernel lipc ldei ledei experiment
   LIBRARY DESTINATION ${LIB_DESTINATION}
 )
+
+FILE(GLOB_RECURSE Headers "*.h")
+add_custom_target(.headers SOURCES ${Headers})

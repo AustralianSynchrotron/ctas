@@ -153,7 +153,7 @@ toString(DEIprocess::Component comp) {
   switch (comp) {
   case DEIprocess::ABS : return "absorption";
   case DEIprocess::REF : return "refraction";
-  default : throw_error("DEI component name", "Unknown component.");
+  default : throw_error("DEI component name", "Unknown component.") ; return "" ;
   }
 }
 

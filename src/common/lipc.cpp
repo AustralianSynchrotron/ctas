@@ -106,8 +106,8 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   #ifdef OPENCL_FOUND
 
 
-  const size_t msh[2] = {closest_factorable(2*sh(1)-1, {2,3,5,7}),
-                         closest_factorable(2*sh(0)-1, {2,3,5,7})};
+  const size_t msh[2] = {(size_t) closest_factorable(2*sh(1)-1, {2,3,5,7}),
+                         (size_t) closest_factorable(2*sh(0)-1, {2,3,5,7})};
   mid.resize(msh[1], msh[0]);
 
   clmid = clAllocArray<float>(2*mid.size());

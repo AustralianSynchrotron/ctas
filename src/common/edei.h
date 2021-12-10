@@ -248,7 +248,7 @@ toString(EDEIprocess::Component comp) {
   switch (comp) {
   case EDEIprocess::ABS : return "absorption";
   case EDEIprocess::REF : return "refraction";
-  default : throw_error("EDEI component name", "Unknown component.");
+  default : throw_error("EDEI component name", "Unknown component.") ; return "";
   }
 }
 

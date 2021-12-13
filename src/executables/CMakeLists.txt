@@ -194,6 +194,14 @@ target_link_libraries(3d22d
 )
 
 
+add_executable(bctppl bctppl.cpp)
+target_link_libraries(bctppl
+  common
+  poptmx
+)
+
+
+
 
 #add_executable(test test.cpp)
 #target_link_libraries(test

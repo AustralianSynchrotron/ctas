@@ -2614,14 +2614,15 @@ bool inThread_readVol (void * _thread_args, long int idx) {
 
 
 void
-ReadVolumePar(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
+ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
   ReadVolArgs readArgs(filelist, storage, verbose);
   execute_in_thread(inThread_readVol, &readArgs);
 }
 
 
+/*
 void
-ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
+ReadVolumeSeq(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
 
   if ( ! filelist.size() ) {
     storage.free();
@@ -2666,7 +2667,7 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
   }
 
 }
-
+*/
 
 
 

@@ -388,6 +388,40 @@ _conversion (Contrast* _val, const std::string & in);
 
 
 
+struct PointF2D {
+  float x;      ///< X coordinate
+  float y;       ///< Y coordinate
+  inline PointF2D(float _x=0, float _y=0)
+  : x(_x), y(_y) {}
+};
+
+inline bool operator==( const PointF2D & p1, const PointF2D & p2){
+  return p1.x == p2.x && p1.y == p2.y;
+}
+
+inline bool operator!=( const PointF2D & p1, const PointF2D & p2){
+  return p1.x != p2.x || p1.y != p2.y;
+}
+
+
+std::string
+type_desc (PointF2D*) {
+  return "FLOAT:FLOAT";
+}
+
+int
+_conversion (PointF2D* _val, const std::string & in) {
+  float x, y;
+  if ( sscanf( in.c_str(), "%f:%f", &x, &y) != 2  &&
+       sscanf( in.c_str(), "%f,%f", &x, &y) != 2 )
+    return -1;
+  *_val = PointF2D(x, y);
+  return 1;
+}
+
+
+
+
 /// \brief 1D line with data.
 ///
 /// One dimensional array of the ::float elements.
@@ -1198,7 +1232,7 @@ ReadImageLine(const Path & filename, Line & storage, int idx, const Shape & shp)
 ///
 void COMMON_API
 ReadImageLine(const Path & filename, Map & storage,
-			  const std::vector<int> & idxs);
+        const std::vector<int> & idxs);
 
 
 /// \brief Load several lines of the image.
@@ -1214,7 +1248,7 @@ ReadImageLine(const Path & filename, Map & storage,
 ///
 void COMMON_API
 ReadImageLine(const Path & filename, Map & storage,
-			  const std::vector<int> & idxs, const Shape & shp);
+        const std::vector<int> & idxs, const Shape & shp);
 
 
 
@@ -1259,7 +1293,7 @@ SaveImage(const Path & filename, const Map & storage, bool saveint=false);
 ///
 void COMMON_API
 SaveImage(const Path & filename, const Map & storage,
-	  float minval, float maxval );
+    float minval, float maxval );
 
 
 /// \brief Loads any amount of lines from data file.

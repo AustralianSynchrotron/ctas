@@ -43,13 +43,17 @@ const string DimSliceOptionDesc = "[slice dimension][slice(s)]]"
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  vector<Path> images;        ///< input image
-  Path outmask;              ///< Name of the output image.
-  Crop3 crp;                  ///< Crop input projection image
-  Binn3 bnn;                  ///< binning factor
-  string slicedesc;       ///< String describing the slices to be sino'ed.
-  float mincon;         ///< Black intensity.
-  float maxcon;         ///< White intensity.
+  Path gapMask;
+  vector<Path> dfs;
+  vector<Path> bgs0;
+  vector<Path> bgs1;
+  vector<Path> smp0;
+  vector<Path> smp1;
+  PointF2D shift;
+  Crop crp;                  ///< Crop input projection image
+  Crop fcrp;                  ///< Crop final projection image
+  float angle;                ///< Rotation angle.
+  float center;               ///< flip centre.
   bool SaveInt;         ///< Save image as 16-bit integer.
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
@@ -59,41 +63,21 @@ struct clargs {
 
 clargs::
 clargs(int argc, char *argv[])
-  : outmask ("slice.tif")
-  , mincon(NAN)
-  , maxcon(NAN)
-  , SaveInt(false)
+  : SaveInt(false)
   , beverbose(false)
 {
 
 
   poptmx::OptionTable table
     ("Extract slices from 3D volume.",
-
-    "Extract slices from 3D volume read from HDF5 images." );
+     "Extract slices from 3D volume read from HDF5 images." );
 
   table
-    .add(poptmx::NOTE, "ARGUMENTS:")
-    .add(poptmx::ARGUMENT, &images,    "images", "Input combination of 2D and 3D images.",
-         "Either 2D images understood by the IM or HDF5. HDF5 format as follows:\n"
-         "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc )
-
-    .add(poptmx::NOTE, "OPTIONS:")
-    .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
-       "Output filename if only one sinogram is requested."
-       " Output mask otherwise. " + MaskDesc, outmask)
-    .add(poptmx::OPTION, &mincon, 'm', "min",
-       "Pixel value corresponding to black.",
-       " All values below this will turn black.", "<minimum>")
-    .add(poptmx::OPTION, &maxcon, 'M', "max",
-       "Pixel value corresponding to white.",
-       " All values above this will turn white.", "<maximum>")
-    .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume: " + Crop3OptionDesc, "")
-    .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
-    .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
-    .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
-    .add_standard_options(&beverbose)
-    .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+      .add(poptmx::NOTE, "ARGUMENTS:")
+      .add(poptmx::NOTE, "OPTIONS:")
+      .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
+      .add_standard_options(&beverbose)
+      .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
 
   if ( ! table.parse(argc,argv) )
@@ -104,8 +88,6 @@ clargs(int argc, char *argv[])
   }
   command = table.name();
 
-  if ( ! table.count(&images) )
-    exit_on_error(command, "No input image given.");
 
 }
 
@@ -118,6 +100,7 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
+  /*
   Volume ivol;
   ReadVolume(args.images, ivol, args.beverbose);
   crop(ivol,args.crp);
@@ -181,6 +164,8 @@ int main(int argc, char *argv[]) {
       SaveImage(fileName, cur);
     bar.update();
   }
+
+  */
 
   exit(0);
 

@@ -33,37 +33,6 @@
 #include <string.h>
 
 
-struct PointF2D {
-  float x;      ///< X coordinate
-  float y;       ///< Y coordinate
-  inline PointF2D(float _x=0, float _y=0)
-  : x(_x), y(_y) {}
-};
-
-inline bool operator==( const PointF2D & p1, const PointF2D & p2){
-  return p1.x == p2.x && p1.y == p2.y;
-}
-
-inline bool operator!=( const PointF2D & p1, const PointF2D & p2){
-  return p1.x != p2.x || p1.y != p2.y;
-}
-
-
-
-std::string
-type_desc (PointF2D*) {
-  return "FLOAT:FLOAT";
-}
-
-int
-_conversion (PointF2D* _val, const std::string & in) {
-  float x, y;
-  if ( sscanf( in.c_str(), "%f:%f", &x, &y) != 2  &&
-       sscanf( in.c_str(), "%f,%f", &x, &y) != 2 )
-    return -1;
-  *_val = PointF2D(x, y);
-  return 1;
-}
 
 
 
@@ -294,7 +263,7 @@ void SaveDenan(const Path & filename, const Map & storage, bool saveint=false) {
 
 Path findCommon(const vector<Path>::const_iterator _bgn, const vector<Path>::const_iterator _end) {
 
-  vector<Path> touse;  
+  vector<Path> touse;
   for (vector<Path>::const_iterator crnt=_bgn ; crnt<_end ; crnt++)
     touse.push_back(imageFile(*crnt));
   const vector<Path>::const_iterator bgn = touse.begin(),

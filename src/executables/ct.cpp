@@ -106,7 +106,6 @@ clargs(int argc, char *argv[]) :
     table.usage();
     exit(0);
   }
-
   command = table.name();
 
   if ( ! table.count(&sinogram_name) )

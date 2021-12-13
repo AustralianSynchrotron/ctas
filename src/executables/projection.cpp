@@ -351,9 +351,7 @@ int main(int argc, char *argv[]) {
   }
 
   Map gfar;
-  if ( args.gfs.empty() ) {
-    gfar.reference(gfar);
-  } else {
+  if ( ! args.gfs.empty() ) {
     gfar.resize(ish);
     gfar=0.0;
     for ( int curf = 0 ; curf < args.gfs.size() ; curf++) {

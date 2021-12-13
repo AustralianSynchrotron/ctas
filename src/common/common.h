@@ -448,78 +448,70 @@ typedef blitz::Array<float,3> Volume;
 
 
 
-struct Crop3 {
-  unsigned int top;       ///< Crop3 from top
-  unsigned int left;      ///< Crop3 from left
-  unsigned int bottom;     ///< Crop3 from bottom
-  unsigned int right;     ///< Crop3 from right
-  unsigned int face;     ///< Crop3 from bottom
-  unsigned int back;     ///< Crop3 from right
+/// \brief Shape of an 2D array.
+typedef blitz::TinyVector<blitz::MyIndexType,2> Shape;
 
-  inline Crop3(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0, unsigned int f=0, unsigned int k=0)
-  : top(t), left(l), bottom(b), right(r) , face(f), back(b) {}
-};
+inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
 
-inline std::string toString (const Crop3 & crp)  {
-  return toString("%ut,%ul,%ub,%ur,%uf,%uk", crp.top, crp.left, crp.bottom, crp.right, crp.face, crp.back);
-}
-
-
-/// \brief Compare crops.
+/// \brief Compare shapes.
 ///
-/// @param sh1 first crop.
-/// @param sh2 second crop.
+/// @param sh1 first shape.
+/// @param sh2 second shape.
 ///
-/// @return \c true if the crops are equal, \c false otherwise.
+/// @return \c true if the shapes are equal, \c false otherwise.
 ///
 inline bool
-operator==( const Crop3 & cr1, const Crop3 & cr2){
-  return cr1.bottom == cr2.bottom && cr1.top == cr2.top &&
-         cr1.left == cr2.left && cr1.right == cr2.right &&
-         cr1.face == cr2.face && cr1.back == cr2.back;
+operator==( const Shape & sh1, const Shape & sh2){
+  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1) );
 }
 
-/// \brief Compare crops.
+/// \brief Compare shapes.
 ///
-/// @param sh1 first crop.
-/// @param sh2 second crop.
+/// @param sh1 first shape.
+/// @param sh2 second shape.
 ///
-/// @return \c false if the crops are equal, \c true otherwise.
+/// @return \c false if the shapes are equal, \c true otherwise.
 ///
 inline bool
-operator!=( const Crop3 & cr1, const Crop3 & cr2){
-  return cr1.bottom != cr2.bottom || cr1.top != cr2.top ||
-  cr1.left != cr2.left || cr1.right != cr2.right ||
-  cr1.face != cr2.face || cr1.back != cr2.back;
+operator!=( const Shape & sh1, const Shape & sh2){
+  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1) );
 }
 
-std::string COMMON_API
-type_desc (Crop3*);
 
-int COMMON_API
-_conversion (Crop3* _val, const std::string & in);
 
-extern const std::string COMMON_API
-Crop3OptionDesc;
 
-/// \brief Crop3 the array.
+/// \brief Shape of an 2D array.
+typedef blitz::TinyVector<blitz::MyIndexType,3> Shape3;
+
+inline std::string toString (const Shape3 & shp) { return toString("%u, %u, %u", shp(2), shp(1), shp(0));}
+
+/// \brief Compare shapes.
 ///
-/// @param inarr Input array.
-/// @param outarr Output array.
-/// @param crop Crop3 resulting image
+/// @param sh1 first shape.
+/// @param sh2 second shape.
 ///
-void COMMON_API
-crop(const Volume & inarr, Volume & outarr, const Crop3 & crp);
-
-/// \brief Crop3 the array.
+/// @return \c true if the shapes are equal, \c false otherwise.
 ///
-/// @param io_arr Input/output array.
-/// @param crop Crop3 resulting image
+inline bool
+operator==( const Shape3 & sh1, const Shape3 & sh2){
+  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1)  &&  sh1(2)==sh2(2) );
+}
+
+/// \brief Compare shapes.
 ///
-void COMMON_API
-crop(Volume & io_arr, const Crop3 & crp);
+/// @param sh1 first shape.
+/// @param sh2 second shape.
+///
+/// @return \c false if the shapes are equal, \c true otherwise.
+///
+inline bool
+operator!=( const Shape3 & sh1, const Shape3 & sh2){
+  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1)  ||  sh1(2)!=sh2(2) );
+}
 
-
+inline Shape faceShape(const Shape3 & sh) {
+  return Shape(sh(1), sh(2));
+}
 
 
 
@@ -593,6 +585,95 @@ crop(const Map & inarr, Map & outarr, const Crop & crp);
 ///
 void COMMON_API
 crop(Map & io_arr, const Crop & crp);
+
+
+
+
+
+
+
+
+
+
+
+struct Crop3 {
+
+  unsigned int top;       ///< Crop3 from top
+  unsigned int left;      ///< Crop3 from left
+  unsigned int bottom;     ///< Crop3 from bottom
+  unsigned int right;     ///< Crop3 from right
+  unsigned int face;     ///< Crop3 from bottom
+  unsigned int back;     ///< Crop3 from right
+
+  inline Crop3(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0, unsigned int f=0, unsigned int k=0)
+  : top(t), left(l), bottom(b), right(r) , face(f), back(k) {}
+
+  inline Crop3(const Crop & crp, unsigned int f=0, unsigned int k=0)
+  : top(crp.top), left(crp.left), bottom(crp.bottom), right(crp.right) , face(f), back(k) {}
+
+};
+
+inline std::string toString (const Crop3 & crp)  {
+  return toString("%ut,%ul,%ub,%ur,%uf,%uk", crp.top, crp.left, crp.bottom, crp.right, crp.face, crp.back);
+}
+
+
+/// \brief Compare crops.
+///
+/// @param sh1 first crop.
+/// @param sh2 second crop.
+///
+/// @return \c true if the crops are equal, \c false otherwise.
+///
+inline bool
+operator==( const Crop3 & cr1, const Crop3 & cr2){
+  return cr1.bottom == cr2.bottom && cr1.top == cr2.top &&
+         cr1.left == cr2.left && cr1.right == cr2.right &&
+         cr1.face == cr2.face && cr1.back == cr2.back;
+}
+
+/// \brief Compare crops.
+///
+/// @param sh1 first crop.
+/// @param sh2 second crop.
+///
+/// @return \c false if the crops are equal, \c true otherwise.
+///
+inline bool
+operator!=( const Crop3 & cr1, const Crop3 & cr2){
+  return cr1.bottom != cr2.bottom || cr1.top != cr2.top ||
+  cr1.left != cr2.left || cr1.right != cr2.right ||
+  cr1.face != cr2.face || cr1.back != cr2.back;
+}
+
+std::string COMMON_API
+type_desc (Crop3*);
+
+int COMMON_API
+_conversion (Crop3* _val, const std::string & in);
+
+extern const std::string COMMON_API
+Crop3OptionDesc;
+
+/// \brief Crop3 the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param crop Crop3 resulting image
+///
+void COMMON_API
+crop(const Volume & inarr, Volume & outarr, const Crop3 & crp);
+
+/// \brief Crop3 the array.
+///
+/// @param io_arr Input/output array.
+/// @param crop Crop3 resulting image
+///
+void COMMON_API
+crop(Volume & io_arr, const Crop3 & crp);
+
+
+
 
 
 
@@ -770,65 +851,10 @@ rotate(Map & io_arr, float angle, float bg=NAN);
 
 
 
-/// \brief Shape of an 2D array.
-typedef blitz::TinyVector<blitz::MyIndexType,3> Shape3;
-
-inline std::string toString (const Shape3 & shp) { return toString("%u, %u, %u", shp(2), shp(1), shp(0));}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c true if the shapes are equal, \c false otherwise.
-///
-inline bool
-operator==( const Shape3 & sh1, const Shape3 & sh2){
-  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1)  &&  sh1(2)==sh2(2) );
-}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c false if the shapes are equal, \c true otherwise.
-///
-inline bool
-operator!=( const Shape3 & sh1, const Shape3 & sh2){
-  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1)  ||  sh1(2)!=sh2(2) );
-}
 
 
 
-/// \brief Shape of an 2D array.
-typedef blitz::TinyVector<blitz::MyIndexType,2> Shape;
 
-inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c true if the shapes are equal, \c false otherwise.
-///
-inline bool
-operator==( const Shape & sh1, const Shape & sh2){
-  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1) );
-}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c false if the shapes are equal, \c true otherwise.
-///
-inline bool
-operator!=( const Shape & sh1, const Shape & sh2){
-  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1) );
-}
 
 
 

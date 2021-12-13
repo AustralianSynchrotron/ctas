@@ -80,7 +80,7 @@ clargs(int argc, char *argv[])
 
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
-       "Output filename if only one sinogram is requested."
+       "Output filename if output is a single file."
        " Output mask otherwise. " + MaskDesc, outmask)
     .add(poptmx::OPTION, &mincon, 'm', "min",
        "Pixel value corresponding to black.",

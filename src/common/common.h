@@ -1363,11 +1363,7 @@ nof_threads(long _threads=0);
 
 void execute_in_thread( bool (*_thread_routine) (void *, long int), void * _arg );
 void execute_in_thread( bool (*_thread_routine) (long int));
-void execute_in_thread( bool (*_thread_routine)());
-
-bool inThread_readVol (void * _thread_args, long int idx);
-
-//bool inThread_saveVol (void * _thread_args, long int idx) ;
+void execute_in_thread( bool (*_thread_routine) ());
 
 
 

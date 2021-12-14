@@ -26,12 +26,16 @@
 /// @brief %Forms projection from multiple images.
 ///
 
+#define _USE_MATH_DEFINES // for M_PI
 
 #include "../common/common.h"
 #include "../common/poptmx.h"
 #include "../common/flatfield.h"
+#include "../common/kernel.h"
 #include <algorithm>
 #include <string.h>
+#include <math.h>
+#include <unordered_map>
 
 
 using namespace std;
@@ -48,15 +52,17 @@ struct clargs {
   vector<Path> bgs1;
   vector<Path> ims0;
   vector<Path> ims1;
-  PointF2D shift;
-  float aShift;
-  float arc;
-  Crop crop;                  ///< Crop input projection image
-  Crop fcrp;                  ///< Crop final projection image
-  float angle;                ///< Rotation angle.
-  float center;               ///< flip centre.
-  bool SaveInt;         ///< Save image as 16-bit integer.
-  bool beverbose;             ///< Be verbose flag
+  PointF2D shift;  // for frame formation
+  float ashift;  // for frame formation
+  Filter filter_type;  // for CT
+  float dd;  // for Phase and CT
+  float arc; // for frame formation and CT
+  Crop crop; // for frame formation
+  Crop fcrp; // for frame formation
+  float angle;
+  float center; // for frame formation and CT
+  bool SaveInt;
+  bool beverbose;
   /// \CLARGSF
   clargs(int argc, char *argv[]);
 };
@@ -66,6 +72,7 @@ clargs::
 clargs(int argc, char *argv[])
   : outmask("_.tif")
   , shift(0,0)
+  , dd(1.0)
   , arc(180)
   , angle(0)
   , center(0)
@@ -91,7 +98,7 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &bgs0, 'b', "bg0", "Background image(s) for the first input set.", "")
       .add(poptmx::OPTION, &bgs1, 'B', "bg1", "Background image(s) for the second input set.", "")
       .add(poptmx::OPTION, &shift, 's', "shift", "Spatial shift of the second data set.", "")
-      .add(poptmx::OPTION, &aShift, 'S', "start", "Starting angle of the second data set.",
+      .add(poptmx::OPTION, &ashift, 'S', "start", "Starting angle of the second data set.",
            "The starting angular position relative to the starting position of the first data set.")
       .add(poptmx::OPTION, &arc, 'a', "arcan", "CT scan range (if > 1 deg), or step size (if < 1 deg).",
            "If value is greater than 1deg then it represents the arc of the CT scan."
@@ -100,6 +107,10 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &fcrp, 'T', "crop-final", "Crops final image: " + CropOptionDesc, "")
       .add(poptmx::OPTION, &angle,'r', "rotate", "Rotate input images by given angle.", "")
       .add(poptmx::OPTION, &center, 'c', "center", "Rotation center.", CenterOptionDesc)
+      .add(poptmx::OPTION, &filter_type, 0, "filter",
+           "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
+      .add(poptmx::OPTION, &dd, 'r', "resolution",
+           "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
       .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
       .add_standard_options(&beverbose)
       .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -121,12 +132,25 @@ clargs(int argc, char *argv[])
   chck_inSet(bgs0, "second background");
   #undef chck_inSet
 
+  if ( arc <= 0.0 )
+    exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
+  if ( ashift < 0.0 )
+    exit_on_error(command, "Angular shift between two sets (given by "+table.desc(&shift)+")"
+                           " must be strictly positive.");
+  if ( ashift >= 360.0 ) {
+    float dummy;
+    ashift -= 360 * modf( ashift/360.0, &dummy);
+  }
+
+
+
+
 }
 
 
 
 
-struct FFargs {
+struct FlatArgs {
 
   Volume & vol;
   const Map & bgs;
@@ -136,7 +160,7 @@ struct FFargs {
   ProgressBar bar;
   pthread_mutex_t proglock;
 
-  FFargs(Volume & v, Map & b, Map & d, Map & g, bool verbose=false)
+  FlatArgs(Volume & v, Map & b, Map & d, Map & g, bool verbose=false)
     : vol(v), bgs(b), dfs(d), gaps(g)
     , bar(verbose , "Performing flat field.", vol.shape()(0))
     , proglock(PTHREAD_MUTEX_INITIALIZER)
@@ -150,14 +174,16 @@ struct FFargs {
 
 };
 
-bool FFinThread (void * _thread_args, long int idx) {
-  FFargs * dist = (FFargs*) _thread_args;
+bool FlatInThread (void * _thread_args, long int idx) {
+  FlatArgs * dist = (FlatArgs*) _thread_args;
   if (!dist)
     throw_error("read thread", "Inappropriate thread function arguments.");
   if ( idx >= dist->vol.shape()(0) )
     return false;
   Map io( dist->vol(idx, blitz::Range::all(), blitz::Range::all()) );
+
 // TODO : take care of gaps
+
   flatfield(io, dist->bgs, dist->dfs);
   dist->update_bar();
   return true;
@@ -171,26 +197,36 @@ struct FrameFormArgs{
   Volume & res;
   const Volume & ims0;
   const Volume & ims1;
+  const Shape ish;
   const Map & gaps;
+  const float arc;
+  const float step;
+  const float oz;
   const PointF2D & shift;
   const float ashift;
-  const float arc;
+  const int nshift;
 
   ProgressBar bar;
   pthread_mutex_t proglock;
 
   FrameFormArgs(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
-                const PointF2D & _shift, float _ashift, float _arc, bool verbose=false)
+                float _arc, const PointF2D & _shift, float _ashift, bool verbose=false)
     : res(_res)
     , ims0(_ims0)
     , ims1(_ims1)
+    , ish(faceShape(ims0.shape()))
     , gaps(_gaps)
+    , arc(_arc)
+    , step( arc / (ims0.shape()(0)-1) )
+    , oz((int)(180/step))
     , shift(_shift)
     , ashift(_ashift)
-    , arc(_arc)
+    , nshift(ashift/step)
     , bar(verbose , "Performing flat field.", ims0.shape()(0))
     , proglock(PTHREAD_MUTEX_INITIALIZER)
-  {}
+  {
+    res.resize( oz , ims0.shape()(1)-shift.y, ims0.shape()(2)-shift.x );
+  }
 
   void update_bar() {
     pthread_mutex_lock(&proglock);
@@ -205,8 +241,18 @@ bool FrameFormInThread (void * _thread_args, long int idx) {
   FrameFormArgs * dist = (FrameFormArgs*) _thread_args;
   if (!dist)
     throw_error("FormFrame", "Inappropriate thread function arguments.");
-  if ( idx >= dist->ims0.shape()(0) )
+  if ( idx >= dist->oz )
     return false;
+
+  Map im0(dist->ish);
+  im0 = dist->ims0(idx, blitz::Range::all(), blitz::Range::all());
+  Map im1(dist->ish);
+  const int idx1 = idx + dist->oz - dist->nshift  -
+                   ( idx + dist->oz >= dist->nshift  ?  0  :  dist->oz ) ;
+  im1 = dist->ims1(idx1, blitz::Range::all(), blitz::Range::all());
+
+  // TODO actual formation
+
 
   dist->update_bar();
   return true;
@@ -214,6 +260,61 @@ bool FrameFormInThread (void * _thread_args, long int idx) {
 }
 
 
+
+struct CTargs {
+
+  unordered_map<pthread_t,CTrec> recs;
+  const Volume & frames;
+  Volume & result;
+  const Contrast contrast;
+  const Filter filter;
+  const float pixelSize;
+
+  const Shape ssh;
+  ProgressBar bar;
+  pthread_mutex_t proglock;
+
+
+  CTargs(const Volume & fms, Volume & res, Contrast cn, Filter ft, float pp)
+    : frames(fms)
+    , result(res)
+    , contrast(cn)
+    , filter(ft)
+    , pixelSize(pp)
+    , ssh(fms.shape()(2), fms.shape()(0))
+  {
+    result.resize(fms.shape()(1), ssh(0), ssh(0));
+  }
+
+  void update_bar() {
+    pthread_mutex_lock(&proglock);
+    bar.update();
+    pthread_mutex_unlock(&proglock);
+  }
+
+};
+
+bool CTinThread (void * _thread_args, long int idx) {
+
+  CTargs * dist = (CTargs*) _thread_args;
+  if (!dist)
+    throw_error("FormFrame", "Inappropriate thread function arguments.");
+  if ( idx >= dist->frames.size() )
+    return false;
+
+
+  const pthread_t me = pthread_self();
+  if ( ! dist->recs.count(me) ) // first call
+    dist->recs.insert({me, CTrec(dist->ssh, dist->contrast, 180, dist->filter)}); // arc is 180 after frames formation
+  CTrec & rec = dist->recs.at(me);
+
+  Map sino(dist->frames(blitz::Range::all(), idx, blitz::Range::all()));
+  dist->result(idx, blitz::Range::all(), blitz::Range::all())
+      = rec.reconstruct(sino , 0, dist->pixelSize); // centre is 180 after frames formation
+
+  return true;
+
+}
 
 
 
@@ -226,6 +327,8 @@ int main(int argc, char *argv[]) {
   const Shape ish = ImageSizes(args.ims0.at(0));
   const Shape sh = Shape( ish(0) - args.crop.top  - args.crop.top,
                           ish(1) - args.crop.left - args.crop.right );
+
+  // Read DFs, BGs, GapMask
 
   #define ReadSumSet( set, res ) { \
     if ( ! set.empty() ) { \
@@ -251,13 +354,17 @@ int main(int argc, char *argv[]) {
   } else
     gaps = 1;
 
+
+
+  // Read sample sets
+
   #define ReadSet(set, bmap, vol) { \
     ReadVolume(set, vol, args.beverbose); \
     crop(vol, args.crop); \
     if ( faceShape(vol.shape()) != sh ) \
       exit_on_error("ReadSet", "Wrong image sizes."); \
-    FFargs ffa(vol, bmap, dfs, gaps, args.beverbose); \
-    execute_in_thread(FFinThread, &ffa); \
+    FlatArgs threadArgs(vol, bmap, dfs, gaps, args.beverbose); \
+    execute_in_thread(FlatInThread, &threadArgs); \
   }
   Volume ims0; ReadSet(args.ims0, bgs0, ims0);
   Volume ims1; ReadSet(args.ims1, bgs1, ims1);
@@ -265,91 +372,64 @@ int main(int argc, char *argv[]) {
     exit_on_error("InputSets", "Volumes are of different size.");
   #undef ReadSet
 
+  dfs.free();
+  bgs0.free();
+  bgs1.free();
 
-  Volume frames( ims0.shape()(0), ims0.shape()(1)-args.shift.y, ims0.shape()(2)-args.shift.x );
+
+
+  // Form final frames
+
+  const float arc =  args.arc > 1.0  ?  args.arc  :  args.arc * ims0.shape()(0);
+  Volume frames;
+  FrameFormArgs ffThreadArgs(frames, ims0, ims1, gaps, arc, args.shift, args.ashift, args.beverbose);
+  execute_in_thread(FrameFormInThread, &ffThreadArgs);
+  const int oz = frames.shape()(0);
+  const Shape fsh = faceShape(frames.shape());
+
+  ims0.free();
+  ims1.free();
+
+
+
+  // TODO Rings
+
+  // TODO Zinger
+
+  // TODO Phase
 
 
 
 
-  /*
-  Volume ivol;
-  ReadVolume(args.images, ivol, args.beverbose);
-  crop(ivol,args.crp);
-  binn(ivol,args.bnn);
 
-  const blitz::TinyVector<blitz::MyIndexType, 3> vsh(ivol.shape());
-  const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
-                          args.outmask.dtitle() + "-@" + args.outmask.extension() :
-                          string( args.outmask ) ;
+  // CT
 
-  int sliceDim;
-  Shape ssh;
-  string sindex = args.slicedesc.size()  ?  args.slicedesc  :  "Z";
-  switch ( sindex.at(0) ) {
-    case 'x':
-    case 'X':
-      sindex.erase(0,1);
-      sliceDim=2;
-      ssh = Shape(vsh(0),vsh(1));
-      break;
-    case 'y':
-    case 'Y':
-      sindex.erase(0,1);
-      sliceDim=1;
-      ssh = Shape(vsh(0),vsh(2));
-      break;
-    case 'z':
-    case 'Z':
-      sindex.erase(0,1);
-    default:
-      sliceDim=0;
-      ssh = Shape(vsh(1),vsh(2));
-  }
+  Volume recs;
+  CTargs ctThreadArgs(frames, recs, Contrast::PHS, args.filter_type, args.dd);
+  execute_in_thread(CTinThread, &ctThreadArgs);
 
-  const int sliceSz = vsh(sliceDim);
-  const string sliceformat = mask2format(outmask, sliceSz);
-  const vector<int>indices = slice_str2vec(sindex, sliceSz);
-  const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
-  const float
-    mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
-    maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
+  // frames.free(); // not yet
 
-  Map cur(ssh);
-  ProgressBar bar(args.beverbose, "Saving slices", indices.size() );
-  for (unsigned slice=0 ; slice < indices.size() ; slice++ ) {
-    const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice));
-    switch ( sliceDim ) {
-        case 2:
-          cur = ivol(blitz::Range::all(), blitz::Range::all(), indices.at(slice));
-          break;
-        case 1:
-          cur = ivol(blitz::Range::all(), indices.at(slice), blitz::Range::all());
-          break;
-        case 0:
-          cur = ivol(indices.at(slice), blitz::Range::all(), blitz::Range::all());
-          break;
-    }
-    if (toInt)
-      SaveImage(fileName, cur , mincon, maxcon);
+
+  // Output
+
+  const float mincon = args.SaveInt ? min(frames) : 0;
+  const float maxcon = args.SaveInt ? max(frames) : 0;
+  const string sliceformat = mask2format(args.outmask, oz);
+  Map cur(faceShape(frames.shape()));
+  ProgressBar bar(args.beverbose, "Saving slices", oz );
+
+  for (unsigned slice=0 ; slice < oz ; slice++ ) {
+    const Path fileName =  oz == 1  ?  args.outmask : Path(toString(sliceformat, slice));
+    cur = frames(slice, blitz::Range::all(), blitz::Range::all());
+    if (args.SaveInt)
+      SaveImage(fileName, cur, mincon, maxcon);
     else
       SaveImage(fileName, cur);
     bar.update();
   }
 
-  */
-
   exit(0);
 
 
-
-
-
-
-
-
 }
-
-
-
-
-using namespace blitz;

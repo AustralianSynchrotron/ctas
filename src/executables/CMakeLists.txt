@@ -198,6 +198,7 @@ add_executable(bctppl bctppl.cpp)
 target_link_libraries(bctppl
   common
   poptmx
+  kernel
 )
 
 

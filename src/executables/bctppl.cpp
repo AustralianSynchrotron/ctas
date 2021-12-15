@@ -225,8 +225,7 @@ public:
     Map im0(ish);
     im0 = ims0(idx, whole, whole);
     Map im1(ish);
-    const int idx1 = idx + oz - nshift  -
-                     ( idx + oz >= nshift  ?  0  :  oz ) ;
+    const int idx1 = idx + oz - nshift - ( idx + oz >= nshift  ?  0  :  oz ) ;
     im1 = ims1(idx1, whole, whole);
 
 
@@ -235,6 +234,7 @@ public:
 
     bar.update();
     return true;
+
   }
 
 

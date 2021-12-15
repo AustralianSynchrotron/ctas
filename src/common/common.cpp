@@ -2550,7 +2550,6 @@ class ReadVolInThread : public InThread {
   vector< pair<Path,int> > slicelist;
   Volume & storage;
   Shape sh;
-  ProgressBar bar;
   pthread_mutex_t proglock;
   unordered_map<string,HDFread> hdfs;
 

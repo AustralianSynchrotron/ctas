@@ -305,10 +305,10 @@ void readnrot(const string &img, Map &map, const Shape & sh,
       map.resize(slices.size(), temp.shape()(1));
       for ( int sls=0 ; sls < slices.size() ; sls++ )
         if (slices[sls] < temp.shape()(1))
-          map(sls, blitz::Range::all()) =
-            temp(slices[sls], blitz::Range::all());
+          map(sls, whole) =
+            temp(slices[sls], whole);
         else
-          map(sls, blitz::Range::all()) = 0.0;
+          map(sls, whole) = 0.0;
     } else {
       map=temp.copy();
     }
@@ -766,7 +766,7 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
   ProgressBar bar(verb, "reading projections", thts);
   for ( int curproj = 0 ; curproj < thts ; curproj++){
     exp.projection(curproj, proj, sliceV);
-    data(curproj, blitz::Range::all(), blitz::Range::all()) = proj;
+    data(curproj, whole, whole) = proj;
     bar.update();
   }
 
@@ -813,15 +813,15 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
   for ( int curproj = 0 ; curproj < thts ; curproj++) {
     if ( angle == 0.0 ) {
       ReadImageLine(inlist[curproj], iar, sliceV, sh);
-      data(curproj, blitz::Range::all(), blitz::Range::all()) =
-          iar(blitz::Range::all(), blitz::Range(crp.left, pxls-crp.right-1));
+      data(curproj, whole, whole) =
+          iar(whole, blitz::Range(crp.left, pxls-crp.right-1));
     } else {
       ReadImage(inlist[curproj], iar, sh);
       rotate(iar, rar, angle);
       crop(rar, car, crp);
       for ( int sls=0 ; sls < sliceV.size() ; sls++ )
-        data(curproj, sls, blitz::Range::all()) =
-          car(sliceV[sls], blitz::Range::all());
+        data(curproj, sls, whole) =
+          car(sliceV[sls], whole);
     }
     bar.update();
   }
@@ -911,7 +911,7 @@ SinoS::sino(int idx, Map & storage) const {
   index(idx);
   storage.resize(thts, pxls);
   storage = data
-            (blitz::Range::all(), idx, blitz::Range::all()).copy();
+            (whole, idx, whole).copy();
 }
 
 

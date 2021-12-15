@@ -229,8 +229,8 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   #endif // OPENCL_FOUND
 
 
-  //const float bmean = mean(out(blitz::Range::all(), 0)) + mean(out(blitz::Range::all(), sh(1)-1))
-  //                  + mean(out(0, blitz::Range::all())) + mean(out(sh(0)-1, blitz::Range::all()));
+  //const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1))
+  //                  + mean(out(0, all)) + mean(out(sh(0)-1, all));
   //out -= bmean/4.0;
   out *= param;
   if (comp == ABS)   out = in / (1 - out);

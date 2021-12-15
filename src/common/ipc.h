@@ -287,8 +287,8 @@ public:
     proj.resize( Shape( sliceV.size() ? sliceV.size() : sh(0) , sh(1) ) );
     if (sliceV.size()) {
       for(int icur = 0 ; icur<sliceV.size() ; icur++)
-        proj (icur, blitz::Range::all()) =
-          prD (sliceV[icur], blitz::Range::all());
+        proj (icur, whole) =
+          prD (sliceV[icur], whole);
     } else {
       proj = prD;
     }

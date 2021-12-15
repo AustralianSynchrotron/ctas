@@ -439,7 +439,7 @@ typedef blitz::Array<float,2> Map;
 /// Three dimensional array of the ::float elements.
 typedef blitz::Array<float,3> Volume;
 
-
+const blitz::Range whole = blitz::Range::all();
 
 
 
@@ -930,6 +930,7 @@ public:
   void setSteps(int _steps) {steps=_steps;}
   void update(int curstep=0);	///< Updates the progress bar
   void done();					///< Finalizes the progress bar.
+  bool isShown() const {return showme;}
 
 };
 
@@ -1361,9 +1362,38 @@ SaveData(const Path filename, ... );
 long COMMON_API
 nof_threads(long _threads=0);
 
-void execute_in_thread( bool (*_thread_routine) (void *, long int), void * _arg );
-void execute_in_thread( bool (*_thread_routine) (long int));
-void execute_in_thread( bool (*_thread_routine) ());
+
+class InThread {
+
+private:
+
+  ProgressBar bar;
+  pthread_mutex_t proglock;
+
+  virtual bool inThread(long int) = 0;
+
+  static bool inThread(void * args, long int idx) {
+    if (!args)
+      throw_error("InThread", "Inappropriate thread function arguments.");
+    return ((InThread*)args)->inThread(idx);
+  }
+
+public:
+
+  InThread(bool verbose=false, const std::string procName = std::string(), int steps=0)
+    : bar(verbose, procName, steps)
+    , proglock(PTHREAD_MUTEX_INITIALIZER)
+  {}
+
+  void set_bar_steps(int steps) { bar.setSteps(steps); }
+  void update_bar();
+
+  void execute();
+
+  static void execute( bool (*_thread_routine) (long int) );
+  static void execute( bool (*_thread_routine) () );
+
+};
 
 
 

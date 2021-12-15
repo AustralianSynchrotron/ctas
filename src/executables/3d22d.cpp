@@ -166,13 +166,13 @@ int main(int argc, char *argv[]) {
     const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice));
     switch ( sliceDim ) {
         case 2:
-          cur = ivol(blitz::Range::all(), blitz::Range::all(), indices.at(slice));
+          cur = ivol(whole, whole, indices.at(slice));
           break;
         case 1:
-          cur = ivol(blitz::Range::all(), indices.at(slice), blitz::Range::all());
+          cur = ivol(whole, indices.at(slice), whole);
           break;
         case 0:
-          cur = ivol(indices.at(slice), blitz::Range::all(), blitz::Range::all());
+          cur = ivol(indices.at(slice), whole, whole);
           break;
     }
     if (toInt)

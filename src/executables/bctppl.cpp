@@ -111,6 +111,7 @@ clargs(int argc, char *argv[])
            "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
       .add(poptmx::OPTION, &dd, 'r', "resolution",
            "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
+
       .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
       .add_standard_options(&beverbose)
       .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -150,49 +151,38 @@ clargs(int argc, char *argv[])
 
 
 
-struct FlatArgs {
+class FlatInThread : public InThread {
 
   Volume & vol;
   const Map & bgs;
   const Map & dfs;
   const Map & gaps;
 
-  ProgressBar bar;
-  pthread_mutex_t proglock;
+public:
 
-  FlatArgs(Volume & v, Map & b, Map & d, Map & g, bool verbose=false)
+  FlatInThread(Volume & v, Map & b, Map & d, Map & g, bool verbose=false)
     : vol(v), bgs(b), dfs(d), gaps(g)
-    , bar(verbose , "Performing flat field.", vol.shape()(0))
-    , proglock(PTHREAD_MUTEX_INITIALIZER)
+    , InThread(verbose , "Performing flat field.", v.shape()(0))
   {}
 
-  void update_bar() {
-    pthread_mutex_lock(&proglock);
-    bar.update();
-    pthread_mutex_unlock(&proglock);
+  bool inThread (long int idx) {
+    if ( idx >= vol.shape()(0) )
+      return false;
+    Map io( vol(idx, whole, whole) );
+
+  // TODO : take care of gaps
+
+    flatfield(io, bgs, dfs);
+    update_bar();
+    return true;
   }
 
 };
 
-bool FlatInThread (void * _thread_args, long int idx) {
-  FlatArgs * dist = (FlatArgs*) _thread_args;
-  if (!dist)
-    throw_error("read thread", "Inappropriate thread function arguments.");
-  if ( idx >= dist->vol.shape()(0) )
-    return false;
-  Map io( dist->vol(idx, blitz::Range::all(), blitz::Range::all()) );
-
-// TODO : take care of gaps
-
-  flatfield(io, dist->bgs, dist->dfs);
-  dist->update_bar();
-  return true;
-}
 
 
 
-
-struct FrameFormArgs{
+class FrameFormInThread : public InThread {
 
   Volume & res;
   const Volume & ims0;
@@ -206,10 +196,9 @@ struct FrameFormArgs{
   const float ashift;
   const int nshift;
 
-  ProgressBar bar;
-  pthread_mutex_t proglock;
+public:
 
-  FrameFormArgs(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
+  FrameFormInThread(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
                 float _arc, const PointF2D & _shift, float _ashift, bool verbose=false)
     : res(_res)
     , ims0(_ims0)
@@ -222,46 +211,42 @@ struct FrameFormArgs{
     , shift(_shift)
     , ashift(_ashift)
     , nshift(ashift/step)
-    , bar(verbose , "Performing flat field.", ims0.shape()(0))
-    , proglock(PTHREAD_MUTEX_INITIALIZER)
+    , InThread(verbose , "Performing flat field.", _ims0.shape()(0))
   {
     res.resize( oz , ims0.shape()(1)-shift.y, ims0.shape()(2)-shift.x );
   }
 
-  void update_bar() {
-    pthread_mutex_lock(&proglock);
-    bar.update();
-    pthread_mutex_unlock(&proglock);
+
+  bool inThread(long int idx) {
+
+    if ( idx >= oz )
+      return false;
+
+    Map im0(ish);
+    im0 = ims0(idx, whole, whole);
+    Map im1(ish);
+    const int idx1 = idx + oz - nshift  -
+                     ( idx + oz >= nshift  ?  0  :  oz ) ;
+    im1 = ims1(idx1, whole, whole);
+
+
+    // TODO actual formation
+
+
+    update_bar();
+    return true;
   }
+
 
 };
 
-bool FrameFormInThread (void * _thread_args, long int idx) {
-
-  FrameFormArgs * dist = (FrameFormArgs*) _thread_args;
-  if (!dist)
-    throw_error("FormFrame", "Inappropriate thread function arguments.");
-  if ( idx >= dist->oz )
-    return false;
-
-  Map im0(dist->ish);
-  im0 = dist->ims0(idx, blitz::Range::all(), blitz::Range::all());
-  Map im1(dist->ish);
-  const int idx1 = idx + dist->oz - dist->nshift  -
-                   ( idx + dist->oz >= dist->nshift  ?  0  :  dist->oz ) ;
-  im1 = dist->ims1(idx1, blitz::Range::all(), blitz::Range::all());
-
-  // TODO actual formation
-
-
-  dist->update_bar();
-  return true;
-
-}
 
 
 
-struct CTargs {
+
+class CTinThread : public InThread {
+
+private:
 
   unordered_map<pthread_t,CTrec> recs;
   const Volume & frames;
@@ -269,53 +254,40 @@ struct CTargs {
   const Contrast contrast;
   const Filter filter;
   const float pixelSize;
-
   const Shape ssh;
-  ProgressBar bar;
-  pthread_mutex_t proglock;
 
+  bool inThread(long int idx) {
 
-  CTargs(const Volume & fms, Volume & res, Contrast cn, Filter ft, float pp)
+    if ( idx >= frames.size() )
+      return false;
+
+    const pthread_t me = pthread_self();
+    if ( ! recs.count(me) ) // first call
+      recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
+    CTrec & rec = recs.at(me);
+    Map sino(frames(whole, idx, whole));
+    result(idx, whole, whole)
+        = rec.reconstruct(sino , 0, pixelSize); // centre is 0 after frames formation
+    update_bar();
+    return true;
+
+  }
+
+public:
+
+  CTinThread(const Volume & fms, Volume & res, Contrast cn, Filter ft, float pp, bool verbose=false)
     : frames(fms)
     , result(res)
     , contrast(cn)
     , filter(ft)
     , pixelSize(pp)
     , ssh(fms.shape()(2), fms.shape()(0))
+    , InThread(verbose , "Performing flat field.", fms.shape()(0))
   {
     result.resize(fms.shape()(1), ssh(0), ssh(0));
   }
 
-  void update_bar() {
-    pthread_mutex_lock(&proglock);
-    bar.update();
-    pthread_mutex_unlock(&proglock);
-  }
-
 };
-
-bool CTinThread (void * _thread_args, long int idx) {
-
-  CTargs * dist = (CTargs*) _thread_args;
-  if (!dist)
-    throw_error("FormFrame", "Inappropriate thread function arguments.");
-  if ( idx >= dist->frames.size() )
-    return false;
-
-
-  const pthread_t me = pthread_self();
-  if ( ! dist->recs.count(me) ) // first call
-    dist->recs.insert({me, CTrec(dist->ssh, dist->contrast, 180, dist->filter)}); // arc is 180 after frames formation
-  CTrec & rec = dist->recs.at(me);
-
-  Map sino(dist->frames(blitz::Range::all(), idx, blitz::Range::all()));
-  dist->result(idx, blitz::Range::all(), blitz::Range::all())
-      = rec.reconstruct(sino , 0, dist->pixelSize); // centre is 180 after frames formation
-
-  return true;
-
-}
-
 
 
 
@@ -337,13 +309,15 @@ int main(int argc, char *argv[]) {
       if ( faceShape(tmp.shape()) != ish ) \
         exit_on_error("ReadAux", "Wrong image sizes."); \
       binn(tmp, Binn3(1,1,0)); \
-      Map img = tmp(0, blitz::Range::all(), blitz::Range::all()); \
+      Map img = tmp(0, whole, whole); \
       crop(img, res, args.crop); \
     } \
   }
+
   Map dfs (sh); ReadSumSet(args.dfs , dfs );
   Map bgs0(sh); ReadSumSet(args.bgs0, bgs0);
   Map bgs1(sh); ReadSumSet(args.bgs1, bgs1);
+
   #undef ReadSumSet
 
   Map gaps(sh);
@@ -363,14 +337,16 @@ int main(int argc, char *argv[]) {
     crop(vol, args.crop); \
     if ( faceShape(vol.shape()) != sh ) \
       exit_on_error("ReadSet", "Wrong image sizes."); \
-    FlatArgs threadArgs(vol, bmap, dfs, gaps, args.beverbose); \
-    execute_in_thread(FlatInThread, &threadArgs); \
+    FlatInThread(vol, bmap, dfs, gaps, args.beverbose).execute(); \
   }
+
   Volume ims0; ReadSet(args.ims0, bgs0, ims0);
   Volume ims1; ReadSet(args.ims1, bgs1, ims1);
+
+  #undef ReadSet
+
   if (ims0.shape() != ims1.shape())
     exit_on_error("InputSets", "Volumes are of different size.");
-  #undef ReadSet
 
   dfs.free();
   bgs0.free();
@@ -382,8 +358,7 @@ int main(int argc, char *argv[]) {
 
   const float arc =  args.arc > 1.0  ?  args.arc  :  args.arc * ims0.shape()(0);
   Volume frames;
-  FrameFormArgs ffThreadArgs(frames, ims0, ims1, gaps, arc, args.shift, args.ashift, args.beverbose);
-  execute_in_thread(FrameFormInThread, &ffThreadArgs);
+  FrameFormInThread(frames, ims0, ims1, gaps, arc, args.shift, args.ashift, args.beverbose).execute();
   const int oz = frames.shape()(0);
   const Shape fsh = faceShape(frames.shape());
 
@@ -405,8 +380,7 @@ int main(int argc, char *argv[]) {
   // CT
 
   Volume recs;
-  CTargs ctThreadArgs(frames, recs, Contrast::PHS, args.filter_type, args.dd);
-  execute_in_thread(CTinThread, &ctThreadArgs);
+  CTinThread(frames, recs, Contrast::PHS, args.filter_type, args.dd).execute();
 
   // frames.free(); // not yet
 
@@ -421,7 +395,7 @@ int main(int argc, char *argv[]) {
 
   for (unsigned slice=0 ; slice < oz ; slice++ ) {
     const Path fileName =  oz == 1  ?  args.outmask : Path(toString(sliceformat, slice));
-    cur = frames(slice, blitz::Range::all(), blitz::Range::all());
+    cur = frames(slice, whole, whole);
     if (args.SaveInt)
       SaveImage(fileName, cur, mincon, maxcon);
     else

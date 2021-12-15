@@ -649,14 +649,14 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
       fillClArray(cloutslice.cl, outslice.size(), 0);
       for (int cz=0 ; cz<bnn.z ; cz++) {
-        inslice = inarr(z*bnn.z+cz, blitz::Range::all(), blitz::Range::all());
+        inslice = inarr(z*bnn.z+cz, whole, whole);
         blitz2cl(inslice, clinslice.cl);
         execKernel(kernelBinn2, outslice.shape());
         execKernel(kernelAddTo, outslice.size());
       }
       execKernel(kernelMulti, outslice.shape());
       cl2blitz(cloutslice.cl, outslice);
-      outarr(z, blitz::Range::all(), blitz::Range::all()) = outslice;
+      outarr(z, whole, whole) = outslice;
     }
 
   }
@@ -669,9 +669,9 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
       for (blitz::MyIndexType xcur = 0 ; xcur < osh(2) ; xcur++ )
         // BUG in blitz? But the following fails.
         //outarr(zcur,ycur,xcur) = mean(
-        //  inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  blitz::Range::all()
-        //       , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
-        //       , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ));
+        //  inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  all
+        //       , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  all
+        //       , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  all ));
       {
         float sum=0;
         for (int zbcur = 0 ; zbcur < bnn.z ; zbcur++ )
@@ -768,8 +768,8 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
   for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
     for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
       outarr(ycur,xcur) = mean(
-        inarr( bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  blitz::Range::all()
-             , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  blitz::Range::all() ) );
+        inarr( bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  all
+             , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  all ) );
 
 #endif // OPENCL_FOUND
 
@@ -823,10 +823,10 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
 
   if ( ! isnormal(bg) ) {
     bg=0;
-    bg += mean( inarr( blitz::Range::all(), 0 ) );
-    bg += mean( inarr( 0, blitz::Range::all() ) );
-    bg += mean( inarr( blitz::Range::all(), sh(1)-1 ) );
-    bg += mean( inarr( sh(0)-1, blitz::Range::all() ) );
+    bg += mean( inarr( whole, 0 ) );
+    bg += mean( inarr( 0, whole ) );
+    bg += mean( inarr( whole, sh(1)-1 ) );
+    bg += mean( inarr( sh(0)-1, whole ) );
     bg /= 4.0;
   }
 
@@ -1195,20 +1195,27 @@ public:
 pthread_mutex_t ThreadDistributor::lock = PTHREAD_MUTEX_INITIALIZER;
 
 
-void execute_in_thread( bool (*_thread_routine) (void *, long int), void * _arg ) {
-  ThreadDistributor::execute(_thread_routine, _arg);
+
+void InThread::update_bar() {
+  if ( ! bar.isShown() )
+    return;
+  pthread_mutex_lock(&proglock);
+  bar.update();
+  pthread_mutex_unlock(&proglock);
 }
 
-void execute_in_thread( bool (*_thread_routine) (long int)) {
+
+void InThread::execute() {
+  ThreadDistributor::execute(inThread, this);
+}
+
+void InThread::execute( bool (*_thread_routine) (long int)) {
   ThreadDistributor::execute(_thread_routine);
 }
 
-void execute_in_threads( bool (*_thread_routine)()) {
+void InThread::execute( bool (*_thread_routine)()) {
   ThreadDistributor::execute(_thread_routine);
 }
-
-
-
 
 
 
@@ -2222,7 +2229,7 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       "The index of the line to be read (" + toString(row) + ")"
       " is outside the image boundaries (" + toString(height) + ").");
 
-      storage(curidx, blitz::Range::all()) = 0.0;
+      storage(curidx, whole) = 0.0;
 
     } else {
 
@@ -2241,22 +2248,22 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       switch (fmt) {
       case SAMPLEFORMAT_UINT :
         if (bps==8)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint8_t);
+          storage(curidx, whole) = 1.0 * blitzArrayFromData(uint8_t);
         else if (bps==16)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint16_t);
+          storage(curidx, whole) = 1.0 * blitzArrayFromData(uint16_t);
         else if (bps==32)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(uint32_t);
+          storage(curidx, whole) = 1.0 * blitzArrayFromData(uint32_t);
         break;
       case SAMPLEFORMAT_INT :
         if (bps==8)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int8_t);
+          storage(curidx, whole) = 1.0 * blitzArrayFromData(int8_t);
         else if (bps==16)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int16_t);
+          storage(curidx, whole) = 1.0 * blitzArrayFromData(int16_t);
         else if (bps==32)
-          storage(curidx, blitz::Range::all()) = 1.0 * blitzArrayFromData(int32_t);
+          storage(curidx, whole) = 1.0 * blitzArrayFromData(int32_t);
         break;
       case SAMPLEFORMAT_IEEEFP :
-        storage(curidx, blitz::Range::all()) = blitzArrayFromData(float);
+        storage(curidx, whole) = blitzArrayFromData(float);
         break;
       }
 
@@ -2281,7 +2288,7 @@ inline static void
 ReadImageLine_TIFF (const Path & filename, Line & storage, int idx) {
   Map _storage;
   ReadImageLine_TIFF(filename, _storage, vector<int>(1,idx) );
-  storage=_storage(0,blitz::Range::all());
+  storage=_storage(0,whole);
 }
 
 
@@ -2454,7 +2461,7 @@ ReadImageLine_IM (const Path & filename, Map & storage,
       warn("load imagelines IM",
            "The index of the line to be read (" + toString(cursl) + ")"
            " is outside the image boundaries (" + toString(hight) + ").");
-      storage(curel, blitz::Range::all() ) = 0.0;
+      storage(curel, whole ) = 0.0;
     } else {
       // below might be buggy - see notes in SaveImageINT_IM
       /*
@@ -2534,8 +2541,7 @@ const std::string MaskDesc =
 
 
 
-
-struct ReadVolArgs {
+class ReadVolInThread : public InThread {
 
   vector< pair<Path,int> > slicelist;
   Volume & storage;
@@ -2544,10 +2550,11 @@ struct ReadVolArgs {
   pthread_mutex_t proglock;
   unordered_map<string,HDFread> hdfs;
 
-  ReadVolArgs(const std::vector<Path> & filelist, Volume & _storage, bool verbose=false)
+public:
+
+  ReadVolInThread(const std::vector<Path> & filelist, Volume & _storage, bool verbose=false)
     : storage(_storage)
-    , bar(verbose , "reading volume")
-    , proglock(PTHREAD_MUTEX_INITIALIZER)
+    , InThread(verbose , "reading volume")
   {
 
     if ( ! filelist.size() ) {
@@ -2567,107 +2574,47 @@ struct ReadVolArgs {
         slicelist.push_back(make_pair(*curI,curSz));
         curSz++;
       }
-    bar.setSteps(curSz);
+    set_bar_steps(curSz);
     storage.resize(curSz, sh(0), sh(1));
     if ( ! storage.size() )
       return;
 
   }
 
-  void update_bar() {
-    pthread_mutex_lock(&proglock);
-    bar.update();
-    pthread_mutex_unlock(&proglock);
+
+  bool inThread (long int idx) {
+
+    if ( idx >= slicelist.size())
+      return false;
+
+    Map slice(sh);
+    const pair<Path,int> & slpr = slicelist.at(idx);
+    if (hdfs.count(slpr.first)) {
+      HDFread & hdf = hdfs.at(slpr.first);
+      if ( hdf.shape != sh )
+        throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
+      for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
+        hdf.read(idxV, slice);
+        storage(slpr.second+idxV, whole, whole) = slice;
+        update_bar();
+      }
+    } else {
+      ReadImage(slpr.first, slice, sh);
+      storage(slpr.second, whole, whole) = slice;
+      update_bar();
+    }
+
+    return true;
+
   }
 
 };
 
 
-bool inThread_readVol (void * _thread_args, long int idx) {
-
-  ReadVolArgs *  dist = (ReadVolArgs*) _thread_args;
-  if (!dist)
-    throw_error("read thread", "Inappropriate thread function arguments.");
-  if ( idx >= dist->slicelist.size())
-    return false;
-
-  Map slice(dist->sh);
-  const pair<Path,int> & slpr = dist->slicelist.at(idx);
-  if (dist->hdfs.count(slpr.first)) {
-    HDFread & hdf = dist->hdfs.at(slpr.first);
-    if ( hdf.shape != dist->sh )
-      throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
-    for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
-      hdf.read(idxV, slice);
-      dist->storage(slpr.second+idxV, blitz::Range::all(), blitz::Range::all()) = slice;
-      dist->update_bar();
-    }
-  } else {
-    ReadImage(slpr.first, slice, dist->sh);
-    dist->storage(slpr.second, blitz::Range::all(), blitz::Range::all()) = slice;
-    dist->update_bar();
-  }
-
-  return true;
-
-}
-
-
 void
 ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
-  ReadVolArgs readArgs(filelist, storage, verbose);
-  execute_in_thread(inThread_readVol, &readArgs);
+  ReadVolInThread(filelist, storage, verbose).execute();
 }
-
-
-/*
-void
-ReadVolumeSeq(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
-
-  if ( ! filelist.size() ) {
-    storage.free();
-    return;
-  }
-
-  int thirdsize = 0;
-  const Shape sh(ImageSizes(filelist[0]));
-  Map slice(sh);
-  unordered_map<string,HDFread> hdfs;
-
-  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
-    try {
-        hdfs.insert({*curI,HDFread(*curI)});
-        thirdsize += hdfs.at(*curI).indices.size();
-    } catch (...) {
-        thirdsize++;
-    }
-  storage.resize(thirdsize, sh(0), sh(1) );
-  if ( ! storage.size() )
-    return;
-
-  ProgressBar bar(verbose, "Reading volume", thirdsize);
-  int idx = 0;
-  for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ ) {
-
-    if (hdfs.count(*curI)) {
-      HDFread & hdf = hdfs.at(*curI);
-      if ( hdf.shape != sh )
-        throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
-      for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
-        hdf.read(idxV, slice);
-        storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;
-        bar.update();
-      }
-    } else {
-      ReadImage(*curI, slice, sh);
-      storage(idx++, blitz::Range::all(), blitz::Range::all()) = slice;
-      bar.update();
-    }
-
-  }
-
-}
-*/
 
 
 

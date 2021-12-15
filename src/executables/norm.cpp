@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
                             sum(norm)/sh(0)  :  args.norm;
 
   for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++)
-    arr(rcur, blitz::Range::all()) *= averagenorm / norm(rcur) ;
+    arr(rcur, whole) *= averagenorm / norm(rcur) ;
 
   SaveImage(args.out_name, arr);
 

@@ -552,8 +552,8 @@ int main(int argc, char *argv[]) {
 
       if ( lLine > fLine ) {
         Map toSave =  vsplit ?
-              final( blitz::Range::all(), blitz::Range(fLine, lLine) ).copy() :
-              final( blitz::Range(fLine, lLine), blitz::Range::all() ).copy();
+              final( whole, blitz::Range(fLine, lLine) ).copy() :
+              final( blitz::Range(fLine, lLine), whole ).copy();
         if ( ! args.out_name.empty() )
           SaveImage( toString(sliceformat, curS-vsplit) , toSave);
         if ( ! args.interim_name.empty() )

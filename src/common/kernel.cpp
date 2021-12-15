@@ -266,7 +266,7 @@ type_desc (Filter *) {
 
 bool
 _conversion (Filter *_val, const string &in) {
-  float alsig;  
+  float alsig;
   std::string::size_type idx=in.find(':');
   if (idx == std::string::npos) {
     *_val = Filter(in);
@@ -367,7 +367,7 @@ project_sino(const Map &sinogram, Map &result, float center) {
   //int pixels = sinogram.columns();
   int thetas = sinogram.rows();
   for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-    Line sinoline = sinogram(iTheta, blitz::Range::all());
+    Line sinoline = sinogram(iTheta, whole);
     project_line(sinoline, result, (M_PI * iTheta)/thetas, center);
   }
 }
@@ -446,7 +446,7 @@ public:
     pthread_mutex_lock(&lock);
     bool returned = iTheta < thetas;
     if ( returned ) {
-      sinoline.reference( sinogram(iTheta, blitz::Range::all()) );
+      sinoline.reference( sinogram(iTheta, whole) );
       *Theta = (M_PI * iTheta)/thetas;
       iTheta++;
     }
@@ -577,7 +577,7 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) 
         setArg(kernelLine, 0, clSlice);
         cl_image_format format = {CL_INTENSITY, CL_FLOAT};
         clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY, &format, _width, _projections, 0, 0, &err);
-#warning: Yes, I know it is depricated. But. The new function clCreateImage segfaults for no reason.
+#warning: Yes, I know it is depricated. But. The new function clCreateImage segfaults.
 //        cl_image_desc image_desc = {CL_MEM_OBJECT_IMAGE2D, _width, _projections, 0, 1, 0, 0, 0, 0, NULL};
 //        clSinoImage = clCreateImage( CL_context, CL_MEM_READ_ONLY, &format, &image_desc, 0, &err);
         if (err != CL_SUCCESS)
@@ -706,7 +706,7 @@ void CTrec::prepare_sino(Map &sinogram) {
   if ( _contrast != Contrast::FLT ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
 
-      Line sinoline = sinogram(iTheta, blitz::Range::all());
+      Line sinoline = sinogram(iTheta, whole);
 
       zsinoline = 0.0;
       zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
@@ -718,7 +718,7 @@ void CTrec::prepare_sino(Map &sinogram) {
 
   if ( _contrast == Contrast::REF ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-      Line sinoline = sinogram(iTheta, blitz::Range::all());
+      Line sinoline = sinogram(iTheta, whole);
       partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
     }
   }
@@ -993,8 +993,8 @@ CTrec::filter(const Filter & ft) {
 
 void
 ts_add( Map &projection, Map &result, const Filter & filter,
-		const float center, const Contrast contrast,
-		const float angle, const int plane){
+    const float center, const Contrast contrast,
+    const float angle, const int plane){
 
   if ( contrast == Contrast::ABS )
         projection = -log(projection);
@@ -1020,19 +1020,19 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 
   for (blitz::MyIndexType ycur = 0 ; ycur < thetas ; ycur++) {
 
-        Line ln = projection(ycur, blitz::Range::all());
+        Line ln = projection(ycur, whole);
 
-	// filtering
-	filter_line(ln, f_win, &planF, &planB);
-	if ( contrast == Contrast::REF )
-	  partial_sum( ln.begin(), ln.end(), ln.begin() );
+  // filtering
+  filter_line(ln, f_win, &planF, &planB);
+  if ( contrast == Contrast::REF )
+    partial_sum( ln.begin(), ln.end(), ln.begin() );
 
-	// projecting
-	for (blitz::MyIndexType xcur = 0 ; xcur < pixels ; xcur++) {
-	  float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
-	  di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
-	  result(ycur, xcur) += projection( ycur, (blitz::MyIndexType) di );
-	}
+  // projecting
+  for (blitz::MyIndexType xcur = 0 ; xcur < pixels ; xcur++) {
+    float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
+    di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
+    result(ycur, xcur) += projection( ycur, (blitz::MyIndexType) di );
+  }
 
   }
 

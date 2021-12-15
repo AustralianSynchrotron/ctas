@@ -922,6 +922,9 @@ private:
   int reservedChs;		///< Symbols for the constant part of the PB.
   std::string fmt;			///< Format string used to print the numbers.
   int getwidth();		///< Returns current terminal width.
+  pthread_mutex_t proglock;
+
+  void _update(int curstep);
 
 public:
 
@@ -1367,29 +1370,23 @@ class InThread {
 
 private:
 
-  ProgressBar bar;
-  pthread_mutex_t proglock;
-
   virtual bool inThread(long int) = 0;
 
   static bool inThread(void * args, long int idx) {
     if (!args)
-      throw_error("InThread", "Inappropriate thread function arguments.");
+      throw_error("InThread", "Wrongly used class. Report to developers.");
     return ((InThread*)args)->inThread(idx);
   }
 
 public:
 
+  ProgressBar bar;
+
   InThread(bool verbose=false, const std::string procName = std::string(), int steps=0)
     : bar(verbose, procName, steps)
-    , proglock(PTHREAD_MUTEX_INITIALIZER)
   {}
 
-  void set_bar_steps(int steps) { bar.setSteps(steps); }
-  void update_bar();
-
   void execute();
-
   static void execute( bool (*_thread_routine) (long int) );
   static void execute( bool (*_thread_routine) () );
 

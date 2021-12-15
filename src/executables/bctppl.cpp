@@ -173,7 +173,7 @@ public:
   // TODO : take care of gaps
 
     flatfield(io, bgs, dfs);
-    update_bar();
+    bar.update();
     return true;
   }
 
@@ -233,7 +233,7 @@ public:
     // TODO actual formation
 
 
-    update_bar();
+    bar.update();
     return true;
   }
 
@@ -268,7 +268,7 @@ private:
     Map sino(frames(whole, idx, whole));
     result(idx, whole, whole)
         = rec.reconstruct(sino , 0, pixelSize); // centre is 0 after frames formation
-    update_bar();
+    bar.update();
     return true;
 
   }

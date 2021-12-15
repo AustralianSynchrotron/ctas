@@ -961,8 +961,12 @@ toString(const string fmt, ...){
 /// @param _message The description of the progress.
 /// @param _steps Number of steps in the progress. If 0 then unknown.
 ///
-ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps) :
-  showme(_showme), message(_message), steps(_steps) {
+ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps)
+  : showme(_showme)
+  , message(_message)
+  , steps(_steps)
+  , proglock(PTHREAD_MUTEX_INITIALIZER)
+{
   if ( ! showme ) return;
   step = 0;
   waswidth = 0;
@@ -974,7 +978,7 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps) :
 /// @param curstep Current step. Advances +1 if zero.
 ///
 void
-ProgressBar::update(int curstep){
+ProgressBar::_update(int curstep){
 
   if ( !showme ) return; // Uninitialized progress bar.
 
@@ -1017,6 +1021,15 @@ ProgressBar::update(int curstep){
   waswidth = outS.length();
 
 }
+
+void
+ProgressBar::update(int curstep){
+  pthread_mutex_lock(&proglock);
+  _update(curstep);
+  pthread_mutex_unlock(&proglock);
+}
+
+
 
 
 void
@@ -1194,15 +1207,6 @@ public:
 
 pthread_mutex_t ThreadDistributor::lock = PTHREAD_MUTEX_INITIALIZER;
 
-
-
-void InThread::update_bar() {
-  if ( ! bar.isShown() )
-    return;
-  pthread_mutex_lock(&proglock);
-  bar.update();
-  pthread_mutex_unlock(&proglock);
-}
 
 
 void InThread::execute() {
@@ -2574,7 +2578,7 @@ public:
         slicelist.push_back(make_pair(*curI,curSz));
         curSz++;
       }
-    set_bar_steps(curSz);
+    bar.setSteps(curSz);
     storage.resize(curSz, sh(0), sh(1));
     if ( ! storage.size() )
       return;
@@ -2596,12 +2600,12 @@ public:
       for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
         hdf.read(idxV, slice);
         storage(slpr.second+idxV, whole, whole) = slice;
-        update_bar();
+        bar.update();
       }
     } else {
       ReadImage(slpr.first, slice, sh);
       storage(slpr.second, whole, whole) = slice;
-      update_bar();
+      bar.update();
     }
 
     return true;

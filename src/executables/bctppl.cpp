@@ -106,7 +106,7 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &crop, 't', "crop", "Crop input images: " + CropOptionDesc, "")
       .add(poptmx::OPTION, &fcrp, 'T', "crop-final", "Crops final image: " + CropOptionDesc, "")
       .add(poptmx::OPTION, &angle,'r', "rotate", "Rotate input images by given angle.", "")
-      .add(poptmx::OPTION, &center, 'c', "center", "Rotation center.", CenterOptionDesc)
+      .add(poptmx::OPTION, &center, 'c', "center", "Rotation center after cropping.", CenterOptionDesc)
       .add(poptmx::OPTION, &filter_type, 0, "filter",
            "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
       .add(poptmx::OPTION, &dd, 'r', "resolution",
@@ -154,25 +154,27 @@ clargs(int argc, char *argv[])
 class FlatInThread : public InThread {
 
   Volume & vol;
-  const Map & bgs;
-  const Map & dfs;
-  const Map & gaps;
+  const FlatFieldProc canon;
+  unordered_map<pthread_t,FlatFieldProc> ffProcs;
 
 public:
 
-  FlatInThread(Volume & v, Map & b, Map & d, Map & g, bool verbose=false)
-    : vol(v), bgs(b), dfs(d), gaps(g)
+  FlatInThread(Volume & v,
+               const Map & bg, const Map & df, const Map & mask,
+               bool verbose=false)
+    : vol(v)
+    , canon(bg, df, mask)
     , InThread(verbose , "Performing flat field.", v.shape()(0))
   {}
 
   bool inThread (long int idx) {
     if ( idx >= vol.shape()(0) )
       return false;
-    Map io( vol(idx, whole, whole) );
-
-  // TODO : take care of gaps
-
-    flatfield(io, bgs, dfs);
+    pthread_t me(pthread_self());
+    if ( ! ffProcs.count(me) ) // first call
+      ffProcs.insert({me, FlatFieldProc(canon)});
+    Map frame(vol(idx,whole,whole));
+    ffProcs.at(me).process(frame);
     bar.update();
     return true;
   }
@@ -227,6 +229,7 @@ public:
     Map im1(ish);
     const int idx1 = idx + oz - nshift - ( idx + oz >= nshift  ?  0  :  oz ) ;
     im1 = ims1(idx1, whole, whole);
+
 
 
     // TODO actual formation

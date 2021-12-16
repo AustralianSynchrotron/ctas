@@ -90,6 +90,13 @@ target_link_libraries(common
   ${OPENCL_LL}
 )
 
+
+add_library(flatfield SHARED flatfield.cpp)
+target_clsrc(flatfield ff.cl)
+
+
+
+
 add_library(kernel SHARED kernel.cpp)
 target_clsrc(kernel ct.cl)
 target_link_libraries(kernel

@@ -199,6 +199,7 @@ target_link_libraries(bctppl
   common
   poptmx
   kernel
+  flatfield
 )
 
 

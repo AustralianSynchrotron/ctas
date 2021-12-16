@@ -43,3 +43,32 @@ __kernel void ff(__global float* fg,
     fg[l]=cutOff;
 
 }
+
+
+
+__kernel void ffm(
+    global float * io,
+    read_only global float * bg,
+    read_only global float * df,
+    read_only global float * mask )
+{
+
+  int idx = get_global_id(0);
+  if (mask[idx]==0.0)
+    return;
+
+  float fgg = fg[idx];
+
+  if ( df >= bg )
+    fg[idx] = 1.0f;
+  else if (df >= fgg )
+    fg[idx] = 0.0f;
+  else
+    fg[l] = (fgg - df) / (bg-df);
+
+  if ( cutOff>0.0f && fg[l] > cutOff )
+    fg[l]=cutOff;
+
+}
+
+

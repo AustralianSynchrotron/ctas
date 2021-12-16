@@ -477,6 +477,8 @@ operator!=( const Shape & sh1, const Shape & sh2){
   return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1) );
 }
 
+size_t area(const Shape & sh) {return sh(0) * sh(1) ;}
+
 
 
 
@@ -995,10 +997,14 @@ cl_device_id CL_device;
 cl_context CL_context;
 cl_command_queue CL_queue;
 
-struct CLmem {
+class CLmem {
     cl_mem cl;
-    CLmem(cl_mem _cl) : cl(_cl) {}
-    ~CLmem() { clReleaseMemObject(cl); }
+public:
+    CLmem(cl_mem _cl=0) : cl(_cl) {}
+    ~CLmem() { free(); }
+    cl_mem operator()() const { return cl; }
+    CLmem & operator()(cl_mem _cl) { cl=_cl; return *this; }
+    void free() { if (cl) clReleaseMemObject(cl); cl=0; }
 };
 
 
@@ -1061,11 +1067,21 @@ cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
 
 template <typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+
+  blitz::Array<T,N> _storage;
+  if ( storage.isStorageContiguous() )
+    _storage.reference(storage);
+  else {
+    _storage.resize(storage.shape());
+    _storage=storage;
+  }
+
   cl_int err =
-    clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * storage.size(), storage.data(), 0, 0, 0);
+    clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(), _storage.data(), 0, 0, 0);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
   return clStorage;
+
 }
 
 
@@ -1077,12 +1093,23 @@ cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ
 
 
 template <typename T, int N>
-void cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
+blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
+
+  blitz::Array<T,N> _storage;
+  if ( storage.isStorageContiguous())
+    _storage.reference(storage);
+  else
+    _storage.resize(storage.shape());
+
   cl_int err = clEnqueueReadBuffer(CL_queue, clbuffer, CL_TRUE, 0,
-                                   sizeof(T) * storage.size(),
-                                   storage.data(), 0, 0, 0 );
+                                   sizeof(T) * _storage.size(),
+                                   _storage.data(), 0, 0, 0 );
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
+  if ( storage.data() != _storage.data() )
+    storage = _storage;
+  return storage;
+
 }
 
 template <typename T>

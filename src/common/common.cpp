@@ -608,8 +608,8 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
     CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
     cl_kernel kernelBinn3 = createKernel(binnProgram, "binn3");
 
-    setArg(kernelBinn3, 0, clinarr.cl);
-    setArg(kernelBinn3, 1, cloutarr.cl);
+    setArg(kernelBinn3, 0, clinarr());
+    setArg(kernelBinn3, 1, cloutarr());
     setArg(kernelBinn3, 2, (cl_int) bnn.x);
     setArg(kernelBinn3, 3, (cl_int) bnn.y);
     setArg(kernelBinn3, 4, (cl_int) bnn.z);
@@ -619,7 +619,7 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
     setArg(kernelBinn3, 8, (cl_int) osh(1));
 
     execKernel(kernelBinn3, osh);
-    cl2blitz(cloutarr.cl, outarr);
+    cl2blitz(cloutarr(), outarr);
 
   }  catch (...) { // full volume was too big for the gpu
 
@@ -631,31 +631,31 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
     CLmem cltmpslice(clAllocArray<float>(outslice.size()));
 
     cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
-    setArg(kernelBinn2, 0, clinslice.cl);
-    setArg(kernelBinn2, 1, cltmpslice.cl);
+    setArg(kernelBinn2, 0, clinslice());
+    setArg(kernelBinn2, 1, cltmpslice());
     setArg(kernelBinn2, 2, (cl_int) bnn.x);
     setArg(kernelBinn2, 3, (cl_int) bnn.y);
     setArg(kernelBinn2, 4, (cl_int) inslice.shape()(1));
     setArg(kernelBinn2, 5, (cl_int) outslice.shape()(1));
 
     cl_kernel kernelAddTo = createKernel(binnProgram, "addToSecond");
-    setArg(kernelAddTo, 0, cltmpslice.cl);
-    setArg(kernelAddTo, 1, cloutslice.cl);
+    setArg(kernelAddTo, 0, cltmpslice());
+    setArg(kernelAddTo, 1, cloutslice());
 
     cl_kernel kernelMulti = createKernel(binnProgram, "multiplyArray");
-    setArg(kernelMulti, 0, cloutslice.cl);
+    setArg(kernelMulti, 0, cloutslice());
     setArg(kernelMulti, 1, (cl_float) bnn.z);
 
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
-      fillClArray(cloutslice.cl, outslice.size(), 0);
+      fillClArray(cloutslice(), outslice.size(), 0);
       for (int cz=0 ; cz<bnn.z ; cz++) {
         inslice = inarr(z*bnn.z+cz, whole, whole);
-        blitz2cl(inslice, clinslice.cl);
+        blitz2cl(inslice, clinslice());
         execKernel(kernelBinn2, outslice.shape());
         execKernel(kernelAddTo, outslice.size());
       }
       execKernel(kernelMulti, outslice.shape());
-      cl2blitz(cloutslice.cl, outslice);
+      cl2blitz(cloutslice(), outslice);
       outarr(z, whole, whole) = outslice;
     }
 
@@ -753,15 +753,15 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
   CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
   cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
 
-  setArg(kernelBinn2, 0, clinarr.cl);
-  setArg(kernelBinn2, 1, cloutarr.cl);
+  setArg(kernelBinn2, 0, clinarr());
+  setArg(kernelBinn2, 1, cloutarr());
   setArg(kernelBinn2, 2, (cl_int) bnn.x);
   setArg(kernelBinn2, 3, (cl_int) bnn.y);
   setArg(kernelBinn2, 4, (cl_int) inarr.shape()(1));
   setArg(kernelBinn2, 5, (cl_int) outarr.shape()(1));
 
   execKernel(kernelBinn2, outarr.shape());
-  cl2blitz(cloutarr.cl, outarr);
+  cl2blitz(cloutarr(), outarr);
 
 #else // OPENCL_FOUND
 

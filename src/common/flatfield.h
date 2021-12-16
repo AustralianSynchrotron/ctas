@@ -32,6 +32,57 @@
 
 #include "../common/common.h"
 
+
+#ifdef OPENCL_FOUND
+
+
+
+
+class FlatFieldProc {
+
+
+private:
+
+
+  const CLmem bgR;
+  const CLmem dfR;
+  const CLmem maskR;
+
+  CLmem   io;
+  const CLmem & bg;
+  const CLmem & df;
+  const CLmem & mask;
+
+  const Shape sh;
+  cl_kernel kernel;
+
+public:
+
+  FlatFieldProc(const Map & _bg, const Map & _df,
+                const Map & _mask);
+
+  FlatFieldProc(const FlatFieldProc & other);
+
+
+
+  ~FlatFieldProc() {
+    clReleaseKernel(kernel);
+  }
+
+  void execute(const Map & _io);
+
+  Map & process(Map & _io) {
+    execute(_io);
+    return cl2blitz(io(), _io);
+  }
+
+};
+
+
+#endif // OPENCL_FOUND
+
+
+
 /// \defgroup ff Flat field correction.
 ///
 /// Functions which perform the flat field correction.
@@ -103,6 +154,34 @@ flatfield(Map & result, const Map & fg, const Map & bg){
     for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), 0.0, 0.0, 0.0);
 }
+
+
+/// Performs the background subtraction on arrays.
+///
+/// @param result resulting array.
+/// @param fg foreground intensity.
+/// @param bg background intensity.
+/// @param mask do nothing if 0.0.
+///
+static inline void
+flatfield(Map & result, const Map & fg, const Map & bg, const Map & mask){
+  if ( ! bg.size() ) {
+    if ( &fg != &result )  // arrays are not the same
+      result.reference(fg);
+    return;
+  }
+  const Shape sh=fg.shape();
+  if( sh != bg.shape() )
+    throw_error("flat field", "Different shapes of the input arrays.");
+  if( sh != result.shape() )
+    result.resize(sh);
+  int sz=0;
+  for (blitz::MyIndexType icur=0; icur<sh(0); icur++)
+    for (blitz::MyIndexType jcur=0; jcur<sh(1); jcur++)
+      result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), 0.0, 0.0, 0.0);
+}
+
+
 
 
 

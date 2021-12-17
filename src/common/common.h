@@ -1393,6 +1393,24 @@ long COMMON_API
 nof_threads(long _threads=0);
 
 
+
+
+
+
+/// \brief Base class used for multithreading.
+///
+/// This virtual class helps to ease the implementation of multithread parallel computation.
+/// The subclasses must implement only three entities:
+/// 1. Data members - to store and make accessible all the data needed for threads to work.
+/// 2. Constructor which initializes the data and, if needed, deconstructor to clean up.
+/// 3. Pure virtual method bool inThread(long int).
+///    This method is called from threads with the index to work on as the input.
+///    It must return false if there left nothing to do in the queue and true otherwise.
+///
+/// Once it is done the execute() method can be used on the subclass to run the tasks.
+/// Two static execute(...) methods are here to implement even easier computation for the cases
+/// where no data are required and/or the index is not used for the inThread implementation:
+/// just provide the input _thread_routine function.
 class InThread {
 
 private:

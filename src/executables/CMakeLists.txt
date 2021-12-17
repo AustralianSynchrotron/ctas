@@ -195,6 +195,7 @@ target_link_libraries(3d22d
 
 
 add_executable(bctppl bctppl.cpp)
+target_clsrc(bctppl formframe.cl)
 target_link_libraries(bctppl
   common
   poptmx

@@ -157,16 +157,6 @@ class FlatInThread : public InThread {
   const FlatFieldProc canon;
   unordered_map<pthread_t,FlatFieldProc> ffProcs;
 
-public:
-
-  FlatInThread(Volume & v,
-               const Map & bg, const Map & df, const Map & mask,
-               bool verbose=false)
-    : vol(v)
-    , canon(bg, df, mask)
-    , InThread(verbose , "Performing flat field.", v.shape()(0))
-  {}
-
   bool inThread (long int idx) {
     if ( idx >= vol.shape()(0) )
       return false;
@@ -179,9 +169,29 @@ public:
     return true;
   }
 
+public:
+
+  FlatInThread(Volume & v, const Map & bg, const Map & df, const Map & mask, bool verbose=false)
+    : vol(v)
+    , canon(bg, df, mask)
+    , InThread(verbose , "Performing flat field.", v.shape()(0))
+  {}
+
+  static void execute(Volume & v, const Map & bg, const Map & df, const Map & mask, bool verbose=false) {
+    FlatInThread(v, bg, df, mask, verbose).InThread::execute();
+  }
+
 };
 
 
+
+
+char formframe_src[] = {
+  #include "formframe.cl.includeme"
+};
+
+const cl_program formframeProgram =
+  initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
 
 
 class FrameFormInThread : public InThread {
@@ -189,34 +199,28 @@ class FrameFormInThread : public InThread {
   Volume & res;
   const Volume & ims0;
   const Volume & ims1;
-  const Shape ish;
   const Map & gaps;
   const float arc;
-  const float step;
-  const float oz;
   const PointF2D & shift;
   const float ashift;
+  const float cent;
+
+  const int cropComm;
+  const Shape ish;
+  const Shape osh;
+  const Crop crop0;
+  const Crop crop1;
+  const float step;
+  const float oz;
   const int nshift;
 
-public:
-
-  FrameFormInThread(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
-                float _arc, const PointF2D & _shift, float _ashift, bool verbose=false)
-    : res(_res)
-    , ims0(_ims0)
-    , ims1(_ims1)
-    , ish(faceShape(ims0.shape()))
-    , gaps(_gaps)
-    , arc(_arc)
-    , step( arc / (ims0.shape()(0)-1) )
-    , oz((int)(180/step))
-    , shift(_shift)
-    , ashift(_ashift)
-    , nshift(ashift/step)
-    , InThread(verbose , "Performing flat field.", _ims0.shape()(0))
-  {
-    res.resize( oz , ims0.shape()(1)-shift.y, ims0.shape()(2)-shift.x );
-  }
+  unordered_map<pthread_t,cl_kernel> kernel;
+  unordered_map<pthread_t,CLmem> clim0;
+  unordered_map<pthread_t,CLmem> clim1;
+  unordered_map<pthread_t,CLmem> clout;
+  CLmem clgaps0;
+  CLmem clgaps1;
+  CLmem clgapsF;
 
 
   bool inThread(long int idx) {
@@ -224,22 +228,89 @@ public:
     if ( idx >= oz )
       return false;
 
-    Map im0(ish);
-    im0 = ims0(idx, whole, whole);
-    Map im1(ish);
-    const int idx1 = idx + oz - nshift - ( idx + oz >= nshift  ?  0  :  oz ) ;
-    im1 = ims1(idx1, whole, whole);
+    pthread_t me(pthread_self());
+    if ( ! kernel.count(me) ) { // first run
+      kernel.insert({ me, createKernel(formframeProgram , "formframe") });
+      clim0.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
+      setArg( kernel.at(me), 0, clim0.at(me)() );
+      clim1.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
+      setArg( kernel.at(me), 1, clim0.at(me)() );
+      clout.insert({ me, clAllocArray<float>(area(osh)) });
+      setArg( kernel.at(me), 2, clout.at(me)() );
+      setArg( kernel.at(me), 3, clgaps0() );
+    }
 
+    Map im0(osh);
+    crop( ims0(idx, whole, whole), im0, crop0 );
+    blitz2cl(im0, clim0.at(me)());
 
+    const int id1 = idx - nshift - ( (idx - nshift >= oz)  ?  oz  :  0 ) ;
+    Map im1(osh);
+    crop( ims1(id1, whole, whole), im1, crop1 );
+    blitz2cl(im1, clim1.at(me)());
+    if ( id1 <= idx ) {
+      im1.reverseSelf(blitz::secondDim);
+      setArg( kernel.at(me), 4, clgapsF() );
+    } else {
+      setArg( kernel.at(me), 4, clgaps1() );
+    }
 
-    // TODO actual formation
-
+    execKernel(kernel.at(me));
+    cl2blitz(clout.at(me)(), im0);
+    res(idx, whole, whole) = im0;
 
     bar.update();
     return true;
 
   }
 
+
+public:
+
+  FrameFormInThread(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
+                    float _arc, const PointF2D & _shift, float _ashift, float _cent, bool verbose=false)
+
+    : res(_res)
+    , ims0(_ims0)
+    , ims1(_ims1)
+    , gaps(_gaps)
+    , arc(_arc)
+    , shift(_shift)
+    , ashift(_ashift)
+    , cent(_cent)
+
+    , cropComm(max( abs(shift.x), abs(shift.x - cent) ))
+    , ish(faceShape(ims0.shape()))
+    , osh( ish(0) - abs(shift.y), ish(1) - 2 * cropComm )
+    , crop0( shift.y > 0 ? abs(shift.y) : 0 ,
+             cropComm + cent,
+             shift.y < 0 ? abs(shift.y) : 0,
+             cropComm - cent )
+    , crop1( shift.y < 0 ? abs(shift.y) : 0 ,
+            cropComm + cent - shift.x,
+            shift.y > 0 ? abs(shift.y) : 0,
+            cropComm - cent - shift.x )
+    , step( arc / (ims0.shape()(0)-1) )
+    , oz((int)(180/step))
+    , nshift(ashift/step)
+
+    , InThread(verbose , "Performing flat field.", _ims0.shape()(0))
+
+  {
+    res.resize(oz , osh(0), osh(1));
+    Map gapst(osh);
+    crop(gaps, gapst, crop0);
+    clgaps0(blitz2cl(gapst));
+    crop(gaps, gapst, crop1);
+    clgaps1(blitz2cl(gapst));
+    gapst.reverseSelf(blitz::secondDim);
+    clgapsF(blitz2cl(gapst));
+  }
+
+  static void execute(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
+                      float _arc, const PointF2D & _shift, float _ashift, float _cent, bool verbose=false) {
+    FrameFormInThread(_res, _ims0, _ims1, _gaps, _arc, _shift, _cent, verbose).InThread::execute();
+  }
 
 };
 
@@ -289,6 +360,12 @@ public:
   {
     result.resize(fms.shape()(1), ssh(0), ssh(0));
   }
+
+
+  static void execute(const Volume & fms, Volume & res, Contrast cn, Filter ft, float pp, bool verbose=false) {
+    CTinThread(fms, res, cn, ft, pp, verbose).InThread::execute();
+  }
+
 
 };
 
@@ -340,7 +417,7 @@ int main(int argc, char *argv[]) {
     crop(vol, args.crop); \
     if ( faceShape(vol.shape()) != sh ) \
       exit_on_error("ReadSet", "Wrong image sizes."); \
-    FlatInThread(vol, bmap, dfs, gaps, args.beverbose).execute(); \
+    FlatInThread::execute(vol, bmap, dfs, gaps, args.beverbose); \
   }
 
   Volume ims0; ReadSet(args.ims0, bgs0, ims0);
@@ -361,7 +438,7 @@ int main(int argc, char *argv[]) {
 
   const float arc =  args.arc > 1.0  ?  args.arc  :  args.arc * ims0.shape()(0);
   Volume frames;
-  FrameFormInThread(frames, ims0, ims1, gaps, arc, args.shift, args.ashift, args.beverbose).execute();
+  FrameFormInThread::execute(frames, ims0, ims1, gaps, arc, args.shift, args.ashift, args.beverbose);
   const int oz = frames.shape()(0);
   const Shape fsh = faceShape(frames.shape());
 
@@ -383,7 +460,7 @@ int main(int argc, char *argv[]) {
   // CT
 
   Volume recs;
-  CTinThread(frames, recs, Contrast::PHS, args.filter_type, args.dd).execute();
+  CTinThread::execute(frames, recs, Contrast::PHS, args.filter_type, args.dd);
 
   // frames.free(); // not yet
 

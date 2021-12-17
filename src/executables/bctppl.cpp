@@ -282,14 +282,10 @@ public:
     , cropComm(max( abs(shift.x), abs(shift.x - cent) ))
     , ish(faceShape(ims0.shape()))
     , osh( ish(0) - abs(shift.y), ish(1) - 2 * cropComm )
-    , crop0( shift.y > 0 ? abs(shift.y) : 0 ,
-             cropComm + cent,
-             shift.y < 0 ? abs(shift.y) : 0,
-             cropComm - cent )
-    , crop1( shift.y < 0 ? abs(shift.y) : 0 ,
-            cropComm + cent - shift.x,
-            shift.y > 0 ? abs(shift.y) : 0,
-            cropComm - cent - shift.x )
+    , crop0( shift.y > 0 ? abs(shift.y) : 0, cropComm + cent,
+             shift.y < 0 ? abs(shift.y) : 0, cropComm - cent)
+    , crop1( shift.y < 0 ? abs(shift.y) : 0, cropComm + cent - shift.x,
+             shift.y > 0 ? abs(shift.y) : 0, cropComm - cent - shift.x)
     , step( arc / (ims0.shape()(0)-1) )
     , oz((int)(180/step))
     , nshift(ashift/step)
@@ -300,11 +296,11 @@ public:
     res.resize(oz , osh(0), osh(1));
     Map gapst(osh);
     crop(gaps, gapst, crop0);
-    clgaps0(blitz2cl(gapst));
+    clgaps0(blitz2cl(gapst, CL_MEM_READ_ONLY));
     crop(gaps, gapst, crop1);
-    clgaps1(blitz2cl(gapst));
+    clgaps1(blitz2cl(gapst, CL_MEM_READ_ONLY));
     gapst.reverseSelf(blitz::secondDim);
-    clgapsF(blitz2cl(gapst));
+    clgapsF(blitz2cl(gapst, CL_MEM_READ_ONLY));
   }
 
   static void execute(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
@@ -377,7 +373,7 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
 
   const Shape ish = ImageSizes(args.ims0.at(0));
-  const Shape sh = Shape( ish(0) - args.crop.top  - args.crop.top,
+  const Shape sh = Shape( ish(0) - args.crop.top  - args.crop.bottom,
                           ish(1) - args.crop.left - args.crop.right );
 
   // Read DFs, BGs, GapMask

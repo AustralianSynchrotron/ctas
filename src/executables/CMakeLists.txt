@@ -157,12 +157,6 @@ target_link_libraries(simulate-ipc
   lipc
 )
 
-add_executable(trans transform.cpp)
-target_link_libraries(trans
-  common
-  poptmx
-)
-
 add_executable(norm norm.cpp)
 target_link_libraries(norm
   common
@@ -214,7 +208,7 @@ target_link_libraries(bctppl
 
 
 set( all_targets
-  multipc ipc dei edei trans norm
+  multipc ipc dei edei norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
   ct-line ts rc2fd f2i proj 3d22d flat

@@ -222,6 +222,7 @@ set( all_targets
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
   ct-line ts rc2fd f2i proj 3d22d flat test
+  bctppl
 )
 
 

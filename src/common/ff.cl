@@ -57,17 +57,14 @@ __kernel void ffm(
   if (mask[idx]==0.0)
     return;
 
-  float fgg = fg[idx];
+  float fgg = io[idx];
 
-  if ( df >= bg )
-    fg[idx] = 1.0f;
-  else if (df >= fgg )
-    fg[idx] = 0.0f;
+  if ( df[idx] >= bg[idx] )
+    io[idx] = 1.0f;
+  else if (df[idx] >= fgg )
+    io[idx] = 0.0f;
   else
-    fg[l] = (fgg - df) / (bg-df);
-
-  if ( cutOff>0.0f && fg[l] > cutOff )
-    fg[l]=cutOff;
+    io[idx] = (fgg - df[idx]) / (bg[idx] - df[idx]);
 
 }
 

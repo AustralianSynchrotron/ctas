@@ -148,10 +148,12 @@ clargs(int argc, char *argv[])
   #define chck_inSet(set, role) \
     if ( ! table.count(&set) ) \
       exit_on_error(command, "Missing required input for the" + string(role) + "set.");
+
   chck_inSet(ims0, "first image");
   chck_inSet(ims1, "second image");
   chck_inSet(bgs0, "first background");
   chck_inSet(bgs0, "second background");
+
   #undef chck_inSet
 
   if ( arc <= 0.0 )

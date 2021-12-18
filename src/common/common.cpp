@@ -1147,9 +1147,17 @@ private :
     , sub_routine2(_sub_routine2)
   {}
 
-  ThreadDistributor( bool (*_sub_routine)() ) : ThreadDistributor(_sub_routine, 0, 0, 0) {}
-  ThreadDistributor( bool (*_sub_routine)(long int) ) : ThreadDistributor(0, _sub_routine, 0, 0) {}
-  ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg ) : ThreadDistributor(0, 0, _sub_routine, _arg) {}
+  ThreadDistributor( bool (*_sub_routine)() )
+    : ThreadDistributor(_sub_routine, 0, 0, 0)
+  {}
+
+  ThreadDistributor( bool (*_sub_routine)(long int) )
+    : ThreadDistributor(0, _sub_routine, 0, 0)
+  {}
+
+  ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg )
+    : ThreadDistributor(0, 0, _sub_routine, _arg)
+  {}
 
   long int distribute() {
     long int idx;

@@ -61,7 +61,7 @@ clargs(int argc, char *argv[])
     exit_on_error(command, "Missing required argument: "+table.desc(&in_name)+".");
   // <output> : one more argument may or may not exist
   if ( ! table.count(&out_name) )
-    out_name = upgrade(in_name, "int-");
+    out_name = upgrade(in_name, "res-");
 
 }
 

@@ -74,71 +74,71 @@ clargs::clargs(int argc, char *argv[]) :
 
 
   poptmx::OptionTable table
-	("IPC contrast processing",
+  ("IPC contrast processing",
      "Extracts the phase and/or absorption contrast from the input image(s)."
      " Depending on the input parameters utilizes BA, MBA or BAC algorithms.");
 
   table
-	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &zD_name, "far-intensity", "Contrast taken at the distance.", "")
-	.add(poptmx::ARGUMENT, &z0_name, "0-intensity", "Contrast taken in the contact print plane"
+  .add(poptmx::NOTE, "ARGUMENTS:")
+  .add(poptmx::ARGUMENT, &zD_name, "far-intensity", "Contrast taken at the distance.", "")
+  .add(poptmx::ARGUMENT, &z0_name, "0-intensity", "Contrast taken in the contact print plane"
          " (clean absorption contrast).", "", "<NONE>")
 
   .add(poptmx::NOTE, "OPTIONS:")
   .add(poptmx::OPTION, &abs_name, 'a', "absorption",
          "Image name to output the absorption component", "", "<NONE>")
-	.add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
+  .add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
   .add(poptmx::OPTION, &phs_norm, 'P', "phaseout", "Variants of phase component output.",
          "If 0 (default) - outputs real physical value, "
          "if >0 - the value is multiplied by P*4*pi/(w*d) and "
          "if <0 - exponent of the negated value obtained as P>0.")
-	.add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
+  .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
          "More correctly the distance from the contact print plane and the detector plane where the image"
          " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
-	.add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
+  .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
          NeedForQuant, toString(dd))
-	.add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
+  .add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
   .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
          "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
-	.add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
+  .add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
          "Must be a value around 1.0 (theoretical).", toString(dgamma))
-	.add(poptmx::OPTION, &SaveInt,'i', "int",
+  .add(poptmx::OPTION, &SaveInt,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+  exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+  table.usage();
+  exit(0);
   }
   command = table.name();
 
 
   if ( ! table.count(&zD_name) )
-	exit_on_error(command, "Missing required argument: "+table.desc(&zD_name)+".");
+    exit_on_error(command, "Missing required argument: "+table.desc(&zD_name)+".");
 
   if ( ! table.count(&phs_name) && ! table.count(&abs_name) )
-	exit_on_error(command, "At least one of the two following arguments is required: "
+    exit_on_error(command, "At least one of the two following arguments is required: "
                   +table.desc(&phs_name)+ ", " +table.desc(&phs_name)+ ".");
 
   if ( ! table.count(&dist) )
-	exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
+    exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
   if (dist <= 0.0)
-	exit_on_error(command, "Zero or negative distance (given by "+table.desc(&dist)+").");
+    exit_on_error(command, "Zero or negative distance (given by "+table.desc(&dist)+").");
   dist /= 1.0E3; // convert mm -> m
 
   if (dd <= 0.0)
-	exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
+    exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
   dd /= 1.0E6; // convert micron -> m
 
   if ( abs(dgamma)>1.0 ) // should set even smaller limit
-	exit_on_error(command, "Absolute value of gamma (given by "+table.desc(&dgamma)+")"
-                  " is greater than 1.0.");
+    exit_on_error(command, "Absolute value of gamma (given by "+table.desc(&dgamma)+")"
+                           " is greater than 1.0.");
 
   if (lambda <= 0.0)
-	exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
+    exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
   if ( table.count(&lambda) && ! table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
          " with the d2b parameter (given by "+table.desc(&d2b)+").");
@@ -148,7 +148,7 @@ clargs::clargs(int argc, char *argv[]) :
   lambda /= 1.0E10; // convert A -> m
 
   if (d2b < 0.0)
-	  exit_on_error(command, "Negative d2b parameter (given by "+table.desc(&d2b)+").");
+    exit_on_error(command, "Negative d2b parameter (given by "+table.desc(&d2b)+").");
 
 }
 

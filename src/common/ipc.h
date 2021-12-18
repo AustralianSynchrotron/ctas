@@ -174,6 +174,10 @@ public:
   /// @note the arrays ::in and ::out must not be the same.
   void extract(const Map & in, Map & out, Component comp, const float param=1.0) const ;
 
+  void extract(Map & io, Component comp, const float param=1.0) const {
+    extract(io, io, comp, param);
+  }
+
   /// Desired shape of the input arrays.
   ///
   /// @return Predefined shape of the processing algorithm.

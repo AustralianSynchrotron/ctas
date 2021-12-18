@@ -32,6 +32,7 @@
 #include "../common/poptmx.h"
 #include "../common/flatfield.h"
 #include "../common/kernel.h"
+#include "../common/ipc.h"
 #include <algorithm>
 #include <string.h>
 #include <math.h>
@@ -63,6 +64,9 @@ struct clargs {
   float center; // for frame formation and CT
   uint trans; // for frame formation
   uint radFill; // for frame formation: fill gap intersections
+  float d2b; // for phase
+  float lambda; // for phase
+  float dist;  // for phase
   bool SaveInt;
   bool beverbose;
   /// \CLARGSF
@@ -80,6 +84,9 @@ clargs(int argc, char *argv[])
   , center(0)
   , trans(0)
   , radFill(0)
+  , d2b(0.0)
+  , lambda(1.0)
+  , dist(1.0)
   , SaveInt(false)
   , beverbose(false)
 {
@@ -115,7 +122,12 @@ clargs(int argc, char *argv[])
            "The area of this thickness around the gaps is used to smoothly"
            " interpolate between single (gap) and double signal areas." )
       .add(poptmx::OPTION, &radFill, 'R', "fill", "Radius of the area used for filling gaps.", "")
-
+      .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
+             "More correctly the distance from the contact print plane and the detector plane"
+             " where the image was acquired. " + NeedForQuant)
+      .add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
+      .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
+             "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
       .add(poptmx::OPTION, &filter_type, 0, "filter",
            "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
       .add(poptmx::OPTION, &dd, 'r', "resolution",
@@ -152,8 +164,28 @@ clargs(int argc, char *argv[])
     ashift -= 360 * modf( ashift/360.0, &dummy);
   }
 
+  if ( ! table.count(&dist) )
+    exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
+  if (dist <= 0.0)
+    exit_on_error(command, "Zero or negative distance (given by "+table.desc(&dist)+").");
+  dist /= 1.0E3; // convert mm -> m
 
+  if (dd <= 0.0)
+    exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
+  dd /= 1.0E6; // convert micron -> m
 
+  if (d2b < 0.0)
+    exit_on_error(command, "Negative d2b parameter (given by "+table.desc(&d2b)+").");
+
+  if (lambda <= 0.0)
+    exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
+  if ( table.count(&lambda) && ! table.count(&d2b) )
+    warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
+         " with the d2b parameter (given by "+table.desc(&d2b)+").");
+  if ( ! table.count(&lambda) && table.count(&d2b) )
+    warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
+         " the d2b parameter (given by "+table.desc(&d2b)+") for the correct results.");
+  lambda /= 1.0E10; // convert A -> m
 
 }
 
@@ -390,6 +422,51 @@ public:
 
 
 
+
+
+class PhaseInThread : public InThread {
+
+private:
+
+  unordered_map<pthread_t,IPCprocess> procs;
+  Volume & frames;
+  float ind2b;
+
+  bool inThread(long int idx) {
+    if ( idx >= frames.shape()(0) )
+      return false;
+    const pthread_t me = pthread_self();
+    if ( ! procs.count(me) ) // first call
+      procs.insert({me, IPCprocess(faceShape(frames.shape()), ind2b)});
+    Map io(frames(idx,all,all));
+    procs.at(me).extract(io, IPCprocess::PHS);
+    return true;
+  }
+
+public:
+
+  PhaseInThread(Volume & fms, float _ind2b, bool verbose=false)
+    : frames(fms)
+    , ind2b(_ind2b)
+    , InThread(verbose , "Performing phase retrieval.", fms.shape()(0))
+  {}
+
+
+  static void execute(Volume & fms, float _ind2b, bool verbose=false) {
+    PhaseInThread(fms, _ind2b, verbose).InThread::execute();
+  }
+
+
+};
+
+
+
+
+
+
+
+
+
 class CTinThread : public InThread {
 
 private:
@@ -401,10 +478,11 @@ private:
   const Filter filter;
   const float pixelSize;
   const Shape ssh;
+  const int slices;
 
   bool inThread(long int idx) {
 
-    if ( idx >= frames.size() )
+    if ( idx >= slices )
       return false;
 
     const pthread_t me = pthread_self();
@@ -428,9 +506,10 @@ public:
     , filter(ft)
     , pixelSize(pp)
     , ssh(fms.shape()(2), fms.shape()(0))
-    , InThread(verbose , "Performing flat field.", fms.shape()(0))
+    , slices(fms.shape()(1))
+    , InThread(verbose , "Performing flat field.", fms.shape()(1))
   {
-    result.resize(fms.shape()(1), ssh(0), ssh(0));
+    result.resize(slices, ssh(0), ssh(0));
   }
 
 
@@ -526,17 +605,18 @@ int main(int argc, char *argv[]) {
 
   // TODO Zinger
 
-  // TODO Phase
 
 
 
+
+  // Phase
+  const float ind2b = M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd );
+  PhaseInThread::execute(frames, ind2b, args.beverbose);
 
 
   // CT
-
   Volume recs;
   CTinThread::execute(frames, recs, Contrast::PHS, args.filter_type, args.dd);
-  frames.free();
 
 
   // Output

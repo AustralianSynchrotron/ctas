@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
   crop(ivol,args.crp);
   binn(ivol,args.bnn);
 
-  const blitz::TinyVector<blitz::MyIndexType, 3> vsh(ivol.shape());
+  const blitz::TinyVector<ArrIndex, 3> vsh(ivol.shape());
   const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
                           args.outmask.dtitle() + "-@" + args.outmask.extension() :
                           string( args.outmask ) ;
@@ -166,13 +166,13 @@ int main(int argc, char *argv[]) {
     const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice));
     switch ( sliceDim ) {
         case 2:
-          cur = ivol(whole, whole, indices.at(slice));
+          cur = ivol(all, all, indices.at(slice));
           break;
         case 1:
-          cur = ivol(whole, indices.at(slice), whole);
+          cur = ivol(all, indices.at(slice), all);
           break;
         case 0:
-          cur = ivol(indices.at(slice), whole, whole);
+          cur = ivol(indices.at(slice), all, all);
           break;
     }
     if (toInt)

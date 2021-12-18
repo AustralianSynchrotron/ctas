@@ -273,8 +273,8 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
   const float sizeX = dd*ish(0), sizeY=dd*ish(1);
 
   fftwf_execute(fft_f);
-  for (blitz::MyIndexType i = 0 ; i<ish(0) ; i++)
-    for (blitz::MyIndexType j = 0 ; j<ish(1) ; j++) {
+  for (ArrIndex i = 0 ; i<ish(0) ; i++)
+    for (ArrIndex j = 0 ; j<ish(1) ; j++) {
       float ui = ( i<ish(0)/2  ?  i  :  ish(0)-i ) / sizeX;
       float vj = ( j<ish(1)/2  ?  j  :  ish(1)-j ) / sizeY;
       mid(i,j) *= exp( - (float)M_PI * I_C * lambda * dist * (ui*ui + vj*vj) );
@@ -315,10 +315,10 @@ simulateTif( CMap & tif, const Shape & sh, float d2b,
   tif.resize(sh);
   tif = 1.0;
 
-  for (blitz::MyIndexType cur=0 ; cur<3 ; cur++) {
+  for (ArrIndex cur=0 ; cur<3 ; cur++) {
 
-    for (blitz::MyIndexType i = 0 ; i<sh(0) ; i++)
-      for (blitz::MyIndexType j = 0 ; j<sh(1); j++) {
+    for (ArrIndex i = 0 ; i<sh(0) ; i++)
+      for (ArrIndex j = 0 ; j<sh(1); j++) {
         float y = i/(float(D)-1) - 0.5*sh(0)/float(D);
         float x = j/(float(D)-1) - 0.5*sh(1)/float(D);
         float xxr = xr[cur] * cos(theta) + zr[cur] * sin(theta);

@@ -305,10 +305,10 @@ void readnrot(const string &img, Map &map, const Shape & sh,
       map.resize(slices.size(), temp.shape()(1));
       for ( int sls=0 ; sls < slices.size() ; sls++ )
         if (slices[sls] < temp.shape()(1))
-          map(sls, whole) =
-            temp(slices[sls], whole);
+          map(sls, all) =
+            temp(slices[sls], all);
         else
-          map(sls, whole) = 0.0;
+          map(sls, all) = 0.0;
     } else {
       map=temp.copy();
     }
@@ -662,8 +662,8 @@ void AqSeries::projection(int idx, Map &proj,
   flatfield(proj, proj, bg, df, df);
 
   if ( cutOff>0.0 )
-    for (blitz::MyIndexType icur=0; icur<proj.shape()(0); icur++)
-      for (blitz::MyIndexType jcur=0; jcur<proj.shape()(1); jcur++)
+    for (ArrIndex icur=0; icur<proj.shape()(0); icur++)
+      for (ArrIndex jcur=0; jcur<proj.shape()(1); jcur++)
         if ( proj(icur,jcur) > cutOff )
           proj(icur,jcur) = cutOff;
 
@@ -766,7 +766,7 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
   ProgressBar bar(verb, "reading projections", thts);
   for ( int curproj = 0 ; curproj < thts ; curproj++){
     exp.projection(curproj, proj, sliceV);
-    data(curproj, whole, whole) = proj;
+    data(curproj, all, all) = proj;
     bar.update();
   }
 
@@ -813,15 +813,15 @@ SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
   for ( int curproj = 0 ; curproj < thts ; curproj++) {
     if ( angle == 0.0 ) {
       ReadImageLine(inlist[curproj], iar, sliceV, sh);
-      data(curproj, whole, whole) =
-          iar(whole, blitz::Range(crp.left, pxls-crp.right-1));
+      data(curproj, all, all) =
+          iar(all, blitz::Range(crp.left, pxls-crp.right-1));
     } else {
       ReadImage(inlist[curproj], iar, sh);
       rotate(iar, rar, angle);
       crop(rar, car, crp);
       for ( int sls=0 ; sls < sliceV.size() ; sls++ )
-        data(curproj, sls, whole) =
-          car(sliceV[sls], whole);
+        data(curproj, sls, all) =
+          car(sliceV[sls], all);
     }
     bar.update();
   }
@@ -911,7 +911,7 @@ SinoS::sino(int idx, Map & storage) const {
   index(idx);
   storage.resize(thts, pxls);
   storage = data
-            (whole, idx, whole).copy();
+            (all, idx, all).copy();
 }
 
 

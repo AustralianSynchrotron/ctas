@@ -367,7 +367,7 @@ project_sino(const Map &sinogram, Map &result, float center) {
   //int pixels = sinogram.columns();
   int thetas = sinogram.rows();
   for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-    Line sinoline = sinogram(iTheta, whole);
+    Line sinoline = sinogram(iTheta, all);
     project_line(sinoline, result, (M_PI * iTheta)/thetas, center);
   }
 }
@@ -446,7 +446,7 @@ public:
     pthread_mutex_lock(&lock);
     bool returned = iTheta < thetas;
     if ( returned ) {
-      sinoline.reference( sinogram(iTheta, whole) );
+      sinoline.reference( sinogram(iTheta, all) );
       *Theta = (M_PI * iTheta)/thetas;
       iTheta++;
     }
@@ -706,7 +706,7 @@ void CTrec::prepare_sino(Map &sinogram) {
   if ( _contrast != Contrast::FLT ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
 
-      Line sinoline = sinogram(iTheta, whole);
+      Line sinoline = sinogram(iTheta, all);
 
       zsinoline = 0.0;
       zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
@@ -718,7 +718,7 @@ void CTrec::prepare_sino(Map &sinogram) {
 
   if ( _contrast == Contrast::REF ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-      Line sinoline = sinogram(iTheta, whole);
+      Line sinoline = sinogram(iTheta, all);
       partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
     }
   }
@@ -1018,9 +1018,9 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   float plane_cos = (plane-center)*cur_sin;
   float Rcenter = pixels*0.5 + center;
 
-  for (blitz::MyIndexType ycur = 0 ; ycur < thetas ; ycur++) {
+  for (ArrIndex ycur = 0 ; ycur < thetas ; ycur++) {
 
-        Line ln = projection(ycur, whole);
+        Line ln = projection(ycur, all);
 
   // filtering
   filter_line(ln, f_win, &planF, &planB);
@@ -1028,10 +1028,10 @@ ts_add( Map &projection, Map &result, const Filter & filter,
     partial_sum( ln.begin(), ln.end(), ln.begin() );
 
   // projecting
-  for (blitz::MyIndexType xcur = 0 ; xcur < pixels ; xcur++) {
+  for (ArrIndex xcur = 0 ; xcur < pixels ; xcur++) {
     float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
     di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
-    result(ycur, xcur) += projection( ycur, (blitz::MyIndexType) di );
+    result(ycur, xcur) += projection( ycur, (ArrIndex) di );
   }
 
   }

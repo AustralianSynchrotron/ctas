@@ -649,14 +649,14 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
       fillClArray(cloutslice(), outslice.size(), 0);
       for (int cz=0 ; cz<bnn.z ; cz++) {
-        inslice = inarr(z*bnn.z+cz, whole, whole);
+        inslice = inarr(z*bnn.z+cz, all, all);
         blitz2cl(inslice, clinslice());
         execKernel(kernelBinn2, outslice.shape());
         execKernel(kernelAddTo, outslice.size());
       }
       execKernel(kernelMulti, outslice.shape());
       cl2blitz(cloutslice(), outslice);
-      outarr(z, whole, whole) = outslice;
+      outarr(z, all, all) = outslice;
     }
 
   }
@@ -664,9 +664,9 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 #else // OPENCL_FOUND
 
   const size_t bsz = bnn.x * bnn.y * bnn.z;
-  for (blitz::MyIndexType zcur = 0 ; zcur < osh(0) ; zcur++ )
-    for (blitz::MyIndexType ycur = 0 ; ycur < osh(1) ; ycur++ )
-      for (blitz::MyIndexType xcur = 0 ; xcur < osh(2) ; xcur++ )
+  for (ArrIndex zcur = 0 ; zcur < osh(0) ; zcur++ )
+    for (ArrIndex ycur = 0 ; ycur < osh(1) ; ycur++ )
+      for (ArrIndex xcur = 0 ; xcur < osh(2) ; xcur++ )
         // BUG in blitz? But the following fails.
         //outarr(zcur,ycur,xcur) = mean(
         //  inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  all
@@ -765,8 +765,8 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
 
 #else // OPENCL_FOUND
 
-  for (blitz::MyIndexType ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
-    for (blitz::MyIndexType xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
+  for (ArrIndex ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
+    for (ArrIndex xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
       outarr(ycur,xcur) = mean(
         inarr( bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  all
              , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  all ) );
@@ -823,10 +823,10 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
 
   if ( ! isnormal(bg) ) {
     bg=0;
-    bg += mean( inarr( whole, 0 ) );
-    bg += mean( inarr( 0, whole ) );
-    bg += mean( inarr( whole, sh(1)-1 ) );
-    bg += mean( inarr( sh(0)-1, whole ) );
+    bg += mean( inarr( all, 0 ) );
+    bg += mean( inarr( 0, all ) );
+    bg += mean( inarr( all, sh(1)-1 ) );
+    bg += mean( inarr( sh(0)-1, all ) );
     bg /= 4.0;
   }
 
@@ -834,12 +834,12 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
     constinx = ( sh(1) + rheight*sina - rwidth*cosa ) / 2.0,
     constiny = ( sh(0) - rwidth*sina - rheight*cosa ) / 2.0;
 
-  for ( blitz::MyIndexType x=0 ; x < shf(1) ; x++) {
-    for ( blitz::MyIndexType y=0 ; y < shf(0) ; y++) {
+  for ( ArrIndex x=0 ; x < shf(1) ; x++) {
+    for ( ArrIndex y=0 ; y < shf(0) ; y++) {
 
       const float xf = x*cosa - y*sina + constinx;
       const float yf = x*sina + y*cosa + constiny;
-      const blitz::MyIndexType flx = floor(xf), fly = floor(yf);
+      const ArrIndex flx = floor(xf), fly = floor(yf);
 
       if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
         outarr(y, x)=bg;
@@ -2233,7 +2233,7 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       "The index of the line to be read (" + toString(row) + ")"
       " is outside the image boundaries (" + toString(height) + ").");
 
-      storage(curidx, whole) = 0.0;
+      storage(curidx, all) = 0.0;
 
     } else {
 
@@ -2252,22 +2252,22 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       switch (fmt) {
       case SAMPLEFORMAT_UINT :
         if (bps==8)
-          storage(curidx, whole) = 1.0 * blitzArrayFromData(uint8_t);
+          storage(curidx, all) = 1.0 * blitzArrayFromData(uint8_t);
         else if (bps==16)
-          storage(curidx, whole) = 1.0 * blitzArrayFromData(uint16_t);
+          storage(curidx, all) = 1.0 * blitzArrayFromData(uint16_t);
         else if (bps==32)
-          storage(curidx, whole) = 1.0 * blitzArrayFromData(uint32_t);
+          storage(curidx, all) = 1.0 * blitzArrayFromData(uint32_t);
         break;
       case SAMPLEFORMAT_INT :
         if (bps==8)
-          storage(curidx, whole) = 1.0 * blitzArrayFromData(int8_t);
+          storage(curidx, all) = 1.0 * blitzArrayFromData(int8_t);
         else if (bps==16)
-          storage(curidx, whole) = 1.0 * blitzArrayFromData(int16_t);
+          storage(curidx, all) = 1.0 * blitzArrayFromData(int16_t);
         else if (bps==32)
-          storage(curidx, whole) = 1.0 * blitzArrayFromData(int32_t);
+          storage(curidx, all) = 1.0 * blitzArrayFromData(int32_t);
         break;
       case SAMPLEFORMAT_IEEEFP :
-        storage(curidx, whole) = blitzArrayFromData(float);
+        storage(curidx, all) = blitzArrayFromData(float);
         break;
       }
 
@@ -2292,7 +2292,7 @@ inline static void
 ReadImageLine_TIFF (const Path & filename, Line & storage, int idx) {
   Map _storage;
   ReadImageLine_TIFF(filename, _storage, vector<int>(1,idx) );
-  storage=_storage(0,whole);
+  storage=_storage(0,all);
 }
 
 
@@ -2343,8 +2343,8 @@ ReadImage_IM (const Path & filename, Map & storage ){
   */
 
   /* Replacement for the buggy block */
-  for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
-    for (blitz::MyIndexType curh = 0 ; curh < hight ; curh++)
+  for (ArrIndex curw = 0 ; curw < width ; curw++)
+    for (ArrIndex curh = 0 ; curh < hight ; curh++)
       storage(curh,curw) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
   /* end replacement */
 
@@ -2410,7 +2410,7 @@ ReadImageLine_IM (const Path & filename, Line & storage, int idx){
   */
 
   /* Replacement for the buggy block */
-  for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+  for (ArrIndex curw = 0 ; curw < width ; curw++)
     storage(curw) = Magick::ColorGray(imag.pixelColor(curw, idx)).shade();
   /* end replacement */
 
@@ -2459,23 +2459,23 @@ ReadImageLine_IM (const Path & filename, Map & storage,
   const int readheight = idxs.size() ? idxs.size() : hight;
   storage.resize( readheight, width );
 
-  for ( blitz::MyIndexType curel = 0 ; curel < readheight ; curel++ ){
+  for ( ArrIndex curel = 0 ; curel < readheight ; curel++ ){
     int cursl = idxs.size() ? idxs[curel] : curel;
     if ( cursl >= hight ) {
       warn("load imagelines IM",
            "The index of the line to be read (" + toString(cursl) + ")"
            " is outside the image boundaries (" + toString(hight) + ").");
-      storage(curel, whole ) = 0.0;
+      storage(curel, all ) = 0.0;
     } else {
       // below might be buggy - see notes in SaveImageINT_IM
       /*
       const Magick::PixelPacket *pixels = imag.getConstPixels(0,cursl,width,1);
-      for ( blitz::MyIndexType k = 0 ; k < width ; k++ )
-        storage( (blitz::MyIndexType) curel, k) =
+      for ( ArrIndex k = 0 ; k < width ; k++ )
+        storage( (ArrIndex) curel, k) =
           (float) Magick::ColorGray( *pixels++  ) .shade();
       */
       /* Replacement for the buggy block */
-      for (blitz::MyIndexType curw = 0 ; curw < width ; curw++)
+      for (ArrIndex curw = 0 ; curw < width ; curw++)
         storage(curel, curw) = Magick::ColorGray(imag.pixelColor(curw, cursl)).shade();
       /* end replacement */
 
@@ -2598,12 +2598,12 @@ public:
         throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
       for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
         hdf.read(idxV, slice);
-        storage(slpr.second+idxV, whole, whole) = slice;
+        storage(slpr.second+idxV, all, all) = slice;
         bar.update();
       }
     } else {
       ReadImage(slpr.first, slice, sh);
-      storage(slpr.second, whole, whole) = slice;
+      storage(slpr.second, all, all) = slice;
       bar.update();
     }
 

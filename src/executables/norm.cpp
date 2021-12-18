@@ -33,7 +33,6 @@
 #include <math.h>
 
 using namespace std;
-using namespace blitz;
 
 
 /// \CLARGS
@@ -112,17 +111,17 @@ int main(int argc, char *argv[]) {
   vector<int> columns = slice_str2vec( args.columndesc, sh(1) );
 
   Line norm(sh(0));
-  for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++) {
+  for (ArrIndex rcur=0; rcur<sh(0); rcur++) {
     float sum=0;
     for (int icur=0; icur<columns.size(); icur++ )
-      sum += arr(rcur, (blitz::MyIndexType) columns[icur]);
+      sum += arr(rcur, (ArrIndex) columns[icur]);
     norm(rcur) = (sum==0.0) ? 1.0 : sum / columns.size() ;
   }
   const float averagenorm = (args.norm==0.0)  ?
                             sum(norm)/sh(0)  :  args.norm;
 
-  for (blitz::MyIndexType rcur=0; rcur<sh(0); rcur++)
-    arr(rcur, whole) *= averagenorm / norm(rcur) ;
+  for (ArrIndex rcur=0; rcur<sh(0); rcur++)
+    arr(rcur, all) *= averagenorm / norm(rcur) ;
 
   SaveImage(args.out_name, arr);
 

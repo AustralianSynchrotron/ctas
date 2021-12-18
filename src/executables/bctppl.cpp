@@ -58,7 +58,7 @@ struct clargs {
   float dd;  // for Phase and CT
   float arc; // for frame formation and CT
   Crop crop; // for frame formation
-  Crop fcrp; // for frame formation
+  Crop cropF; // for frame formation
   float angle;
   float center; // for frame formation and CT
   uint trans; // for frame formation
@@ -108,7 +108,7 @@ clargs(int argc, char *argv[])
            "If value is greater than 1deg then it represents the arc of the CT scan."
            " Otherwise the value is the step size.", toString(arc))
       .add(poptmx::OPTION, &crop, 0, "crop", "Crop input images: " + CropOptionDesc, "")
-      .add(poptmx::OPTION, &fcrp, 0, "crop-final", "Crops final image: " + CropOptionDesc, "")
+      .add(poptmx::OPTION, &cropF, 0, "crop-final", "Crops final image: " + CropOptionDesc, "")
       .add(poptmx::OPTION, &angle, 0, "rotate", "Rotate input images by given angle.", "")
       .add(poptmx::OPTION, &center, 'c', "center", "Rotation center after cropping.", CenterOptionDesc)
       .add(poptmx::OPTION, &radFill, 'T', "trans", "Transition area around gaps.",
@@ -172,7 +172,7 @@ class FlatInThread : public InThread {
     pthread_t me(pthread_self());
     if ( ! ffProcs.count(me) ) // first call
       ffProcs.insert({me, FlatFieldProc(canon)});
-    Map frame(vol(idx,whole,whole));
+    Map frame(vol(idx,all,all));
     ffProcs.at(me).process(frame);
     bar.update();
     return true;
@@ -213,12 +213,12 @@ void prepareGaps(Map & gaps, uint trans) {
   for ( int st = 1 ; st <= trans ; st++ ) {
     const float fill = step*st;
 
-    for (blitz::MyIndexType i = 0 ; i<ish(0) ; i++)
-      for (blitz::MyIndexType j = 0 ; j<ish(1) ; j++)
+    for (ArrIndex i = 0 ; i<ish(0) ; i++)
+      for (ArrIndex j = 0 ; j<ish(1) ; j++)
         if ( gaps(i,j) != 1.0 )
 
-          for (blitz::MyIndexType ii = i-1 ; ii <= i+1 ; ii++)
-            for (blitz::MyIndexType jj = j-1 ; jj <= j+1 ; jj++)
+          for (ArrIndex ii = i-1 ; ii <= i+1 ; ii++)
+            for (ArrIndex jj = j-1 ; jj <= j+1 ; jj++)
 
               if ( ii >= 0 && ii < ish(0) && jj >= 0 && jj < ish(1)
                    &&  gaps(ii,jj) == 1.0 )
@@ -305,12 +305,12 @@ class FrameFormInThread : public InThread {
     }
 
     Map im0(osh);
-    crop( ims0(idx, whole, whole), im0, crop0 );
+    crop( ims0(idx, all, all), im0, crop0 );
     blitz2cl(im0, clim0.at(me)());
 
     const int id1 = idx - nshift - ( (idx - nshift >= oz)  ?  oz  :  0 ) ;
     Map im1(osh);
-    crop( ims1(id1, whole, whole), im1, crop1 );
+    crop( ims1(id1, all, all), im1, crop1 );
     if ( id1 <= idx ) {
       im1.reverseSelf(blitz::secondDim);
       setArg( kernelFormFrame.at(me), 4, clgapsF() );
@@ -325,7 +325,7 @@ class FrameFormInThread : public InThread {
     if (rFill) execKernel(kernelFill.at(me), osh);
 
     cl2blitz(clout.at(me)(), im0);
-    res(idx, whole, whole) = im0;
+    res(idx, all, all) = im0;
 
     bar.update();
     return true;
@@ -411,8 +411,8 @@ private:
     if ( ! recs.count(me) ) // first call
       recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
     CTrec & rec = recs.at(me);
-    Map sino(frames(whole, idx, whole));
-    result(idx, whole, whole)
+    Map sino(frames(all, idx, all));
+    result(idx, all, all)
         = rec.reconstruct(sino , 0, pixelSize); // centre is 0 after frames formation
     bar.update();
     return true;
@@ -461,7 +461,7 @@ int main(int argc, char *argv[]) {
       if ( faceShape(tmp.shape()) != ish ) \
         exit_on_error("ReadAux", "Wrong image sizes."); \
       binn(tmp, Binn3(1,1,0)); \
-      Map img = tmp(0, whole, whole); \
+      Map img = tmp(0, all, all); \
       crop(img, res, args.crop); \
     } \
   }
@@ -513,6 +513,7 @@ int main(int argc, char *argv[]) {
   Volume frames;
   FrameFormInThread::execute(frames, ims0, ims1, gaps, arc,
                              args.shift, args.ashift, args.radFill, args.beverbose);
+  crop(frames, args.cropF);
   const int oz = frames.shape()(0);
   const Shape fsh = faceShape(frames.shape());
 
@@ -535,8 +536,7 @@ int main(int argc, char *argv[]) {
 
   Volume recs;
   CTinThread::execute(frames, recs, Contrast::PHS, args.filter_type, args.dd);
-
-  // frames.free(); // not yet
+  frames.free();
 
 
   // Output
@@ -549,7 +549,7 @@ int main(int argc, char *argv[]) {
 
   for (unsigned slice=0 ; slice < oz ; slice++ ) {
     const Path fileName =  oz == 1  ?  args.outmask : Path(toString(sliceformat, slice));
-    cur = frames(slice, whole, whole);
+    cur = frames(slice, all, all);
     if (args.SaveInt)
       SaveImage(fileName, cur, mincon, maxcon);
     else

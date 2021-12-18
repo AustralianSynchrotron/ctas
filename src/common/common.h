@@ -439,7 +439,8 @@ typedef blitz::Array<float,2> Map;
 /// Three dimensional array of the ::float elements.
 typedef blitz::Array<float,3> Volume;
 
-const blitz::Range whole = blitz::Range::all();
+const blitz::Range all = blitz::Range::all();
+typedef blitz::MyIndexType ArrIndex;
 
 
 
@@ -449,7 +450,7 @@ const blitz::Range whole = blitz::Range::all();
 
 
 /// \brief Shape of an 2D array.
-typedef blitz::TinyVector<blitz::MyIndexType,2> Shape;
+typedef blitz::TinyVector<ArrIndex,2> Shape;
 
 inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
 
@@ -483,7 +484,7 @@ size_t area(const Shape & sh) {return sh(0) * sh(1) ;}
 
 
 /// \brief Shape of an 2D array.
-typedef blitz::TinyVector<blitz::MyIndexType,3> Shape3;
+typedef blitz::TinyVector<ArrIndex,3> Shape3;
 
 inline std::string toString (const Shape3 & shp) { return toString("%u, %u, %u", shp(2), shp(1), shp(0));}
 

@@ -174,9 +174,6 @@ clargs(int argc, char *argv[])
 }
 
 
-using namespace blitz;
-
-
 void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
 
   const int isz = iarr.size();
@@ -204,8 +201,8 @@ void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
   const Shape osh(maxy-miny+1, maxx-minx+1);
   oarr.resize(osh);
 
-  for (blitz::MyIndexType ycur = 0 ; ycur < osh(0) ; ycur++ ) {
-    for (blitz::MyIndexType xcur = 0 ; xcur < osh(1) ; xcur++ ) {
+  for (ArrIndex ycur = 0 ; ycur < osh(0) ; ycur++ ) {
+    for (ArrIndex xcur = 0 ; xcur < osh(1) ; xcur++ ) {
 
       int sweight=0;
       float svals=0.0;
@@ -489,12 +486,12 @@ int main(int argc, char *argv[]) {
     if ( nofSt != 2 ) // May it ever happen ?
       exit_on_error(args.command, "Number of images requested to flip-stitch is not equal to two.");
 
-    o2Stitch[1].reverseSelf(secondDim);
+    o2Stitch[1].reverseSelf(blitz::secondDim);
     stitch(o2Stitch, args.originF, final);
     if ( ! args.interim_name.empty() )  {
       Map tmp;
       ReadImage(args.interim_name + o2images[1], tmp);
-      tmp.reverseSelf(secondDim);
+      tmp.reverseSelf(blitz::secondDim);
       SaveImage(args.interim_name + o2images[1], tmp);
       namemask = findCommon( o2images.begin(), o2images.end() ).title() + ".tif";
       if ( namemask.substr(0,4) == "St1_"  ||  namemask.substr(0,4) == "St2_")
@@ -552,8 +549,8 @@ int main(int argc, char *argv[]) {
 
       if ( lLine > fLine ) {
         Map toSave =  vsplit ?
-              final( whole, blitz::Range(fLine, lLine) ).copy() :
-              final( blitz::Range(fLine, lLine), whole ).copy();
+              final( all, blitz::Range(fLine, lLine) ).copy() :
+              final( blitz::Range(fLine, lLine), all ).copy();
         if ( ! args.out_name.empty() )
           SaveImage( toString(sliceformat, curS-vsplit) , toSave);
         if ( ! args.interim_name.empty() )

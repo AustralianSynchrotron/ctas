@@ -43,7 +43,6 @@
 #include "../common/poptmx.h"
 
 using namespace std;
-using namespace blitz;
 
 
 /// \CLARGS
@@ -170,7 +169,7 @@ int main(int argc, char *argv[]) {
       rotate(iar, rar, args.angle);
       crop(rar, car, args.crp);
       for ( int sls=0 ; sls < sins.indexes().size() ; sls++ )
-        bgar(sls, Range::all()) += car(sins.indexes()[sls], Range::all());
+        bgar(sls, all) += car(sins.indexes()[sls], all);
     }
     bgar /= args.bgs.size();
   }
@@ -186,7 +185,7 @@ int main(int argc, char *argv[]) {
       rotate(iar, rar, args.angle);
       crop(rar, car, args.crp);
       for ( int sls=0 ; sls < sins.indexes().size() ; sls++ )
-        dfar(sls, Range::all()) += car(sins.indexes()[sls], Range::all());
+        dfar(sls, all) += car(sins.indexes()[sls], all);
     }
     dfar /= args.dfs.size();
   }
@@ -206,7 +205,7 @@ int main(int argc, char *argv[]) {
       rotate(iar, rar, args.angle);
       crop(rar, car, args.crp);
       for ( int sls=0 ; sls < sins.indexes().size() ; sls++ )
-        dbar(sls, Range::all()) += car(sins.indexes()[sls], Range::all());
+        dbar(sls, all) += car(sins.indexes()[sls], all);
     }
     dbar /= args.dbs.size();
   }
@@ -224,10 +223,10 @@ int main(int argc, char *argv[]) {
     sins.sino(slice, sinogram);
     if ( bgsin.size() )
       for (int scur=0; scur<sinogram.shape()(0); scur++)
-        bgsin(scur,Range::all()) = bgar(slice, Range::all());
+        bgsin(scur,all) = bgar(slice, all);
     if ( dfsin.size() )
       for (int scur=0; scur<sinogram.shape()(0); scur++)
-        dfsin(scur,Range::all()) = dfar(slice, Range::all());
+        dfsin(scur,all) = dfar(slice, all);
     flatfield(sinogram, sinogram, bgsin, dfsin, dbsin);
     const Path fileName = sins.indexes().size() == 1  ?  args.outmask :
                           Path(toString(sliceformat, sins.indexes()[slice]+1));

@@ -287,8 +287,8 @@ public:
     proj.resize( Shape( sliceV.size() ? sliceV.size() : sh(0) , sh(1) ) );
     if (sliceV.size()) {
       for(int icur = 0 ; icur<sliceV.size() ; icur++)
-        proj (icur, whole) =
-          prD (sliceV[icur], whole);
+        proj (icur, all) =
+          prD (sliceV[icur], all);
     } else {
       proj = prD;
     }

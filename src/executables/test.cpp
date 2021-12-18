@@ -16,6 +16,7 @@ struct clargs {
   float coeff;                ///< coefficient
   Crop crp;                  ///< Crop input projection image
   Binn bnn;                  ///< binning factor
+  int arf;
   bool saveInt;
   bool beverbose;       ///< Be verbose flag
   /// \CLARGSF
@@ -28,6 +29,7 @@ clargs(int argc, char *argv[])
   : out_name("proc-<input>")
   , rad(0)
   , coeff(1.0)
+  , arf(1)
   , saveInt(false)
   , beverbose(false)
 {
@@ -42,6 +44,7 @@ clargs(int argc, char *argv[])
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &rad, 'r', "radius", "Some radius.", "Long description of radius.")
     .add(poptmx::OPTION, &coeff, 'c', "coefficient", "Some number", "")
+    .add(poptmx::OPTION, &arf, 'F', "anarg", "description", "Long description")
     .add(poptmx::OPTION, &crp, 0, "crop", "image crop", "")
     .add(poptmx::OPTION, &bnn, 0, "binn", "image binn", "")
     .add(poptmx::OPTION, &saveInt, 'i', "int", "Output image(s) as integer.", IntOptionDesc)
@@ -88,12 +91,14 @@ int main(int argc, char *argv[]) {
   binn(arr, args.bnn);
 
   Line firstHoriz(sh(1)); // here instance
-  firstHoriz = arr(0,all);
+  firstHoriz = arr(0,all);\
+  cout << firstHoriz.isStorageContiguous() << "\n";
   float * arrPointerC = firstHoriz.data() ;
   for ( int idx = 0 ; idx < firstHoriz.size() ; idx++ )
     *(arrPointerC++) = 2.0; // this is fine as instance has data contiguous
 
   Line firstVertRef = arr(all,0); // here reference
+  cout << firstVertRef.isStorageContiguous() << "\n";
   float * arrPointerR = arr.data() ; // don't use this as reference's data may or may not be contiguous
   firstVertRef = 2.0; // fine
 

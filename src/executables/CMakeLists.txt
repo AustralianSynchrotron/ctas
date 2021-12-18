@@ -195,6 +195,7 @@ target_link_libraries(bctppl
   poptmx
   kernel
   flatfield
+  lipc
 )
 
 

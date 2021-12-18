@@ -56,6 +56,6 @@ void FlatFieldProc::execute(const Map & _io) {
   if (_io.shape() != sh)
     throw_error("FlatCL", "Non matching input shape");
   blitz2cl(_io, io());
-  execKernel(kernel);
+  execKernel(kernel, _io.size());
 }
 

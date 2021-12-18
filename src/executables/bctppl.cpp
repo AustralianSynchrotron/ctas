@@ -61,6 +61,8 @@ struct clargs {
   Crop fcrp; // for frame formation
   float angle;
   float center; // for frame formation and CT
+  uint trans; // for frame formation
+  uint radFill; // for frame formation: fill gap intersections
   bool SaveInt;
   bool beverbose;
   /// \CLARGSF
@@ -76,6 +78,8 @@ clargs(int argc, char *argv[])
   , arc(180)
   , angle(0)
   , center(0)
+  , trans(0)
+  , radFill(0)
   , SaveInt(false)
   , beverbose(false)
 {
@@ -103,10 +107,15 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &arc, 'a', "arcan", "CT scan range (if > 1 deg), or step size (if < 1 deg).",
            "If value is greater than 1deg then it represents the arc of the CT scan."
            " Otherwise the value is the step size.", toString(arc))
-      .add(poptmx::OPTION, &crop, 't', "crop", "Crop input images: " + CropOptionDesc, "")
-      .add(poptmx::OPTION, &fcrp, 'T', "crop-final", "Crops final image: " + CropOptionDesc, "")
-      .add(poptmx::OPTION, &angle,'r', "rotate", "Rotate input images by given angle.", "")
+      .add(poptmx::OPTION, &crop, 0, "crop", "Crop input images: " + CropOptionDesc, "")
+      .add(poptmx::OPTION, &fcrp, 0, "crop-final", "Crops final image: " + CropOptionDesc, "")
+      .add(poptmx::OPTION, &angle, 0, "rotate", "Rotate input images by given angle.", "")
       .add(poptmx::OPTION, &center, 'c', "center", "Rotation center after cropping.", CenterOptionDesc)
+      .add(poptmx::OPTION, &radFill, 'T', "trans", "Transition area around gaps.",
+           "The area of this thickness around the gaps is used to smoothly"
+           " interpolate between single (gap) and double signal areas." )
+      .add(poptmx::OPTION, &radFill, 'R', "fill", "Radius of the area used for filling gaps.", "")
+
       .add(poptmx::OPTION, &filter_type, 0, "filter",
            "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
       .add(poptmx::OPTION, &dd, 'r', "resolution",
@@ -186,6 +195,41 @@ public:
 
 
 
+
+
+// Prepare gaps for frame formation
+void prepareGaps(Map & gaps, uint trans) {
+
+  const float mm = min(gaps);
+  if ( (mm != 0.0 && mm !=1.0 ) || max(gaps) != 1.0 )
+    throw_error("GapsMask", "The input mask of the gap must contain only 0f and 1f.");
+  if (!trans)
+    return;
+
+
+  const Shape ish = gaps.shape();
+  const float step = 1.0 / (trans+1);
+
+  for ( int st = 1 ; st <= trans ; st++ ) {
+    const float fill = step*st;
+
+    for (blitz::MyIndexType i = 0 ; i<ish(0) ; i++)
+      for (blitz::MyIndexType j = 0 ; j<ish(1) ; j++)
+        if ( gaps(i,j) != 1.0 )
+
+          for (blitz::MyIndexType ii = i-1 ; ii <= i+1 ; ii++)
+            for (blitz::MyIndexType jj = j-1 ; jj <= j+1 ; jj++)
+
+              if ( ii >= 0 && ii < ish(0) && jj >= 0 && jj < ish(1)
+                   &&  gaps(ii,jj) == 1.0 )
+                gaps(ii,jj) = fill;
+
+  }
+
+}
+
+
+
 char formframe_src[] = {
   #include "formframe.cl.includeme"
 };
@@ -213,14 +257,23 @@ class FrameFormInThread : public InThread {
   const float step;
   const float oz;
   const int nshift;
+  const int rFill;
 
-  unordered_map<pthread_t,cl_kernel> kernel;
+  unordered_map<pthread_t,cl_kernel> kernelFormFrame;
+  unordered_map<pthread_t,cl_kernel> kernelFill;
   unordered_map<pthread_t,CLmem> clim0;
   unordered_map<pthread_t,CLmem> clim1;
   unordered_map<pthread_t,CLmem> clout;
   CLmem clgaps0;
   CLmem clgaps1;
   CLmem clgapsF;
+
+  ~FrameFormInThread() {
+    for (auto& it: kernelFormFrame)
+      clReleaseKernel(it.second);
+    for (auto& it: kernelFill)
+      clReleaseKernel(it.second);
+  }
 
 
   bool inThread(long int idx) {
@@ -229,15 +282,26 @@ class FrameFormInThread : public InThread {
       return false;
 
     pthread_t me(pthread_self());
-    if ( ! kernel.count(me) ) { // first run
-      kernel.insert({ me, createKernel(formframeProgram , "formframe") });
-      clim0.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
-      setArg( kernel.at(me), 0, clim0.at(me)() );
-      clim1.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
-      setArg( kernel.at(me), 1, clim0.at(me)() );
+    if ( ! kernelFormFrame.count(me) ) { // first run
+
+      kernelFormFrame.insert({ me, createKernel(formframeProgram , "formframe") });
       clout.insert({ me, clAllocArray<float>(area(osh)) });
-      setArg( kernel.at(me), 2, clout.at(me)() );
-      setArg( kernel.at(me), 3, clgaps0() );
+      setArg( kernelFormFrame.at(me), 0, clout.at(me)() );
+      clim0.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
+      setArg( kernelFormFrame.at(me), 1, clim0.at(me)() );
+      clim1.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
+      setArg( kernelFormFrame.at(me), 2, clim0.at(me)() );
+      setArg( kernelFormFrame.at(me), 3, clgaps0() );
+
+      if (rFill) {
+        kernelFill.insert({ me, createKernel(formframeProgram , "gapfill") });
+        setArg( kernelFill.at(me), 0, osh(1) );
+        setArg( kernelFill.at(me), 1, osh(0) );
+        setArg( kernelFill.at(me), 2, rFill );
+        setArg( kernelFill.at(me), 3, clout.at(me)() );
+        setArg( kernelFill.at(me), 4, clgaps0() );
+      }
+
     }
 
     Map im0(osh);
@@ -247,15 +311,19 @@ class FrameFormInThread : public InThread {
     const int id1 = idx - nshift - ( (idx - nshift >= oz)  ?  oz  :  0 ) ;
     Map im1(osh);
     crop( ims1(id1, whole, whole), im1, crop1 );
-    blitz2cl(im1, clim1.at(me)());
     if ( id1 <= idx ) {
       im1.reverseSelf(blitz::secondDim);
-      setArg( kernel.at(me), 4, clgapsF() );
+      setArg( kernelFormFrame.at(me), 4, clgapsF() );
+      if (rFill) setArg( kernelFill.at(me), 5, clgapsF() );
     } else {
-      setArg( kernel.at(me), 4, clgaps1() );
+      setArg( kernelFormFrame.at(me), 4, clgaps1() );
+      if (rFill) setArg( kernelFill.at(me), 5, clgaps1() );
     }
+    blitz2cl(im1, clim1.at(me)());
 
-    execKernel(kernel.at(me));
+    execKernel(kernelFormFrame.at(me), area(osh));
+    if (rFill) execKernel(kernelFill.at(me), osh);
+
     cl2blitz(clout.at(me)(), im0);
     res(idx, whole, whole) = im0;
 
@@ -268,7 +336,8 @@ class FrameFormInThread : public InThread {
 public:
 
   FrameFormInThread(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
-                    float _arc, const PointF2D & _shift, float _ashift, float _cent, bool verbose=false)
+                    float _arc, const PointF2D & _shift, float _ashift, float _cent, int _rFill,
+                    bool verbose=false)
 
     : res(_res)
     , ims0(_ims0)
@@ -278,6 +347,7 @@ public:
     , shift(_shift)
     , ashift(_ashift)
     , cent(_cent)
+    , rFill(_rFill)
 
     , cropComm(max( abs(shift.x), abs(shift.x - cent) ))
     , ish(faceShape(ims0.shape()))
@@ -293,7 +363,9 @@ public:
     , InThread(verbose , "Performing flat field.", _ims0.shape()(0))
 
   {
+
     res.resize(oz , osh(0), osh(1));
+
     Map gapst(osh);
     crop(gaps, gapst, crop0);
     clgaps0(blitz2cl(gapst, CL_MEM_READ_ONLY));
@@ -301,14 +373,18 @@ public:
     clgaps1(blitz2cl(gapst, CL_MEM_READ_ONLY));
     gapst.reverseSelf(blitz::secondDim);
     clgapsF(blitz2cl(gapst, CL_MEM_READ_ONLY));
+
   }
 
   static void execute(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
-                      float _arc, const PointF2D & _shift, float _ashift, float _cent, bool verbose=false) {
-    FrameFormInThread(_res, _ims0, _ims1, _gaps, _arc, _shift, _cent, verbose).InThread::execute();
+                      float _arc, const PointF2D & _shift, float _ashift, float _cent, float _rFill,
+                      bool verbose=false) {
+    FrameFormInThread(_res, _ims0, _ims1, _gaps, _arc, _shift, _cent, _rFill, verbose)
+        .InThread::execute();
   }
 
 };
+
 
 
 
@@ -401,6 +477,7 @@ int main(int argc, char *argv[]) {
     Map tmp;
     ReadImage(args.gaps, tmp, ish);
     crop(tmp, gaps, args.crop);
+    prepareGaps(gaps, args.trans);
   } else
     gaps = 1;
 
@@ -434,7 +511,8 @@ int main(int argc, char *argv[]) {
 
   const float arc =  args.arc > 1.0  ?  args.arc  :  args.arc * ims0.shape()(0);
   Volume frames;
-  FrameFormInThread::execute(frames, ims0, ims1, gaps, arc, args.shift, args.ashift, args.beverbose);
+  FrameFormInThread::execute(frames, ims0, ims1, gaps, arc,
+                             args.shift, args.ashift, args.radFill, args.beverbose);
   const int oz = frames.shape()(0);
   const Shape fsh = faceShape(frames.shape());
 

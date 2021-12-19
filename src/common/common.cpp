@@ -1929,13 +1929,14 @@ struct HDFdesc {
   int sliceDim;
   string slices;
 
-  HDFdesc(const string & filedesc)  {
+  HDFdesc(const string & filedesc)
+    : sliceDim(0)
+  {
 
     const string modmname = "HDF desc";
     vector<string> hdfRd = split(filedesc, ":");
-    if ( hdfRd.size() < 2  ||  hdfRd.size() > 3 )
-      throw CtasErr(CtasErr::WARN, modmname,
-                    "Could not read hdf from file \"" + filedesc + "\".");
+    if ( hdfRd.size() < 2  ||  hdfRd.size() > 3 ) // not HDF5
+      return;
     name=hdfRd[0];
     data=hdfRd[1];
     slices  =  hdfRd.size() < 3  ||  hdfRd[2].empty()   ?   "Z"  :  hdfRd[2] ;
@@ -1955,7 +1956,12 @@ struct HDFdesc {
 
   }
 
-  string id() const {return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ; }
+  string id() const {
+    return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ;
+  }
+
+  bool isValid() const { return ! name.empty() ; }
+
 
 };
 
@@ -1966,8 +1972,8 @@ struct HDFread : public HDFdesc {
 
 public :
 
-  vector<int> indices;
-  Shape shape;
+  mutable Shape shape;
+  mutable vector<int> indices;
 
 private :
 
@@ -1975,31 +1981,32 @@ private :
   H5::DataSet dataset;
   H5::DataSpace dataspace;
   int rank;
-  blitz::Array<hsize_t, 1> cnts, offs;
+  blitz::Array<hsize_t, 1> cnts;
   H5::DataSpace memspace;
 
 public :
 
   HDFread(const string & filedesc)
     : HDFdesc(filedesc)
-#ifdef H5F_ACC_SWMR_READ
-    , hdfFile(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ)
-#else
-    , hdfFile(name, H5F_ACC_RDONLY)
-#endif
-    , dataset(hdfFile.openDataSet(data))
-    , dataspace(dataset.getSpace())
-    , rank(dataspace.getSimpleExtentNdims())
-    , cnts(rank)
-    , offs(rank)
-    , memspace()
   {
 
-    const string modmname = "HDF parse";
+    const string modmname = "HDF read";
+    if ( ! isValid() )
+      throw CtasErr(CtasErr::WARN, modmname, "Not an hdf file \"" + filedesc + "\".");
+
+#ifdef H5F_ACC_SWMR_READ
+    hdfFile = H5::H5File(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
+#else
+    hdfFile = H5::H5File(name, H5F_ACC_RDONLY);
+#endif
+    dataset = H5::DataSet(hdfFile.openDataSet(data));
+    dataspace = H5::DataSpace(dataset.getSpace());
+    rank = dataspace.getSimpleExtentNdims();
+    cnts.resize(rank);
+    memspace = H5::DataSpace();
 
     try {
 
-      offs=0;
       dataspace.getSimpleExtentDims( cnts.data(), NULL);
       if ( rank == 2 ) {
         indices.push_back(0);
@@ -2012,15 +2019,14 @@ public :
           idx++;
         }
         indices = slice_str2vec(slices, cnts(sliceDim));
-        cnts(sliceDim) = 1;
       } else {
         throw CtasErr(CtasErr::ERR, modmname, "Dataset is not 2D or 3D in " + filedesc);
       }
 
-      hsize_t ocnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))};
-      hsize_t ooffs[2] = {0, 0};
-      memspace.setExtentSimple( 2, ocnts );
-      memspace.selectHyperslab( H5S_SELECT_SET, ocnts, ooffs);
+      hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))}; ///
+      hsize_t moffs[2] = {0, 0};
+      memspace.setExtentSimple( 2, mcnts );
+      memspace.selectHyperslab( H5S_SELECT_SET, mcnts, moffs);
 
     } catch( ... ) {
       exit_on_error(modmname, "Error getting info from " + filedesc);
@@ -2028,14 +2034,34 @@ public :
 
   }
 
+  ~HDFread() {
+    complete();
+  }
+
+  void complete() {
+    if ( ! indices.size() )
+      return;
+    indices.clear();
+    dataset.close();
+    hdfFile.close();
+  }
+
+
   void read(int idx, Map & storage) {
 
+    if ( ! indices.size() )
+      throw_error("HDF read", "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
-      throw_error("HDF read", "Index is beyond slices to read from " + name);
+      throw_error("HDF read", "Index is beyond slices to read from " + name + ".");
 
-    if ( rank == 3 )
-      offs(sliceDim) = indices[idx];
-    dataspace.selectHyperslab( H5S_SELECT_SET, cnts.data(), offs.data() );
+    blitz::Array<hsize_t, 1> offs(rank), cnth(rank);
+    offs=0;
+    cnth=cnts;
+    if ( rank == 3 ) {
+      offs(sliceDim) = idx;
+      cnth(sliceDim) = 1;
+    }
+    dataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
 
     storage.resize(shape);
     Map _storage;
@@ -2051,6 +2077,129 @@ public :
   }
 
 };
+
+
+
+
+
+struct HDFwrite : public HDFdesc {
+
+public :
+
+  const Shape shape;
+  size_t zsize;
+
+private :
+
+  H5::H5File hdfFile;
+  H5::DataSet dataset;
+  H5::DataSpace dataspace;
+  blitz::Array<hsize_t, 1> cnts;
+  H5::DataSpace memspace;
+
+public :
+
+  HDFwrite(const HDFdesc & desc, Shape _sh, size_t _zsize)
+    : HDFdesc(desc)
+    , shape(_sh)
+    , zsize(_zsize)
+    , cnts(3)
+  {
+
+    const string modmname = "HDF write";
+    if ( ! zsize * area(shape) )
+      throw CtasErr(CtasErr::WARN, modmname, "Zerro size to write.");
+    if ( ! isValid() )
+      throw CtasErr(CtasErr::WARN, modmname, "Invalid hdf file \"" + id() + "\".");
+
+    int idx=0, odx=0;
+    while (idx<3) {
+      if (idx != sliceDim)
+        cnts(idx) = shape(odx++);
+      idx++;
+    }
+    cnts(sliceDim) = zsize; // first will be used once as the 3D dimensions
+
+    try {
+
+     hdfFile = H5::H5File(name, H5F_ACC_TRUNC);
+     float fillvalue = 0.0;   /* Fill value for the dataset */
+     H5::DSetCreatPropList plist;
+     plist.setFillValue(H5::PredType::NATIVE_FLOAT, &fillvalue);
+     dataspace = H5::DataSpace(3, cnts.data());
+     dataset = H5::DataSet(hdfFile.createDataSet(data, H5::PredType::NATIVE_FLOAT, dataspace, plist) );
+
+     hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))};
+     hsize_t moffs[2] = {0, 0};
+     memspace.setExtentSimple( 2, mcnts );
+     memspace.selectHyperslab( H5S_SELECT_SET, mcnts, moffs);
+
+    } catch( ... ) {
+      throw_error(modmname, "Error creating HDF file for " + id());
+    }
+
+    cnts(sliceDim) = 1; // from now used only to write 2D slices
+
+  }
+
+  HDFwrite(const string & filedesc, Shape _sh, size_t _zsize)
+    : HDFwrite(HDFdesc(filedesc), _sh, _zsize)
+  {}
+
+  ~HDFwrite() {
+    complete();
+  }
+
+  void complete() {
+    if ( ! zsize )
+      return;
+    zsize=0;
+    dataset.close();
+    hdfFile.close();
+  }
+
+
+  void write(int idx, const Map & storage) {
+
+    if ( ! zsize ) {
+      warn("HDF write", "File \"" + id() + "\" was previously closed and no more write possible.");
+      return;
+    }
+    if ( idx >= zsize ) {
+      warn("HDF write", "Index " + toString(idx) + " to write is beyond initially requested size"
+                        + toString(zsize) + ". Write is ignored.");
+      return;
+    }
+    if ( storage.shape() != shape ) {
+      warn("HDF write", "Shape of the slice to write " + toString(storage.shape()) + " is different from"
+                        " initially requested shape" + toString(shape) + ".");
+      return;
+    }
+
+    blitz::Array<hsize_t, 1> offs(3), cnth(3);
+    offs=0;
+    cnth=cnts;
+    offs(sliceDim) = idx;
+    cnth(sliceDim) = 1;
+    dataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
+
+    Map _storage;
+    if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(shape(1),1) )
+      _storage.reference(storage);
+    else {
+      _storage.resize(shape);
+      _storage = storage;
+    }
+    dataset.write( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+
+  }
+
+};
+
+
+
+
+
 
 
 
@@ -2630,6 +2779,161 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
 
 
 
+class StackWriter {
+
+private:
+
+  size_t zsize;
+  HDFwrite * hdfFile;
+  string sliceformat;
+  const float mincon;
+  const float maxcon;
+
+public:
+
+  StackWriter(const Path & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
+    : zsize(_zsize)
+    , hdfFile(0)
+    , mincon(mmin)
+    , maxcon(mmax)
+  {
+    HDFdesc hdfdesc(filedesc);
+    if ( hdfdesc.isValid() )
+      hdfFile = new HDFwrite(filedesc, _sh, _zsize);
+    else {
+      if (zsize==1)
+        sliceformat=filedesc;
+      else {
+        const Path outmask = string(filedesc).find('@') == string::npos
+                           ? filedesc.dtitle() + "-@" + filedesc.extension()
+                           : string(filedesc) ;
+        sliceformat = mask2format(outmask, zsize);
+      }
+    }
+  }
+
+  ~StackWriter() {
+    complete();
+  }
+
+  void complete() {
+    HDFwrite * hh = hdfFile;
+    hdfFile = 0;
+    if (hh)
+      hh->complete();
+    delete hh;
+  }
+
+  void put(int idx, const Map & storage) {
+    if (hdfFile) {
+      if (mincon==maxcon)
+        hdfFile->write(idx, storage);
+      else {
+        Map _stor(storage.shape());
+        for (ArrIndex y = 0 ; y < storage.shape()(0) ; y++) {
+          for (ArrIndex x = 0 ; x < storage.shape()(1) ; x++) {
+            float val = storage(y,x);
+            if (val < mincon)
+              _stor(y,x) = mincon;
+            else if (val > maxcon)
+              _stor(y,x) = maxcon;
+            else
+              _stor(y,x) = val;
+          }
+        }
+        hdfFile->write(idx, storage);
+      }
+    } else {
+      const Path fileName =  zsize == 1  ?  sliceformat : Path(toString(sliceformat, idx));
+      if (mincon==maxcon)
+        SaveImage(fileName, storage);
+      else
+        SaveImage(fileName, storage, mincon, maxcon);
+    }
+  }
+
+
+};
+
+
+
+class SaveVolInThread : public InThread {
+
+private:
+
+  const Volume & vol;
+  StackWriter writer;
+  int sliceDim;
+  Shape ssh;
+  int sliceSz;
+  vector<int>indices;
+
+  bool inThread (long int idx) {
+    if (idx >= indices.size())
+      return false;
+    const int idi = indices[idx];
+    Map cur;
+    switch ( sliceDim ) {
+      case 2: cur.reference(vol(all, all, idi)); break;
+      case 1: cur.reference(vol(all, idi, all)); break;
+      case 0: cur.reference(vol(idi, all, all)); break;
+    }
+    writer.put(idi, cur);
+    return true;
+  }
+
+public:
+
+  SaveVolInThread(const string & filedesc, const Volume & _vol, bool verbose,
+                  const std::string & slicedesc, float mmin, float mmax)
+    : vol(_vol)
+    , writer(filedesc, faceShape(vol.shape()), vol.shape()(0), mmin, mmax)
+    , InThread(verbose , "saving volume")
+  {
+
+    Shape3 vsh(vol.shape());
+    string sindex = slicedesc.size()  ?  slicedesc  :  "Z";
+    switch ( sindex.at(0) ) {
+      case 'x':
+      case 'X':
+        sindex.erase(0,1);
+        sliceDim=2;
+        ssh = Shape(vsh(0),vsh(1));
+        break;
+      case 'y':
+      case 'Y':
+        sindex.erase(0,1);
+        sliceDim=1;
+        ssh = Shape(vsh(0),vsh(2));
+        break;
+      case 'z':
+      case 'Z':
+        sindex.erase(0,1);
+      default:
+        sliceDim=0;
+        ssh = Shape(vsh(1),vsh(2));
+    }
+    sliceSz = vsh(sliceDim);
+    indices = slice_str2vec(sindex, sliceSz);
+
+  }
+
+  static void execute(const string & filedesc, const Volume & _vol, bool verbose,
+                      const std::string & slicedesc, float mmin, float mmax) {
+    SaveVolInThread(filedesc, _vol, verbose, slicedesc, mmin, mmax)
+        .InThread::execute();
+  }
+
+};
+
+
+void SaveVolume(const Path & filedesc, Volume & storage, bool verbose,
+                const string & slicedesc, float mmin, float mmax) {
+  SaveVolInThread::execute(filedesc, storage, verbose, slicedesc, mmin, mmax);
+}
+
+
+
 
 
 
@@ -2725,6 +3029,8 @@ bool init_limit_array_cl() {
 }
 
 #endif  // OPENCL_FOUND
+
+
 
 
 /// \brief Save the array into integer image.

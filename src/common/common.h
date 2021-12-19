@@ -1354,6 +1354,69 @@ SaveImage(const Path & filename, const Map & storage,
     float minval, float maxval );
 
 
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           bool verbose, const std::string & slicedesc, float mmin, float mmax);
+
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           bool verbose, const std::string & slicedesc) {
+  SaveVolume(filedesc, storage, verbose, slicedesc, 0, 0);
+}
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           bool verbose) {
+  SaveVolume(filedesc, storage, verbose, "", 0, 0);
+}
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           const std::string & slicedesc) {
+  SaveVolume(filedesc, storage, false, slicedesc, 0, 0);
+}
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage) {
+  SaveVolume(filedesc, storage, false, "", 0, 0);
+}
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           bool verbose,
+           float mmin, float mmax) {
+  SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
+}
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           const std::string & slicedesc,
+           float mmin, float mmax) {
+  SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
+}
+
+void COMMON_API
+SaveVolume(const Path & filedesc, Volume & storage,
+           float mmin, float mmax) {
+  SaveVolume(filedesc, storage, false, "", mmin, mmax);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /// \brief Loads any amount of lines from data file.
 ///
 /// @param filename the name of the data file.

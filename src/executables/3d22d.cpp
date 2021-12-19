@@ -123,64 +123,19 @@ int main(int argc, char *argv[]) {
   crop(ivol,args.crp);
   binn(ivol,args.bnn);
 
-  const blitz::TinyVector<ArrIndex, 3> vsh(ivol.shape());
   const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
                           args.outmask.dtitle() + "-@" + args.outmask.extension() :
                           string( args.outmask ) ;
 
-  int sliceDim;
-  Shape ssh;
-  string sindex = args.slicedesc.size()  ?  args.slicedesc  :  "Z";
-  switch ( sindex.at(0) ) {
-    case 'x':
-    case 'X':
-      sindex.erase(0,1);
-      sliceDim=2;
-      ssh = Shape(vsh(0),vsh(1));
-      break;
-    case 'y':
-    case 'Y':
-      sindex.erase(0,1);
-      sliceDim=1;
-      ssh = Shape(vsh(0),vsh(2));
-      break;
-    case 'z':
-    case 'Z':
-      sindex.erase(0,1);
-    default:
-      sliceDim=0;
-      ssh = Shape(vsh(1),vsh(2));
-  }
-
-  const int sliceSz = vsh(sliceDim);
-  const string sliceformat = mask2format(outmask, sliceSz);
-  const vector<int>indices = slice_str2vec(sindex, sliceSz);
   const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
   const float
     mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
     maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
 
-  Map cur(ssh);
-  ProgressBar bar(args.beverbose, "Saving slices", indices.size() );
-  for (unsigned slice=0 ; slice < indices.size() ; slice++ ) {
-    const Path fileName =  indices.size() == 1  ?  args.outmask : Path(toString(sliceformat, slice));
-    switch ( sliceDim ) {
-        case 2:
-          cur = ivol(all, all, indices.at(slice));
-          break;
-        case 1:
-          cur = ivol(all, indices.at(slice), all);
-          break;
-        case 0:
-          cur = ivol(indices.at(slice), all, all);
-          break;
-    }
-    if (toInt)
-      SaveImage(fileName, cur , mincon, maxcon);
-    else
-      SaveImage(fileName, cur);
-    bar.update();
-  }
+  if (toInt)
+    SaveVolume(outmask, ivol, args.beverbose, args.slicedesc, mincon, maxcon);
+  else
+    SaveVolume(outmask, ivol, args.beverbose, args.slicedesc);
 
   exit(0);
 

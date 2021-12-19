@@ -36,13 +36,11 @@ kernel void  binn3(
   const int z = get_global_id(2);
   float sum = 0;
   for (int cz = 0 ; cz < bz ; cz++) {
-    int off = iszy * iszx * (z*bz+cz);
+    int offz = iszy * iszx * (z*bz+cz);
     for (int cy = 0 ; cy < by ; cy++) {
-      off += iszx * (y*by+cy);
-      for (int cx = 0 ; cx < bx ; cx++) {
-        sum += in[x*bx + cx + off];
-        in[x*bx + cx + off] = -1;
-      }
+      int offy = offz + iszx * (y*by+cy);
+      for (int cx = 0 ; cx < bx ; cx++)
+        sum += in[x*bx + cx + offy];
     }
   }
   out[x + y*oszx + z*oszy*oszx] = sum / (bx*by*bz);

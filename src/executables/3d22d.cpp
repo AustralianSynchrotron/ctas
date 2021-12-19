@@ -127,9 +127,6 @@ int main(int argc, char *argv[]) {
   const float
     mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
     maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
-  prdn(mincon);
-  prdn(maxcon);
-
 
   if (toInt)
     SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc, mincon, maxcon);

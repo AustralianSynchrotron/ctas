@@ -2027,6 +2027,8 @@ public :
       hsize_t moffs[2] = {0, 0};
       memspace.setExtentSimple( 2, mcnts );
       memspace.selectHyperslab( H5S_SELECT_SET, mcnts, moffs);
+      if (sliceDim==2) // need to transpose what I read in YZ plane
+        shape = Shape(shape(1),shape(0));
 
     } catch( ... ) {
       exit_on_error(modmname, "Error getting info from " + filedesc);
@@ -2058,21 +2060,16 @@ public :
     offs=0;
     cnth=cnts;
     if ( rank == 3 ) {
-      offs(sliceDim) = idx;
+      offs(sliceDim) = indices.at(idx);
       cnth(sliceDim) = 1;
     }
     dataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
 
     storage.resize(shape);
-    Map _storage;
-    if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(shape(1),1) )
-      _storage.reference(storage);
-    else
-      _storage.resize(storage.shape());
+    Map rd( sliceDim==2 ? Shape(shape(1),shape(0)) : shape );
 
-    dataset.read( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
-    if ( storage.data() != _storage.data() )
-      storage = _storage;
+    dataset.read( rd.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+    storage  =  (sliceDim==2)  ?  rd.transpose(blitz::secondDim, blitz::firstDim)  :  rd;
 
   }
 

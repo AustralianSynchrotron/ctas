@@ -123,19 +123,19 @@ int main(int argc, char *argv[]) {
   crop(ivol,args.crp);
   binn(ivol,args.bnn);
 
-  const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
-                          args.outmask.dtitle() + "-@" + args.outmask.extension() :
-                          string( args.outmask ) ;
-
   const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
   const float
     mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
     maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
+  prdn(mincon);
+  prdn(maxcon);
+
 
   if (toInt)
-    SaveVolume(outmask, ivol, args.beverbose, args.slicedesc, mincon, maxcon);
+    SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc, mincon, maxcon);
   else
-    SaveVolume(outmask, ivol, args.beverbose, args.slicedesc);
+    SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc);
+
 
   exit(0);
 

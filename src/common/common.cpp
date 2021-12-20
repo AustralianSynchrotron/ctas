@@ -1725,11 +1725,9 @@ slice_str2vec(const string & sliceS, int hight){
 
     // checks for the non permitted characters
     if ( subS.find_first_not_of(permitted_chars) != string::npos ) {
-      warn("slice string", "Substring \""+ subS +"\" in the "
-         " string describing set of slices to be reconstructed:\n"
-         + sliceS +"\n"
-         "has character(s) not from the permitted set"
-         " \""+ permitted_chars +"\". Skipping the substring.");
+      warn("slice string", "Substring \""+ subS +"\" in the string describing set of slices"
+                           " has character(s) not from the permitted set"
+                           " \""+ permitted_chars +"\". Skipping.");
       subS.erase();
     }
 
@@ -1742,11 +1740,9 @@ slice_str2vec(const string & sliceS, int hight){
       string::size_type lastneg = subS.rfind(negatec);
       if ( lastneg != string::npos ) {
         if ( lastneg != 0 ) {
-          warn("slice string", "Suspicious substring \""+ initS +"\" in the"
-             " string describing set of slices to be reconstructed:\n"
-             + sliceS +"\n"
-             "it has '" + negatec + "' character not in the first position."
-             " Moving it to the begining. Is it what you meant?");
+          warn("slice string", "Suspicious substring \""+ initS +"\" in the string describing set of slices:"
+                               " it has '" + negatec + "' character not in the first position."
+                               " Moving it to the begining. Is it what you meant?");
           // moves all negatec's to the beginning and erases it's duplicates.
           subS.erase
           ( subS.begin(),
@@ -1759,11 +1755,9 @@ slice_str2vec(const string & sliceS, int hight){
 
       // modifies in regards to '-'
       if ( count(subS.begin(), subS.end(), '-') > 1 ) {
-        warn("slice string", "Substring \""+ initS +"\" in the "
-           " string describing set of slices to be reconstructed:\n"
-           + sliceS +"\n"
-           "has more than one minus sign '-'. Everything between first"
-           " and last minuses is ignored. Is it what you meant?");
+        warn("slice string", "Substring \""+ initS +"\" in the string describing set of slices"
+                             " has more than one minus sign '-'. Everything between first"
+                             " and last minuses is ignored. Is it what you meant?");
         subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
       }
       // make sure minus is surrounded by numbers.
@@ -1805,10 +1799,8 @@ slice_str2vec(const string & sliceS, int hight){
         rangeE = str2n( (*subSVi).substr(minuspos+1) );
       if ( rangeB > rangeE ) swap(rangeB,rangeE);
       if ( rangeB == rangeE )
-        warn("slice string", "One of the substrings with ranges"
-           " in the string describing set of slices to be reconstructed:\n"
-           + sliceS +"\n"
-           "has equal ends of the ranges. Is it what you meant?");
+        warn("slice string", "One of the substrings with ranges in the string describing set of slices"
+                             " has equal ends of the ranges. Is it what you meant?");
       for (int curS = rangeB ; curS <= rangeE ; curS++ )
         rmadd(sliceV, curS, negatethis);
     } else {
@@ -1823,21 +1815,15 @@ slice_str2vec(const string & sliceS, int hight){
   sort(sliceV.begin(), sliceV.end());
   sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
   if ( sliceV.back() >= hight )
-        warn("slice string",
-                 "The string describing set of slices to be reconstructed:\n"
-                 + sliceS +"\n"
-                 "Includes slices beyond the height of the input image"
-                 " (" + toString(hight) + "). These slices are ignored." );
+        warn("slice string", "The string describing set of slices includes slices beyond the size"
+                             " of the input image (" + toString(hight) + "). These slices are ignored." );
   sliceV.erase( find_if( sliceV.begin(), sliceV.end(),
                          bind2nd( greater<int>(), hight-1 ) ),
                          sliceV.end() );
 
   // last check
   if ( sliceV.empty() )
-        warn("slice string",
-                 "The string describing set of slices to be reconstructed:\n"
-                 + sliceS +"\n"
-                 "leads to the empty range of slices." );
+        warn("slice string", "The string describing set of slices leads to the empty range of slices." );
 
   return sliceV;
 

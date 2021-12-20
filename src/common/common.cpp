@@ -2063,12 +2063,13 @@ public :
       offs(sliceDim) = indices.at(idx);
       cnth(sliceDim) = 1;
     }
-    dataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
+    H5::DataSpace localDataspace(dataspace);
+    localDataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
 
     storage.resize(shape);
     Map rd( sliceDim==2 ? Shape(shape(1),shape(0)) : shape );
 
-    dataset.read( rd.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+    dataset.read( rd.data(), H5::PredType::NATIVE_FLOAT, memspace, localDataspace );
     storage  =  (sliceDim==2)  ?  rd.transpose(blitz::secondDim, blitz::firstDim)  :  rd;
 
   }
@@ -2093,6 +2094,7 @@ private :
   H5::DataSpace dataspace;
   blitz::Array<hsize_t, 1> cnts;
   H5::DataSpace memspace;
+  pthread_mutex_t proglock; // HDF does not like multithread writing
 
 public :
 
@@ -2101,6 +2103,7 @@ public :
     , shape(_sh)
     , zsize(_zsize)
     , cnts(3)
+    , proglock(PTHREAD_MUTEX_INITIALIZER)
   {
 
     const string modmname = "HDF write";
@@ -2173,13 +2176,6 @@ public :
       return;
     }
 
-    blitz::Array<hsize_t, 1> offs(3), cnth(3);
-    offs=0;
-    cnth=cnts;
-    offs(sliceDim) = idx;
-    cnth(sliceDim) = 1;
-    dataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
-
     Map _storage;
     if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(shape(1),1) )
       _storage.reference(storage);
@@ -2187,7 +2183,20 @@ public :
       _storage.resize(shape);
       _storage = storage;
     }
-    dataset.write( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, dataspace );
+
+    blitz::Array<hsize_t, 1> offs(3), cnth(3);
+    offs=0;
+    cnth=cnts;
+    offs(sliceDim) = idx;
+    cnth(sliceDim) = 1;
+
+    pthread_mutex_lock(&proglock);
+    try {
+      H5::DataSpace localDataspace(dataspace);
+      localDataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
+      dataset.write( _storage.data(), H5::PredType::NATIVE_FLOAT, memspace, localDataspace );
+    } catch (...) {}
+    pthread_mutex_unlock(&proglock);
 
   }
 
@@ -2428,7 +2437,6 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
     }
 
   }
-
 
   _TIFFfree(buf);
   TIFFClose(tif);
@@ -2875,18 +2883,16 @@ private:
       maps.insert({me, Map(ssh)});
       unlock();
     }
+    lock();
     Map cur = maps.at(me) ;
+    unlock();
 
     const int idi = indices[idx];
-    lock(); // without locking blitz++ does strange things on some slices
-    try {
-      switch ( sliceDim ) {
-        case 2: cur = vol(all, all, idi); break;
-        case 1: cur = vol(all, idi, all); break;
-        case 0: cur = vol(idi, all, all); break;
-      }
-    } catch (...) {}
-    unlock();
+    switch ( sliceDim ) {
+      case 2: cur = vol(all, all, idi); break;
+      case 1: cur = vol(all, idi, all); break;
+      case 0: cur = vol(idi, all, all); break;
+    }
     writer.put(idi, cur);
     bar.update();
     return true;
@@ -3013,38 +3019,6 @@ BZ_DECLARE_FUNCTION(limit01);
 
 
 
-
-#ifdef OPENCL_FOUND
-
-char limit_array_src[] = {
-  #include "limit.cl.includeme"
-};
-
-bool limit_array_inited=false;
-cl_program limit_array_cl_program=0;
-cl_kernel limit_array_cl_kernel=0;
-
-bool init_limit_array_cl() {
-
-  if (limit_array_inited)
-    return limit_array_cl_program && limit_array_cl_kernel;
-
-  limit_array_cl_program =
-    initProgram( limit_array_src, sizeof(limit_array_src), "Limit array" );
-
-  if ( limit_array_cl_program )
-    limit_array_cl_kernel = createKernel(limit_array_cl_program, "limit_array");
-
-  limit_array_inited = true;
-  return limit_array_cl_program && limit_array_cl_kernel;
-
-}
-
-#endif  // OPENCL_FOUND
-
-
-
-
 /// \brief Save the array into integer image.
 ///
 /// Stores the array in the integer-based image. If minval is equal to maxval
@@ -3082,46 +3056,15 @@ SaveImageINT (const Path &filename, const Map &storage,
     maxval = (blitz::max)(_storage);
   }
   if (minval == maxval) {
-
     warn("save image",
          "All elements in the image '" + filename + "' have the same value.");
     if      ( minval < 0.0 ) stor = 0.0;
     else if ( minval > 1.0 ) stor = 1.0;
     else                     stor = minval;
-
   } else {
-
     const string modname = "Limit array";
-
-// #ifdef CHECK_IF_CPU_IS_FASTER
-#ifdef OPENCL_FOUND
-    if ( init_limit_array_cl() ) {
-
-      cl_int err;
-      cl_mem clStorage = 0;
-
-      clStorage = blitz2cl(_storage, CL_MEM_READ_WRITE);
-      setArg(limit_array_cl_kernel, 0, clStorage);
-      setArg(limit_array_cl_kernel, 1, minval);
-      setArg(limit_array_cl_kernel, 2, maxval);
-      execKernel(limit_array_cl_kernel, _storage.size());
-      cl2blitz(clStorage, stor);
-      if (clStorage)
-        clReleaseMemObject(clStorage);
-
-    } else {
-#endif  // OPENCL_FOUND
-// #endif  // CHECK_IF_CPU_IS_FASTER
-
-      stor = ( _storage - minval ) / (maxval-minval);
-      stor = limit01(stor);
-
-// #ifdef CHECK_IF_CPU_IS_FASTER
-#ifdef  OPENCL_FOUND
-    }
-#endif  // OPENCL_FOUND
-// #endif  // CHECK_IF_CPU_IS_FASTER
-
+    stor = ( _storage - minval ) / (maxval-minval);
+    stor = limit01(stor);
   }
   SaveImageINT_IM(filename, stor);
 
@@ -3330,76 +3273,5 @@ LoadData ( const Path filename, ... ) {
 
 
 
-
-
-/*
-
-struct SaveVolArgs {
-
-  const vector<Path> & names;
-  const Shape2D imgsh;
-  const Path out_filled;
-  const Path out_inverted;
-  const Path out_mask;
-  const uint8_t color;
-  ProgressBar bar;
-  pthread_mutex_t proglock;
-
-  SaveVolArgs(const vector<Path> & _names, bool verbose=false, uint8_t _color=0,
-              const Path & _out_filled=Path(), const Path & _out_inverted=Path(), const Path & _out_mask=Path() )
-    : names(_names)
-    , imgsh(volsh(1),volsh(2))
-    , out_filled(_out_filled)
-    , out_inverted(_out_inverted)
-    , out_mask(_out_mask)
-    , color(_color)
-    , bar(verbose , "saving volume", volsh(0))
-    , proglock(PTHREAD_MUTEX_INITIALIZER)
-  {
-    if (names.size() != volsh(0))
-      throw_error("Saving volume", "Number of files not matching array size.");
-    if ( out_filled.empty() && out_inverted.empty() && out_mask.empty() )
-      throw_error("Saving volume", "Nothing to output.");
-  }
-
-};
-
-
-bool inThread_saveVol (void * _thread_args, long int idx) {
-
-  SaveVolArgs *  dist = (SaveVolArgs*) _thread_args;
-  if (!dist)
-    throw_error("read thread", "Inappropriate thread function arguments.");
-  if ( idx >= dist->names.size() )
-    return false;
-
-  const Map8U wmg = wvol (idx, Range::all(), Range::all());
-  Map8U img(dist->imgsh);
-
-  if ( ! dist->out_filled.empty() ) {
-    for ( long int sh0 = 0 ; sh0 < dist->imgsh(0) ; sh0++)
-      for ( long int sh1 = 0 ; sh1 < dist->imgsh(1) ; sh1++)
-        img(sh0, sh1) =  ( wmg(sh0, sh1) & FILLED ) ? ivol( idx, sh0, sh1 ) : dist->color ;
-    SaveImage(dist->out_filled + dist->names[idx].name(), img);
-  }
-  if ( ! dist->out_inverted.empty() ) {
-    for ( long int sh0 = 0 ; sh0 < dist->imgsh(0) ; sh0++)
-      for ( long int sh1 = 0 ; sh1 < dist->imgsh(1) ; sh1++)
-        img(sh0, sh1) =  ( wmg(sh0, sh1) & FILLED ) ? dist->color : ivol( idx, sh0, sh1 ) ;
-    SaveImage(dist->out_inverted + dist->names[idx].name(), img);
-  }
-  if ( ! dist->out_mask.empty() ) {
-    SaveImage(dist->out_mask + dist->names[idx].name(), wmg);
-  }
-
-  pthread_mutex_lock(&dist->proglock);
-  dist->bar.update();
-  pthread_mutex_unlock(&dist->proglock);
-
-  return true;
-
-}
-
- */
 
 

@@ -54,8 +54,10 @@ __kernel void ffm(
 {
 
   int idx = get_global_id(0);
-  if (mask[idx]==0.0)
+  if (mask[idx]==0.0) {
+    io[idx] = 0.0f;
     return;
+  }
 
   float fgg = io[idx];
 

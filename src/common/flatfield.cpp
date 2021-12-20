@@ -15,7 +15,7 @@ Shape shapeMe(std::vector<Shape> shs) {
   for (int idx=0 ; idx < shs.size() ; idx++)
     if ( shs[idx] != shs[0] )
       throw_error("FlatCL", "Non matching init shapes.");
-  return shs[0];
+  return shs.at(0);
 }
 
 

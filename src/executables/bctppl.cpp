@@ -78,6 +78,7 @@ clargs::
 clargs(int argc, char *argv[])
   : outmask("_.tif")
   , shift(0,0)
+  , ashift(0.0)
   , dd(1.0)
   , arc(180)
   , angle(0)
@@ -118,7 +119,7 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &cropF, 0, "crop-final", "Crops final image: " + CropOptionDesc, "")
       .add(poptmx::OPTION, &angle, 0, "rotate", "Rotate input images by given angle.", "")
       .add(poptmx::OPTION, &center, 'c', "center", "Rotation center after cropping.", CenterOptionDesc)
-      .add(poptmx::OPTION, &radFill, 'T', "trans", "Transition area around gaps.",
+      .add(poptmx::OPTION, &trans, 'T', "trans", "Transition area around gaps.",
            "The area of this thickness around the gaps is used to smoothly"
            " interpolate between single (gap) and double signal areas." )
       .add(poptmx::OPTION, &radFill, 'R', "fill", "Radius of the area used for filling gaps.", "")
@@ -238,14 +239,18 @@ public:
 void prepareGaps(Map & gaps, uint trans) {
 
   const float mm = min(gaps);
-  if ( (mm != 0.0 && mm !=1.0 ) || max(gaps) != 1.0 )
-    throw_error("GapsMask", "The input mask of the gap must contain only 0f and 1f.");
-  if (!trans)
+  const float MM = max(gaps);
+  if (MM <= 0)
+    throw_error("GapsMask", "Mask covers whole image.");
+  if (mm==MM) // no gaps
     return;
-
+  gaps = (gaps-mm)/(MM-mm);
 
   const Shape ish = gaps.shape();
   const float step = 1.0 / (trans+1);
+
+  Map tmp(ish);
+  tmp = gaps;
 
   for ( int st = 1 ; st <= trans ; st++ ) {
     const float fill = step*st;
@@ -259,23 +264,21 @@ void prepareGaps(Map & gaps, uint trans) {
 
               if ( ii >= 0 && ii < ish(0) && jj >= 0 && jj < ish(1)
                    &&  gaps(ii,jj) == 1.0 )
-                gaps(ii,jj) = fill;
+                tmp(ii,jj) = fill;
 
+    gaps = tmp;
   }
 
 }
 
 
 
-char formframe_src[] = {
-  #include "formframe.cl.includeme"
-};
 
-const cl_program formframeProgram =
-  initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
 
 
 class FrameFormInThread : public InThread {
+
+private:
 
   Volume & res;
   const Volume & ims0;
@@ -296,6 +299,8 @@ class FrameFormInThread : public InThread {
   const int nshift;
   const int rFill;
 
+  static char formframe_src[];
+  static const cl_program formframeProgram;
   unordered_map<pthread_t,cl_kernel> kernelFormFrame;
   unordered_map<pthread_t,cl_kernel> kernelFill;
   unordered_map<pthread_t,CLmem> clim0;
@@ -426,6 +431,12 @@ public:
 
 };
 
+char FrameFormInThread::formframe_src[] = {
+  #include "formframe.cl.includeme"
+};
+
+const cl_program FrameFormInThread::formframeProgram =
+      initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
 
 
 
@@ -537,6 +548,11 @@ public:
 
 
 
+
+
+
+
+
 /// \MAIN{projection}
 int main(int argc, char *argv[]) {
 
@@ -566,6 +582,7 @@ int main(int argc, char *argv[]) {
 
   #undef ReadSumSet
 
+
   Map gaps(sh);
   if ( ! args.gaps.empty() ) {
     Map tmp;
@@ -574,6 +591,7 @@ int main(int argc, char *argv[]) {
     prepareGaps(gaps, args.trans);
   } else
     gaps = 1;
+
 
 
 
@@ -591,6 +609,12 @@ int main(int argc, char *argv[]) {
   Volume ims1; ReadSet(args.ims1, bgs1, ims1);
 
   #undef ReadSet
+
+  SaveImage("sam0.tif", ims0(1,all,all), 0,1);
+  SaveImage("sam1.tif", ims1(1,all,all), 0,1);
+
+exit(0);
+
 
   if (ims0.shape() != ims1.shape())
     exit_on_error("InputSets", "Volumes are of different size.");

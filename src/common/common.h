@@ -55,6 +55,7 @@
 #include <math.h>
 
 #define BZ_THREADSAFE
+//#define BZ_DEBUG_LOG_REFERENCES
 #include "../blitz-long/blitz/array.h"
 //#include <blitz/array.h>
 

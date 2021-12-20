@@ -43,17 +43,16 @@ class FlatFieldProc {
 
 private:
 
+  const Shape sh; // must be first
+  CLmem   io;
 
   const CLmem bgR;
-  const CLmem dfR;
-  const CLmem maskR;
-
-  CLmem   io;
   const CLmem & bg;
+  const CLmem dfR;
   const CLmem & df;
+  const CLmem maskR;
   const CLmem & mask;
 
-  const Shape sh;
   cl_kernel kernel;
 
 public:

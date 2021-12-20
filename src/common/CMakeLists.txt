@@ -81,7 +81,6 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/common/config.h.in ${CMAKE_SOURCE_DIR}/sr
 add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED common.cpp)
-target_clsrc(common limit.cl)
 target_clsrc(common binn.cl)
 target_link_libraries(common
   ${HDF5_LIBRARIES}

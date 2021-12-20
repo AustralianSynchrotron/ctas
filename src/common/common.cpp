@@ -2049,12 +2049,12 @@ public :
       offs(sliceDim) = indices.at(idx);
       cnth(sliceDim) = 1;
     }
-    H5::DataSpace localDataspace(dataspace);
-    localDataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
 
     storage.resize(shape);
-    Map rd( sliceDim==2 ? Shape(shape(1),shape(0)) : shape );
+    Map rd( sliceDim==2 ? Shape(shape(1),shape(0)) : shape ); // to be transposed
 
+    H5::DataSpace localDataspace(dataspace);
+    localDataspace.selectHyperslab( H5S_SELECT_SET, cnth.data(), offs.data() );
     dataset.read( rd.data(), H5::PredType::NATIVE_FLOAT, memspace, localDataspace );
     storage  =  (sliceDim==2)  ?  rd.transpose(blitz::secondDim, blitz::firstDim)  :  rd;
 

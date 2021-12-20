@@ -68,9 +68,9 @@ clargs(int argc, char *argv[])
 
 
   poptmx::OptionTable table
-    ("Extract slices from 3D volume.",
-
-    "Extract slices from 3D volume read from HDF5 images." );
+    ("Reslices 3D volume.",
+     "Reads 3D volume from input file(s) and, after applying manipulations saves"
+     " the result as the HDF volume or set of 2D images as requested by the ouptut format.");
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
@@ -80,14 +80,11 @@ clargs(int argc, char *argv[])
 
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
-       "Output filename if output is a single file."
-       " Output mask otherwise. " + MaskDesc, outmask)
-    .add(poptmx::OPTION, &mincon, 'm', "min",
-       "Pixel value corresponding to black.",
-       " All values below this will turn black.", "<minimum>")
-    .add(poptmx::OPTION, &maxcon, 'M', "max",
-       "Pixel value corresponding to white.",
-       " All values above this will turn white.", "<maximum>")
+         "Output filename if output is a single file. Output mask otherwise. " + MaskDesc, outmask)
+    .add(poptmx::OPTION, &mincon, 'm', "min", "Pixel value corresponding to black.",
+         " All values below this will turn black.", "<minimum>")
+    .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
+         " All values above this will turn white.", "<maximum>")
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume: " + Crop3OptionDesc, "")
     .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")

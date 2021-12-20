@@ -1025,7 +1025,7 @@ ProgressBar::_update(int curstep){
 void
 ProgressBar::update(int curstep){
   pthread_mutex_lock(&proglock);
-  _update(curstep);
+  try { _update(curstep); }  catch (...) {}
   pthread_mutex_unlock(&proglock);
 }
 
@@ -2780,7 +2780,7 @@ class StackWriter {
 
 private:
 
-  size_t zsize;
+  const size_t zsize;
   HDFwrite * hdfFile;
   string sliceformat;
   const float mincon;
@@ -2862,22 +2862,37 @@ private:
   StackWriter writer;
   int sliceDim;
   Shape ssh;
-  int sliceSz;
   vector<int>indices;
+  unordered_map<pthread_t,Map> maps;
 
   bool inThread (long int idx) {
+
     if (idx >= indices.size())
       return false;
-    const int idi = indices[idx];
-    Map cur;
-    switch ( sliceDim ) {
-      case 2: cur.reference(vol(all, all, idi)); break;
-      case 1: cur.reference(vol(all, idi, all)); break;
-      case 0: cur.reference(vol(idi, all, all)); break;
+    const pthread_t me = pthread_self();
+    if ( ! maps.count(me) ) { // first call
+      lock();
+      maps.insert({me, Map(ssh)});
+      unlock();
     }
+    Map cur = maps.at(me) ;
+
+    const int idi = indices[idx];
+    lock(); // without locking blitz++ does strange things on some slices
+    try {
+      switch ( sliceDim ) {
+        case 2: cur = vol(all, all, idi); break;
+        case 1: cur = vol(all, idi, all); break;
+        case 0: cur = vol(idi, all, all); break;
+      }
+    } catch (...) {}
+    unlock();
     writer.put(idi, cur);
+    bar.update();
     return true;
+
   }
+
 
 public:
 
@@ -2910,8 +2925,8 @@ public:
         sliceDim=0;
         ssh = Shape(vsh(1),vsh(2));
     }
-    sliceSz = vsh(sliceDim);
-    indices = slice_str2vec(sindex, sliceSz);
+    indices = slice_str2vec(sindex, vsh(sliceDim));
+    bar.setSteps(indices.size());
 
   }
 

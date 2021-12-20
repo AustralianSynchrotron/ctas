@@ -204,8 +204,11 @@ class FlatInThread : public InThread {
     if ( idx >= vol.shape()(0) )
       return false;
     pthread_t me(pthread_self());
-    if ( ! ffProcs.count(me) ) // first call
+    if ( ! ffProcs.count(me) ) { // first call
+      lock();
       ffProcs.insert({me, FlatFieldProc(canon)});
+      unlock();
+    }
     Map frame(vol(idx,all,all));
     ffProcs.at(me).process(frame);
     bar.update();
@@ -318,6 +321,8 @@ class FrameFormInThread : public InThread {
     pthread_t me(pthread_self());
     if ( ! kernelFormFrame.count(me) ) { // first run
 
+      lock();
+
       kernelFormFrame.insert({ me, createKernel(formframeProgram , "formframe") });
       clout.insert({ me, clAllocArray<float>(area(osh)) });
       setArg( kernelFormFrame.at(me), 0, clout.at(me)() );
@@ -335,6 +340,8 @@ class FrameFormInThread : public InThread {
         setArg( kernelFill.at(me), 3, clout.at(me)() );
         setArg( kernelFill.at(me), 4, clgaps0() );
       }
+
+      unlock();
 
     }
 
@@ -438,8 +445,11 @@ private:
     if ( idx >= frames.shape()(0) )
       return false;
     const pthread_t me = pthread_self();
-    if ( ! procs.count(me) ) // first call
+    if ( ! procs.count(me) ) { // first call
+      lock();
       procs.insert({me, IPCprocess(faceShape(frames.shape()), ind2b)});
+      unlock();
+    }
     Map io(frames(idx,all,all));
     procs.at(me).extract(io, IPCprocess::PHS);
     return true;
@@ -488,8 +498,11 @@ private:
       return false;
 
     const pthread_t me = pthread_self();
-    if ( ! recs.count(me) ) // first call
+    if ( ! recs.count(me) ) { // first call
+      lock();
       recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
+      unlock();
+    }
     CTrec & rec = recs.at(me);
     Map sino(frames(all, idx, all));
     result(idx, all, all)

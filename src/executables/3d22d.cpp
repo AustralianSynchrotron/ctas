@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
   else
     SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc);
 
-
   exit(0);
 
 

@@ -53,6 +53,8 @@
 #include <string>
 #include <vector>
 #include <math.h>
+
+#define BZ_THREADSAFE
 #include "../blitz-long/blitz/array.h"
 //#include <blitz/array.h>
 
@@ -1480,6 +1482,8 @@ class InThread {
 
 private:
 
+  pthread_mutex_t proglock;
+
   virtual bool inThread(long int) = 0;
 
   static bool inThread(void * args, long int idx) {
@@ -1493,12 +1497,17 @@ public:
   ProgressBar bar;
 
   InThread(bool verbose=false, const std::string procName = std::string(), int steps=0)
-    : bar(verbose, procName, steps)
+    : proglock(PTHREAD_MUTEX_INITIALIZER)
+    , bar(verbose, procName, steps)
   {}
 
   void execute();
   static void execute( bool (*_thread_routine) (long int) );
   static void execute( bool (*_thread_routine) () );
+
+  void lock() { pthread_mutex_lock(&proglock); }
+  void unlock() { pthread_mutex_unlock(&proglock); }
+
 
 };
 

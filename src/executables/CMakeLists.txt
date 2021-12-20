@@ -181,8 +181,8 @@ if(OPENCL_FOUND)
 endif()
 
 
-add_executable(3d22d 3d22d.cpp)
-target_link_libraries(3d22d
+add_executable(v2v vol2vol.cpp)
+target_link_libraries(v2v
   common
   poptmx
 )
@@ -221,7 +221,7 @@ set( all_targets
   multipc ipc dei edei norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ct-line ts rc2fd f2i proj 3d22d flat test
+  ct-line ts rc2fd f2i proj v2v flat test
   bctppl
 )
 

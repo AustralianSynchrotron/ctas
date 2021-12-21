@@ -420,9 +420,14 @@ int
 _conversion (Crop3* _val, const string & in) {
   int l, r, t, b, f, k;
   int scanres = sscanf( in.c_str(), "%i:%i:%i:%i:%i:%i", &t, &l, &b, &r, &f, &k);
-  if (scanres != 4) // try , instead of :
+  if (scanres != 6  &&  scanres != 4) // try , instead of :
     scanres = sscanf( in.c_str(), "%i,%i,%i,%i,%i,%i", &t, &l, &b, &r, &f, &k);
-  if ( 4 != scanres || l<0 || r<0 || t<0 || b<0 || f<0 || k<0 )
+  if (scanres==4) {
+    f=0;
+    k=0;
+  } else if (scanres!=6)
+    return -1;
+  if ( l<0 || r<0 || t<0 || b<0 || f<0 || k<0 )
     return -1;
   *_val = Crop3(t, l, b, r, f , k);
   return 1;
@@ -1121,7 +1126,10 @@ class ThreadDistributor {
 
 private :
 
-  static pthread_mutex_t lock;
+  pthread_mutex_t idxLock; // to protect index incriment
+  pthread_mutex_t startLock; // to protect start signal.
+  pthread_cond_t startCond; // to be signalled after all threads has started
+
   long int currentidx;
   std::vector<pthread_t> threads;
 
@@ -1140,7 +1148,10 @@ private :
                      bool (*_sub_routine1)(long int),
                      bool (*_sub_routine2) (void *, long int),
                      void * _arg)
-    : currentidx(0)
+    : idxLock(PTHREAD_MUTEX_INITIALIZER)
+    , startLock(PTHREAD_MUTEX_INITIALIZER)
+    , startCond(PTHREAD_COND_INITIALIZER)
+    , currentidx(0)
     , arg(_arg)
     , sub_routine0(_sub_routine0)
     , sub_routine1(_sub_routine1)
@@ -1161,9 +1172,9 @@ private :
 
   long int distribute() {
     long int idx;
-    pthread_mutex_lock( & lock );
+    pthread_mutex_lock(&idxLock);
     idx = currentidx++;
-    pthread_mutex_unlock( & lock );
+    pthread_mutex_unlock(&idxLock);
     return idx;
   }
 
@@ -1182,6 +1193,7 @@ private :
         warn("Thread operation", "Can't create thread.");
       else
         threads.push_back(thread);
+    pthread_cond_signal(&startCond);
   }
 
   void finish() {
@@ -1213,7 +1225,7 @@ public:
 };
 
 
-pthread_mutex_t ThreadDistributor::lock = PTHREAD_MUTEX_INITIALIZER;
+
 
 
 
@@ -2864,13 +2876,10 @@ private:
     if (idx >= indices.size())
       return false;
     const pthread_t me = pthread_self();
-    if ( ! maps.count(me) ) { // first call
-      lock();
-      maps.insert({me, Map(ssh)});
-      unlock();
-    }
     lock();
-    Map cur = maps.at(me) ;
+    if ( ! maps.count(me) )  // first call
+      maps.insert({me, Map(ssh)});
+    Map & cur = maps.at(me) ;
     unlock();
 
     const int idi = indices[idx];

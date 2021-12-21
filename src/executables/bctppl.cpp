@@ -48,7 +48,8 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   Path outmask;
   Path gaps;
-  vector<Path> dfs;
+  vector<Path> dfs0;
+  vector<Path> dfs1;
   vector<Path> bgs0;
   vector<Path> bgs1;
   vector<Path> ims0;
@@ -104,11 +105,12 @@ clargs(int argc, char *argv[])
       .add(poptmx::NOTE, "OPTIONS:")
       .add(poptmx::OPTION, &ims0, 'f', "sample0", "First input set.", "")
       .add(poptmx::OPTION, &ims1, 'F', "sample1", "Second input set.", "")
-      .add(poptmx::OPTION, &gaps, 'g', "gaps", "Map of the gaps",
-           "Image file containing the mask of the detector gaps.")
-      .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
+      .add(poptmx::OPTION, &dfs0, 'd', "df0", "Dark current image(s) for the first input set.", "")
+      .add(poptmx::OPTION, &dfs1, 'D', "df1", "Dark current image(s) for the second input set.", "")
       .add(poptmx::OPTION, &bgs0, 'b', "bg0", "Background image(s) for the first input set.", "")
       .add(poptmx::OPTION, &bgs1, 'B', "bg1", "Background image(s) for the second input set.", "")
+      .add(poptmx::OPTION, &gaps, 'g', "gaps", "Map of the gaps",
+           "Image file containing the mask of the detector gaps.")
       .add(poptmx::OPTION, &shift, 's', "shift", "Spatial shift of the second data set.", "")
       .add(poptmx::OPTION, &ashift, 'S', "start", "Starting angle of the second data set.",
            "The starting angular position relative to the starting position of the first data set.")
@@ -126,7 +128,7 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
              "More correctly the distance from the contact print plane and the detector plane"
              " where the image was acquired. " + NeedForQuant)
-      .add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
+      .add(poptmx::OPTION, &d2b, 0, "d2b", d2bOptionDesc, "", toString(d2b))
       .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
              "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
       .add(poptmx::OPTION, &filter_type, 0, "filter",
@@ -202,18 +204,22 @@ class FlatInThread : public InThread {
   unordered_map<pthread_t,FlatFieldProc> ffProcs;
 
   bool inThread (long int idx) {
+
     if ( idx >= vol.shape()(0) )
       return false;
+
     pthread_t me(pthread_self());
-    if ( ! ffProcs.count(me) ) { // first call
-      lock();
+    lock();
+    if ( ! ffProcs.count(me) )
       ffProcs.insert({me, FlatFieldProc(canon)});
-      unlock();
-    }
+    FlatFieldProc & myProc = ffProcs.at(me);
+    unlock();
+
     Map frame(vol(idx,all,all));
-    ffProcs.at(me).process(frame);
+    myProc.process(frame);
     bar.update();
     return true;
+
   }
 
 public:
@@ -301,20 +307,24 @@ private:
 
   static char formframe_src[];
   static const cl_program formframeProgram;
-  unordered_map<pthread_t,cl_kernel> kernelFormFrame;
-  unordered_map<pthread_t,cl_kernel> kernelFill;
-  unordered_map<pthread_t,CLmem> clim0;
-  unordered_map<pthread_t,CLmem> clim1;
-  unordered_map<pthread_t,CLmem> clout;
+
+  struct PerThread {
+    cl_kernel kernelFormFrame;
+    cl_kernel kernelFill;
+    CLmem clim0;
+    CLmem clim1;
+    CLmem clout;
+  } ;
+  unordered_map<pthread_t,PerThread> perThread;
   CLmem clgaps0;
   CLmem clgaps1;
   CLmem clgapsF;
 
   ~FrameFormInThread() {
-    for (auto& it: kernelFormFrame)
-      clReleaseKernel(it.second);
-    for (auto& it: kernelFill)
-      clReleaseKernel(it.second);
+    for (auto& it: perThread) {
+      clReleaseKernel(it.second.kernelFormFrame);
+      clReleaseKernel(it.second.kernelFill);
+    }
   }
 
 
@@ -324,53 +334,58 @@ private:
       return false;
 
     pthread_t me(pthread_self());
-    if ( ! kernelFormFrame.count(me) ) { // first run
-
-      lock();
-
-      kernelFormFrame.insert({ me, createKernel(formframeProgram , "formframe") });
-      clout.insert({ me, clAllocArray<float>(area(osh)) });
-      setArg( kernelFormFrame.at(me), 0, clout.at(me)() );
-      clim0.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
-      setArg( kernelFormFrame.at(me), 1, clim0.at(me)() );
-      clim1.insert({ me, clAllocArray<float>(area(osh),CL_MEM_READ_ONLY) });
-      setArg( kernelFormFrame.at(me), 2, clim0.at(me)() );
-      setArg( kernelFormFrame.at(me), 3, clgaps0() );
-
-      if (rFill) {
-        kernelFill.insert({ me, createKernel(formframeProgram , "gapfill") });
-        setArg( kernelFill.at(me), 0, osh(1) );
-        setArg( kernelFill.at(me), 1, osh(0) );
-        setArg( kernelFill.at(me), 2, rFill );
-        setArg( kernelFill.at(me), 3, clout.at(me)() );
-        setArg( kernelFill.at(me), 4, clgaps0() );
-      }
-
+    lock();
+    if ( ! perThread.count(me) ) { // first run
       unlock();
 
+      cl_kernel kernelFormFrame = createKernel(formframeProgram , "formframe");
+      cl_mem _clout = clAllocArray<float>(area(osh));
+      cl_mem _clim0 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
+      cl_mem _clim1 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
+      setArg(kernelFormFrame, 0, _clout );
+      setArg(kernelFormFrame, 1, _clim0 );
+      setArg(kernelFormFrame, 2, _clim1 );
+      setArg(kernelFormFrame, 3, clgaps0() );
+
+      cl_kernel kernelFill = rFill ? createKernel(formframeProgram , "gapfill") : 0;
+      if (rFill) {
+        setArg( kernelFill, 0, (int) osh(1) );
+        setArg( kernelFill, 1, (int) osh(0) );
+        setArg( kernelFill, 2, rFill );
+        setArg( kernelFill, 3, _clout );
+        setArg( kernelFill, 4, clgaps0() );
+      }
+
+      lock();
+      perThread.insert( { me, { kernelFormFrame, kernelFill, _clim0, _clim1, _clout} });
     }
+    PerThread & my = perThread.at(me);
+    unlock();
 
     Map im0(osh);
     crop( ims0(idx, all, all), im0, crop0 );
-    blitz2cl(im0, clim0.at(me)());
+    blitz2cl(im0, my.clim0());
 
     const int id1 = idx - nshift - ( (idx - nshift >= oz)  ?  oz  :  0 ) ;
     Map im1(osh);
     crop( ims1(id1, all, all), im1, crop1 );
     if ( id1 <= idx ) {
       im1.reverseSelf(blitz::secondDim);
-      setArg( kernelFormFrame.at(me), 4, clgapsF() );
-      if (rFill) setArg( kernelFill.at(me), 5, clgapsF() );
+      setArg( my.kernelFormFrame, 4, clgapsF() );
+      if (rFill)
+        setArg( my.kernelFill, 5, clgapsF() );
     } else {
-      setArg( kernelFormFrame.at(me), 4, clgaps1() );
-      if (rFill) setArg( kernelFill.at(me), 5, clgaps1() );
+      setArg( my.kernelFormFrame, 4, clgaps1() );
+      if (rFill)
+        setArg( my.kernelFill, 5, clgaps1() );
     }
-    blitz2cl(im1, clim1.at(me)());
+    blitz2cl(im1, my.clim1());
 
-    execKernel(kernelFormFrame.at(me), area(osh));
-    if (rFill) execKernel(kernelFill.at(me), osh);
+    execKernel(my.kernelFormFrame, area(osh));
+    if (rFill)
+      execKernel(my.kernelFill, osh);
 
-    cl2blitz(clout.at(me)(), im0);
+    cl2blitz(my.clout(), im0);
     res(idx, all, all) = im0;
 
     bar.update();
@@ -453,17 +468,21 @@ private:
   float ind2b;
 
   bool inThread(long int idx) {
+
     if ( idx >= frames.shape()(0) )
       return false;
+
     const pthread_t me = pthread_self();
-    if ( ! procs.count(me) ) { // first call
-      lock();
+    lock();
+    if ( ! procs.count(me) ) // first call
       procs.insert({me, IPCprocess(faceShape(frames.shape()), ind2b)});
-      unlock();
-    }
+    IPCprocess & myProc = procs.at(me);
+    unlock();
+
     Map io(frames(idx,all,all));
-    procs.at(me).extract(io, IPCprocess::PHS);
+    myProc.extract(io, IPCprocess::PHS);
     return true;
+
   }
 
 public:
@@ -509,12 +528,12 @@ private:
       return false;
 
     const pthread_t me = pthread_self();
-    if ( ! recs.count(me) ) { // first call
-      lock();
+    lock();
+    if ( ! recs.count(me) ) // first call
       recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
-      unlock();
-    }
     CTrec & rec = recs.at(me);
+    unlock();
+
     Map sino(frames(all, idx, all));
     result(idx, all, all)
         = rec.reconstruct(sino , 0, pixelSize); // centre is 0 after frames formation
@@ -576,12 +595,12 @@ int main(int argc, char *argv[]) {
     } \
   }
 
-  Map dfs (sh); ReadSumSet(args.dfs , dfs );
+  Map dfs0(sh); ReadSumSet(args.dfs0, dfs0);
+  Map dfs1(sh); ReadSumSet(args.dfs1, dfs1);
   Map bgs0(sh); ReadSumSet(args.bgs0, bgs0);
   Map bgs1(sh); ReadSumSet(args.bgs1, bgs1);
 
   #undef ReadSumSet
-
 
   Map gaps(sh);
   if ( ! args.gaps.empty() ) {
@@ -592,48 +611,46 @@ int main(int argc, char *argv[]) {
   } else
     gaps = 1;
 
-
-
+  gaps=1 ; // for debugging
 
   // Read sample sets
 
-  #define ReadSet(set, bmap, vol) { \
+  #define ReadSet(set, bmap, dmap, vol) { \
     ReadVolume(set, vol, args.beverbose); \
     crop(vol, args.crop); \
     if ( faceShape(vol.shape()) != sh ) \
       exit_on_error("ReadSet", "Wrong image sizes."); \
-    FlatInThread::execute(vol, bmap, dfs, gaps, args.beverbose); \
+    FlatInThread::execute(vol, bmap, dmap, gaps, args.beverbose); \
   }
 
-  Volume ims0; ReadSet(args.ims0, bgs0, ims0);
-  Volume ims1; ReadSet(args.ims1, bgs1, ims1);
+  Volume ims0; ReadSet(args.ims0, bgs0, dfs0, ims0);
+  Volume ims1; ReadSet(args.ims1, bgs1, dfs1, ims1);
+
+
 
   #undef ReadSet
 
-  SaveImage("sam0.tif", ims0(1,all,all), 0,1);
-  SaveImage("sam1.tif", ims1(1,all,all), 0,1);
-
-exit(0);
-
-
   if (ims0.shape() != ims1.shape())
     exit_on_error("InputSets", "Volumes are of different size.");
-
-  dfs.free();
+  dfs0.free();
+  dfs1.free();
   bgs0.free();
   bgs1.free();
 
-
+  SaveImage("ims0.tif", ims0(all,150,all));
+  SaveImage("ims1.tif", ims1(all,150,all));
 
   // Form final frames
 
   const float arc =  args.arc > 1.0  ?  args.arc  :  args.arc * ims0.shape()(0);
   Volume frames;
   FrameFormInThread::execute(frames, ims0, ims1, gaps, arc,
-                             args.shift, args.ashift, args.radFill, args.beverbose);
+                             args.shift, args.ashift, args.center, args.radFill, args.beverbose);
   crop(frames, args.cropF);
   const int oz = frames.shape()(0);
   const Shape fsh = faceShape(frames.shape());
+
+  SaveImage("fill.tif", frames(0,all,all));
 
   ims0.free();
   ims1.free();

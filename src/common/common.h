@@ -1483,7 +1483,7 @@ class InThread {
 
 private:
 
-  pthread_mutex_t proglock;
+  pthread_mutex_t proglock; // to be used by the sub-classes users via lock/unlock methods
 
   virtual bool inThread(long int) = 0;
 

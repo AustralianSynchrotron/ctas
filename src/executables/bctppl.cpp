@@ -380,10 +380,15 @@ private:
     crop( ims0(idx, all, all), im0, crop0 );
     blitz2cl(im0, my.clim0);
 
-    const int id1 = idx - nshift - ( (idx - nshift >= oz)  ?  oz  :  0 ) ;
+    int id1 = idx-nshift;
+    if (id1 < 0)
+      id1 += oz-1;
+    if (id1 < 0) // yes, two times needed
+      id1 += oz-1;
+
     Map im1(osh);
     crop( ims1(id1, all, all), im1, crop1 );
-    if ( id1 <= idx ) {
+    if ( idx < nshift  &&  idx > nshift - oz ) {
       im1.reverseSelf(blitz::secondDim);
       setArg( my.kernelFormFrame, 4, clgapsF );
       if (rFill)
@@ -394,6 +399,15 @@ private:
         setArg( my.kernelFill, 5, clgaps1 );
     }
     blitz2cl(im1, my.clim1);
+
+    /*
+    lock();
+    SaveImage("io0.tif",  ims0(idx, all, all), true);
+    SaveImage("io1.tif",  ims1(id1, all, all), true);
+    SaveImage("im0.tif",  im0, true);
+    SaveImage("im1.tif",  im1, true);
+    unlock();
+    */
 
     execKernel(my.kernelFormFrame, area(osh));
     if (rFill)
@@ -420,6 +434,7 @@ private:
       return Crop(my , ms + M2c, My, Ms + m2c);
   }
 
+
 public:
 
   FrameFormInThread(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
@@ -441,7 +456,7 @@ public:
     , osh( ish(0) - abs(_shift.y), ish(1) - abs(_shift.x) - 2*abs(_cent) )
     , step( arc / (ims0.shape()(0)-1) )
     , oz(1+(int)(180/step))
-    , nshift(ashift/step)
+    , nshift((int)(_ashift/step))
 
     , InThread(verbose , "performing frame formation", _ims0.shape()(0))
 
@@ -449,15 +464,13 @@ public:
     res.resize(oz , osh(0), osh(1));
     Map gapst(osh);
     crop(gaps, gapst, crop0);
-    SaveImage("g0.tif", gapst);
     clgaps0 = blitz2cl(gapst, CL_MEM_READ_ONLY);
     crop(gaps, gapst, crop1);
-    SaveImage("g1.tif", gapst);
     clgaps1 = blitz2cl(gapst, CL_MEM_READ_ONLY);
     gapst.reverseSelf(blitz::secondDim);
-    SaveImage("gF.tif", gapst);
     clgapsF = blitz2cl(gapst, CL_MEM_READ_ONLY);
   }
+
 
   static void execute(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
                       float _arc, const PointF2D & _shift, float _ashift, float _cent, uint _rFill,
@@ -658,6 +671,8 @@ int main(int argc, char *argv[]) {
 
   #undef ReadSet
 
+  if (ims0.shape()(0)<2)
+    exit_on_error("InputSets", "Less than 2 images in the input volume(s).");
   if (ims0.shape() != ims1.shape())
     exit_on_error("InputSets", "Volumes are of different size.");
   dfs0.free();
@@ -678,7 +693,7 @@ int main(int argc, char *argv[]) {
   const int oz = frames.shape()(0);
   const Shape fsh = faceShape(frames.shape());
 
-  SaveImage("fill.tif", frames(0,all,all));
+  SaveImage("fill.tif", frames(0,all,all), true);
 
   ims0.free();
   ims1.free();

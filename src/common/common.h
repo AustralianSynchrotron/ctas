@@ -447,6 +447,25 @@ typedef blitz::MyIndexType ArrIndex;
 
 
 
+// Returns the array which has elements stored continiously and contiguosly.
+// That is data() method can be used safely. If input array is safe, it is
+// returned as is, otherwise safe copy of it is returned.
+template<class T, int N> const blitz::Array<T,N>
+safe(const blitz::Array<T,N> & arr){
+  if ( ! arr.size() )
+    return arr;
+  bool retRef = arr.isStorageContiguous();
+  int previousStride = 1;
+  for (int dim = N-1 ; dim >= 0 ; dim--) {
+    retRef  &=  arr.stride(dim) == previousStride;
+    previousStride *= arr.extent(dim);
+  }
+  if (retRef)
+    return arr;
+  blitz::Array<T,N> retArr(arr.shape());
+  retArr = arr;
+  return retArr;
+}
 
 
 
@@ -955,14 +974,11 @@ unzero(blitz::Array<float,N> & arr){
   if ( (blitz::min)(arr) <= 0.0 ) {
     warn("unzero", "Minimum in the array is sub-zero."
          " This should never happen with the absorption data.");
-    float mina = (blitz::max)(arr)/100.0;
+    const float mina = (blitz::max)(arr)/1000000.0;
     if ( mina <= 0.0 )
       throw_error ("unzero", "Bad absorption data (maximum is sub-zero).");
-    float *data = arr.data();
-    for (int icur = 0 ; icur < arr.size() ; icur++ ) {
-      if ( *data <= mina ) *data = mina;
-      data++;
-    }
+    for (typename blitz::Array<float,N>::iterator icur = arr.begin() ; icur != arr.end() ; icur++ )
+      if ( *icur <= mina ) *icur = mina;
   }
   return arr;
 }
@@ -1071,22 +1087,12 @@ cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
 
 template <typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-
-  blitz::Array<T,N> _storage;
-  if ( storage.isStorageContiguous() )
-    _storage.reference(storage);
-  else {
-    _storage.resize(storage.shape());
-    _storage=storage;
-  }
-
-  cl_int err =
-    clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(), _storage.data(), 0, 0, 0);
+  blitz::Array<T,N> _storage(safe(storage));
+  cl_int err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(),
+                                      _storage.data(), 0, 0, 0);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
-
   return clStorage;
-
 }
 
 
@@ -1100,12 +1106,7 @@ cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ
 template <typename T, int N>
 blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
 
-  blitz::Array<T,N> _storage;
-  if ( storage.isStorageContiguous())
-    _storage.reference(storage);
-  else
-    _storage.resize(storage.shape());
-
+  blitz::Array<T,N> _storage(safe(storage));
   cl_int err = clEnqueueReadBuffer(CL_queue, clbuffer, CL_TRUE, 0,
                                    sizeof(T) * _storage.size(),
                                    _storage.data(), 0, 0, 0 );

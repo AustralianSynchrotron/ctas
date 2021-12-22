@@ -159,9 +159,12 @@ Filter::fill(Line &filt, int pixels) const {
   for ( int pix = 1 ; pix < pixels/2 ; pix += 2)
     filt(pix) = -1.0/(pix*pix*M_PI*M_PI);
 
-  fftwf_plan planZ = safe_fftwf_plan_r2r_1d (pixels, filt.data(), FFTW_HC2R);
+  Line _filt(safe(filt));
+  fftwf_plan planZ = safe_fftwf_plan_r2r_1d (pixels, _filt.data(), FFTW_HC2R);
   fftwf_execute(planZ);
   safe_fftw_destroy_plan(planZ);
+  if (filt.data() != _filt.data())
+    filt = _filt;
 
   /*
   for ( int pix = 0 ; pix < pixels ; pix++)
@@ -311,12 +314,14 @@ static const int TR_conf = 1 << 16;
 static inline void
 filter_line(Line &ln, const Line &f_win,
             const fftwf_plan *planF, const fftwf_plan *planB) {
-
-  float *lnp = ln.data();
+  Line _ln(safe(ln));
+  float *lnp = _ln.data();
   fftwf_execute_r2r( *planF, lnp, lnp);
-  ln *= f_win;
+  _ln *= f_win;
   fftwf_execute_r2r( *planB, lnp, lnp);
-  ln /= ln.size(); // normalization of the data.
+  _ln /= _ln.size(); // normalization of the data.
+  if ( ln.data() != _ln.data() )
+    ln = _ln;
 }
 
 /// \brief Projects one line onto the plane.
@@ -334,8 +339,10 @@ project_line(const Line &sino, Map &result, float Theta, float center) {
   int nPp = pixels/2;
   float radius =  nPp - abcenter;
 
-  float *resultp = result.data();
-  const float *sinop = sino.data();
+  Map _result(safe(result));
+  float *resultp = _result.data();
+  Line _sino(safe(sino));
+  const float *sinop = _sino.data();
 
   int ncos_theta = (int) (TR_conf * cos(Theta));
   int nsin_theta = (int) (TR_conf * sin(Theta));
@@ -353,6 +360,9 @@ project_line(const Line &sino, Map &result, float Theta, float center) {
       *(tresultp + ypix) +=
         *( sinop + ( t_axis + ypix * nsin_theta ) / TR_conf );
   }
+
+  if (result.data() != _result.data())
+    result = _result;
 }
 
 
@@ -691,9 +701,7 @@ CTrec::reconstruct(Map &sinogram, Contrast cn, float arc, const Filter &ft,
 
 void CTrec::prepare_sino(Map &sinogram) {
 
-  if ( ! sinogram.isStorageContiguous() )
-    sinogram.reference( sinogram.copy() );
-
+  sinogram.reference(safe(sinogram));
   if (_contrast == Contrast::ABS) {
     unzero(sinogram);
     sinogram = -log(sinogram);
@@ -761,6 +769,7 @@ CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
   if (kernelSino) {
     const size_t origin[3] = {0, 0, 0};
     const size_t region[3] = { (size_t) _width, (size_t) _projections, 1};
+    // using data is safe here: was made safe in prepare_sino
     err = clEnqueueWriteImage( CL_queue, clSinoImage, CL_FALSE,
                                origin, region, 0, 0, sinogram.data(), 0, 0, 0);
     if (err != CL_SUCCESS)
@@ -807,9 +816,7 @@ CTrec::addLine(Line &sinoline, const float Theta, const float center) {
   if (nextAddLineResets)
     reset();
 
-  if ( ! sinoline.isStorageContiguous() )
-    sinoline.reference( sinoline.copy() );
-
+  sinoline.reference(safe(sinoline));
   if (_contrast == Contrast::ABS) {
     unzero(sinoline);
     sinoline = -log(sinoline);
@@ -915,12 +922,7 @@ void CTrec::reset() {
 
 #ifdef OPENCL_FOUND
   if (kernelLine)
-    err = clEnqueueWriteBuffer(  CL_queue, clSlice, CL_TRUE, 0,
-                                 sizeof(float) * _width * _width ,
-                                 _result.data(),  0, 0, 0);
-  if (err != CL_SUCCESS)
-    throw_error(modname, "Could not set OpenCL buffer of ct reconstruction: "
-                + toString(err) );
+    blitz2cl(_result, clSlice);
 
 #endif // OPENCL_FOUND
 

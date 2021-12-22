@@ -227,7 +227,7 @@ public:
   FlatInThread(Volume & v, const Map & bg, const Map & df, const Map & mask, bool verbose=false)
     : vol(v)
     , canon(bg, df, mask)
-    , InThread(verbose , "Performing flat field.", v.shape()(0))
+    , InThread(verbose , "performing flat field", v.shape()(0))
   {}
 
   static void execute(Volume & v, const Map & bg, const Map & df, const Map & mask, bool verbose=false) {
@@ -295,7 +295,6 @@ private:
   const float ashift;
   const float cent;
 
-  const int cropComm;
   const Shape ish;
   const Shape osh;
   const Crop crop0;
@@ -311,27 +310,42 @@ private:
   struct PerThread {
     cl_kernel kernelFormFrame;
     cl_kernel kernelFill;
-    CLmem clim0;
-    CLmem clim1;
-    CLmem clout;
+    cl_mem clim0;
+    cl_mem clim1;
+    cl_mem clout;
+    PerThread(cl_kernel kFF, cl_kernel kF, cl_mem _clim0, cl_mem _clim1, cl_mem _clout)
+      : kernelFormFrame(kFF)
+      , kernelFill(kF)
+      , clout(_clout)
+      , clim1(_clim1)
+      , clim0(_clim0)
+    {}
   } ;
   unordered_map<pthread_t,PerThread> perThread;
-  CLmem clgaps0;
-  CLmem clgaps1;
-  CLmem clgapsF;
+
+  cl_mem clgaps0;
+  cl_mem clgaps1;
+  cl_mem clgapsF;
 
   ~FrameFormInThread() {
+    clReleaseMemObject(clgaps0);
+    clReleaseMemObject(clgaps1);
+    clReleaseMemObject(clgapsF);
     for (auto& it: perThread) {
       clReleaseKernel(it.second.kernelFormFrame);
       clReleaseKernel(it.second.kernelFill);
+      clReleaseMemObject(it.second.clim0);
+      clReleaseMemObject(it.second.clim1);
+      clReleaseMemObject(it.second.clout);
     }
   }
 
 
-  bool inThread(long int idx) {
+  bool inThread(const long int idx) {
 
     if ( idx >= oz )
       return false;
+
 
     pthread_t me(pthread_self());
     lock();
@@ -345,7 +359,7 @@ private:
       setArg(kernelFormFrame, 0, _clout );
       setArg(kernelFormFrame, 1, _clim0 );
       setArg(kernelFormFrame, 2, _clim1 );
-      setArg(kernelFormFrame, 3, clgaps0() );
+      setArg(kernelFormFrame, 3, clgaps0 );
 
       cl_kernel kernelFill = rFill ? createKernel(formframeProgram , "gapfill") : 0;
       if (rFill) {
@@ -353,51 +367,63 @@ private:
         setArg( kernelFill, 1, (int) osh(0) );
         setArg( kernelFill, 2, rFill );
         setArg( kernelFill, 3, _clout );
-        setArg( kernelFill, 4, clgaps0() );
+        setArg( kernelFill, 4, clgaps0 );
       }
 
       lock();
-      perThread.insert( { me, { kernelFormFrame, kernelFill, _clim0, _clim1, _clout} });
+      perThread.emplace( me, PerThread(kernelFormFrame, kernelFill, _clim0, _clim1, _clout) );
     }
     PerThread & my = perThread.at(me);
     unlock();
 
     Map im0(osh);
     crop( ims0(idx, all, all), im0, crop0 );
-    blitz2cl(im0, my.clim0());
+    blitz2cl(im0, my.clim0);
 
     const int id1 = idx - nshift - ( (idx - nshift >= oz)  ?  oz  :  0 ) ;
     Map im1(osh);
     crop( ims1(id1, all, all), im1, crop1 );
     if ( id1 <= idx ) {
       im1.reverseSelf(blitz::secondDim);
-      setArg( my.kernelFormFrame, 4, clgapsF() );
+      setArg( my.kernelFormFrame, 4, clgapsF );
       if (rFill)
-        setArg( my.kernelFill, 5, clgapsF() );
+        setArg( my.kernelFill, 5, clgapsF );
     } else {
-      setArg( my.kernelFormFrame, 4, clgaps1() );
+      setArg( my.kernelFormFrame, 4, clgaps1 );
       if (rFill)
-        setArg( my.kernelFill, 5, clgaps1() );
+        setArg( my.kernelFill, 5, clgaps1 );
     }
-    blitz2cl(im1, my.clim1());
+    blitz2cl(im1, my.clim1);
 
     execKernel(my.kernelFormFrame, area(osh));
     if (rFill)
       execKernel(my.kernelFill, osh);
 
-    cl2blitz(my.clout(), im0);
+    cl2blitz(my.clout, im0);
     res(idx, all, all) = im0;
-
     bar.update();
     return true;
 
   }
 
 
+  Crop crops(const PointF2D & _shift, float _cent, bool org) {
+    const float Ms = max(0.0f, _shift.x);
+    const float ms = -min(0.0f, _shift.x);
+    const float M2c = 2*max(0.0f, _cent);
+    const float m2c = -2*min(0.0f, _cent);
+    const float My = max(0.0f, shift.y);
+    const float my = -min(0.0f, shift.y);
+    if (org)
+      return Crop(My , Ms + M2c, my, ms + m2c);
+    else
+      return Crop(my , ms + M2c, My, Ms + m2c);
+  }
+
 public:
 
   FrameFormInThread(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
-                    float _arc, const PointF2D & _shift, float _ashift, float _cent, int _rFill,
+                    float _arc, const PointF2D & _shift, float _ashift, float _cent, uint _rFill,
                     bool verbose=false)
 
     : res(_res)
@@ -409,38 +435,34 @@ public:
     , ashift(_ashift)
     , cent(_cent)
     , rFill(_rFill)
-
-    , cropComm(max( abs(shift.x), abs(shift.x - cent) ))
+    , crop0(crops(_shift, _cent, true))
+    , crop1(crops(_shift, _cent, false))
     , ish(faceShape(ims0.shape()))
-    , osh( ish(0) - abs(shift.y), ish(1) - 2 * cropComm )
-    , crop0( shift.y > 0 ? abs(shift.y) : 0, cropComm + cent,
-             shift.y < 0 ? abs(shift.y) : 0, cropComm - cent)
-    , crop1( shift.y < 0 ? abs(shift.y) : 0, cropComm + cent - shift.x,
-             shift.y > 0 ? abs(shift.y) : 0, cropComm - cent - shift.x)
+    , osh( ish(0) - abs(_shift.y), ish(1) - abs(_shift.x) - 2*abs(_cent) )
     , step( arc / (ims0.shape()(0)-1) )
-    , oz((int)(180/step))
+    , oz(1+(int)(180/step))
     , nshift(ashift/step)
 
-    , InThread(verbose , "Performing flat field.", _ims0.shape()(0))
+    , InThread(verbose , "performing frame formation", _ims0.shape()(0))
 
   {
-
     res.resize(oz , osh(0), osh(1));
-
     Map gapst(osh);
     crop(gaps, gapst, crop0);
-    clgaps0(blitz2cl(gapst, CL_MEM_READ_ONLY));
+    SaveImage("g0.tif", gapst);
+    clgaps0 = blitz2cl(gapst, CL_MEM_READ_ONLY);
     crop(gaps, gapst, crop1);
-    clgaps1(blitz2cl(gapst, CL_MEM_READ_ONLY));
+    SaveImage("g1.tif", gapst);
+    clgaps1 = blitz2cl(gapst, CL_MEM_READ_ONLY);
     gapst.reverseSelf(blitz::secondDim);
-    clgapsF(blitz2cl(gapst, CL_MEM_READ_ONLY));
-
+    SaveImage("gF.tif", gapst);
+    clgapsF = blitz2cl(gapst, CL_MEM_READ_ONLY);
   }
 
   static void execute(Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps,
-                      float _arc, const PointF2D & _shift, float _ashift, float _cent, float _rFill,
+                      float _arc, const PointF2D & _shift, float _ashift, float _cent, uint _rFill,
                       bool verbose=false) {
-    FrameFormInThread(_res, _ims0, _ims1, _gaps, _arc, _shift, _cent, _rFill, verbose)
+    FrameFormInThread(_res, _ims0, _ims1, _gaps, _arc, _shift, _ashift, _cent, _rFill, verbose)
         .InThread::execute();
   }
 
@@ -581,6 +603,10 @@ int main(int argc, char *argv[]) {
   const Shape sh = Shape( ish(0) - args.crop.top  - args.crop.bottom,
                           ish(1) - args.crop.left - args.crop.right );
 
+
+
+
+
   // Read DFs, BGs, GapMask
 
   #define ReadSumSet( set, res ) { \
@@ -611,7 +637,9 @@ int main(int argc, char *argv[]) {
   } else
     gaps = 1;
 
-  gaps=1 ; // for debugging
+
+
+
 
   // Read sample sets
 
@@ -637,8 +665,8 @@ int main(int argc, char *argv[]) {
   bgs0.free();
   bgs1.free();
 
-  SaveImage("ims0.tif", ims0(all,150,all));
-  SaveImage("ims1.tif", ims1(all,150,all));
+
+
 
   // Form final frames
 
@@ -654,6 +682,8 @@ int main(int argc, char *argv[]) {
 
   ims0.free();
   ims1.free();
+
+  exit(0);
 
 
 

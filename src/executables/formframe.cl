@@ -8,7 +8,7 @@ kernel void  formframe (
   read_only  global float*  gaps1)
 {
   const int idi = get_global_id(0);
-  if ( gaps0[idi] == 0.0 && gaps0[idi] == 0.0 )
+  if ( gaps0[idi] == 0.0 && gaps1[idi] == 0.0 )
     out[idi] = 1.0; // 0.0 would be safe to see on the image?
   else if ( gaps0[idi] == 0.0 )
     out[idi] = im1[idi];
@@ -47,7 +47,7 @@ kernel void  gapfill (
     const int yj2 = (y-idy)*(y-idy);
     for(int x = xm ; x < xM ; x++) {
       const int idj = idyy + x;
-      if ( ( gaps0[idj] != 0.0 || gaps0[idj] != 0.0 )
+      if ( ( gaps0[idj] != 0.0 || gaps1[idj] != 0.0 )
            &&  yj2 + (x-idx)*(x-idx) <= rr2 ) {
         tot++;
         sum += io[idj];

@@ -442,31 +442,41 @@ crop(const Volume & inarr, Volume & outarr, const Crop3 & crp) {
     outarr.reference(inarr);
     return;
   }
-  if (  crp.left + crp.right >= inarr.shape()(2)  ||
-        crp.top + crp.bottom >= inarr.shape()(1)  ||
-        crp.face + crp.back >= inarr.shape()(0) ) {
-    warn("Crop3 array", "Cropping (" + toString(crp) + ")"
-         " is larger than array size.");
+  if (  crp.left + crp.right  >= inarr.shape()(2)  ||
+        crp.top  + crp.bottom >= inarr.shape()(1)  ||
+        crp.face + crp.back   >= inarr.shape()(0) ) {
+    warn("Crop3 array", "Cropping (" + toString(crp) + ") is larger than array size.");
+    outarr.free();
     return;
   }
 
-  outarr.resize( inarr.shape()(0) - crp.face  - crp.back,
+  outarr.resize( inarr.shape()(0) - crp.face - crp.back,
                  inarr.shape()(1) - crp.top  - crp.bottom,
                  inarr.shape()(2) - crp.left - crp.right);
   outarr = inarr( blitz::Range(crp.face, inarr.shape()(0)-1-crp.back),
-                  blitz::Range(crp.top, inarr.shape()(0)-1-crp.bottom ),
+                  blitz::Range(crp.top,  inarr.shape()(0)-1-crp.bottom ),
                   blitz::Range(crp.left, inarr.shape()(1)-1-crp.right ) );
 
 }
 
 void
 crop(Volume & io_arr, const Crop3 & crp) {
-  Volume outarr;
-  crop(io_arr, outarr, crp);
-  if( io_arr.data() == outarr.data() )
+
+  if ( ! crp.left && ! crp.right && ! crp.top && ! crp.bottom && ! crp.face && ! crp.back )
     return;
-  io_arr.resize(outarr.shape());
-  io_arr=outarr.copy();
+
+  if (  crp.left + crp.right  >= io_arr.shape()(2)  ||
+        crp.top  + crp.bottom >= io_arr.shape()(1)  ||
+        crp.face + crp.back   >= io_arr.shape()(0) ) {
+    warn("Crop3 array", "Cropping (" + toString(crp) + ") is larger than array size.");
+    io_arr.free();
+    return;
+  }
+
+  io_arr.reference( io_arr( blitz::Range(crp.face, io_arr.shape()(0)-1-crp.back),
+                            blitz::Range(crp.top,  io_arr.shape()(0)-1-crp.bottom ),
+                            blitz::Range(crp.left, io_arr.shape()(1)-1-crp.right ) ) );
+
 }
 
 
@@ -513,24 +523,30 @@ crop(const Map & inarr, Map & outarr, const Crop & crp) {
         crp.top + crp.bottom >= inarr.shape()(0) ) {
     warn("Crop array", "Cropping (" + toString(crp) + ")"
          " is larger than array size ("+toString(inarr.shape())+")");
+    outarr.free();
     return;
   }
 
   outarr.resize( inarr.shape()(0) - crp.top  - crp.bottom,
                  inarr.shape()(1) - crp.left - crp.right);
-  outarr = inarr( blitz::Range(crp.top, inarr.shape()(0)-1-crp.bottom ),
+  outarr = inarr( blitz::Range(crp.top,  inarr.shape()(0)-1-crp.bottom ),
                   blitz::Range(crp.left, inarr.shape()(1)-1-crp.right ) );
 
 }
 
 void
 crop(Map & io_arr, const Crop & crp) {
-  Map outarr;
-  crop(io_arr, outarr, crp);
-  if( io_arr.data() == outarr.data() )
+  if ( ! crp.left && ! crp.right && ! crp.top && ! crp.bottom )
     return;
-  io_arr.resize(outarr.shape());
-  io_arr=outarr.copy();
+  if (  crp.left + crp.right >= io_arr.shape()(1)  ||
+        crp.top + crp.bottom >= io_arr.shape()(0) ) {
+    warn("Crop array", "Cropping (" + toString(crp) + ")"
+         " is larger than array size ("+toString(io_arr.shape())+")");
+    io_arr.free();
+    return;
+  }
+  io_arr.reference( io_arr( blitz::Range(crp.top,  io_arr.shape()(0)-1-crp.bottom ),
+                            blitz::Range(crp.left, io_arr.shape()(1)-1-crp.right ) ) );
 }
 
 
@@ -2174,14 +2190,7 @@ public :
       return;
     }
 
-    Map _storage;
-    if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(shape(1),1) )
-      _storage.reference(storage);
-    else {
-      _storage.resize(shape);
-      _storage = storage;
-    }
-
+    Map _storage(safe(storage));
     blitz::Array<hsize_t, 1> offs(3), cnth(3);
     offs=0;
     cnth=cnts;
@@ -2875,6 +2884,7 @@ private:
 
     if (idx >= indices.size())
       return false;
+
     const pthread_t me = pthread_self();
     lock();
     if ( ! maps.count(me) )  // first call
@@ -2967,14 +2977,7 @@ SaveImageINT_IM (const Path & filename, const Map & storage){
     width = storage.columns(),
     hight = storage.rows();
 
-  Map _storage;
-  if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
-    _storage.reference(storage);
-  else {
-    _storage.resize(storage.shape());
-    _storage = storage;
-  }
-
+  Map _storage(safe(storage));
   Magick::Image imag( width, hight, "I", Magick::FloatPixel, _storage.data() );
   imag.classType(Magick::DirectClass);
   imag.type( Magick::GrayscaleType );
@@ -3037,14 +3040,7 @@ SaveImageINT (const Path &filename, const Map &storage,
 
   const int width = storage.columns();
 
-  Map _storage;
-  if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
-    _storage.reference(storage);
-  else {
-    _storage.resize(storage.shape());
-    _storage = storage;
-  }
-
+  Map _storage(safe(storage));
   Map stor(_storage.shape());
   if (minval == maxval) {
     minval = (blitz::min)(_storage);
@@ -3088,14 +3084,6 @@ SaveImageFP (const Path & filename, const Map & storage){
     width = storage.columns(),
     hight = storage.rows();
 
-  Map _storage;
-  if ( storage.isStorageContiguous()  &&  storage.stride() == Shape(width,1) )
-    _storage.reference(storage);
-  else {
-    _storage.resize(storage.shape());
-    _storage = storage;
-  }
-
   // BUG in libtiff
   // On platforms (f.e. CentOS) the TIFFOpen function fails,
   // while TIFFFdOpen works well. On the MS Windows the
@@ -3127,6 +3115,7 @@ SaveImageFP (const Path & filename, const Map & storage){
   TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
   TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
+  Map _storage(safe(storage));
   int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*4);
   TIFFClose(image);
   if (fd) close(fd);

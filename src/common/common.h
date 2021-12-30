@@ -157,9 +157,9 @@ private:
   std::string message;               ///< The message which describes the error
 
 public:
-  inline CtasErr(ErrTp _terr, const std::string & mod, const std::string & msg);
-  inline ErrTp type() const;			///< Returns error type.
-  inline void report() const;		    ///< Reports the error to the ctderr.
+  CtasErr(ErrTp _terr, const std::string & mod, const std::string & msg);
+  ErrTp type() const;			///< Returns error type.
+  void report() const;		    ///< Reports the error to the ctderr.
 };
 
 
@@ -408,12 +408,12 @@ inline bool operator!=( const PointF2D & p1, const PointF2D & p2){
 
 
 std::string
-type_desc (PointF2D*) {
+inline type_desc (PointF2D*) {
   return "FLOAT:FLOAT";
 }
 
 int
-_conversion (PointF2D* _val, const std::string & in) {
+inline _conversion (PointF2D* _val, const std::string & in) {
   float x, y;
   if ( sscanf( in.c_str(), "%f:%f", &x, &y) != 2  &&
        sscanf( in.c_str(), "%f,%f", &x, &y) != 2 )
@@ -500,7 +500,9 @@ operator!=( const Shape & sh1, const Shape & sh2){
   return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1) );
 }
 
-size_t area(const Shape & sh) {return sh(0) * sh(1) ;}
+inline size_t area(const Shape & sh) {
+  return sh(0) * sh(1) ;
+}
 
 
 
@@ -508,7 +510,9 @@ size_t area(const Shape & sh) {return sh(0) * sh(1) ;}
 /// \brief Shape of an 2D array.
 typedef blitz::TinyVector<ArrIndex,3> Shape3;
 
-inline std::string toString (const Shape3 & shp) { return toString("%u, %u, %u", shp(2), shp(1), shp(0));}
+inline std::string toString (const Shape3 & shp) {
+  return toString("%u, %u, %u", shp(2), shp(1), shp(0));
+}
 
 /// \brief Compare shapes.
 ///
@@ -997,162 +1001,6 @@ unzero(const blitz::Array<float,N> & arr){
 
 
 
-/// @}
-
-
-/// \defgroup OCL OpenCL
-///
-/// Preparing the OpenCL infrastructure.
-///
-/// @{
-
-
-
-#ifdef OPENCL_FOUND
-
-#define __CL_ENABLE_EXCEPTIONS
-#include <CL/cl.h>
-
-cl_device_id CL_device;
-cl_context CL_context;
-cl_command_queue CL_queue;
-
-class CLmem {
-    cl_mem cl;
-public:
-    CLmem(cl_mem _cl=0) : cl(_cl) {}
-    ~CLmem() { free(); }
-    cl_mem operator()() const { return cl; }
-    CLmem & operator()(cl_mem _cl) { cl=_cl; return *this; }
-    void free() { if (cl) clReleaseMemObject(cl); cl=0; }
-};
-
-
-const cl_image_format clfimage_format({CL_R, CL_FLOAT});
-
-bool clIsInited();
-
-cl_program initProgram(const char csrc[], size_t length, const std::string & modname);
-
-cl_kernel createKernel(cl_program program, const std::string & name);
-
-std::string kernelName(cl_kernel kern);
-
-cl_int execKernel(cl_kernel kern, size_t size=1);
-
-cl_int execKernel(cl_kernel kern, const Shape & sh);
-
-cl_int execKernel(cl_kernel kern, const Shape3 & sh);
-
-
-template <class T> void
-setArg (cl_kernel kern, cl_uint arg_idx, const T & val) {
-  cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
-  if (clerr != CL_SUCCESS)
-    throw_error("setArg", "Could not set argument " + toString(arg_idx) +
-                         " for OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
-}
-
-
-template <class T>
-cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {
-  cl_int clerr;
-  cl_mem clStorage = clCreateBuffer ( CL_context, flag, sizeof(T), 0, &clerr);
-  if (clerr != CL_SUCCESS)
-    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(clerr) );
-  return clStorage;
-}
-
-
-template <class T>
-T cl2var(const cl_mem & buff) {
-  T var;
-  cl_int clerr = clEnqueueReadBuffer(CL_queue, buff, CL_TRUE, 0, sizeof(T), &var, 0, 0, 0 );
-  if (clerr != CL_SUCCESS)
-    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(clerr) );
-  return var;
-}
-
-
-template <typename T>
-cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-  cl_int err;
-  const size_t iStorageSize = sizeof(T) * arrSize ;
-  cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
-  return clStorage;
-}
-
-
-template <typename T, int N>
-cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-  blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(),
-                                      _storage.data(), 0, 0, 0);
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
-  return clStorage;
-}
-
-
-template <typename T, int N>
-cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-  cl_mem clStorage = clAllocArray<T>(storage.size(), flag);
-  return blitz2cl<T,N>(storage, clStorage, flag);
-}
-
-
-template <typename T, int N>
-blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
-
-  blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueReadBuffer(CL_queue, clbuffer, CL_TRUE, 0,
-                                   sizeof(T) * _storage.size(),
-                                   _storage.data(), 0, 0, 0 );
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
-  if ( storage.data() != _storage.data() )
-    storage = _storage;
-  return storage;
-
-}
-
-template <typename T>
-cl_int fillClArray(cl_mem clStorage, size_t size, T val) {
-  cl_int clerr = clEnqueueFillBuffer(CL_queue, clStorage, &val, sizeof(T), 0, sizeof(T) * size, 0,0,0);
-  if (clerr != CL_SUCCESS)
-    throw_error("Fill CL buffer", "Failed to fill the buffer: " + toString(clerr));
-  return clerr;
-}
-
-
-/*
-cl_int fillClImage(cl_mem image, float val);
-
-cl_mem clAllocFImage(const Shape sh, cl_mem_flags flag=CL_MEM_READ_WRITE);
-
-cl_mem blitz2clfi(const Map & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE);
-
-cl_mem blitz2clfi(const Map & storage, cl_mem_flags flag=CL_MEM_READ_WRITE);
-
-cl_mem clAllocFImage(const Shape3 sh, cl_mem_flags flag=CL_MEM_READ_WRITE);
-
-cl_mem blitz2clfi(const Volume & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE);
-
-cl_mem blitz2clfi(const Volume & storage, cl_mem_flags flag=CL_MEM_READ_WRITE);
-
-void clfi2blitz(cl_mem clStorage, Map & storage);
-
-void clfi2blitz(cl_mem clStorage, Volume & storage);
-*/
-
-
-#endif // OPENCL_FOUND
-
-
-/// @}
-
 
 extern const std::string SliceOptionDesc;
 
@@ -1171,348 +1019,8 @@ std::vector<int> COMMON_API
 slice_str2vec(const std::string & sliceS, int hight);
 
 
-Path COMMON_API
-imageFile(const std::string & filedesc);
-
-
-/// \defgroup IO Image and data file handling.
-///
-/// Loading, saving and other possible operations with the
-/// image/data -> array -> image/data conversions.
-///
-/// @{
-
-/// \brief Pixel size of the image.
-///
-/// Calculated from the dpi (dots per inch).
-///
-/// @param filename Image filename.
-///
-/// @return pixel size in micron.
-///
-float  COMMON_API
-PixelSize(const Path & filename);
-
-
-/// \brief Image sizes.
-///
-/// Reads image size and returns them as the Shape vector.
-///
-/// @param filename Image filename.
-///
-/// @return Image sizes.
-///
-Shape  COMMON_API
-ImageSizes(const Path & filename);
-
-
-/// \brief Image sizes.
-///
-/// Read image sizes and return them as width and hight.
-///
-/// @param filename Image filename.
-/// @param width Width of the image.
-/// @param hight Height of the image.
-///
-void COMMON_API
-ImageSizes(const Path & filename, int *width, int *hight);
-
-
-/// \brief Check the shape of the image.
-///
-/// Throws error if the shape of the image is not equal to ::shp.
-///
-/// @param filename Image filename.
-/// @param shp The expected shape.
-///
-void COMMON_API
-BadShape(const Path & filename, const Shape & shp);
-
-
-/// \brief Load image.
-///
-/// Similar to ReadImage(), but uses preopened image object to read.
-///
-/// @param filename Image filename.
-/// @param storage  Array to load the image into.
-///
-void COMMON_API
-ReadImage(const Path & filename, Map & storage );
-
-
-/// \brief Load image checking the shape.
-///
-/// Same as ReadImage(const Path & , Map &), but checks the image shape
-/// before loading and throws the error if the shape is different from :::shp.
-///
-/// @param filename Image filename.
-/// @param storage  Array to load the image into.
-/// @param shp The expected shape.
-///
-void COMMON_API
-ReadImage(const Path & filename, Map & storage, const Shape & shp);
-
-
-/// \brief Load one line of the image.
-///
-/// Reads one line of the image from the file, resizes the array
-/// to fit and stores the line into the array.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idx  The index of the line to be read.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Line & storage, int idx);
-
-
-/// \brief Load one line of the image.
-///
-/// Same as ReadImageLine(const Path &, Line &, int),
-/// but checks the image shape before loading and throws the error if the
-/// shape is different from ::shp.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idx  The index of the line to be read.
-/// @param shp The expected shape.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Line & storage, int idx, const Shape & shp);
-
-
-/// \brief Load several lines of the image.
-///
-/// Reads lines of the image which are found in the ::idxs vector.
-/// If a line in the ::idxs is outside the image size then warns and
-/// fills the corresponding line with zeros. The lines are stored in
-/// the order they found in the ::idx vector. Array ::storage is resized
-/// to contain all lines. If the ::idxs array is empty - reads the whole image.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idxs vector of lines to be read. If empty, reads the whole image.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Map & storage,
-        const std::vector<int> & idxs);
-
-
-/// \brief Load several lines of the image.
-///
-/// Same as ReadImageLine(const Path &, Map &, const std::vector<int> &),
-/// but checks the image shape before loading and throws the error if the
-/// shape is different from ::shp.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idxs vector of lines to be read. If empty - reads the whole image.
-/// @param shp The expected shape.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Map & storage,
-        const std::vector<int> & idxs, const Shape & shp);
-
-
-
-
-/// Description of the output result mask.
-extern const std::string COMMON_API MaskDesc;
-
-void COMMON_API
-ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose=false);
-
-inline void COMMON_API
-ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
-  ReadVolume(std::vector<Path>(1, filename), storage, verbose );
-}
-
-
-
-/// \brief Save the array into image.
-///
-/// Stores the array in the float-point TIFF or integer image depending.
-/// on requested type. Be careful: limited number
-/// of editors/viewers/analyzers support float-point format.
-///
-/// @param filename the name of the image file image.
-/// @param storage the array to be written to the image.
-/// @param saveint save image as 16-bit integer.
-///
-void COMMON_API
-SaveImage(const Path & filename, const Map & storage, bool saveint=false);
-
-
-/// \brief Save the array into integer image.
-///
-/// Stores the array in the integer-based image. If minval is equal to maxval
-/// then the minimum and maximum values of the array data corresponds to black
-/// and white respectively.
-///
-/// @param filename the name of the image file image.
-/// @param storage the array to be written to the image.
-/// @param minval the value corresponding to black.
-/// @param maxval the value corresponding to white.
-///
-void COMMON_API
-SaveImage(const Path & filename, const Map & storage,
-    float minval, float maxval );
-
-
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose, const std::string & slicedesc, float mmin, float mmax);
-
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose, const std::string & slicedesc) {
-  SaveVolume(filedesc, storage, verbose, slicedesc, 0, 0);
-}
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose) {
-  SaveVolume(filedesc, storage, verbose, "", 0, 0);
-}
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           const std::string & slicedesc) {
-  SaveVolume(filedesc, storage, false, slicedesc, 0, 0);
-}
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage) {
-  SaveVolume(filedesc, storage, false, "", 0, 0);
-}
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
-}
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           const std::string & slicedesc,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
-}
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, false, "", mmin, mmax);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/// \brief Loads any amount of lines from data file.
-///
-/// @param filename the name of the data file.
-/// @param ... Any number of the lines. Be careful:
-/// I supposed that all arguments are of type const Line*,
-/// a null pointer must be passed as the last such argument.
-///
-// Don't use the reference type "const Path &" here: will
-// not work on Windows
-void COMMON_API
-LoadData(const Path filename, ... );
-
-
-/// \brief Save any amount of lines into data file.
-///
-/// @param filename the name of the data file.
-/// @param ... Any number of the lines. Be careful:
-/// I supposed that all arguments are of type const Line*,
-/// a null pointer must be passed as the last such argument.
-///
-// Don't use the reference type "const Path &" here: will
-// not work on Windows
-void COMMON_API
-SaveData(const Path filename, ... );
-
-/// @}
-
-
-
-/// \brief Number of threads for the process.
-///
-/// @param _threads Requested number of threads (0 for auto).
-///
-/// @return Number of threads for the architecture where the process is running
-/// if automatic number of threads was requested and just _threads if set in stone.
-///
-long COMMON_API
-nof_threads(long _threads=0);
-
-
-
-
-
-
-/// \brief Base class used for multithreading.
-///
-/// This virtual class helps to ease the implementation of multithread parallel computation.
-/// The subclasses must implement only three entities:
-/// 1. Data members - to store and make accessible all the data needed for threads to work.
-/// 2. Constructor which initializes the data and, if needed, deconstructor to clean up.
-/// 3. Pure virtual method bool inThread(long int).
-///    This method is called from threads with the index to work on as the input.
-///    It must return false if there left nothing to do in the queue and true otherwise.
-///
-/// Once it is done the execute() method can be used on the subclass to run the tasks.
-/// Two static execute(...) methods are here to implement even easier computation for the cases
-/// where no data are required and/or the index is not used for the inThread implementation:
-/// just provide the input _thread_routine function.
-class InThread {
-
-private:
-
-  pthread_mutex_t proglock; // to be used by the sub-classes users via lock/unlock methods
-
-  virtual bool inThread(long int) = 0;
-
-  static bool inThread(void * args, long int idx) {
-    if (!args)
-      throw_error("InThread", "Wrongly used class. Report to developers.");
-    return ((InThread*)args)->inThread(idx);
-  }
-
-public:
-
-  ProgressBar bar;
-
-  InThread(bool verbose=false, const std::string procName = std::string(), int steps=0)
-    : proglock(PTHREAD_MUTEX_INITIALIZER)
-    , bar(verbose, procName, steps)
-  {}
-
-  void execute();
-  static void execute( bool (*_thread_routine) (long int) );
-  static void execute( bool (*_thread_routine) () );
-
-  void lock() { pthread_mutex_lock(&proglock); }
-  void unlock() { pthread_mutex_unlock(&proglock); }
-
-
-};
-
+#include "parallel.world.h"
+#include "external.world.h"
 
 
 #endif // _H_CTAS_H_

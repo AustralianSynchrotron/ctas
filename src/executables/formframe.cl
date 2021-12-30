@@ -30,7 +30,7 @@ kernel void  gapfill (
   const int idx = get_global_id(0);
   const int idy = get_global_id(1);
   const int idi = idx + idy * Xs;
-  if ( gaps0[idi] != 0.0 || gaps0[idi] != 0.0 )
+  if ( gaps0[idi] != 0.0 || gaps1[idi] != 0.0 )
     return;
 
   float sum=0;

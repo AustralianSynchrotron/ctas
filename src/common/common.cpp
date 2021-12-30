@@ -1186,6 +1186,7 @@ private :
     : ThreadDistributor(0, 0, _sub_routine, _arg)
   {}
 
+
   long int distribute() {
     long int idx;
     pthread_mutex_lock(&idxLock);
@@ -1195,9 +1196,20 @@ private :
   }
 
 
+  static bool in_threade (ThreadDistributor * dist) {
+    bool ret;
+    try {
+      ret = dist->sub_routine(dist->distribute());
+    } catch (...) {
+      return false;
+    }
+    return ret;
+  }
+
+
   static void * in_thread (void * vdist) {
     ThreadDistributor * dist = (ThreadDistributor*) vdist;
-    while ( dist->sub_routine(dist->distribute()) ) {}
+    while ( in_threade(dist) ) {}
     return 0;
   }
 
@@ -1397,8 +1409,9 @@ bool clIsInited() {
     return false;
   }
 
-  CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, NULL, &err);
-  //CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
+
+  //CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, NULL, &err);
+  CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
     return false;
@@ -1943,6 +1956,14 @@ struct HDFdesc {
   int sliceDim;
   string slices;
 
+  static const string & checkFiledesc(const string & filedesc) {
+    if ( HDFdesc(filedesc).isValid() )
+      return filedesc;
+    else
+      throw CtasErr(CtasErr::WARN, "HDFread",
+                    "Not an hdf file \"" + filedesc + "\"."); 
+  }
+
   HDFdesc(const string & filedesc)
     : sliceDim(0)
   {
@@ -1974,7 +1995,7 @@ struct HDFdesc {
     return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ;
   }
 
-  bool isValid() const { return ! name.empty() ; }
+  bool isValid() const { return name.length() ; }
 
 
 };
@@ -1994,19 +2015,17 @@ private :
   H5::H5File hdfFile;
   H5::DataSet dataset;
   H5::DataSpace dataspace;
+  H5::DataSpace memspace;
   int rank;
   blitz::Array<hsize_t, 1> cnts;
-  H5::DataSpace memspace;
 
 public :
 
   HDFread(const string & filedesc)
-    : HDFdesc(filedesc)
+    : HDFdesc(checkFiledesc(filedesc))
   {
 
     const string modmname = "HDF read";
-    if ( ! isValid() )
-      throw CtasErr(CtasErr::WARN, modmname, "Not an hdf file \"" + filedesc + "\".");
 
 #ifdef H5F_ACC_SWMR_READ
     hdfFile = H5::H5File(name, H5F_ACC_RDONLY | H5F_ACC_SWMR_READ);
@@ -2157,7 +2176,7 @@ public :
   }
 
   HDFwrite(const string & filedesc, Shape _sh, size_t _zsize)
-    : HDFwrite(HDFdesc(filedesc), _sh, _zsize)
+    : HDFwrite(HDFdesc(checkFiledesc(filedesc)), _sh, _zsize)
   {}
 
   ~HDFwrite() {
@@ -2313,6 +2332,8 @@ ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
 
 
 
+pthread_mutex_t mut(PTHREAD_MUTEX_INITIALIZER);
+
 
 /// Loads an image (lines) using TIFF library.
 ///
@@ -2325,9 +2346,11 @@ static void
 ReadImageLine_TIFF (const Path & filename, Map & storage,
                     const vector<int> & idxs ) {
 
-  static const string modname = "load image tiff";
+  const string modname = "load image tiff";
 
   TIFF *tif = TIFFOpen(filename.c_str(), "r");
+    
+
   if( ! tif )
     throw CtasErr(CtasErr::WARN, modname,
                   "Could not read tif from file\"" + filename + "\".");
@@ -2388,6 +2411,9 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
          "Image \"" + filename + "\" has undefined or unsupported"
          " photometric interpretation.");
 
+
+
+
   const int readheight = idxs.size() ? idxs.size() : height;
   storage.resize(readheight,width);
 
@@ -2396,6 +2422,13 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
   for (uint curidx = 0; curidx < readheight; curidx++) {
 
     uint32_t row = idxs.size() ? idxs[curidx] : curidx;
+    
+    pthread_mutex_lock(&mut); // I do not understand why,
+    // but with no mutex storage(curidx,all) causes double free
+    // or corruption on asci.
+    Line ln(storage(curidx, all));
+    pthread_mutex_unlock(&mut); 
+
 
     if ( row >= height || row < 0 ) {
 
@@ -2403,12 +2436,13 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       "The index of the line to be read (" + toString(row) + ")"
       " is outside the image boundaries (" + toString(height) + ").");
 
-      storage(curidx, all) = 0.0;
+      ln = 0.0f;
 
     } else {
 
       if ( TIFFReadScanline(tif, buf, row) < 0 ) {
         _TIFFfree(buf);
+        TIFFClose(tif);
         throw warn(modname,
                    "Failed to read line " + toString(row) +
                    " in image \"" + filename + "\".");
@@ -2422,28 +2456,33 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       switch (fmt) {
       case SAMPLEFORMAT_UINT :
         if (bps==8)
-          storage(curidx, all) = 1.0 * blitzArrayFromData(uint8_t);
+          ln = 1.0 * blitzArrayFromData(uint8_t);
         else if (bps==16)
-          storage(curidx, all) = 1.0 * blitzArrayFromData(uint16_t);
+          ln = 1.0 * blitzArrayFromData(uint16_t);
         else if (bps==32)
-          storage(curidx, all) = 1.0 * blitzArrayFromData(uint32_t);
+          ln = 1.0 * blitzArrayFromData(uint32_t);
         break;
       case SAMPLEFORMAT_INT :
         if (bps==8)
-          storage(curidx, all) = 1.0 * blitzArrayFromData(int8_t);
+          ln = 1.0 * blitzArrayFromData(int8_t);
         else if (bps==16)
-          storage(curidx, all) = 1.0 * blitzArrayFromData(int16_t);
+          ln = 1.0 * blitzArrayFromData(int16_t);
         else if (bps==32)
-          storage(curidx, all) = 1.0 * blitzArrayFromData(int32_t);
+          ln = 1.0 * blitzArrayFromData(int32_t);
         break;
       case SAMPLEFORMAT_IEEEFP :
-        storage(curidx, all) = blitzArrayFromData(float);
+        ln = blitzArrayFromData(float);
         break;
       }
 
     }
 
+    pthread_mutex_lock(&mut); 
+    ln.reference(Line(0));
+    pthread_mutex_unlock(&mut);
+
   }
+
 
   _TIFFfree(buf);
   TIFFClose(tif);
@@ -2532,6 +2571,7 @@ ReadImage (const Path & filename, Map & storage ){
     }
   }
 }
+
 
 
 void
@@ -2721,6 +2761,7 @@ class ReadVolInThread : public InThread {
   Shape sh;
   pthread_mutex_t proglock;
   unordered_map<string,HDFread> hdfs;
+  unordered_map<pthread_t,Map> slices;
 
 public:
 
@@ -2751,6 +2792,7 @@ public:
     if ( ! storage.size() )
       return;
 
+
   }
 
 
@@ -2759,7 +2801,13 @@ public:
     if ( idx >= slicelist.size())
       return false;
 
-    Map slice(sh);
+    pthread_t me = pthread_self();
+    lock();
+    if ( ! slices.count(me) )
+      slices.insert({me,Map(sh)});
+    Map slice = slices.at(me);
+    unlock();
+
     const pair<Path,int> & slpr = slicelist.at(idx);
     if (hdfs.count(slpr.first)) {
       HDFread & hdf = hdfs.at(slpr.first);
@@ -2771,8 +2819,15 @@ public:
         bar.update();
       }
     } else {
-      ReadImage(slpr.first, slice, sh);
-      storage(slpr.second, all, all) = slice;
+      try {
+        //lock();
+        ReadImage(slpr.first, slice, sh);
+        //unlock();
+        storage(slpr.second, all, all) = slice;
+      } catch (...) {
+        warn("ReadVolume", "Slice " + toString(slpr.second) + " artificially filled with 0s.");
+        storage(slpr.second, all, all) = 0;
+      }
       bar.update();
     }
 
@@ -3115,7 +3170,10 @@ SaveImageFP (const Path & filename, const Map & storage){
   TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
   TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
+  
+  pthread_mutex_lock(&mut); // without it many fails.
   Map _storage(safe(storage));
+  pthread_mutex_unlock(&mut);
   int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*4);
   TIFFClose(image);
   if (fd) close(fd);

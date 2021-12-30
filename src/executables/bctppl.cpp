@@ -424,8 +424,8 @@ private:
   Crop crops(const PointF2D & _shift, float _cent, bool org) {
     const float Ms = max(0.0f, _shift.x);
     const float ms = -min(0.0f, _shift.x);
-    const float M2c = 2*max(0.0f, _cent);
-    const float m2c = -2*min(0.0f, _cent);
+    const float M2c = max(0.0f, 2*_cent-_shift.x);
+    const float m2c = -min(0.0f, 2*_cent-_shift.x);
     const float My = max(0.0f, shift.y);
     const float my = -min(0.0f, shift.y);
     if (org)
@@ -453,7 +453,7 @@ public:
     , crop0(crops(_shift, _cent, true))
     , crop1(crops(_shift, _cent, false))
     , ish(faceShape(ims0.shape()))
-    , osh( ish(0) - abs(_shift.y), ish(1) - abs(_shift.x) - 2*abs(_cent) )
+    , osh( ish(0) - abs(_shift.y), ish(1) - 2*abs(_shift.x) - 2*abs(_cent) )
     , step( arc / (ims0.shape()(0)-1) )
     , oz(1+(int)(180/step))
     , nshift((int)(_ashift/step))
@@ -691,12 +691,19 @@ int main(int argc, char *argv[]) {
                              args.shift, args.ashift, args.center, args.radFill, args.beverbose);
   crop(frames, args.cropF);
   const int oz = frames.shape()(0);
-  const Shape fsh = faceShape(frames.shape());
-
-  SaveImage("fill.tif", frames(0,all,all), true);
+  const Shape fsh = faceShape(frames.shape());  
 
   ims0.free();
   ims1.free();
+
+  const float
+    mincon  =  args.SaveInt  ?  min(frames) : 0,
+    maxcon  =  args.SaveInt  ?  max(frames) : 0;
+  if (args.SaveInt)
+    SaveVolume(args.outmask, frames, args.beverbose, mincon, maxcon);
+  else
+    SaveVolume(args.outmask, frames, args.beverbose);
+
 
   exit(0);
 
@@ -721,22 +728,6 @@ int main(int argc, char *argv[]) {
 
 
   // Output
-
-  const float mincon = args.SaveInt ? min(frames) : 0;
-  const float maxcon = args.SaveInt ? max(frames) : 0;
-  const string sliceformat = mask2format(args.outmask, oz);
-  Map cur(faceShape(frames.shape()));
-  ProgressBar bar(args.beverbose, "Saving slices", oz );
-
-  for (unsigned slice=0 ; slice < oz ; slice++ ) {
-    const Path fileName =  oz == 1  ?  args.outmask : Path(toString(sliceformat, slice));
-    cur = frames(slice, all, all);
-    if (args.SaveInt)
-      SaveImage(fileName, cur, mincon, maxcon);
-    else
-      SaveImage(fileName, cur);
-    bar.update();
-  }
 
   exit(0);
 

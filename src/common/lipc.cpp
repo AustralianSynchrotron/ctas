@@ -93,7 +93,9 @@ static int closest_factorable(int n, const vector<int> & primes) {
 
 
 IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
-  sh(_sh)
+  sh(_sh),
+  clmid(0),
+  clfftTmpBuff(0)
 {
 
   if (sh(0) < 3 || sh(1) < 3)
@@ -127,12 +129,16 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
   setArg(kernelApply00, 0, clmid);
 
   cl_int err;
+  size_t clfftTmpBufSize = 0;
   clfftSetupData fftSetup;
   if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
        CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
        CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, msh)) ||
-       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) )
+       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) ||
+       CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
     throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
+  if (clfftTmpBufSize)
+    clfftTmpBuff = clAllocArray<float>(clfftTmpBufSize);
 
 
   #else // OPENCL_FOUND
@@ -171,7 +177,10 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
 
 IPCprocess::~IPCprocess() {
     #ifdef OPENCL_FOUND
-    clReleaseMemObject(clmid);
+    if (clmid)
+      clReleaseMemObject(clmid);
+    if (clfftTmpBuff)
+      clReleaseMemObject(clfftTmpBuff);
     clfftDestroyPlan(&clfft_plan);
     clfftTeardown( );
     #else // OPENCL_FOUND
@@ -184,7 +193,7 @@ IPCprocess::~IPCprocess() {
 #ifdef OPENCL_FOUND
 cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   cl_int err;
-  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid, NULL, NULL);
+  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid, NULL, clfftTmpBuff);
   if ( CL_SUCCESS != err )
     throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");
   err = clFinish(CL_queue);
@@ -204,7 +213,7 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   if ( sh != out.shape() )
     out.resize(sh);
 
-  mid = 1.0;
+  mid = 0.0;
   mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
 
   #ifdef OPENCL_FOUND
@@ -232,7 +241,8 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   //const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1))
   //                  + mean(out(0, all)) + mean(out(sh(0)-1, all));
   //out -= bmean/4.0;
-  out *= param;
+  if (param != 1.0)
+    out *= param;
   if (comp == ABS)   out = in / (1 - out);
   else if (param<0)  out = exp(out) ;
 }

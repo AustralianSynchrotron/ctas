@@ -136,6 +136,7 @@ private:
   cl_kernel kernelApplyPhsFilter;
   cl_kernel kernelApply00;
   clfftPlanHandle clfft_plan;
+  cl_mem clfftTmpBuff;
   cl_int clfftExec(clfftDirection dir) const;
 
   #else // OPENCL_FOUND

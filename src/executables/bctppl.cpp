@@ -516,6 +516,7 @@ private:
 
     Map io(frames(idx,all,all));
     myProc.extract(io, IPCprocess::PHS);
+    bar.update();
     return true;
 
   }
@@ -713,6 +714,10 @@ int main(int argc, char *argv[]) {
   // Phase
   const float ind2b = M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd );
   PhaseInThread::execute(frames, ind2b, args.beverbose);
+  float coeff = args.dd * args.dd / (M_PI * args.lambda * args.dist);
+  if (args.d2b != 0.0 )
+    coeff /= args.d2b;
+  frames *= coeff;
 
 
   // CT

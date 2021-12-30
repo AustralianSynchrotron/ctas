@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
     //float coeff = args.dd * args.dd / (M_PI * args.dist * args.lambda);
     if ( args.phs_norm != 0.0  &&  args.d2b != 0.0 )
       coeff *= 4 * M_PI * args.phs_norm / (args.lambda * args.d2b);
-    proc.extract(id, out, IPCprocess::PHS, coeff );
+    proc.extract(id, out, IPCprocess::PHS, coeff);
     SaveImage(args.phs_name, out, args.SaveInt);
   }
   if( ! args.abs_name.empty() ) { // BAC

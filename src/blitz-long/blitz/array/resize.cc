@@ -1039,11 +1039,13 @@ void Array<T_numtype, N_rank>::resize(
 {
 // NEEDS_WORK -- don't resize if unnecessary
 //    BZPRECONDITION(all(extent > 0));
-//    if (any(extent != length_))
-//    {
-        length_ = extent;
-        setupStorage(N_rank);
-//    }
+    bool eq=true;
+    for (int nrnk=0 ; nrnk<N_rank ; nrnk++ )
+	eq = eq && ( extent(nrnk) == length_(nrnk) );
+    if (eq)
+	return;
+    length_ = extent;
+    setupStorage(N_rank);
 }
 
 /* Added by Julian Cummings */
@@ -1054,19 +1056,23 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 // NEEDS_WORK -- don't resize if unnecessary
 //    BZPRECONDITION(all(extent > 0));
 //    if (any(extent != length_))
-//    {
-        T_array B(base(), extent, storage_);
+    bool eq=true;
+    for (int nrnk=0 ; nrnk<N_rank ; nrnk++ )                   
+        eq = eq && ( extent(nrnk) == length_(nrnk) );
+    if (eq)   
+        return;
 
-        if (numElements())
-        {
-          TinyVector<MyIndexType,N_rank> ub;
-          for (int d=0; d < N_rank; ++d)
-            ub(d) = (minmax::min)(B.ubound(d),ubound(d));
-          RectDomain<N_rank> overlap(lbound(),ub);
-          B(overlap) = (*this)(overlap);
-        }
-        reference(B);
-//    }
+    T_array B(base(), extent, storage_);
+
+    if (numElements())
+    {
+      TinyVector<MyIndexType,N_rank> ub;
+      for (int d=0; d < N_rank; ++d)
+        ub(d) = (minmax::min)(B.ubound(d),ubound(d));
+      RectDomain<N_rank> overlap(lbound(),ub);
+      B(overlap) = (*this)(overlap);
+    }
+    reference(B);
 }
 
 BZ_NAMESPACE_END

@@ -35,9 +35,6 @@
 
 using namespace std;
 
-const string DimSliceOptionDesc = "[slice dimension][slice(s)]]"
-" with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"
-" and [slice(s)]. " + SliceOptionDesc;
 
 
 /// \CLARGS
@@ -70,7 +67,7 @@ clargs(int argc, char *argv[])
   poptmx::OptionTable table
     ("Reslices 3D volume.",
      "Reads 3D volume from input file(s) and, after applying manipulations saves"
-     " the result as the HDF volume or set of 2D images as requested by the ouptut format.");
+     " the result as the HDF volume or set of 2D images as requested by the output format.");
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
@@ -121,14 +118,14 @@ int main(int argc, char *argv[]) {
   binn(ivol,args.bnn);
 
   const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
-  const float
-    mincon  =  ( fisok(args.mincon)  ||  ! toInt )  ?  args.mincon  :  min(ivol),
-    maxcon  =  ( fisok(args.maxcon)  ||  ! toInt )  ?  args.maxcon  :  max(ivol);
-
-  if (toInt)
+  if (toInt) {
+    const float
+      mincon  =  fisok(args.mincon) ?  args.mincon  :  min(ivol),
+      maxcon  =  fisok(args.maxcon) ?  args.maxcon  :  max(ivol);
     SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc, mincon, maxcon);
-  else
+  } else {
     SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc);
+  }
 
   exit(0);
 

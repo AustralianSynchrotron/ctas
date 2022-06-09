@@ -5,6 +5,7 @@
 #include <H5Cpp.h>
 #include <unordered_map>
 #include <unistd.h>
+#include <fstream>
 #include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
 
 
@@ -133,8 +134,20 @@ struct HDFdesc {
 
   bool isValid() const { return name.length() ; }
 
+  static bool isValid(const string & filedesc) { return HDFdesc(filedesc).isValid(); }
+
+  static bool isValidHDF(const string & filedesc) {
+    HDFdesc hdf(filedesc);
+    return hdf.isValid() && H5::H5File::isHdf5(hdf.name);
+  }
 
 };
+
+
+bool isHDFdesc(const std::string& filedesc) {
+  return HDFdesc::isValidHDF(filedesc);
+}
+
 
 
 
@@ -200,7 +213,7 @@ public :
         shape = Shape(shape(1),shape(0));
 
     } catch( ... ) {
-      exit_on_error(modmname, "Error getting info from " + filedesc);
+      throw_error(modmname, "Error getting info from " + filedesc);
     }
 
   }
@@ -243,7 +256,21 @@ public :
 
   }
 
+  Shape3 sizeToRead() {
+    return Shape3(indices.size(), shape(1), shape(0));
+  }
+
 };
+
+
+Shape3 volumeShape(const string & filedesc) {
+  try {
+    HDFread hdf(filedesc);
+    return hdf.sizeToRead();
+  } catch (...) {
+    return Shape3();
+  }
+}
 
 
 
@@ -291,17 +318,24 @@ public :
 
     try {
 
-     hdfFile = H5::H5File(name, H5F_ACC_TRUNC);
-     float fillvalue = 0.0;   /* Fill value for the dataset */
-     H5::DSetCreatPropList plist;
-     plist.setFillValue(H5::PredType::NATIVE_FLOAT, &fillvalue);
-     dataspace = H5::DataSpace(3, cnts.data());
-     dataset = H5::DataSet(hdfFile.createDataSet(data, H5::PredType::NATIVE_FLOAT, dataspace, plist) );
+      hdfFile = H5::H5File(name, H5F_ACC_TRUNC);
+      size_t poss = 0, pose;
+      while ( (pose=data.find("/",poss)) != string::npos) {
+        string elm = data.substr(poss, pose);
+        if (elm.size())
+          hdfFile.createGroup(data.substr(0,pose));
+        poss = pose + 1;
+      }
+      float fillvalue = 0.0;   /* Fill value for the dataset */
+      H5::DSetCreatPropList plist;
+      plist.setFillValue(H5::PredType::NATIVE_FLOAT, &fillvalue);
+      dataspace = H5::DataSpace(3, cnts.data());
+      dataset = H5::DataSet(hdfFile.createDataSet(data, H5::PredType::NATIVE_FLOAT, dataspace, plist));
 
-     hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))};
-     hsize_t moffs[2] = {0, 0};
-     memspace.setExtentSimple( 2, mcnts );
-     memspace.selectHyperslab( H5S_SELECT_SET, mcnts, moffs);
+      hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))};
+      hsize_t moffs[2] = {0, 0};
+      memspace.setExtentSimple( 2, mcnts );
+      memspace.selectHyperslab( H5S_SELECT_SET, mcnts, moffs);
 
     } catch( ... ) {
       throw_error(modmname, "Error creating HDF file for " + id());
@@ -894,16 +928,30 @@ class ReadVolInThread : public InThread {
 
   vector< pair<Path,int> > slicelist;
   Volume & storage;
+  const float ang;
+  const Crop crp;
+  const Binn bnn;
+  Shape ish;
+  Shape rsh;
+  Shape csh;
+  Shape bsh;
   Shape sh;
   pthread_mutex_t proglock;
   unordered_map<string,HDFread> hdfs;
-  unordered_map<pthread_t,Map> slices;
+  unordered_map<pthread_t,Map> islices;
+  unordered_map<pthread_t,Map> rslices;
+  unordered_map<pthread_t,Map> cslices;
+  unordered_map<pthread_t,Map> bslices;
 
 public:
 
-  ReadVolInThread(const std::vector<Path> & filelist, Volume & _storage, bool verbose=false)
-    : storage(_storage)
-    , InThread(verbose , "reading volume")
+  ReadVolInThread(const std::vector<Path> & filelist, Volume & _storage,
+                  float _angle, Crop _crop, Binn _binn, bool verbose=false)
+    : InThread(verbose , "reading volume")
+    , storage(_storage)
+    , ang(_angle)
+    , crp(_crop)
+    , bnn(_binn)
   {
 
     if ( ! filelist.size() ) {
@@ -912,7 +960,11 @@ public:
     }
 
     size_t curSz=0;
-    sh = ImageSizes(filelist[0]);
+    ish = ImageSizes(filelist[0]);
+    rsh = shapeOnRotate(ish, ang);
+    csh = Shape(rsh(0)-crp.top-crp.bottom, rsh(1)-crp.left-crp.right);
+    bsh = shapeOnBinn(csh, bnn);
+    sh = bsh;
     for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       try {
         hdfs.insert({*curI,HDFread(*curI)});
@@ -939,10 +991,41 @@ public:
 
     pthread_t me = pthread_self();
     lock();
-    if ( ! slices.count(me) )
-      slices.insert({me,Map(sh)});
-    Map slice = slices.at(me);
+    if ( ! islices.count(me) ) {
+      islices.insert({me,Map(ish)});
+      rslices.insert({me,Map()});
+      if (ang==0)
+        rslices.at(me).reference(islices.at(me));
+      else
+        rslices.at(me).resize(rsh);
+      cslices.insert({me,Map()});
+      if (rsh==csh)
+        cslices.at(me).reference(rslices.at(me));
+      else
+        cslices.at(me).resize(csh);
+      bslices.insert({me,Map()});
+      if (csh==bsh)
+        bslices.at(me).reference(cslices.at(me));
+      else
+        bslices.at(me).resize(bsh);
+      //rslices.insert({me, ang == 0   ? islices.at(me) : Map(rsh)});
+      //cslices.insert({me, rsh == csh ? rslices.at(me) : Map(csh)});
+      //bslices.insert({me, csh == bsh ? cslices.at(me) : Map(bsh)});
+    }
+    Map islice = islices.at(me);
+    Map rslice = rslices.at(me);
+    Map cslice = cslices.at(me);
+    Map bslice = bslices.at(me);
     unlock();
+
+    #define sliceTraining() { \
+      if (ang!=0) \
+        rotate(islice, rslice, ang, 0.0); \
+      if (rsh != csh) \
+        crop(rslice, cslice, crp); \
+      if (csh != bsh) \
+        binn(cslice, bslice, bnn); \
+    }
 
     const pair<Path,int> & slpr = slicelist.at(idx);
     if (hdfs.count(slpr.first)) {
@@ -950,22 +1033,26 @@ public:
       if ( hdf.shape != sh )
         throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
       for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
-        hdf.read(idxV, slice);
-        storage(slpr.second+idxV, all, all) = slice;
+        hdf.read(idxV, islice);
+        sliceTraining();
+        storage(slpr.second+idxV, all, all) = bslice;
         bar.update();
       }
     } else {
       try {
         //lock();
-        ReadImage(slpr.first, slice, sh);
+        ReadImage(slpr.first, islice, sh);
         //unlock();
-        storage(slpr.second, all, all) = slice;
+        sliceTraining();
+        storage(slpr.second, all, all) = bslice;
       } catch (...) {
         warn("ReadVolume", "Slice " + toString(slpr.second) + " artificially filled with 0s.");
         storage(slpr.second, all, all) = 0;
       }
       bar.update();
     }
+
+    #undef sliceTraining
 
     return true;
 
@@ -976,8 +1063,128 @@ public:
 
 void
 ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
-  ReadVolInThread(filelist, storage, verbose).execute();
+  ReadVolInThread(filelist, storage, 0, Crop(), Binn(), verbose).execute();
 }
+
+
+
+
+
+
+
+
+struct _ReadVolBySlice  {
+
+  vector<Path> ilist;
+  unordered_map<string,HDFread> hdfs;
+  uint ssize;
+  const float ang;
+  const Crop crp;
+  const Binn3 bnn;
+
+  _ReadVolBySlice(float _angle, Crop _crop, Binn3 _binn)
+    : ilist()
+    , ssize(0)
+    , ang(_angle)
+    , crp(Crop())
+    , bnn(Binn3())
+  {}
+
+  _ReadVolBySlice(const std::vector<Path> & filelist, float _angle, Crop _crop, Binn3 _binn)
+    : ilist()
+    , ssize(0)
+    , ang(_angle)
+    , crp(_crop)
+    , bnn(_binn)
+  {
+    add(filelist);
+  }
+
+
+  void add(const Path & fileind) {
+      ilist.push_back(fileind);
+      try {
+        hdfs.insert({fileind,HDFread(fileind)});
+        ssize += hdfs.at(fileind).indices.size();
+      } catch (...) {
+        ssize++;
+      }
+  }
+
+
+  void add(const std::vector<Path> & filelist) {
+    for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+      add(*curI);
+  }
+
+
+  bool read (long int idx, Map & out) {
+    int cfirst=0;
+    for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
+      const Path flnm = ilist[cfl];
+      if (hdfs.count(flnm)) {
+        HDFread & hdf = hdfs.at(flnm);
+        if (idx < cfirst + hdf.indices.size()) {
+          hdf.read(idx-cfirst, out);
+          return true;
+        }
+        cfirst += hdf.indices.size();
+      } else {
+        if (idx==cfirst){
+          ReadImage(flnm, out);
+          return true;
+        }
+        cfirst++;
+      }
+    }
+    return false;
+  }
+
+};
+
+
+ReadVolumeBySlice::ReadVolumeBySlice(const vector<Path> & filelist)
+  : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn3()))
+{}
+
+ReadVolumeBySlice::ReadVolumeBySlice(const Path & file)
+  : guts(new _ReadVolBySlice(vector<Path>(1, file), 0, Crop(), Binn3()))
+{}
+
+void ReadVolumeBySlice::add(const Path & fileind) {
+  ((_ReadVolBySlice*) guts)->add(fileind);
+}
+
+
+void ReadVolumeBySlice::add(const std::vector<Path> & filelist) {
+  ((_ReadVolBySlice*) guts)->add(filelist);
+}
+
+
+
+ReadVolumeBySlice::~ReadVolumeBySlice() {
+  delete (_ReadVolBySlice*) guts;
+}
+
+void ReadVolumeBySlice::read(uint sl, Map& trg) {
+  ((_ReadVolBySlice*) guts)->read(sl, trg);
+}
+
+uint ReadVolumeBySlice::slices() const {
+  return ((_ReadVolBySlice*) guts)->ssize;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1054,6 +1261,9 @@ public:
         SaveImage(fileName, storage, mincon, maxcon);
     }
   }
+
+
+  size_t size() const {return zsize;}
 
 
 };
@@ -1144,6 +1354,25 @@ public:
 void SaveVolume(const Path & filedesc, Volume & storage, bool verbose,
                 const string & slicedesc, float mmin, float mmax) {
   SaveVolInThread::execute(filedesc, storage, verbose, slicedesc, mmin, mmax);
+}
+
+
+
+SaveVolumeBySlice::SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize,
+                                     float mmin, float mmax)
+  : guts(new StackWriter(filedesc, _sh, _zsize, mmin, mmax))
+{}
+
+SaveVolumeBySlice::~SaveVolumeBySlice() {
+  delete (StackWriter*) guts;
+}
+
+void SaveVolumeBySlice::save(uint sl, const Map& trg) {
+  ((StackWriter*) guts)->put(sl, trg);
+}
+
+size_t SaveVolumeBySlice::slices() const {
+  return ((StackWriter*) guts)->size();
 }
 
 
@@ -1410,7 +1639,7 @@ LoadData ( const Path filename, ... ) {
     storage.push_back( curstor );
   va_end(ap);
 
-  int nof_args = storage.size();
+  const int nof_args = storage.size();
   if ( ! nof_args ) {
     warn("read data", "No arrays provided for input. Nothing to do." );
     return;
@@ -1449,5 +1678,38 @@ LoadData ( const Path filename, ... ) {
 }
 
 
+
+
+void
+LoadData ( const Path filename, Map & storage ) {
+
+  ifstream infile(filename);
+  string line;
+  vector< vector<float> > data_read;
+  while (getline(infile, line)) {
+    line = line.substr(0, line.find('#'));
+    istringstream iss(line);
+    vector<float> nums;
+    while (! iss.eof()) {
+      string wrd;
+      iss >> wrd;
+      float num;
+      if (stringstream(wrd) >> num)
+        nums.push_back(num);
+    }
+    if ( data_read.size()  &&  nums.size()  &&  data_read[0].size() != nums.size() )
+      throw_error("read data", "Line "+toString(data_read.size()+1)+" of data file \"" + filename + "\" "
+                             + " contains number of elements different from the first striong.");
+    if (nums.size())
+      data_read.push_back(nums);
+  }
+
+  const Shape data_shape(data_read.size(), data_read.size() ? data_read[0].size() : 0);
+  storage.resize(data_shape);
+  for ( ArrIndex y=0 ; y < data_shape(0) ; y++)
+    for ( ArrIndex x=0 ; x < data_shape(1) ; x++)
+      storage(y,x) = data_read[y][x];
+
+}
 
 

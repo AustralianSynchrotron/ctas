@@ -248,6 +248,7 @@ public:
   std::string dtitle () const;	///< Extracts title with the preceding full path.
   std::string extension () const; ///< Extracts the extension.
   std::string name () const;	///< Extracts file name.
+  std::vector<std::string> elements () const;
 
   bool isdir() const;			///< Tells if the path definitely represents a directory.
   bool isabsolute() const;		///< Tells if the path is absolute.
@@ -702,6 +703,29 @@ void COMMON_API
 crop(Volume & io_arr, const Crop3 & crp);
 
 
+/// \brief Crop3 the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param crop Crop3 resulting image
+///
+inline void COMMON_API
+crop(const Volume & inarr, Volume & outarr, const Crop & crp) {
+  Crop3 crp3(crp);
+  crop(inarr, outarr, crp3);
+}
+
+/// \brief Crop3 the array.
+///
+/// @param io_arr Input/output array.
+/// @param crop Crop3 resulting image
+///
+inline void COMMON_API
+crop(Volume & io_arr, const Crop & crp) {
+  Crop3 crp3(crp);
+  crop(io_arr, crp3);
+}
+
 
 
 
@@ -834,6 +858,10 @@ _conversion (Binn* _val, const std::string & in);
 extern const std::string COMMON_API
 BinnOptionDesc;
 
+
+Shape COMMON_API
+shapeOnBinn(const Shape & sh, const Binn & ibnn);
+
 /// \brief Apply binning to the array.
 ///
 /// @param inarr Input array.
@@ -855,7 +883,7 @@ binn(Map & io_arr, const Binn & bnn);
 
 
 
-
+Shape shapeOnRotate(const Shape & sh, float angle);
 
 /// \brief Rotate the array.
 ///
@@ -1003,6 +1031,9 @@ unzero(const blitz::Array<float,N> & arr){
 
 
 extern const std::string SliceOptionDesc;
+
+extern const std::string DimSliceOptionDesc;
+
 
 /// \brief Constructs the array of slices.
 ///

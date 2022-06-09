@@ -157,8 +157,12 @@ cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flag
   blitz::Array<T,N> _storage(safe(storage));
   cl_int err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(),
                                       _storage.data(), 0, 0, 0);
-  if (err != CL_SUCCESS)
+  if (err != CL_SUCCESS) {
+  //  prdn(_storage.size());
+  //  std::cout << _storage.data() << "\n";
+  //  prdn(clStorage);
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
+  }
   return clStorage;
 }
 

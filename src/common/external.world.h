@@ -1,11 +1,19 @@
-#include "common.h"
-
 #ifndef EXTARNAL_WORLD_H
 #define EXTARNAL_WORLD_H
+
+#include "common.h"
+#include <unordered_map>
+
 
 
 Path COMMON_API
 imageFile(const std::string & filedesc);
+
+bool COMMON_API
+isHDFdesc(const std::string & filedesc);
+
+Shape3 COMMON_API
+hdfShape(const std::string & filedesc);
 
 
 /// \defgroup IO Image and data file handling.
@@ -161,6 +169,31 @@ ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
 }
 
 
+class ReadVolumeBySlice {
+private:
+  void * guts;
+public:
+  ReadVolumeBySlice(const std::vector<Path> & filelist = std::vector<Path>() );
+  ReadVolumeBySlice(const Path & file);
+  ~ReadVolumeBySlice();
+  void add(const std::vector<Path> & filelist);
+  void add(const Path & fileind);
+  void read(uint sl, Map & trg);
+  uint slices() const;
+};
+
+
+class SaveVolumeBySlice {
+private:
+  void * guts;
+public:
+  SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
+  ~SaveVolumeBySlice();
+  void save(uint sl, const Map & trg);
+  size_t slices() const;
+};
+
+
 
 /// \brief Save the array into image.
 ///
@@ -266,6 +299,10 @@ SaveVolume(const Path & filedesc, Volume & storage,
 // not work on Windows
 void COMMON_API
 LoadData(const Path filename, ... );
+
+void COMMON_API
+LoadData ( const Path filename, Map & storage );
+
 
 
 /// \brief Save any amount of lines into data file.

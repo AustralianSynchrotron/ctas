@@ -226,6 +226,25 @@ Path::extension () const {
 }
 
 
+vector<string>
+Path::elements( ) const {
+#ifdef _WIN32
+#else
+  vector<string> toRet;
+  size_t poss = 0;
+  while ( poss != string::npos) {
+    size_t pose = this->find("/",poss);
+    string elm = this->substr(poss, pose);
+    if (elm.size())
+      toRet.push_back(elm);
+    poss = pose == string::npos ? pose : pose + 1;
+  }
+  return toRet;
+#endif
+
+}
+
+
 
 bool
 Path::isdir() const {
@@ -450,8 +469,8 @@ crop(const Volume & inarr, Volume & outarr, const Crop3 & crp) {
                  inarr.shape()(1) - crp.top  - crp.bottom,
                  inarr.shape()(2) - crp.left - crp.right);
   outarr = inarr( blitz::Range(crp.face, inarr.shape()(0)-1-crp.back),
-                  blitz::Range(crp.top,  inarr.shape()(0)-1-crp.bottom ),
-                  blitz::Range(crp.left, inarr.shape()(1)-1-crp.right ) );
+                  blitz::Range(crp.top,  inarr.shape()(1)-1-crp.bottom ),
+                  blitz::Range(crp.left, inarr.shape()(2)-1-crp.right ) );
 
 }
 
@@ -468,11 +487,10 @@ crop(Volume & io_arr, const Crop3 & crp) {
     io_arr.free();
     return;
   }
-
-  io_arr.reference( io_arr( blitz::Range(crp.face, io_arr.shape()(0)-1-crp.back),
-                            blitz::Range(crp.top,  io_arr.shape()(0)-1-crp.bottom ),
-                            blitz::Range(crp.left, io_arr.shape()(1)-1-crp.right ) ) );
-
+  Volume oarr = io_arr( blitz::Range(crp.face, io_arr.shape()(0)-1-crp.back),
+                        blitz::Range(crp.top,  io_arr.shape()(1)-1-crp.bottom ),
+                        blitz::Range(crp.left, io_arr.shape()(2)-1-crp.right ) );
+  io_arr.reference(oarr);
 }
 
 
@@ -544,8 +562,6 @@ crop(Map & io_arr, const Crop & crp) {
   io_arr.reference( io_arr( blitz::Range(crp.top,  io_arr.shape()(0)-1-crp.bottom ),
                             blitz::Range(crp.left, io_arr.shape()(1)-1-crp.right ) ) );
 }
-
-
 
 
 
@@ -753,6 +769,11 @@ _conversion (Binn* _val, const string & in) {
 }
 
 
+
+Shape shapeOnBinn(const Shape & sh, const Binn & ibnn) {
+  return Shape(ibnn.y ? sh(0)/ibnn.y : 1, ibnn.x ? sh(1)/ibnn.x : 1);
+}
+
 void
 binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
 
@@ -762,7 +783,7 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
   }
   Binn bnn( ibnn.x ? ibnn.x : inarr.shape()(1) ,
             ibnn.y ? ibnn.y : inarr.shape()(0) );
-  outarr.resize(inarr.shape()(0) / bnn.y, inarr.shape()(1) / bnn.x);
+  outarr.resize(shapeOnBinn(inarr.shape(),ibnn));
 
 #ifdef OPENCL_FOUND
 
@@ -805,29 +826,39 @@ binn(Map & io_arr, const Binn & bnn) {
 
 
 
+Shape shapeOnRotate(const Shape & sh, float angle) {
+  if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) // close to a 90-deg step
+    if ( ! ( ((int) round(2*angle/M_PI)) % 2 ) )
+      return sh;
+    else
+      return Shape(sh(1),sh(0));
+  const float cosa = cos(-angle), sina = sin(-angle);
+  const int
+    rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
+    rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
+  return Shape(rheight, rwidth);
+}
+
+
 void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
 
   const Shape sh = inarr.shape();
+  const Shape osh = shapeOnRotate(sh, angle);
 
   if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
-
     const int nof90 = round(2*angle/M_PI);
-
     if ( ! (nof90%4)  ) { // 360deg
       outarr.reference(inarr);
-    } else if ( ! (nof90%2) ) { //180deg
-      outarr.resize(sh);
-      outarr=inarr.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
-    } else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) ) { // 270deg
-      outarr.resize(sh(1),sh(0));
-      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);
-    } else { // 90deg
-      outarr.resize(sh(1),sh(0));
-      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);
+      return;
     }
-
+    outarr.resize(osh);
+    if ( ! (nof90%2) ) //180deg
+      outarr=inarr.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
+    else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) )  // 270deg
+      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);
+    else // 90deg
+      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);
     return;
-
   }
 
   const float cosa = cos(-angle), sina = sin(-angle);
@@ -1133,6 +1164,12 @@ const string SliceOptionDesc=
   " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
 
 
+const string DimSliceOptionDesc = "[slice dimension][slice(s)]]"
+" with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"
+" and [slice(s)]. " + SliceOptionDesc;
+
+
+
 /// \brief Adds or removes the element into the array.
 ///
 /// Adds or removes the element numb to/from the array depending on negation.
@@ -1304,6 +1341,62 @@ slice_str2vec(const string & sliceS, int hight){
 
 }
 
+
+
+Path findCommon(const vector<Path>::const_iterator _bgn, const vector<Path>::const_iterator _end) {
+
+  vector<Path> touse;
+  for (vector<Path>::const_iterator crnt=_bgn ; crnt<_end ; crnt++)
+    touse.push_back(imageFile(*crnt));
+  const vector<Path>::const_iterator bgn = touse.begin(),
+                                     end = touse.end();
+  int len = bgn->length();
+  if ( bgn>=end  ||  ! len )
+    return *bgn;
+
+  for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
+    if ( len != crnt->length() )
+      len = 0;
+
+  if (len) {
+    string ret;
+    for ( int idxc = 0 ; idxc < len ; idxc++ ) {
+      char cchar = bgn->at(idxc);
+      for (vector<Path>::const_iterator crnt=bgn+1 ; crnt<end ; crnt++)
+        if ( cchar != crnt->at(idxc) )
+          cchar=0;
+      if (cchar)
+        ret += cchar;
+    }
+    return ret;
+  }
+
+  bool keepGoing=true;
+  int idxp=0;
+  while ( keepGoing  &&  idxp < bgn->length() ) {
+    char cchar = bgn->at(idxp);
+    for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
+      keepGoing &= idxp < crnt->length()  &&  crnt->at(idxp) == cchar;
+    if (keepGoing)
+      idxp++;
+  }
+  const string prefix(*bgn, 0, idxp);
+
+  keepGoing=true;
+  int idxs=0;
+  while ( keepGoing  &&  idxs < bgn->length() ) {
+    char cchar = bgn->at( bgn->length() - 1 - idxs );
+    for (vector<Path>::const_iterator crnt=bgn ; crnt<end ; crnt++)
+      keepGoing &= idxs < crnt->length()  &&  crnt->length() - idxs > idxp  &&  crnt->at( crnt->length() - 1 - idxs ) == cchar;
+    if (keepGoing)
+      idxs++;
+  }
+  const string suffix(*bgn, bgn->length() - idxs, idxs);
+
+  return prefix+suffix;
+
+
+}
 
 
 

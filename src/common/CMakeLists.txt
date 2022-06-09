@@ -130,3 +130,5 @@ install(TARGETS
 
 FILE(GLOB_RECURSE Headers "*.h")
 add_custom_target(.headers SOURCES ${Headers})
+FILE(GLOB_RECURSE Sources "*.cpp")
+add_custom_target(.sources SOURCES ${Sources})

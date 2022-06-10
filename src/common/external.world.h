@@ -190,6 +190,7 @@ public:
   SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
   ~SaveVolumeBySlice();
   void save(uint sl, const Map & trg);
+  const Path savePath() const;
   size_t slices() const;
 };
 

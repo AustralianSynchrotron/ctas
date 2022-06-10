@@ -79,26 +79,25 @@ struct clargs {
   vector<Path> gfs;        ///< Array of the dark field images for backgrounds.
   Path out_name;              ///< Name of the output image.
   StitchRules st;
-  string interim_name;          ///< Prefix to save interim results
+  int testMe;          ///< Prefix to save interim results
   string sliceMatch;           ///< text file with list of matching slices
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
+  poptmx::OptionTable table;
 };
 
 
 clargs::
 clargs(int argc, char *argv[])
-  : beverbose(false)
+  : table("Combines multiple images to form the projection.",
+          "Transforms and stitches portions of the projection from the complex CT experiment"
+          " which may include 2D tiling and 180-deg flip."
+          " Transformations are applied in the following order: rotate, crop, binning." )
+  , testMe(-1)
+  , beverbose(false)
 {
 
-
-  poptmx::OptionTable table
-    ("Combines multiple images to form the projection.",
-
-    "Transforms and stitches portions of the projection from the complex CT experiment"
-    " which may include 2D tiling and 180-deg flip."
-    " Transformations are applied in the following order: rotate, crop, binning." );
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
@@ -122,15 +121,18 @@ clargs(int argc, char *argv[])
       "If used, makes second half of the input images to be assigned to the flipped portion."
       " Requires even number of input images.")
     .add(poptmx::OPTION, &st.splits, 's', "split", "Split point(s)",
-         "Final image can be split into sub-images to put different portions of it apart as independent files, for example to separate samples."
-         " By default splitting happens horizontally, but if the vertical split is needed, just add a 0 split point.")
+         "Final image can be split into sub-images to put different portions of it apart as independent"
+         " files, for example to separate samples. By default splitting happens horizontally,"
+         " but if the vertical split is needed, just add a 0 split point.")
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
     .add(poptmx::OPTION, &gfs, 'F', "gf", "Dark field image(s) for backgrounds", "")
     .add(poptmx::OPTION, &sliceMatch, 0, "match", "File with slice match list",
          "In the case of 3D i/o this file must contain lines with the integers,"
          " each representing the slice in the corresponding input volume to be used for the projection.")
-    .add(poptmx::OPTION, &interim_name, 't', "test", "Prefix to output interim images.", "")
+    .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
+         "Uses output name with suffixes to store results. In case of multiple projections provides"
+         " slice index to test; ignored for single image mode.")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -147,14 +149,14 @@ clargs(int argc, char *argv[])
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
 
-
   st.origin1Used=table.count(&st.origin1);
   st.origin2Used=table.count(&st.origin2);
   st.flipUsed=table.count(&st.originF);
 
-  if ( ! table.count(&out_name)  &&  ! table.count(&interim_name) )
-    exit_on_error(command, string () +
-      "Neither " + table.desc(&out_name) + " nor " + table.desc(&interim_name) + " option given.");
+  if ( ! table.count(&out_name) )
+    exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
+  if (table.count(&testMe) && testMe<0)
+    exit_on_error(command, "Negative test projection given with " + table.desc(&testMe) + " option.");
 
   if ( table.count(&st.originF) ) {
     if ( tiledImages % 2 )
@@ -169,10 +171,10 @@ clargs(int argc, char *argv[])
   if ( table.count(&st.origin2) > table.count(&st.origin2size) )
     exit_on_error(command, string () +
       "Options " + table.desc(&st.origin2) + " requires also " + table.desc(&st.origin2size) + " option.");
-  if ( table.count(&st.origin2size) && ! table.count(&st.origin2) && ! table.count(&interim_name) )
+  if ( table.count(&st.origin2size) && ! table.count(&st.origin2) && ! table.count(&testMe) )
     exit_on_error(command, string () +
       "Options " + table.desc(&st.origin2size) + " must be used with either "
-      + table.desc(&st.origin2) + " or " + table.desc(&interim_name) + " options.");
+      + table.desc(&st.origin2) + " or " + table.desc(&testMe) + " options.");
   if ( table.count(&st.origin2size)  &&  st.origin2size  < 2 )
     exit_on_error(command, string () +
       "Requested second stitch size (" + toString(st.origin2size) + ") is less than 2.");
@@ -314,7 +316,7 @@ public:
   }
 
 
-  bool process(const vector<Map> & allInR, vector<Map> & res, const string & interim_name = string()) {
+  bool process(const vector<Map> & allInR, vector<Map> & res, const Path & interim_name = Path()) {
 
     if (allInR.size() != st.nofIn)
       return false;
@@ -332,8 +334,8 @@ public:
       allIn[curproj] = final;
 
       if ( ! interim_name.empty() ) {
-        string svformat = mask2format("Sp@_", st.nofIn);
-        lastSaved = interim_name + toString(svformat, curproj) + ".tif";
+        string svformat = mask2format("_T@", st.nofIn);
+        lastSaved = interim_name.dtitle() + toString(svformat, curproj) + ".tif";
         SaveDenan(lastSaved, allIn[curproj]);
       }
     }
@@ -354,8 +356,8 @@ public:
             int crppx = abs(st.origin1.y * (supply.size()-1));
             crop(o1Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
         }
-        string svformat = mask2format("St1@_", o1Stitch.size() );
-        lastSaved = interim_name + toString(svformat, cidx) + ".tif";
+        string svformat = mask2format("_U@", o1Stitch.size() );
+        lastSaved = interim_name.dtitle() + toString(svformat, cidx) + ".tif";
         SaveDenan(lastSaved, cres);
       }
     }
@@ -376,8 +378,8 @@ public:
           int crppx = abs(st.origin2.y * (supply.size()-1));
           crop(o2Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
         }
-        string svformat = mask2format("St2@_", o2Stitch.size() );
-        lastSaved = interim_name + toString( svformat, cidx)  + ".tif";
+        string svformat = mask2format("_V@", o2Stitch.size() );
+        lastSaved = interim_name.dtitle() + toString( svformat, cidx)  + ".tif";
         SaveDenan(lastSaved, cres);
       }
     }
@@ -390,7 +392,7 @@ public:
         ReadImage(lastSaved, tmp);
         tmp.reverseSelf(blitz::secondDim);
         SaveImage(lastSaved, tmp);
-        SaveDenan( interim_name + "Sw_" , final);
+        SaveDenan(interim_name.dtitle() + "_W" , final);
       }
     } else {
       final.reference(o2Stitch[0]);
@@ -398,15 +400,15 @@ public:
 
     if ( st.fcrp != Crop() )
       crop(final, st.fcrp);
+    if ( ! interim_name.empty() )
+      SaveDenan( interim_name.dtitle() + "_X.tif", final );
 
     if ( st.splits.empty() ) {
       res.resize(1);
       res[0].resize(final.shape());
       res[0]=final;
-      if ( ! interim_name.empty() )
-        SaveDenan( interim_name + "SxF_", final );
     } else {
-      string svformat = mask2format("Sx@_", st.splits.size() );
+      const string svformat = mask2format("_Z@", st.splits.size() );
       int fLine=0, lLine=0;
       const int vsplit = st.splits.at(0) ? 0 : 1;
       const int mLine = final.shape()(vsplit);
@@ -424,7 +426,7 @@ public:
           res[curI].resize(resp.shape());
           res[curI]=resp;
           if ( ! interim_name.empty() )
-            SaveDenan( interim_name + toString(svformat, curI) , res[curI] );
+            SaveDenan( interim_name.dtitle() + toString(svformat, curI) + ".tif", res[curI] );
         }
         fLine=lLine+1;
       }
@@ -432,6 +434,12 @@ public:
 
     return true;
 
+  }
+
+  static bool process(const StitchRules & _st, const Map & _bgar, const Map & _dfar, const Map & _gfar,
+                      const vector<Map> & allInR, vector<Map> & res, const string & interim_name = string()) {
+    ProcProj proc(_st, _bgar, _dfar, _gfar);
+    return proc.process(allInR, res, interim_name);
   }
 
 
@@ -452,12 +460,12 @@ class ProjInThread : public InThread {
   unordered_map<pthread_t, vector<Map> > allInMaps;
   unordered_map<pthread_t, vector<Map> > results;
   vector<ReadVolumeBySlice> & allInRd;
-  vector<SaveVolumeBySlice> & outSave;
+  vector<SaveVolumeBySlice> & allOutSv;
 
 
   bool inThread(long int idx) {
 
-    if (idx>=outSave[0].slices())
+    if (idx >= allOutSv[0].slices())
       return false;
 
     const pthread_t me = pthread_self();
@@ -472,12 +480,13 @@ class ProjInThread : public InThread {
     vector<Map> & myRes = results.at(me);
     unlock();
 
-    for (int curI = 0  ;  curI<allInRd.size()  ;  curI++ )
-      allInRd[curI].read(idx, myAllIn[curI]);
+    for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
+      allInRd[curI].read( slMatch(idx, curI), myAllIn[curI]);
     myProc.process(myAllIn, myRes);
-    for (int curO = 0  ;  curO<outSave.size()  ;  curO++ )
-      outSave[curO].save(idx, myRes[curO]);
+    for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
+      allOutSv[curO].save(idx, myRes[curO]);
 
+    bar.update();
     return true;
 
   }
@@ -486,7 +495,7 @@ public:
 
   ProjInThread(const StitchRules & _st, const Map & _bgar, const Map & _dfar, const Map & _gfar
               , vector<ReadVolumeBySlice> & _allInRd, vector<SaveVolumeBySlice> & _outSave
-              , const blitz::Array<int,2> & _slMatch , bool verbose=false)
+              , const blitz::Array<int,2> & _slMatch, bool verbose=false)
     : InThread(verbose, "processing projections", _outSave[0].slices() )
     , st(_st)
     , bgar(_bgar)
@@ -494,8 +503,9 @@ public:
     , gfar(_gfar)
     , slMatch(_slMatch)
     , allInRd(_allInRd)
-    , outSave(_outSave)
-  {}
+    , allOutSv(_outSave)
+  {
+  }
 
 };
 
@@ -523,6 +533,13 @@ int main(int argc, char *argv[]) {
   StitchRules st = args.st;
   st.ish = ish;
 
+  Map bgar;
+  average_stack(bgar, args.bgs, ish);
+  Map dfar;
+  average_stack(dfar, args.dfs, ish);
+  Map gfar;
+  average_stack(gfar, args.gfs, ish);
+
   const int nofIn = args.images.size();
   int nofProj = -1;
   vector<ReadVolumeBySlice> allInRd(nofIn);
@@ -534,62 +551,65 @@ int main(int argc, char *argv[]) {
     if ( nofProj < 0  ||  cSls < nofProj )
       nofProj = cSls;
   }
+
   blitz::Array<int,2> sliceTable;
-  Map read_sliceTable;
-  if (!args.sliceMatch.empty())
-    LoadData(args.sliceMatch, read_sliceTable);
-  if ( min(read_sliceTable) < 0 )
-    throw_error(args.command, "Negative slice requested.");
-  if ( max(read_sliceTable) >= nofProj )
-    throw_error(args.command, "Slice beyond volume depth requested.");
-  if ( ! read_sliceTable.size() ) {
-    read_sliceTable.resize(1,1);
-    read_sliceTable = 0;
+  if (nofProj==1) {
+    sliceTable.resize(1,nofIn);
+    sliceTable = 0;
+  } else {
+    Map read_sliceTable;
+    if (!args.sliceMatch.empty())
+      LoadData(args.sliceMatch, read_sliceTable);
+    if ( min(read_sliceTable) < 0 )
+      throw_error(args.command, "Negative slice requested.");
+    if ( max(read_sliceTable) >= nofProj )
+      throw_error(args.command, "Slice beyond volume depth requested.");
+    if ( ! read_sliceTable.size() ) {
+      read_sliceTable.resize(1,1);
+      read_sliceTable = 0;
+    }
+    if ( read_sliceTable.shape()(1) == 1  &&  nofIn > 1 ) { // only one column
+      read_sliceTable.resizeAndPreserve(read_sliceTable.shape()(0), nofIn);
+      for (ArrIndex curP = 0 ; curP < nofProj ; curP++)
+        sliceTable(curP,all) = (int) read_sliceTable(curP, (ArrIndex)0);
+    }
+    if ( read_sliceTable.shape()(0) == 1  &&  nofProj > 1 ) { // only one row
+      nofProj -= max(read_sliceTable);
+      read_sliceTable.resizeAndPreserve(nofProj, nofIn);
+      for (int curP = 0 ; curP < nofProj ; curP++)
+        read_sliceTable(curP,all) = read_sliceTable(0,all) + curP;
+    }
+    nofProj = read_sliceTable.shape()(0);
+    sliceTable.resize(read_sliceTable.shape());
+    for ( ArrIndex y=0 ; y < nofProj ; y++)
+      for ( ArrIndex x=0 ; x < nofIn ; x++)
+        sliceTable(y,x) = read_sliceTable(y,x);
   }
-  if ( read_sliceTable.shape()(1) == 1  &&  nofIn > 1 ) { // only one column
-    read_sliceTable.resizeAndPreserve(read_sliceTable.shape()(0), nofIn);
-    for (ArrIndex curP = 0 ; curP < nofProj ; curP++)
-      sliceTable(curP,all) = (int) read_sliceTable(curP, (ArrIndex)0);
-  }
-  if ( read_sliceTable.shape()(0) == 1  &&  nofProj > 1 ) { // only one row
-    nofProj -= max(read_sliceTable);
-    sliceTable.resize(nofProj, nofIn);
-    for (int curP = 0 ; curP < nofProj ; curP++)
-      sliceTable(curP,all) = read_sliceTable(0,all) + curP;
-  }
-  nofProj = read_sliceTable.shape()(0);
-  sliceTable.resize(read_sliceTable.shape());
-  for ( ArrIndex y=0 ; y < nofProj ; y++)
-    for ( ArrIndex x=0 ; x < nofIn ; x++)
-      sliceTable(y,x) = read_sliceTable(y,x);
 
-  Map bgar;
-  average_stack(bgar, args.bgs, ish);
-  Map dfar;
-  average_stack(dfar, args.dfs, ish);
-  Map gfar;
-  average_stack(gfar, args.gfs, ish);
 
-  if (nofProj == 1) {
-
-    ProcProj proc(st, bgar, dfar, gfar);
+  if (nofProj == 1  ||  args.testMe >= 0) {
     vector<Map> allOut, allIn(allInRd.size());
-    for ( int curI = 0 ; curI < allInRd.size() ; curI++)
-      allInRd[curI].read(0, allIn[curI]);
-    proc.process(allIn, allOut, args.interim_name);
+    for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++)
+      allInRd[curI].read(sliceTable(ArrIndex(0), curI), allIn[curI]);
+    ProcProj::process(st, bgar, dfar, gfar, allIn, allOut,
+                      args.testMe >=0 ? imageFile(args.out_name).dtitle() + ".tif" : string());
+    if (allOut.size()==1)
+      SaveImage(args.out_name, allOut[0]);
+    else {
+      const string spformat = mask2format("_split@", allOut.size());
+      for (int curI = 0 ; curI < allOut.size() ; curI++)
+        SaveImage(args.out_name.dtitle() + toString(spformat, curI) + args.out_name.extension(),
+                  allOut[curI]);
+    }
 
   } else {
-
-    if (!args.interim_name.empty())
-      throw_error(args.command, "Can't output test images when more than one projection is processed.");
-
     // This is the easiest way to calculate exactly the output size shapes.
     ProcProj proc(st, Map(), Map(), Map());
     Map test(ish);
     test=0.0;
     vector<Map> allOut, allIn(allInRd.size(), Map(test));
-    proc.process(allIn, allOut);
-    string spformat = mask2format("_split@", allOut.size());
+    ProcProj::process(st, Map(), Map(), Map(), allIn, allOut);
+    const string spformat = mask2format("_split@", allOut.size());
 
     vector<SaveVolumeBySlice> allOutSv;
     for (int curI = 0 ; curI < allOut.size() ; curI++) {

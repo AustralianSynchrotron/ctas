@@ -155,31 +155,6 @@ flatfield(Map & result, const Map & fg, const Map & bg){
 }
 
 
-/// Performs the background subtraction on arrays.
-///
-/// @param result resulting array.
-/// @param fg foreground intensity.
-/// @param bg background intensity.
-/// @param mask do nothing if 0.0.
-///
-static inline void
-flatfield(Map & result, const Map & fg, const Map & bg, const Map & mask){
-  if ( ! bg.size() ) {
-    if ( &fg != &result )  // arrays are not the same
-      result.reference(fg);
-    return;
-  }
-  const Shape sh=fg.shape();
-  if( sh != bg.shape() )
-    throw_error("flat field", "Different shapes of the input arrays.");
-  if( sh != result.shape() )
-    result.resize(sh);
-  int sz=0;
-  for (ArrIndex icur=0; icur<sh(0); icur++)
-    for (ArrIndex jcur=0; jcur<sh(1); jcur++)
-      result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), 0.0, 0.0, 0.0);
-}
-
 
 
 
@@ -194,14 +169,18 @@ flatfield(Map & result, const Map & fg, const Map & bg, const Map & mask){
 ///
 static inline void
 flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc, const Map & gf, const float zer=1.0){
+  prdn(0);
   if ( ! dc.size() ) {
+    prdn(1);
     flatfield(result, fg, bg);
     return;
   }
   if ( ! gf.size() ) {
+    prdn(2);
     flatfield(result, fg, bg, dc, dc, zer);
     return;
   }
+  prdn(3);
 
   const Shape sh=fg.shape();
   if( sh != bg.shape() || sh != dc.shape() || sh != gf.shape() )

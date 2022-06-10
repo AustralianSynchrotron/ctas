@@ -1200,6 +1200,9 @@ private:
   const float maxcon;
 
 public:
+  Path ofile;
+
+public:
 
   StackWriter(const Path & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
     : zsize(_zsize)
@@ -1208,9 +1211,10 @@ public:
     , maxcon(mmax)
   {
     HDFdesc hdfdesc(filedesc);
-    if ( hdfdesc.isValid() )
+    if ( hdfdesc.isValid() ) {
       hdfFile = new HDFwrite(filedesc, _sh, _zsize);
-    else {
+      ofile=hdfdesc.name;
+    } else {
       if (zsize==1)
         sliceformat=filedesc;
       else {
@@ -1219,6 +1223,7 @@ public:
                            : string(filedesc) ;
         sliceformat = mask2format(outmask, zsize);
       }
+      ofile=filedesc;
     }
   }
 
@@ -1369,6 +1374,10 @@ SaveVolumeBySlice::~SaveVolumeBySlice() {
 
 void SaveVolumeBySlice::save(uint sl, const Map& trg) {
   ((StackWriter*) guts)->put(sl, trg);
+}
+
+const Path SaveVolumeBySlice::savePath() const {
+  return ((StackWriter*) guts)->ofile;
 }
 
 size_t SaveVolumeBySlice::slices() const {

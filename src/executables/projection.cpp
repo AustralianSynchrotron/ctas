@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <string.h>
 #include <unordered_map>
+#include <deque>
 
 
 
@@ -58,7 +59,7 @@ struct StitchRules {
   uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
   PointF2D originF;            ///< Origin of the flipped portion
   bool flipUsed;               ///< indicates if originF was given in options.
-  vector<uint> splits;          ///< Split pooints to separate samples.
+  deque<uint> splits;          ///< Split pooints to separate samples.
   StitchRules()
   : nofIn(0)
   , angle(0)
@@ -73,10 +74,10 @@ struct StitchRules {
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  vector<Path> images;        ///< images to combine
-  vector<Path> bgs;        ///< Array of the background images.
-  vector<Path> dfs;        ///< Array of the dark field images.
-  vector<Path> gfs;        ///< Array of the dark field images for backgrounds.
+  deque<Path> images;        ///< images to combine
+  deque<Path> bgs;        ///< Array of the background images.
+  deque<Path> dfs;        ///< Array of the dark field images.
+  deque<Path> gfs;        ///< Array of the dark field images for backgrounds.
   Path out_name;              ///< Name of the output image.
   StitchRules st;
   int testMe;          ///< Prefix to save interim results
@@ -232,10 +233,10 @@ class ProcProj {
 
   int origin1size;
   Map iar, rar, car, final;
-  vector<Map> allIn;
-  vector<Map> o1Stitch, o2Stitch;
+  deque<Map> allIn;
+  deque<Map> o1Stitch, o2Stitch;
 
-  static void stitch( const vector<Map> & iarr, PointF2D origin, Map & oarr ) {
+  static void stitch( const deque<Map> & iarr, PointF2D origin, Map & oarr ) {
 
     const int isz = iarr.size();
 
@@ -316,7 +317,7 @@ public:
   }
 
 
-  bool process(const vector<Map> & allInR, vector<Map> & res, const Path & interim_name = Path()) {
+  bool process(const deque<Map> & allInR, deque<Map> & res, const Path & interim_name = Path()) {
 
     if (allInR.size() != st.nofIn)
       return false;
@@ -342,7 +343,7 @@ public:
 
     for ( int inidx=0 ; inidx<st.nofIn ; inidx += origin1size ) {
       int cidx=inidx/origin1size;
-      vector<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + origin1size) ;
+      deque<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + origin1size) ;
       stitch(supply, st.origin1, o1Stitch[cidx]);
 
       if ( ! interim_name.empty()  &&  origin1size != 1 ) {
@@ -364,7 +365,7 @@ public:
 
     for ( int inidx=0 ; inidx<o1Stitch.size() ; inidx += st.origin2size ) {
       int cidx=inidx/st.origin2size;
-      vector<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + st.origin2size ) ;
+      deque<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + st.origin2size ) ;
       stitch(supply, st.origin2, o2Stitch[cidx]);
 
       if ( ! interim_name.empty()  &&  st.origin2size != 1 ) {
@@ -422,7 +423,7 @@ public:
             ? final( all, blitz::Range(fLine, lLine) )
             : final( blitz::Range(fLine, lLine), all ) ;
           if (res.size() < curI+1)
-            res.push_back(Map());
+            res.emplace_back();
           res[curI].resize(resp.shape());
           res[curI]=resp;
           if ( ! interim_name.empty() )
@@ -437,7 +438,7 @@ public:
   }
 
   static bool process(const StitchRules & _st, const Map & _bgar, const Map & _dfar, const Map & _gfar,
-                      const vector<Map> & allInR, vector<Map> & res, const string & interim_name = string()) {
+                      const deque<Map> & allInR, deque<Map> & res, const string & interim_name = string()) {
     ProcProj proc(_st, _bgar, _dfar, _gfar);
     return proc.process(allInR, res, interim_name);
   }
@@ -457,10 +458,10 @@ class ProjInThread : public InThread {
   const Map & gfar;
   const blitz::Array<int,2> & slMatch;
   unordered_map<pthread_t,ProcProj> procs;
-  unordered_map<pthread_t, vector<Map> > allInMaps;
-  unordered_map<pthread_t, vector<Map> > results;
-  vector<ReadVolumeBySlice> & allInRd;
-  vector<SaveVolumeBySlice> & allOutSv;
+  unordered_map<pthread_t, deque<Map> > allInMaps;
+  unordered_map<pthread_t, deque<Map> > results;
+  deque<ReadVolumeBySlice> & allInRd;
+  deque<SaveVolumeBySlice> & allOutSv;
 
 
   bool inThread(long int idx) {
@@ -472,12 +473,12 @@ class ProjInThread : public InThread {
     lock();
     if ( ! procs.count(me) ) { // first call
       procs.insert({me, ProcProj(st, bgar, dfar, gfar)});
-      allInMaps.insert({me, vector<Map>(allInRd.size())});
-      results.insert({me, vector<Map>()});
+      allInMaps.insert({me, deque<Map>(allInRd.size())});
+      results.insert({me, deque<Map>()});
     }
     ProcProj & myProc = procs.at(me);
-    vector<Map> & myAllIn = allInMaps.at(me);
-    vector<Map> & myRes = results.at(me);
+    deque<Map> & myAllIn = allInMaps.at(me);
+    deque<Map> & myRes = results.at(me);
     unlock();
 
     for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
@@ -494,7 +495,7 @@ class ProjInThread : public InThread {
 public:
 
   ProjInThread(const StitchRules & _st, const Map & _bgar, const Map & _dfar, const Map & _gfar
-              , vector<ReadVolumeBySlice> & _allInRd, vector<SaveVolumeBySlice> & _outSave
+              , deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
               , const blitz::Array<int,2> & _slMatch, bool verbose=false)
     : InThread(verbose, "processing projections", _outSave[0].slices() )
     , st(_st)
@@ -504,13 +505,12 @@ public:
     , slMatch(_slMatch)
     , allInRd(_allInRd)
     , allOutSv(_outSave)
-  {
-  }
+  {}
 
 };
 
 
-void average_stack(Map & oar, const vector<Path> & stack, const Shape & ish) {
+void average_stack(Map & oar, const deque<Path> & stack, const Shape & ish) {
   if (stack.empty())
     return;
   oar.resize(ish);
@@ -542,7 +542,7 @@ int main(int argc, char *argv[]) {
 
   const int nofIn = args.images.size();
   int nofProj = -1;
-  vector<ReadVolumeBySlice> allInRd(nofIn);
+  deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
     allInRd.at(curI).add(args.images.at(curI));
     uint cSls = allInRd.at(curI).slices();
@@ -570,8 +570,8 @@ int main(int argc, char *argv[]) {
     }
     if ( read_sliceTable.shape()(1) == 1  &&  nofIn > 1 ) { // only one column
       read_sliceTable.resizeAndPreserve(read_sliceTable.shape()(0), nofIn);
-      for (ArrIndex curP = 0 ; curP < nofProj ; curP++)
-        sliceTable(curP,all) = (int) read_sliceTable(curP, (ArrIndex)0);
+      for (ArrIndex curP = 1 ; curP < nofIn ; curP++)
+        read_sliceTable(all,curP) = read_sliceTable(all,0);
     }
     if ( read_sliceTable.shape()(0) == 1  &&  nofProj > 1 ) { // only one row
       nofProj -= max(read_sliceTable);
@@ -580,17 +580,27 @@ int main(int argc, char *argv[]) {
         read_sliceTable(curP,all) = read_sliceTable(0,all) + curP;
     }
     nofProj = read_sliceTable.shape()(0);
-    sliceTable.resize(read_sliceTable.shape());
-    for ( ArrIndex y=0 ; y < nofProj ; y++)
+    if (args.testMe >= 0  &&  args.testMe >= nofProj)
+      throw_error(args.command, "Test slice beyond input volume size; check option " + args.table.desc(&args.testMe) + ".");
+    if (args.testMe >= 0) {
+      sliceTable.resize( 1 , read_sliceTable.shape()(1));
       for ( ArrIndex x=0 ; x < nofIn ; x++)
-        sliceTable(y,x) = read_sliceTable(y,x);
+        sliceTable((ArrIndex)0,x) = read_sliceTable((ArrIndex)args.testMe,x);
+    } else {
+      sliceTable.resize(read_sliceTable.shape());
+      for ( ArrIndex y=0 ; y < nofProj ; y++)
+        for ( ArrIndex x=0 ; x < nofIn ; x++)
+          sliceTable(y,x) = read_sliceTable(y,x);
+    }
   }
 
-
   if (nofProj == 1  ||  args.testMe >= 0) {
-    vector<Map> allOut, allIn(allInRd.size());
-    for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++)
+    deque<Map> allOut, allIn(allInRd.size());
+    for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++) {
       allInRd[curI].read(sliceTable(ArrIndex(0), curI), allIn[curI]);
+      if (allIn[curI].shape() != ish)
+        throw_error(args.command, "Unexpected image size of "+args.images.at(curI)+".");
+    }
     ProcProj::process(st, bgar, dfar, gfar, allIn, allOut,
                       args.testMe >=0 ? imageFile(args.out_name).dtitle() + ".tif" : string());
     if (allOut.size()==1)
@@ -607,15 +617,15 @@ int main(int argc, char *argv[]) {
     ProcProj proc(st, Map(), Map(), Map());
     Map test(ish);
     test=0.0;
-    vector<Map> allOut, allIn(allInRd.size(), Map(test));
+    deque<Map> allOut, allIn(allInRd.size(), Map(test));
     ProcProj::process(st, Map(), Map(), Map(), allIn, allOut);
     const string spformat = mask2format("_split@", allOut.size());
 
-    vector<SaveVolumeBySlice> allOutSv;
-    for (int curI = 0 ; curI < allOut.size() ; curI++) {
-      Path filedescind  =  allOutSv.size()==1  ?  (string) args.out_name
-                        :  args.out_name.dtitle() + toString(spformat, curI) + args.out_name.extension();
-      allOutSv.push_back(SaveVolumeBySlice(filedescind, allOut[curI].shape(), nofProj));
+    deque<SaveVolumeBySlice> allOutSv;
+    for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++) {
+      Path filedescind  =  allOut.size()==1  ?  (string) args.out_name
+                        :  args.out_name.dtitle() + toString(spformat, curSplt) + args.out_name.extension();
+      allOutSv.emplace_back(filedescind, allOut[curSplt].shape(), nofProj);
     }
 
     ProjInThread procTh(st, bgar, dfar, gfar, allInRd, allOutSv, sliceTable, args.beverbose);

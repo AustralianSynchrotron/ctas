@@ -782,7 +782,7 @@ SinoS::SinoS(const Experiment & exp, const vector<int> & _sliceV, bool _verb) :
 /// @param angle Rotation angle.
 /// @param _verb Show progress bar.
 ///
-SinoS::SinoS(const vector<Path> & inlist, const std::string & slicedesc,
+SinoS::SinoS(const deque<Path> & inlist, const std::string & slicedesc,
              float angle, const Crop & crp, bool _verb) :
   verb(_verb)
 {

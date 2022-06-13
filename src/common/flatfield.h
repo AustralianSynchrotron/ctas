@@ -169,18 +169,14 @@ flatfield(Map & result, const Map & fg, const Map & bg){
 ///
 static inline void
 flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc, const Map & gf, const float zer=1.0){
-  prdn(0);
   if ( ! dc.size() ) {
-    prdn(1);
     flatfield(result, fg, bg);
     return;
   }
   if ( ! gf.size() ) {
-    prdn(2);
     flatfield(result, fg, bg, dc, dc, zer);
     return;
   }
-  prdn(3);
 
   const Shape sh=fg.shape();
   if( sh != bg.shape() || sh != dc.shape() || sh != gf.shape() )

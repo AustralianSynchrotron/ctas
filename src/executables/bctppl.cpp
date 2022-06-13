@@ -48,12 +48,12 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   Path outmask;
   Path gaps;
-  vector<Path> dfs0;
-  vector<Path> dfs1;
-  vector<Path> bgs0;
-  vector<Path> bgs1;
-  vector<Path> ims0;
-  vector<Path> ims1;
+  deque<Path> dfs0;
+  deque<Path> dfs1;
+  deque<Path> bgs0;
+  deque<Path> bgs1;
+  deque<Path> ims0;
+  deque<Path> ims1;
   PointF2D shift;  // for frame formation
   float ashift;  // for frame formation
   Filter filter_type;  // for CT

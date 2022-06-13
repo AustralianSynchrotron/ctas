@@ -239,7 +239,7 @@ public:
   SinoS(const Experiment & exp, const std::vector<int> & _sliceV, bool _verb=false);
 
   /// Constructor
-  SinoS(const std::vector<Path> & inlist, const std::string & slicedesc,
+  SinoS(const std::deque<Path> & inlist, const std::string & slicedesc,
         float angle=0, const Crop & crop = Crop(), bool _verb=false);
 
   ~SinoS();   ///< Destructor.

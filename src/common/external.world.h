@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include <unordered_map>
+#include <deque>
 
 
 
@@ -161,11 +162,11 @@ ReadImageLine(const Path & filename, Map & storage,
 extern const std::string COMMON_API MaskDesc;
 
 void COMMON_API
-ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose=false);
+ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose=false);
 
 inline void COMMON_API
 ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
-  ReadVolume(std::vector<Path>(1, filename), storage, verbose );
+  ReadVolume(std::deque<Path>(1, filename), storage, verbose );
 }
 
 
@@ -173,10 +174,10 @@ class ReadVolumeBySlice {
 private:
   void * guts;
 public:
-  ReadVolumeBySlice(const std::vector<Path> & filelist = std::vector<Path>() );
+  ReadVolumeBySlice(const std::deque<Path> & filelist = std::deque<Path>() );
   ReadVolumeBySlice(const Path & file);
   ~ReadVolumeBySlice();
-  void add(const std::vector<Path> & filelist);
+  void add(const std::deque<Path> & filelist);
   void add(const Path & fileind);
   void read(uint sl, Map & trg);
   uint slices() const;

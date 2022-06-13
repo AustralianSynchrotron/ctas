@@ -72,10 +72,10 @@ Path imageFile(const std::string & filedesc) {
 
 
 
-vector<string> split (string s, string delimiter) {
+deque<string> split (string s, string delimiter) {
   size_t pos_start = 0, pos_end, delim_len = delimiter.length();
   string token;
-  vector<string> res;
+  deque<string> res;
   while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
     token = s.substr (pos_start, pos_end - pos_start);
     pos_start = pos_end + delim_len;
@@ -106,7 +106,7 @@ struct HDFdesc {
   {
 
     const string modmname = "HDF desc";
-    vector<string> hdfRd = split(filedesc, ":");
+    deque<string> hdfRd = split(filedesc, ":");
     if ( hdfRd.size() < 2  ||  hdfRd.size() > 3 ) // not HDF5
       return;
     name=hdfRd[0];
@@ -926,7 +926,7 @@ const std::string MaskDesc =
 
 class ReadVolInThread : public InThread {
 
-  vector< pair<Path,int> > slicelist;
+  deque< pair<Path,int> > slicelist;
   Volume & storage;
   const float ang;
   const Crop crp;
@@ -945,7 +945,7 @@ class ReadVolInThread : public InThread {
 
 public:
 
-  ReadVolInThread(const std::vector<Path> & filelist, Volume & _storage,
+  ReadVolInThread(const std::deque<Path> & filelist, Volume & _storage,
                   float _angle, Crop _crop, Binn _binn, bool verbose=false)
     : InThread(verbose , "reading volume")
     , storage(_storage)
@@ -965,7 +965,7 @@ public:
     csh = Shape(rsh(0)-crp.top-crp.bottom, rsh(1)-crp.left-crp.right);
     bsh = shapeOnBinn(csh, bnn);
     sh = bsh;
-    for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+    for ( deque<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       try {
         hdfs.insert({*curI,HDFread(*curI)});
         HDFread & hdf = hdfs.at(*curI);
@@ -1062,7 +1062,7 @@ public:
 
 
 void
-ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
+ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose) {
   ReadVolInThread(filelist, storage, 0, Crop(), Binn(), verbose).execute();
 }
 
@@ -1075,7 +1075,7 @@ ReadVolume(const std::vector<Path> & filelist, Volume & storage, bool verbose) {
 
 struct _ReadVolBySlice  {
 
-  vector<Path> ilist;
+  deque<Path> ilist;
   unordered_map<string,HDFread> hdfs;
   uint ssize;
   const float ang;
@@ -1090,7 +1090,7 @@ struct _ReadVolBySlice  {
     , bnn(Binn3())
   {}
 
-  _ReadVolBySlice(const std::vector<Path> & filelist, float _angle, Crop _crop, Binn3 _binn)
+  _ReadVolBySlice(const std::deque<Path> & filelist, float _angle, Crop _crop, Binn3 _binn)
     : ilist()
     , ssize(0)
     , ang(_angle)
@@ -1112,8 +1112,8 @@ struct _ReadVolBySlice  {
   }
 
 
-  void add(const std::vector<Path> & filelist) {
-    for ( vector<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+  void add(const std::deque<Path> & filelist) {
+    for ( deque<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       add(*curI);
   }
 
@@ -1143,12 +1143,12 @@ struct _ReadVolBySlice  {
 };
 
 
-ReadVolumeBySlice::ReadVolumeBySlice(const vector<Path> & filelist)
+ReadVolumeBySlice::ReadVolumeBySlice(const deque<Path> & filelist)
   : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn3()))
 {}
 
 ReadVolumeBySlice::ReadVolumeBySlice(const Path & file)
-  : guts(new _ReadVolBySlice(vector<Path>(1, file), 0, Crop(), Binn3()))
+  : guts(new _ReadVolBySlice(deque<Path>(1, file), 0, Crop(), Binn3()))
 {}
 
 void ReadVolumeBySlice::add(const Path & fileind) {
@@ -1156,7 +1156,7 @@ void ReadVolumeBySlice::add(const Path & fileind) {
 }
 
 
-void ReadVolumeBySlice::add(const std::vector<Path> & filelist) {
+void ReadVolumeBySlice::add(const std::deque<Path> & filelist) {
   ((_ReadVolBySlice*) guts)->add(filelist);
 }
 

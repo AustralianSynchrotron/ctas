@@ -46,7 +46,7 @@ using namespace std;
 struct clargs {
   Path command;               ///< Command name as it was invoked.
   Contrast contrast;            ///< Type of the contrast.
-  vector<Path> inlist;        ///< List of all input contrasts.
+  deque<Path> inlist;        ///< List of all input contrasts.
   bool idealworld;               ///< Assumption of the world's ideality.
   string slicedesc;       ///< String describing the slices to be CT'ed.
   Path outmask;       ///< The mask for the output file names.
@@ -324,11 +324,11 @@ void *in_reconstruction_thread (void *_thread_args) {
       pthread_mutex_lock(&addfail_lock);
       if ( ! writefails.empty()  )
         writefails += ",";
-      writefails += toString(curslice);      
+      writefails += toString(curslice);
       pthread_mutex_unlock(&addfail_lock);
     }
     distributor->bar.update();
-    
+
     // distributor->put_image( res, curslice );
 
   }
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
 
   dist.complete_writing();
 
-  if ( ! writefails.empty() ) 
+  if ( ! writefails.empty() )
     cerr << "Fails: " << writefails << endl;
 
   exit(0);

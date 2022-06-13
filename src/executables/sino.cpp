@@ -50,10 +50,10 @@ struct clargs {
   string command;               ///< Command name as it was invoked.
   Path outmask;       ///< The mask for the output file names.
   Path fileinlist;
-  vector<Path> inlist;        ///< Array of the input images.
-  vector<Path> bgs;        ///< Array of the background images.
-  vector<Path> dfs;        ///< Array of the dark field images.
-  vector<Path> dbs;        ///< Array of the dark field images for the backgrounds.
+  deque<Path> inlist;        ///< Array of the input images.
+  deque<Path> bgs;        ///< Array of the background images.
+  deque<Path> dfs;        ///< Array of the dark field images.
+  deque<Path> dbs;        ///< Array of the dark field images for the backgrounds.
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float angle;           ///< Angle of the sino slicing.
   Crop crp; //< Crop input projection image

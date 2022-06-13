@@ -40,7 +40,7 @@ using namespace std;
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  vector<Path> images;        ///< input image
+  deque<Path> images;        ///< input image
   Path outmask;              ///< Name of the output image.
   Crop3 crp;                  ///< Crop input projection image
   Binn3 bnn;                  ///< binning factor

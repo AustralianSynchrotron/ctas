@@ -132,7 +132,7 @@ clargs(int argc, char *argv[]) :
   if ( ! table.count(&outmask) )
     outmask = upgrade(inlist, "reconstructed-") + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
-    outmask = outmask.dtitle() + "-@" + outmask.extension();
+    outmask = outmask.dtitle() + "-@" + outmask.ext();
   if (arc <= 0.0)
     exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
 

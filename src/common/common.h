@@ -246,7 +246,7 @@ public:
   std::string dir () const;		///< Extracts directory.
   std::string title () const;	///< Extracts title (filename without the extension).
   std::string dtitle () const;	///< Extracts title with the preceding full path.
-  std::string extension () const; ///< Extracts the extension.
+  std::string ext () const; ///< Extracts the extension.
   std::string name () const;	///< Extracts file name.
   std::vector<std::string> elements () const;
 

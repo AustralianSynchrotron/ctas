@@ -71,7 +71,6 @@ Path imageFile(const std::string & filedesc) {
 
 
 
-
 deque<string> split (string s, string delimiter) {
   size_t pos_start = 0, pos_end, delim_len = delimiter.length();
   string token;
@@ -1077,7 +1076,7 @@ struct _ReadVolBySlice  {
 
   deque<Path> ilist;
   unordered_map<string,HDFread> hdfs;
-  uint ssize;
+  size_t ssize;
   const float ang;
   const Crop crp;
   const Binn3 bnn;
@@ -1170,7 +1169,7 @@ void ReadVolumeBySlice::read(uint sl, Map& trg) {
   ((_ReadVolBySlice*) guts)->read(sl, trg);
 }
 
-uint ReadVolumeBySlice::slices() const {
+size_t ReadVolumeBySlice::slices() const {
   return ((_ReadVolBySlice*) guts)->ssize;
 }
 
@@ -1219,8 +1218,7 @@ public:
         sliceformat=filedesc;
       else {
         const Path outmask = string(filedesc).find('@') == string::npos
-                           ? filedesc.dtitle() + "-@" + filedesc.extension()
-                           : string(filedesc) ;
+                           ? filedesc.dtitle() + "-@" + filedesc.ext()  :  string(filedesc) ;
         sliceformat = mask2format(outmask, zsize);
       }
       ofile=filedesc;

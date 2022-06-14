@@ -149,7 +149,7 @@ clargs(int argc, char *argv[]) :
   if ( ! table.count(&outmask) )
     outmask = upgrade(outmask, "reconstructed-"+zD_list) + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
-    outmask = outmask.dtitle() + "-@" + outmask.extension();
+    outmask = outmask.dtitle() + "-@" + outmask.ext();
 
   if ( ! table.count(&contrast) )
     exit_on_error(command, "Missing required argument: "+table.desc(&contrast)+".");

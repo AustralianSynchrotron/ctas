@@ -174,7 +174,7 @@ Path::dir () const {
 string
 Path::name () const {
 #ifdef _WIN32
-  return title() + extension();
+  return title() + ext();
 #else
   size_t found = this->rfind('/');
   if (found==string::npos)
@@ -208,7 +208,7 @@ Path::dtitle () const {
 
 
 string
-Path::extension () const {
+Path::ext () const {
 #ifdef _WIN32
   char _ext[FILENAME_MAX];
   if ( _splitpath_s( c_str(), 0,0,0,0,0,0, _ext, FILENAME_MAX ) )

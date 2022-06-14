@@ -4,6 +4,38 @@
 #include "common.h"
 #include <unordered_map>
 #include <deque>
+#include <algorithm>
+
+
+
+
+class ImagePath : public Path {
+private:
+
+  std::string _desc;
+
+  static std::pair<std::string,std::string> splitIn(const std::string & pthndsc) {
+    const size_t splt = std::min(pthndsc.find(':'), pthndsc.size());
+    return std::make_pair(pthndsc.substr(0,splt), pthndsc.substr(splt));
+  }
+
+public:
+
+  inline ImagePath(const std::string & str = std::string())
+    : Path(splitIn(str).first)
+    , _desc(splitIn(str).second)
+  {}
+
+  inline const std::string & desc() const {return _desc;}
+  inline const std::string repr() const {return *this + _desc;}
+
+};
+
+inline int COMMON_API
+_conversion (ImagePath* _val, const std::string & in) {
+  *_val = ImagePath(in);
+  return 1;
+}
 
 
 
@@ -15,6 +47,10 @@ isHDFdesc(const std::string & filedesc);
 
 Shape3 COMMON_API
 hdfShape(const std::string & filedesc);
+
+
+
+
 
 
 /// \defgroup IO Image and data file handling.
@@ -158,44 +194,6 @@ ReadImageLine(const Path & filename, Map & storage,
 
 
 
-/// Description of the output result mask.
-extern const std::string COMMON_API MaskDesc;
-
-void COMMON_API
-ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose=false);
-
-inline void COMMON_API
-ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
-  ReadVolume(std::deque<Path>(1, filename), storage, verbose );
-}
-
-
-class ReadVolumeBySlice {
-private:
-  void * guts;
-public:
-  ReadVolumeBySlice(const std::deque<Path> & filelist = std::deque<Path>() );
-  ReadVolumeBySlice(const Path & file);
-  ~ReadVolumeBySlice();
-  void add(const std::deque<Path> & filelist);
-  void add(const Path & fileind);
-  void read(uint sl, Map & trg);
-  uint slices() const;
-};
-
-
-class SaveVolumeBySlice {
-private:
-  void * guts;
-public:
-  SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
-  ~SaveVolumeBySlice();
-  void save(uint sl, const Map & trg);
-  const Path savePath() const;
-  size_t slices() const;
-};
-
-
 
 /// \brief Save the array into image.
 ///
@@ -226,6 +224,48 @@ void COMMON_API
 SaveImage(const Path & filename, const Map & storage,
     float minval, float maxval );
 
+
+
+
+
+
+
+/// Description of the output result mask.
+extern const std::string COMMON_API MaskDesc;
+
+void COMMON_API
+ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose=false);
+
+inline void COMMON_API
+ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
+  ReadVolume(std::deque<Path>(1, filename), storage, verbose );
+}
+
+
+class ReadVolumeBySlice {
+private:
+  void * guts;
+public:
+  ReadVolumeBySlice(const std::deque<Path> & filelist = std::deque<Path>() );
+  ReadVolumeBySlice(const Path & file);
+  ~ReadVolumeBySlice();
+  void add(const std::deque<Path> & filelist);
+  void add(const Path & fileind);
+  void read(uint sl, Map & trg);
+  size_t slices() const;
+};
+
+
+class SaveVolumeBySlice {
+private:
+  void * guts;
+public:
+  SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
+  ~SaveVolumeBySlice();
+  void save(uint sl, const Map & trg);
+  const Path savePath() const;
+  size_t slices() const;
+};
 
 
 void COMMON_API
@@ -275,6 +315,7 @@ SaveVolume(const Path & filedesc, Volume & storage,
            float mmin, float mmax) {
   SaveVolume(filedesc, storage, false, "", mmin, mmax);
 }
+
 
 
 

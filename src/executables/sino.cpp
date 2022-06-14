@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
   Map sinogram;
 
   const Path outmask =  ( string(args.outmask).find('@') == string::npos ) ?
-                        args.outmask.dtitle() + "-@" + args.outmask.extension() :
+                        args.outmask.dtitle() + "-@" + args.outmask.ext() :
                         string( args.outmask ) ;
   const string sliceformat = mask2format(outmask, sins.imageShape()(0) );
 

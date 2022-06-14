@@ -121,7 +121,7 @@ clargs(int argc, char *argv[]) :
   if ( ! table.count(&outmask) )
 	outmask = upgrade(Mlistname, "reconstructed-") + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
-	outmask = outmask.dtitle() + "-@" + outmask.extension();
+	outmask = outmask.dtitle() + "-@" + outmask.ext();
 
 }
 

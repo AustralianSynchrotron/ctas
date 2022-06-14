@@ -74,11 +74,11 @@ struct StitchRules {
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  deque<Path> images;        ///< images to combine
-  deque<Path> bgs;        ///< Array of the background images.
-  deque<Path> dfs;        ///< Array of the dark field images.
-  deque<Path> gfs;        ///< Array of the dark field images for backgrounds.
-  Path out_name;              ///< Name of the output image.
+  deque<ImagePath> images;        ///< images to combine
+  deque<ImagePath> bgs;        ///< Array of the background images.
+  deque<ImagePath> dfs;        ///< Array of the dark field images.
+  deque<ImagePath> gfs;        ///< Array of the dark field images for backgrounds.
+  ImagePath out_name;              ///< Name of the output image.
   StitchRules st;
   int testMe;          ///< Prefix to save interim results
   string sliceMatch;           ///< text file with list of matching slices
@@ -216,7 +216,7 @@ BZ_DECLARE_FUNCTION(denan);
 
 }
 
-void SaveDenan(const Path & filename, const Map & storage, bool saveint=false) {
+void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
   Map outm(storage.shape());
   outm=denan(storage);
   SaveImage(filename, outm, saveint);
@@ -317,11 +317,11 @@ public:
   }
 
 
-  bool process(const deque<Map> & allInR, deque<Map> & res, const Path & interim_name = Path()) {
+  bool process(const deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
 
     if (allInR.size() != st.nofIn)
       return false;
-    Path lastSaved;
+    ImagePath lastSaved;
 
     for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
       iar.resize(st.ish);
@@ -336,7 +336,7 @@ public:
 
       if ( ! interim_name.empty() ) {
         string svformat = mask2format("_T@", st.nofIn);
-        lastSaved = interim_name.dtitle() + toString(svformat, curproj) + ".tif";
+        lastSaved = interim_name.dtitle() + toString(svformat, curproj) + string(".tif");
         SaveDenan(lastSaved, allIn[curproj]);
       }
     }
@@ -393,7 +393,7 @@ public:
         ReadImage(lastSaved, tmp);
         tmp.reverseSelf(blitz::secondDim);
         SaveImage(lastSaved, tmp);
-        SaveDenan(interim_name.dtitle() + "_W" , final);
+        SaveDenan(interim_name.dtitle() + "_W.tif" , final);
       }
     } else {
       final.reference(o2Stitch[0]);
@@ -507,17 +507,18 @@ public:
     , allOutSv(_outSave)
   {}
 
+
 };
 
 
-void average_stack(Map & oar, const deque<Path> & stack, const Shape & ish) {
+void average_stack(Map & oar, const deque<ImagePath> & stack, const Shape & ish) {
   if (stack.empty())
     return;
   oar.resize(ish);
   oar=0.0;
   Map iar;
   for ( int curf = 0 ; curf < stack.size() ; curf++) {
-    ReadImage(stack[curf], iar, ish);
+    ReadImage(stack[curf].repr(), iar, ish);
     oar+=iar;
   }
   oar /= stack.size();
@@ -529,7 +530,7 @@ void average_stack(Map & oar, const deque<Path> & stack, const Shape & ish) {
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  const Shape ish(ImageSizes(args.images[0]));
+  const Shape ish(ImageSizes(args.images[0].repr()));
   StitchRules st = args.st;
   st.ish = ish;
 
@@ -544,14 +545,15 @@ int main(int argc, char *argv[]) {
   int nofProj = -1;
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
-    allInRd.at(curI).add(args.images.at(curI));
+    allInRd.at(curI).add(args.images.at(curI).repr());
     uint cSls = allInRd.at(curI).slices();
     if (!cSls)
-      exit_on_error(args.command, "No images in " + args.images.at(curI));
+      exit_on_error(args.command, "No images in " + args.images.at(curI).repr());
     if ( nofProj < 0  ||  cSls < nofProj )
       nofProj = cSls;
   }
 
+  // prepare list of slices to be processed
   blitz::Array<int,2> sliceTable;
   if (nofProj==1) {
     sliceTable.resize(1,nofIn);
@@ -594,45 +596,38 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (nofProj == 1  ||  args.testMe >= 0) {
-    deque<Map> allOut, allIn(allInRd.size());
-    for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++) {
+  // Process one slice
+  Map test(ish);
+  test=0.0;
+  deque<Map> allOut, allIn;
+  const bool singleProc = nofProj == 1 || args.testMe >= 0;
+  for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++) {
+    if (singleProc) {
+      allIn.push_back(Map());
       allInRd[curI].read(sliceTable(ArrIndex(0), curI), allIn[curI]);
       if (allIn[curI].shape() != ish)
-        throw_error(args.command, "Unexpected image size of "+args.images.at(curI)+".");
+        throw_error(args.command, "Unexpected image size of "+args.images.at(curI).repr()+".");
+    } else {
+      allIn.push_back(test);
     }
-    ProcProj::process(st, bgar, dfar, gfar, allIn, allOut,
-                      args.testMe >=0 ? imageFile(args.out_name).dtitle() + ".tif" : string());
-    if (allOut.size()==1)
-      SaveImage(args.out_name, allOut[0]);
-    else {
-      const string spformat = mask2format("_split@", allOut.size());
-      for (int curI = 0 ; curI < allOut.size() ; curI++)
-        SaveImage(args.out_name.dtitle() + toString(spformat, curI) + args.out_name.extension(),
-                  allOut[curI]);
-    }
+  }
+  ProcProj::process( st, singleProc ? bgar : Map(), singleProc ? dfar : Map(), singleProc ? gfar : Map()
+                   , allIn, allOut, args.testMe >=0 ? imageFile(args.out_name).dtitle() + ".tif" : string());
 
-  } else {
-    // This is the easiest way to calculate exactly the output size shapes.
-    ProcProj proc(st, Map(), Map(), Map());
-    Map test(ish);
-    test=0.0;
-    deque<Map> allOut, allIn(allInRd.size(), Map(test));
-    ProcProj::process(st, Map(), Map(), Map(), allIn, allOut);
-    const string spformat = mask2format("_split@", allOut.size());
-
-    deque<SaveVolumeBySlice> allOutSv;
-    for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++) {
-      Path filedescind  =  allOut.size()==1  ?  (string) args.out_name
-                        :  args.out_name.dtitle() + toString(spformat, curSplt) + args.out_name.extension();
-      allOutSv.emplace_back(filedescind, allOut[curSplt].shape(), nofProj);
-    }
-
-    ProjInThread procTh(st, bgar, dfar, gfar, allInRd, allOutSv, sliceTable, args.beverbose);
-    procTh.execute();
-
+  // Prepare saving factories
+  const string spformat = mask2format("_split@", allOut.size());
+  deque<SaveVolumeBySlice> allOutSv;
+  for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++) {
+    ImagePath filedescind  =  allOut.size()==1  ?  args.out_name.repr()
+      :  args.out_name.dtitle() + toString(spformat, curSplt) + args.out_name.ext() + args.out_name.desc();
+    allOutSv.emplace_back(filedescind.repr(), allOut[curSplt].shape(), singleProc ? 1 : nofProj);
   }
 
+  if (singleProc)
+    for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
+      allOutSv[curSplt].save(0,allOut[curSplt]);
+  else
+    ProjInThread(st, bgar, dfar, gfar, allInRd, allOutSv, sliceTable, args.beverbose).execute();
 
   exit(0);
 

@@ -69,59 +69,59 @@ clargs(int argc, char *argv[]) :
 {
 
   poptmx::OptionTable table
-	("All-in-one refraction-based CT reconstruction.",
-	 "Performs all procedures for the reconstruction:\n"
-	 "1) reads two text files describing the arrays of input files"
-	 " (foreground-background pairs) in minus and plus position of"
-	 " the analyzer crystal.\n"
-	 "2) removes the backgrounds in accordance with these files.\n"
-	 "3) performs the DEI extraction of the requested contrast component.\n"
-	 "4) constructs the sinograms of the slices requested in the slice string.\n"
-	 "5) finally reconstructs the sinograms.\n"
-	 "All these procedures can be performed on the step-by-step basis using"
-	 " tools \"bg\", \"dei\", \"sino\" and \"ct\", but this approach saves all"
-	 " intermediate results on the hard disk and therefore a lot of time is"
-	 " spent for the I/O operations, memory allocations, etc. Also much more"
+  ("All-in-one refraction-based CT reconstruction.",
+   "Performs all procedures for the reconstruction:\n"
+   "1) reads two text files describing the arrays of input files"
+   " (foreground-background pairs) in minus and plus position of"
+   " the analyzer crystal.\n"
+   "2) removes the backgrounds in accordance with these files.\n"
+   "3) performs the DEI extraction of the requested contrast component.\n"
+   "4) constructs the sinograms of the slices requested in the slice string.\n"
+   "5) finally reconstructs the sinograms.\n"
+   "All these procedures can be performed on the step-by-step basis using"
+   " tools \"bg\", \"dei\", \"sino\" and \"ct\", but this approach saves all"
+   " intermediate results on the hard disk and therefore a lot of time is"
+   " spent for the I/O operations, memory allocations, etc. Also much more"
  " disk space is used.");
 
   table
-	.add(poptmx::NOTE,     "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &Mlistname, "minus list",
-		 "List of the input images in the minus position.", "")
-	.add(poptmx::ARGUMENT, &Plistname, "plus list",
+  .add(poptmx::NOTE,     "ARGUMENTS:")
+  .add(poptmx::ARGUMENT, &Mlistname, "minus list",
+     "List of the input images in the minus position.", "")
+  .add(poptmx::ARGUMENT, &Plistname, "plus list",
          "List of the input images in the plus position.", "")
-	.add(poptmx::NOTE,     "",
-		 "Arguments \"" + table.desc(&Mlistname) + "\""
-		 " and \"" + table.desc(&Plistname) + "\". "
-		 + AqSeries::Desc)
-	.add(poptmx::ARGUMENT, &outmask, "result mask",
-		 "Output result mask.", MaskDesc, outmask)
+  .add(poptmx::NOTE,     "",
+     "Arguments \"" + table.desc(&Mlistname) + "\""
+     " and \"" + table.desc(&Plistname) + "\". "
+     + AqSeries::Desc)
+  .add(poptmx::ARGUMENT, &outmask, "result mask",
+     "Output result mask.", MaskDesc, outmask)
 
-	.add(poptmx::NOTE,     "OPTIONS:")
-	.add(poptmx::OPTION,   &contrast, 'C', "component",
-		 "Type of the contrast component.",
-		 "The component of the contrast to extract and reconstruct."
+  .add(poptmx::NOTE,     "OPTIONS:")
+  .add(poptmx::OPTION,   &contrast, 'C', "component",
+     "Type of the contrast component.",
+     "The component of the contrast to extract and reconstruct."
          " " + DEIprocess::componentDesc, toString(contrast))
-	.add(poptmx::OPTION,   &slicedesc, 's', "slice",
-		 "Slices to be processed.", SliceOptionDesc, "<all>")
-	.add(poptmx::OPTION,   &center, 'c', "center",
-		 "Variable rotation center.", DcenterOptionDesc, toString(0.0))
+  .add(poptmx::OPTION,   &slicedesc, 's', "slice",
+     "Slices to be processed.", SliceOptionDesc, "<all>")
+  .add(poptmx::OPTION,   &center, 'c', "center",
+     "Variable rotation center.", DcenterOptionDesc, toString(0.0))
   .add(poptmx::OPTION, &arc, 'a', "arcan",
        "CT scan range (if > 1 deg), or step size (if < 1deg).",
        "If value is greater than 1deg then it represents the arc of the CT scan."
        " Otherwise the value is the step size.",
        toString(arc))
-	.add(poptmx::OPTION,   &filter_type, 'f', "filter",
-		 "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
-	.add(poptmx::OPTION,   &nof_threads, 't', "threads",
-		 "Number of threads used in calculations.",
-		 "If the option is not used the optimal number is"
-		 " calculated automatically.", "<auto>")
-	.add(poptmx::OPTION,   &SaveInt,'i', "int",
+  .add(poptmx::OPTION,   &filter_type, 'f', "filter",
+     "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
+  .add(poptmx::OPTION,   &nof_threads, 't', "threads",
+     "Number of threads used in calculations.",
+     "If the option is not used the optimal number is"
+     " calculated automatically.", "<auto>")
+  .add(poptmx::OPTION,   &SaveInt,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
   .add(deiopt.options())
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
     exit(0);
@@ -139,12 +139,12 @@ clargs(int argc, char *argv[]) :
   if ( ! table.count(&Plistname) )
     exit_on_error(command, string() +
     "Missing required argument: "+table.desc(&Plistname)+".");
-  
+
   // <result mask> : one more argument may or may not exist
   if ( ! table.count(&outmask) )
     outmask = upgrade(Mlistname.dtitle(), "reconstructed-") + "-@.tif";
   if ( string(outmask).find('@') == string::npos )
-    outmask = outmask.dtitle() + "-@" + outmask.extension();
+    outmask = outmask.dtitle() + "-@" + outmask.ext();
   if (arc <= 0.0)
     exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
 
@@ -175,18 +175,18 @@ public:
   pthread_mutex_t lock;         ///< Thread mutex used in the data distribution.
 
   slice_distributor(const SinoS & _sins, const vector<int> & _slices,
-					const string & _sliceformat, const Dcenter & _center,
-					const Filter & _filter, Contrast _contrast, int _SaveInt,
-					bool _verb, const CTrec & _rec )
-	: sins(_sins), slices(_slices), sliceformat(_sliceformat), center(_center),
-	  filter(_filter), contrast(_contrast), SaveInt(_SaveInt), verb(_verb), rec(_rec) {
+          const string & _sliceformat, const Dcenter & _center,
+          const Filter & _filter, Contrast _contrast, int _SaveInt,
+          bool _verb, const CTrec & _rec )
+  : sins(_sins), slices(_slices), sliceformat(_sliceformat), center(_center),
+    filter(_filter), contrast(_contrast), SaveInt(_SaveInt), verb(_verb), rec(_rec) {
 
-	slice = 0;
-	size = slices.size();
-	pixels = sins.pixels();
+  slice = 0;
+  size = slices.size();
+  pixels = sins.pixels();
     if ( pthread_mutex_init(&lock, NULL) != 0 )
       throw_error("slice_distributor", "Failed to initialize the mutex.");
-	bar = ProgressBar(verb, "threaded reconstruction", size);
+  bar = ProgressBar(verb, "threaded reconstruction", size);
 
   }
 
@@ -205,8 +205,8 @@ public:
   ///
   inline bool distribute(int *_slice){
     pthread_mutex_lock(&lock);
-	bool returned = slice < size;
-	*_slice = slice++;
+  bool returned = slice < size;
+  *_slice = slice++;
     pthread_mutex_unlock(&lock);
     return returned;
   }
@@ -223,10 +223,10 @@ void * in_thread (void * _args){
   Map sinogram, result;
 
   while ( args->distribute(&slice) ) {
-	args->sins.sino(slice, sinogram);
-	rec.reconstruct(sinogram, result, args->center( args->slices[slice]+1 ) );
-	SaveImage( fmt2s(args->sliceformat, args->slices[slice]+1), result, args->SaveInt);
-	args->bar.update(slice);
+  args->sins.sino(slice, sinogram);
+  rec.reconstruct(sinogram, result, args->center( args->slices[slice]+1 ) );
+  SaveImage( fmt2s(args->sliceformat, args->slices[slice]+1), result, args->SaveInt);
+  args->bar.update(slice);
   }
 
 }
@@ -268,19 +268,19 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-	rec.threads(1);
-	slice_distributor dist(sins, slices, sliceformat, args.center, args.filter_type,
-						   Contrast::REF,args. SaveInt, args.beverbose, rec);
+  rec.threads(1);
+  slice_distributor dist(sins, slices, sliceformat, args.center, args.filter_type,
+               Contrast::REF,args. SaveInt, args.beverbose, rec);
 
-	int threads = nof_threads(args.nof_threads);
-	pthread_t ntid [threads];
+  int threads = nof_threads(args.nof_threads);
+  pthread_t ntid [threads];
 
-	for (int ith = 0 ; ith < threads ; ith++)
-	  if ( pthread_create(ntid+ith, NULL, in_thread, &dist ) )
-		throw_error("project sino in thread", "Can't create thread.");
+  for (int ith = 0 ; ith < threads ; ith++)
+    if ( pthread_create(ntid+ith, NULL, in_thread, &dist ) )
+    throw_error("project sino in thread", "Can't create thread.");
 
-	for (int ith = 0 ; ith < threads ; ith++)
-	  pthread_join( ntid[ith], 0);
+  for (int ith = 0 ; ith < threads ; ith++)
+    pthread_join( ntid[ith], 0);
 
   }
   */

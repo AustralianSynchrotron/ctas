@@ -1164,7 +1164,7 @@ const string SliceOptionDesc=
   " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
 
 
-const string DimSliceOptionDesc = "[slice dimension][slice(s)]]"
+const string DimSliceOptionDesc = "[slice dimension][slice(s)],"
 " with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"
 " and [slice(s)]. " + SliceOptionDesc;
 

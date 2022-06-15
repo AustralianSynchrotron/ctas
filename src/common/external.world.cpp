@@ -54,6 +54,7 @@ initImageIO(){
   // whenever TIFFOpen is called
   try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
+  H5::Exception::dontPrint();
 
   return true;
 
@@ -317,19 +318,48 @@ public :
 
     try {
 
-      hdfFile = H5::H5File(name, H5F_ACC_TRUNC);
-      size_t poss = 0, pose;
-      while ( (pose=data.find("/",poss)) != string::npos) {
-        string elm = data.substr(poss, pose);
-        if (elm.size())
-          hdfFile.createGroup(data.substr(0,pose));
-        poss = pose + 1;
+      hdfFile = H5::H5File(name, H5F_ACC_RDWR | H5F_ACC_CREAT);
+
+      try { // attempt to overwrite existing dataset
+
+        dataset = hdfFile.openDataSet(data);
+        dataspace = dataset.getSpace();
+
+        if (dataspace.getSimpleExtentNdims()!=3)
+          throw 0;
+        blitz::Array<hsize_t,1> tcnts(3);
+        dataspace.getSimpleExtentDims(tcnts.data(), NULL);
+
+        int idx=0, odx=0;
+        for (int idx=0 ; idx<3 ; idx++)
+          if (idx != sliceDim  &&  shape(odx++) != tcnts(idx))
+            throw 0;
+        if (zsize > tcnts(sliceDim))
+          throw 0;
+
+      }  catch (...) { // and create new if failed to ovewrite
+
+        if (H5::IdComponent::isValid(dataspace.getId()))
+          dataspace.close();
+        if (H5::IdComponent::isValid(dataset.getId())) {
+          dataset.close();
+          hdfFile.unlink(data);
+        }
+
+        size_t poss = 0, pose;
+        while ( (pose=data.find("/",poss)) != string::npos) {
+          string elm = data.substr(poss, pose);
+          if (elm.size())
+            hdfFile.createGroup(data.substr(0,pose));
+          poss = pose + 1;
+        }
+        float fillvalue = 0.0;   /* Fill value for the dataset */
+        H5::DSetCreatPropList plist;
+        plist.setFillValue(H5::PredType::NATIVE_FLOAT, &fillvalue);
+        dataspace = H5::DataSpace(3, cnts.data());
+        dataset = H5::DataSet(hdfFile.createDataSet(data, H5::PredType::NATIVE_FLOAT, dataspace, plist));
+
       }
-      float fillvalue = 0.0;   /* Fill value for the dataset */
-      H5::DSetCreatPropList plist;
-      plist.setFillValue(H5::PredType::NATIVE_FLOAT, &fillvalue);
-      dataspace = H5::DataSpace(3, cnts.data());
-      dataset = H5::DataSet(hdfFile.createDataSet(data, H5::PredType::NATIVE_FLOAT, dataspace, plist));
 
       hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))};
       hsize_t moffs[2] = {0, 0};

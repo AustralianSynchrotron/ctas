@@ -79,6 +79,7 @@ struct clargs {
   deque<ImagePath> dfs;        ///< Array of the dark field images.
   deque<ImagePath> gfs;        ///< Array of the dark field images for backgrounds.
   ImagePath out_name;              ///< Name of the output image.
+  string out_range;
   StitchRules st;
   int testMe;          ///< Prefix to save interim results
   string sliceMatch;           ///< text file with list of matching slices
@@ -108,6 +109,8 @@ clargs(int argc, char *argv[])
 
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &out_name, 'o', "output", "Output image.", "", out_name)
+    .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process.",
+         SliceOptionDesc + ". Only makes sense in multiple projections.", "all")
     .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.bnn, 'b', "binn", BinnOptionDesc, "")
@@ -485,7 +488,7 @@ class ProjInThread : public InThread {
       allInRd[curI].read( slMatch(idx, curI), myAllIn[curI]);
     myProc.process(myAllIn, myRes);
     for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
-      allOutSv[curO].save(idx, myRes[curO]);
+      allOutSv[curO].save(slMatch(idx, (ArrIndex)allInRd.size()), myRes[curO]);
 
     bar.update();
     return true;
@@ -556,7 +559,7 @@ int main(int argc, char *argv[]) {
   // prepare list of slices to be processed
   blitz::Array<int,2> sliceTable;
   if (nofProj==1) {
-    sliceTable.resize(1,nofIn);
+    sliceTable.resize(1,nofIn+1);
     sliceTable = 0;
   } else {
     Map read_sliceTable;
@@ -585,14 +588,19 @@ int main(int argc, char *argv[]) {
     if (args.testMe >= 0  &&  args.testMe >= nofProj)
       throw_error(args.command, "Test slice beyond input volume size; check option " + args.table.desc(&args.testMe) + ".");
     if (args.testMe >= 0) {
-      sliceTable.resize( 1 , read_sliceTable.shape()(1));
+      sliceTable.resize(1, nofIn+1);
       for ( ArrIndex x=0 ; x < nofIn ; x++)
         sliceTable((ArrIndex)0,x) = read_sliceTable((ArrIndex)args.testMe,x);
+      sliceTable((ArrIndex)0,(ArrIndex)nofIn) = args.testMe;
     } else {
-      sliceTable.resize(read_sliceTable.shape());
+      vector<int> selected = slice_str2vec(args.out_range, read_sliceTable.shape()(0));
+      sliceTable.resize(selected.size(), nofIn+1);
       for ( ArrIndex y=0 ; y < nofProj ; y++)
-        for ( ArrIndex x=0 ; x < nofIn ; x++)
-          sliceTable(y,x) = read_sliceTable(y,x);
+        if (binary_search(selected.begin(), selected.end(), y)) {
+          for ( ArrIndex x=0 ; x < nofIn ; x++)
+            sliceTable(y,x) = read_sliceTable(y,x);
+          sliceTable(y, (ArrIndex)nofIn) = y;
+        }
     }
   }
 

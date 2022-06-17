@@ -89,7 +89,8 @@ target_link_libraries(common
   ${HDF5_LIBRARIES}
   ${ImageMagick_LIBRARIES}
   tiff
-  ${OPENCL_LL}
+  #${OPENCL_LL}
+  ${OpenCL_LIBRARIES}
 )
 
 

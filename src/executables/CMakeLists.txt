@@ -176,7 +176,8 @@ if(OPENCL_FOUND)
   target_link_libraries(flat
     common
     poptmx
-    ${OPENCL_LL}
+    #    ${OPENCL_LL}
+    ${OpenCL_LIBRARIES}
   )
 endif()
 

@@ -4,6 +4,7 @@ if( NOT DEFINED no_opencl )
 
   FIND_PACKAGE (OpenCL)
   if (OPENCL_FOUND)
+    include_directories("${OpenCL_INCLUDE_DIRS}")
     add_definitions(-DOPENCL_FOUND)
     add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
     set(OPENCL_LL "OpenCL")

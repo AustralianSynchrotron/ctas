@@ -168,6 +168,7 @@ add_executable(proj projection.cpp)
 target_link_libraries(proj
   common
   poptmx
+  flatfield
 )
 
 if(OPENCL_FOUND)

@@ -53,9 +53,7 @@ struct StitchRules {
   Binn bnn;                  ///< binning factor
   float angle;                ///< Rotation angle.
   PointF2D origin1;            ///< Origin of the next image in the first stitch
-  bool origin1Used;            ///< indicates if origin1 was given in options.
   PointF2D origin2;            ///< Origin of the next image in the second stitch
-  bool origin2Used;            ///< indicates if origin2 was given in options.
   uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
   PointF2D originF;            ///< Origin of the flipped portion
   bool flipUsed;               ///< indicates if originF was given in options.
@@ -64,10 +62,9 @@ struct StitchRules {
   StitchRules()
   : nofIn(0)
   , angle(0)
-  , origin1Used(false)
-  , origin2Used(false)
   , origin2size(0)
   , flipUsed(false)
+  , edge(0)
   {}
 };
 
@@ -161,8 +158,6 @@ clargs(int argc, char *argv[])
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
 
-  st.origin1Used=table.count(&st.origin1);
-  st.origin2Used=table.count(&st.origin2);
   st.flipUsed=table.count(&st.originF);
 
   if ( ! table.count(&out_name) )
@@ -249,11 +244,12 @@ class ProcProj {
   Map msk1, msk2, mskf, mskF;
   deque<Map> allIn, o1Stitch, o2Stitch;
 
-  void procInImg(const Map & im, Map & om){
+  void procInImg(const Map & im, Map & om, bool doFF=true){
     if (im.shape() != st.ish)
       throw_error(modname, "Unexpected shape of image to process.");
     iar.resize(st.ish);
-    if ( bgar.size() || dfar.size() )
+    iar=im;
+    if ( doFF && ( bgar.size() || dfar.size() ) )
       canon.process(iar);
     rotate(iar, rar, st.angle);
     crop(rar, car, st.crp);
@@ -262,12 +258,13 @@ class ProcProj {
     om = final;
   }
 
+
   static void stitch(PointF2D origin, Map & oarr,  const deque<Map> & iarr,  const deque<Map> & gprr = deque<Map>() ) {
 
     const int isz = iarr.size();
 
     if ( isz == 0 )
-      return;
+      throw_error(modname, "Nothing to stitch.");
     if ( isz == 1 ) {
       oarr.reference(iarr[0]);
       return;
@@ -335,13 +332,13 @@ class ProcProj {
   }
 
   void prepareMask(Map & _gaps, bool bepicky) {
-
     const float mm = min(_gaps);
     const float MM = max(_gaps);
     if (MM <= 0)
       throw_error("GapsMask", "Mask covers whole image.");
     if (mm==MM) // no _gaps
       return;
+    _gaps = mm + _gaps / (MM-mm);
     for (ArrIndex i = 0 ; i<_gaps.shape()(0) ; i++)
       for (ArrIndex j = 0 ; j<_gaps.shape()(1) ; j++)
         if (bepicky && _gaps(i,j)<1.0 )
@@ -381,7 +378,7 @@ public:
     , dgar(_dgar)
     , gpar(_gpar)
     , canon(bgar, dfar, gpar)
-    , origin1size(st.nofIn / (st.flipUsed ? 2 : 1) / (st.origin2Used ? st.origin2size : 1) )
+    , origin1size(st.nofIn / (st.flipUsed ? 2 : 1) / (st.origin2size ? st.origin2size : 1) )
     , allIn(st.nofIn)
     , o1Stitch(st.nofIn/origin1size)
     , o2Stitch(st.flipUsed ? 2 : 1)
@@ -399,7 +396,7 @@ public:
     if (gpar.size()) {
       if (gpar.shape() != st.ish)
         throw_error(modname, "Unexpected mask shape.");
-      procInImg(gpar, msk1);
+      procInImg(gpar, msk1, false);
       prepareMask(msk1, true);
       if (origin1size==1)
         msk2.reference(msk1);
@@ -409,17 +406,18 @@ public:
         prepareMask(msk2, false);
       }
       if ( st.flipUsed ) {
-        if (st.origin2size==1)
+        if ( ! st.origin2size )
           mskf.reference(msk2);
         else {
           deque<Map> supply(st.origin2size, msk2);
           stitch(st.origin2, mskf, supply);
           prepareMask(mskf, false);
         }
-        mskF.resize(mskf.size());
+        mskF.resize(mskf.shape());
         mskF = mskf.reverse(blitz::secondDim);
       }
     }
+
   }
 
 
@@ -444,6 +442,7 @@ public:
       int cidx=inidx/origin1size;
       deque<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + origin1size) ;
       stitch(st.origin1, o1Stitch[cidx], supply, gpar.size() ? deque<Map>(1, msk1) : deque<Map>());
+
       if ( ! interim_name.empty()  &&  origin1size != 1 ) {
         Map cres;
         if ( ! st.origin1.x * st.origin1.y ) {
@@ -462,30 +461,39 @@ public:
     }
 
     // second stitch
-    for ( int inidx=0 ; inidx<o1Stitch.size() ; inidx += st.origin2size ) {
-      int cidx=inidx/st.origin2size;
-      deque<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + st.origin2size ) ;
-      stitch(st.origin2, o2Stitch[cidx], supply, gpar.size() ? deque<Map>(1, msk2) : deque<Map>());
+    if ( ! st.origin2size ) {
+      for(int curM = 0 ; curM < o2Stitch.size() ; curM++)
+          o2Stitch[curM].reference(o1Stitch[curM]);
+    } else {
+      for ( int inidx=0 ; inidx<o1Stitch.size() ; inidx += st.origin2size ) {
 
-      if ( ! interim_name.empty()  &&  st.origin2size != 1 ) {
-        Map cres;
-        if ( ! st.origin2.x * st.origin2.y )
-          cres.reference(o2Stitch[cidx]);
-        else if ( abs(st.origin2.x) < abs(st.origin2.y) ) {
-          int crppx = abs(st.origin2.x * (supply.size()-1));
-          crop(o2Stitch[cidx], cres, Crop(0, crppx, 0, crppx));
-        } else {
-          int crppx = abs(st.origin2.y * (supply.size()-1));
-          crop(o2Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
+        int cidx=inidx/st.origin2size;
+        deque<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + st.origin2size ) ;
+        stitch(st.origin2, o2Stitch[cidx], supply, gpar.size() ? deque<Map>(1, msk2) : deque<Map>());
+
+        if ( ! interim_name.empty()  &&  st.origin2size != 1 ) {
+          Map cres;
+          if ( ! st.origin2.x * st.origin2.y )
+            cres.reference(o2Stitch[cidx]);
+          else if ( abs(st.origin2.x) < abs(st.origin2.y) ) {
+            int crppx = abs(st.origin2.x * (supply.size()-1));
+            crop(o2Stitch[cidx], cres, Crop(0, crppx, 0, crppx));
+          } else {
+            int crppx = abs(st.origin2.y * (supply.size()-1));
+            crop(o2Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
+          }
+          string svformat = mask2format("_V@", o2Stitch.size() );
+          lastSaved = interim_name.dtitle() + toString( svformat, cidx)  + ".tif";
+          SaveDenan(lastSaved, cres);
         }
-        string svformat = mask2format("_V@", o2Stitch.size() );
-        lastSaved = interim_name.dtitle() + toString( svformat, cidx)  + ".tif";
-        SaveDenan(lastSaved, cres);
+
       }
     }
 
     // flip stitch
     if ( st.flipUsed ) {
+      //if ( o2Stitch.size() != 2 ) // May it ever happen ?
+      //  throw_error(args.command, "Number of images requested to flip-stitch is not equal to two.");
       o2Stitch[1].reverseSelf(blitz::secondDim);
       stitch(st.originF, final, o2Stitch, gpar.size() ? deque<Map>({mskf, mskF}) : deque<Map>());
       if ( ! interim_name.empty() )  {
@@ -506,6 +514,7 @@ public:
       SaveDenan( interim_name.dtitle() + "_X.tif", final );
     }
 
+    // splits
     if ( st.splits.empty() ) {
       res.resize(1);
       res[0].resize(final.shape());

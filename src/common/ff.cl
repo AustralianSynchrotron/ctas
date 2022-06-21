@@ -54,19 +54,22 @@ __kernel void ffm(
 {
 
   int idx = get_global_id(0);
-  if (mask[idx]==0.0) {
+
+  float midx = mask ? mask[idx] : 1.0f;
+  if (midx==0.0) {
     io[idx] = 0.0f;
     return;
   }
 
   float fgg = io[idx];
-
-  if ( df[idx] >= bg[idx] )
+  float didx = df ? df[idx] : 0.0f;
+  float bidx = bg ? bg[idx] : 1.0f;
+  if ( didx >= bidx )
     io[idx] = 1.0f;
-  else if (df[idx] >= fgg )
+  else if (didx >= fgg )
     io[idx] = 0.0f;
   else
-    io[idx] = (fgg - df[idx]) / (bg[idx] - df[idx]);
+    io[idx] = (fgg - didx) / (bidx - didx);
 
 }
 

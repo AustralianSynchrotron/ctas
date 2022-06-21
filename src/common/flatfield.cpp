@@ -13,7 +13,7 @@ const cl_program ffProgram =
 
 Shape shapeMe(std::vector<Shape> shs) {
   for (int idx=0 ; idx < shs.size() ; idx++)
-    if ( shs[idx] != shs[0] )
+    if ( area(shs[idx]) && shs[idx] != shs[0] )
       throw_error("FlatCL", "Non matching init shapes.");
   return shs.at(0);
 }
@@ -21,15 +21,17 @@ Shape shapeMe(std::vector<Shape> shs) {
 
 FlatFieldProc::FlatFieldProc(const Map & _bg, const Map & _df,  const Map & _mask)
   : sh( shapeMe( {_bg.shape(), _df.shape(), _mask.shape()} ) )
-  , io(clAllocArray<float>(area(sh)))
-  , bgR( blitz2cl(_bg, CL_MEM_READ_ONLY) )
+  , io( area(sh) ? clAllocArray<float>(area(sh)) : 0)
+  , bgR( _bg.size() ? blitz2cl(_bg, CL_MEM_READ_ONLY) : 0)
   , bg(bgR)
-  , dfR( blitz2cl(_df, CL_MEM_READ_ONLY) )
+  , dfR( _df.size() ? blitz2cl(_df, CL_MEM_READ_ONLY) : 0)
   , df(dfR)
-  , maskR ( blitz2cl(_mask, CL_MEM_READ_ONLY) )
+  , maskR ( _mask.size() ? blitz2cl(_mask, CL_MEM_READ_ONLY) : 0)
   , mask(maskR)
-  , kernel( createKernel(ffProgram, "ffm") )
+  , kernel( area(sh) ? createKernel(ffProgram, "ffm") : 0)
 {
+  if (!kernel)
+    return;
   setArg(kernel, 0, io());
   setArg(kernel, 1, bg());
   setArg(kernel, 2, df());
@@ -39,12 +41,14 @@ FlatFieldProc::FlatFieldProc(const Map & _bg, const Map & _df,  const Map & _mas
 
 FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
   : sh(other.sh)
-  , io(clAllocArray<float>(area(sh)))
+  , io( area(sh) ? clAllocArray<float>(area(sh)) : 0)
   , bg(other.bg)
   , df(other.df)
   , mask(other.mask)
-  , kernel( createKernel(ffProgram, "ffm") )
+  , kernel( area(sh) ? createKernel(ffProgram, "ffm") : 0)
 {
+  if (!kernel)
+    return;
   setArg(kernel, 0, io());
   setArg(kernel, 1, bg());
   setArg(kernel, 2, df());
@@ -53,6 +57,8 @@ FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
 
 
 void FlatFieldProc::execute(const Map & _io) {
+  if (!io())
+    return;
   if (_io.shape() != sh)
     throw_error("FlatCL", "Non matching input shape");
   blitz2cl(_io, io());

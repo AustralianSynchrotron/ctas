@@ -54,6 +54,7 @@ struct StitchRules {
   float angle;                ///< Rotation angle.
   PointF2D origin1;            ///< Origin of the next image in the first stitch
   PointF2D origin2;            ///< Origin of the next image in the second stitch
+  uint origin1size;
   uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
   PointF2D originF;            ///< Origin of the flipped portion
   bool flipUsed;               ///< indicates if originF was given in options.
@@ -62,6 +63,7 @@ struct StitchRules {
   StitchRules()
   : nofIn(0)
   , angle(0)
+  , origin1size(1)
   , origin2size(0)
   , flipUsed(false)
   , edge(0)
@@ -158,7 +160,6 @@ clargs(int argc, char *argv[])
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
 
-  st.flipUsed=table.count(&st.originF);
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -197,29 +198,15 @@ clargs(int argc, char *argv[])
 
   st.angle *= M_PI/180;
   st.nofIn = images.size();
+  st.flipUsed=table.count(&st.originF);
+  st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / (st.origin2size ? st.origin2size : 1);
 
 }
 
 
 namespace blitz {
-
-/// converts NaNs into the number
-///
-/// Would be used only as the blitz::Array function.
-///
-/// @param x value to check.
-///
-/// @return x if it is normal number, 0.0 otherwise.
-///
-static inline float
-denan(float x){
-  return isnormal(x) ? x : 0.0 ;
-}
-
-/// \cond
+static inline float denan(float x){ return isnormal(x) ? x : 0.0 ;}
 BZ_DECLARE_FUNCTION(denan);
-/// \endcond
-
 }
 
 void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
@@ -239,7 +226,6 @@ class ProcProj {
   const Map & gpar;
   FlatFieldProc canon;
 
-  int origin1size;
   Map iar, rar, car, final;
   Map msk1, msk2, mskf, mskF;
   deque<Map> allIn, o1Stitch, o2Stitch;
@@ -371,16 +357,15 @@ class ProcProj {
 public:
 
   ProcProj( const StitchRules & _st, const Map & _bgar, const Map & _dfar
-          , const Map & _dgar, const Map & _gpar)
+          , const Map & _dgar, const Map & _gpar, const Path & saveMasks = Path())
     : st(_st)
     , bgar(_bgar)
     , dfar(_dfar)
     , dgar(_dgar)
     , gpar(_gpar)
     , canon(bgar, dfar, gpar)
-    , origin1size(st.nofIn / (st.flipUsed ? 2 : 1) / (st.origin2size ? st.origin2size : 1) )
     , allIn(st.nofIn)
-    , o1Stitch(st.nofIn/origin1size)
+    , o1Stitch(st.nofIn/st.origin1size)
     , o2Stitch(st.flipUsed ? 2 : 1)
   {
     if ( ! area(st.ish) )
@@ -396,14 +381,21 @@ public:
     if (gpar.size()) {
       if (gpar.shape() != st.ish)
         throw_error(modname, "Unexpected mask shape.");
+
+    #define SaveMask(vol, suf) \
+       if (saveMasks.length()) \
+         SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
+
       procInImg(gpar, msk1, false);
       prepareMask(msk1, true);
-      if (origin1size==1)
+      SaveMask(msk1, "1");
+      if (st.origin1size==1)
         msk2.reference(msk1);
       else {
-        deque<Map> supply(origin1size, msk1);
+        deque<Map> supply(st.origin1size, msk1);
         stitch(st.origin1, msk2, supply);
         prepareMask(msk2, false);
+        SaveMask(msk2, "2");
       }
       if ( st.flipUsed ) {
         if ( ! st.origin2size )
@@ -413,9 +405,17 @@ public:
           stitch(st.origin2, mskf, supply);
           prepareMask(mskf, false);
         }
+        SaveMask(mskf, "D");
         mskF.resize(mskf.shape());
         mskF = mskf.reverse(blitz::secondDim);
+        SaveMask(mskF, "F");
+        if (saveMasks.length()) {
+          Map maskA;
+          stitch(st.originF, maskA, deque<Map>({mskf, mskF}));
+          SaveMask(maskA, "O");
+        }
       }
+    #undef SaveMask
     }
 
   }
@@ -435,11 +435,11 @@ public:
         const string sfI = toString(mask2format("_T@", st.nofIn), curproj);
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
         const string sf2 = st.origin2size ? toString(mask2format(".@", st.origin2size), cur2) : "";
-        const string sf1 = origin1size ? toString(mask2format(".@", origin1size), cur1) : "";
+        const string sf1 = st.origin1size ? toString(mask2format(".@", st.origin1size), cur1) : "";
         lastSaved = interim_name.dtitle() + sfI + sfF + sf2 + sf1 + string(".tif");
         SaveDenan(lastSaved, allIn[curproj]);
         cur1++;
-        if (cur1>=origin1size) {
+        if (cur1>=st.origin1size) {
           cur1=0;
           cur2++;
           if (cur2>=st.origin2size) {
@@ -451,12 +451,12 @@ public:
     }
 
     // first stitch
-    for ( int inidx=0 ; inidx<st.nofIn ; inidx += origin1size ) {
-      int cidx=inidx/origin1size;
-      deque<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + origin1size) ;
+    for ( int inidx=0 ; inidx<st.nofIn ; inidx += st.origin1size ) {
+      int cidx=inidx/st.origin1size;
+      deque<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + st.origin1size) ;
       stitch(st.origin1, o1Stitch[cidx], supply, gpar.size() ? deque<Map>(1, msk1) : deque<Map>());
 
-      if ( ! interim_name.empty()  &&  origin1size != 1 ) {
+      if ( ! interim_name.empty()  &&  st.origin1size != 1 ) {
         Map cres;
         if ( ! st.origin1.x * st.origin1.y ) {
             cres.reference(o1Stitch[cidx]);
@@ -561,9 +561,11 @@ public:
 
   }
 
-  static bool process(const StitchRules & _st, const Map & _bgar, const Map & _dfar, const Map & _dgar, const Map & _gpar,
-                      const deque<Map> & allInR, deque<Map> & res, const string & interim_name = string()) {
-    ProcProj proc(_st, _bgar, _dfar, _dgar, _gpar);
+  static bool process( const StitchRules & _st, const Map & _bgar, const Map & _dfar
+                       , const Map & _dgar, const Map & _gpar
+                       , const deque<Map> & allInR, deque<Map> & res
+                       , const ImagePath & interim_name = string()) {
+    ProcProj proc(_st, _bgar, _dfar, _dgar, _gpar, interim_name.dtitle() + "_mask");
     return proc.process(allInR, res, interim_name);
   }
 

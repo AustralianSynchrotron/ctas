@@ -428,12 +428,25 @@ public:
     ImagePath lastSaved;
 
     // prepare input images
+    int curF=0, cur2=0, cur1=0;
     for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
       procInImg(allInR[curproj], allIn[curproj]);
       if ( ! interim_name.empty() ) {
-        string svformat = mask2format("_T@", st.nofIn);
-        lastSaved = interim_name.dtitle() + toString(svformat, curproj) + string(".tif");
+        const string sfI = toString(mask2format("_T@", st.nofIn), curproj);
+        const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
+        const string sf2 = st.origin2size ? toString(mask2format(".@", st.origin2size), cur2) : "";
+        const string sf1 = origin1size ? toString(mask2format(".@", origin1size), cur1) : "";
+        lastSaved = interim_name.dtitle() + sfI + sfF + sf2 + sf1 + string(".tif");
         SaveDenan(lastSaved, allIn[curproj]);
+        cur1++;
+        if (cur1>=origin1size) {
+          cur1=0;
+          cur2++;
+          if (cur2>=st.origin2size) {
+            cur2=0;
+            curF++;
+          }
+        }
       }
     }
 

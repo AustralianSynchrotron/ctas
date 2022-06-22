@@ -40,19 +40,18 @@
 
 class FlatFieldProc {
 
+public:
+  const Shape sh; // must be first
 
 private:
 
-  const Shape sh; // must be first
   CLmem   io;
-
   const CLmem bgR;
   const CLmem & bg;
   const CLmem dfR;
   const CLmem & df;
   const CLmem maskR;
   const CLmem & mask;
-
   cl_kernel kernel;
 
 public:
@@ -72,7 +71,7 @@ public:
 
   Map & process(Map & _io) {
     execute(_io);
-    return cl2blitz(io(), _io);
+    return io() ? cl2blitz(io(), _io) : _io;
   }
 
 };

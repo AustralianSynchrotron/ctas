@@ -57,7 +57,7 @@ FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
 
 
 void FlatFieldProc::execute(const Map & _io) {
-  if (!io())
+  if ( !io() || !kernel )
     return;
   if (_io.shape() != sh)
     throw_error("FlatCL", "Non matching input shape");

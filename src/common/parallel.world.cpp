@@ -425,7 +425,7 @@ std::string kernelName(cl_kernel kern) {
 cl_int execKernel(cl_kernel kern, size_t size) {
   cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 1, 0,  & size, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
+    throw_error("execKernel", "Failed to execute OpenCL kernel " + toString("%p", kern) + "\"" + kernelName(kern) + "\": " + toString(clerr));
   clerr = clFinish(CL_queue);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));

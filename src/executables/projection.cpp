@@ -220,14 +220,10 @@ class ProcProj {
 
   static const string modname;
   StitchRules st;
-  const Map & bgar;
-  const Map & dfar;
-  const Map & dgar;
-  const Map & gpar;
   FlatFieldProc canon;
 
-  Map iar, rar, car, final;
-  Map msk1, msk2, mskf, mskF;
+  Map msk1, msk2, mskf, mskF; // shared
+  Map iar, rar, car, final; // own
   deque<Map> allIn, o1Stitch, o2Stitch;
 
   void procInImg(const Map & im, Map & om, bool doFF=true){
@@ -235,7 +231,7 @@ class ProcProj {
       throw_error(modname, "Unexpected shape of image to process.");
     iar.resize(st.ish);
     iar=im;
-    if ( doFF && ( bgar.size() || dfar.size() ) )
+    if ( doFF /*&& ( bgar.size() || dfar.size() )*/ )
       canon.process(iar);
     rotate(iar, rar, st.angle);
     crop(rar, car, st.crp);
@@ -356,13 +352,9 @@ class ProcProj {
 
 public:
 
-  ProcProj( const StitchRules & _st, const Map & _bgar, const Map & _dfar
-          , const Map & _dgar, const Map & _gpar, const Path & saveMasks = Path())
+  ProcProj( const StitchRules & _st, const Map & bgar, const Map & dfar
+          , const Map & dgar, const Map & gpar, const Path & saveMasks = Path())
     : st(_st)
-    , bgar(_bgar)
-    , dfar(_dfar)
-    , dgar(_dgar)
-    , gpar(_gpar)
     , canon(bgar, dfar, gpar)
     , allIn(st.nofIn)
     , o1Stitch(st.nofIn/st.origin1size)
@@ -420,6 +412,20 @@ public:
 
   }
 
+  ProcProj(const ProcProj & other)
+    : st(other.st)
+    , canon(other.canon)
+    , allIn(st.nofIn)
+    , o1Stitch(st.nofIn/st.origin1size)
+    , o2Stitch(st.flipUsed ? 2 : 1)
+    , msk1(other.msk1)
+    , msk2(other.msk2)
+    , mskf(other.mskf)
+    , mskF(other.mskF)
+  {}
+
+
+
 
   bool process(const deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
 
@@ -450,11 +456,13 @@ public:
       }
     }
 
+
     // first stitch
     for ( int inidx=0 ; inidx<st.nofIn ; inidx += st.origin1size ) {
       int cidx=inidx/st.origin1size;
       deque<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + st.origin1size) ;
-      stitch(st.origin1, o1Stitch[cidx], supply, gpar.size() ? deque<Map>(1, msk1) : deque<Map>());
+      deque<Map> masks( msk1.size() ? 1 : 0 , msk1);
+      stitch(st.origin1, o1Stitch[cidx], supply, masks);
 
       if ( ! interim_name.empty()  &&  st.origin1size != 1 ) {
         Map cres;
@@ -482,7 +490,8 @@ public:
 
         int cidx=inidx/st.origin2size;
         deque<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + st.origin2size ) ;
-        stitch(st.origin2, o2Stitch[cidx], supply, gpar.size() ? deque<Map>(1, msk2) : deque<Map>());
+        deque<Map> masks( msk2.size() ? 1 : 0 , msk2);
+        stitch(st.origin2, o2Stitch[cidx], supply, masks);
 
         if ( ! interim_name.empty()  &&  st.origin2size != 1 ) {
           Map cres;
@@ -508,7 +517,8 @@ public:
       //if ( o2Stitch.size() != 2 ) // May it ever happen ?
       //  throw_error(args.command, "Number of images requested to flip-stitch is not equal to two.");
       o2Stitch[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, final, o2Stitch, gpar.size() ? deque<Map>({mskf, mskF}) : deque<Map>());
+      deque<Map> masks = mskf.size() ? deque<Map>({mskf, mskF}) : deque<Map>();
+      stitch(st.originF, final, o2Stitch, masks);
       if ( ! interim_name.empty() )  {
         Map tmp;
         ReadImage(lastSaved, tmp);
@@ -561,6 +571,7 @@ public:
 
   }
 
+  /*
   static bool process( const StitchRules & _st, const Map & _bgar, const Map & _dfar
                        , const Map & _dgar, const Map & _gpar
                        , const deque<Map> & allInR, deque<Map> & res
@@ -568,6 +579,7 @@ public:
     ProcProj proc(_st, _bgar, _dfar, _dgar, _gpar, interim_name.dtitle() + "_mask");
     return proc.process(allInR, res, interim_name);
   }
+  */
 
 
 };
@@ -575,21 +587,20 @@ public:
 const string ProcProj::modname="ProcProj";
 
 
+//#define addElement(umap, key, ...) umap.emplace( \
+//  piecewise_construct, forward_as_tuple(key), forward_as_tuple(__VA_ARGS__));
+//#undef addElement
 
 class ProjInThread : public InThread {
 
-  const StitchRules st;
-  const Map & bgar;
-  const Map & dfar;
-  const Map & dgar;
-  const Map & gpar;
-  const blitz::Array<int,2> & slMatch;
-  unordered_map<pthread_t,ProcProj> procs;
-  unordered_map<pthread_t, deque<Map> > allInMaps;
-  unordered_map<pthread_t, deque<Map> > results;
+  const ProcProj & proc;
   deque<ReadVolumeBySlice> & allInRd;
   deque<SaveVolumeBySlice> & allOutSv;
+  const blitz::Array<int,2> & slMatch;
 
+  unordered_map<pthread_t, ProcProj> procs;
+  unordered_map<pthread_t, deque<Map> > allInMaps;
+  unordered_map<pthread_t, deque<Map> > results;
 
   bool inThread(long int idx) {
 
@@ -599,9 +610,9 @@ class ProjInThread : public InThread {
     const pthread_t me = pthread_self();
     lock();
     if ( ! procs.count(me) ) { // first call
-      procs.insert({me, ProcProj(st, bgar, dfar, dgar, gpar)});
-      allInMaps.insert({me, deque<Map>(allInRd.size())});
-      results.insert({me, deque<Map>()});
+      procs.emplace(me, proc);
+      allInMaps.emplace(me, allInRd.size());
+      results.emplace(me);
     }
     ProcProj & myProc = procs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
@@ -621,15 +632,10 @@ class ProjInThread : public InThread {
 
 public:
 
-  ProjInThread(const StitchRules & _st, const Map & _bgar, const Map & _dfar, const Map & _dgar, const Map & _gpar
-              , deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
+  ProjInThread(const ProcProj & _proc, deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
               , const blitz::Array<int,2> & _slMatch, bool verbose=false)
     : InThread(verbose, "processing projections", _outSave[0].slices() )
-    , st(_st)
-    , bgar(_bgar)
-    , dfar(_dfar)
-    , dgar(_dgar)
-    , gpar(_gpar)
+    , proc(_proc)
     , slMatch(_slMatch)
     , allInRd(_allInRd)
     , allOutSv(_outSave)
@@ -746,10 +752,9 @@ int main(int argc, char *argv[]) {
       allIn.push_back(test);
     }
   }
-  ProcProj::process( st, singleProc ? bgar : Map(), singleProc ? dfar : Map()
-                       , singleProc ? dgar : Map(), singleProc ? gpar : Map()
-                   , allIn, allOut
-                   , args.testMe >=0 ? imageFile(args.out_name).dtitle() + ".tif" : string() );
+
+  ProcProj canonPP(st, bgar, dfar, dgar, gpar, args.testMe >=0 ? args.out_name.dtitle() + "_mask.tif" : string() );
+  canonPP.process(allIn, allOut, args.testMe >=0 ? args.out_name.dtitle() + ".tif" : string() );
 
   // Prepare saving factories
   const string spformat = mask2format("_split@", allOut.size());
@@ -764,7 +769,7 @@ int main(int argc, char *argv[]) {
     for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
       allOutSv[curSplt].save(0,allOut[curSplt]);
   else
-    ProjInThread(st, bgar, dfar, dgar, gpar, allInRd, allOutSv, sliceTable, args.beverbose).execute();
+    ProjInThread(canonPP, allInRd, allOutSv, sliceTable, args.beverbose).execute();
 
   exit(0);
 

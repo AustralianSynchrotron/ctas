@@ -612,7 +612,7 @@ class ProjInThread : public InThread {
     if ( ! procs.count(me) ) { // first call
       procs.emplace(me, proc);
       allInMaps.emplace(me, allInRd.size());
-      results.emplace(me);
+      results.emplace(me,0);
     }
     ProcProj & myProc = procs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);

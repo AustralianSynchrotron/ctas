@@ -293,25 +293,20 @@ AqSeries::index(int idx) const  {
 
 void readnrot(const string &img, Map &map, const Shape & sh,
               float angle, const vector<int> &slices, const Crop & crp)  {
-  if (angle==0.0) {
-    ReadImageLine(img, map, slices, sh);
-    crop(map,crp);
+  Map temp;
+  ReadImage(img, map, sh);
+  rotate(map, temp, angle);
+  crop(temp,crp);
+  if ( ! slices.empty() ) {
+    map.resize(slices.size(), temp.shape()(1));
+    for ( int sls=0 ; sls < slices.size() ; sls++ )
+      if (slices[sls] < temp.shape()(1))
+        map(sls, all) =
+          temp(slices[sls], all);
+      else
+        map(sls, all) = 0.0;
   } else {
-    Map temp;
-    ReadImage(img, map, sh);
-    rotate(map, temp, angle);
-    crop(temp,crp);
-    if ( ! slices.empty() ) {
-      map.resize(slices.size(), temp.shape()(1));
-      for ( int sls=0 ; sls < slices.size() ; sls++ )
-        if (slices[sls] < temp.shape()(1))
-          map(sls, all) =
-            temp(slices[sls], all);
-        else
-          map(sls, all) = 0.0;
-    } else {
-      map=temp.copy();
-    }
+    map=temp.copy();
   }
 }
 
@@ -811,18 +806,11 @@ SinoS::SinoS(const deque<Path> & inlist, const std::string & slicedesc,
   Map proj(Shape(slcs,pxls));
   ProgressBar bar(verb, "reading projections", thts);
   for ( int curproj = 0 ; curproj < thts ; curproj++) {
-    if ( angle == 0.0 ) {
-      ReadImageLine(inlist[curproj], iar, sliceV, sh);
-      data(curproj, all, all) =
-          iar(all, blitz::Range(crp.left, pxls-crp.right-1));
-    } else {
-      ReadImage(inlist[curproj], iar, sh);
-      rotate(iar, rar, angle);
-      crop(rar, car, crp);
-      for ( int sls=0 ; sls < sliceV.size() ; sls++ )
-        data(curproj, sls, all) =
-          car(sliceV[sls], all);
-    }
+    ReadImage(inlist[curproj], iar, sh);
+    rotate(iar, rar, angle);
+    crop(rar, car, crp);
+    for ( int sls=0 ; sls < sliceV.size() ; sls++ )
+      data(curproj, sls, all) = car(sliceV[sls], all);
     bar.update();
   }
 

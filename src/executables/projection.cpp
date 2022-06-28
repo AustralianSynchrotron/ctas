@@ -74,7 +74,7 @@ struct StitchRules {
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  deque<ImagePath> images;        ///< images to combine
+  deque< deque<ImagePath> > images;        ///< images to combine
   deque<ImagePath> bgs;        ///< Array of the background images.
   deque<ImagePath> dfs;        ///< Array of the dark field images.
   deque<ImagePath> dgs;        ///< Array of the dark field images for backgrounds.
@@ -101,10 +101,11 @@ clargs(int argc, char *argv[])
   , beverbose(false)
 {
 
+  deque<ImagePath> iimages;
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
-    .add(poptmx::ARGUMENT, &images, "images", "Input 2D or 3D images.",
+    .add(poptmx::ARGUMENT, &iimages, "images", "Input 2D or 3D images.",
          "All images must be of the same rank (2D or 3D). HDF5 format:\n"
          "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc)
 
@@ -156,10 +157,24 @@ clargs(int argc, char *argv[])
   }
   command = table.name();
 
-  int tiledImages = table.count(&images);
+  int tiledImages = table.count(&iimages);
+  if (tiledImages) {
+    images.resize(tiledImages);
+    for ( int curI = 0 ; curI < tiledImages ; curI++ )
+      images.at(curI).push_back(iimages.at(curI));
+  }
+  string inputline;
+  while ( ! cin && getline(cin, inputline)) {
+    deque<string> inputdeque = split(inputline, " ");
+    if (!tiledImages)
+      tiledImages = inputdeque.size();
+    else if (inputdeque.size() != tiledImages)
+      exit_on_error(command, "Inconsistent number of input images given in stdin.");
+    for ( int curI = 0 ; curI < tiledImages ; curI++ )
+      images.at(curI).push_back(inputdeque.at(curI));
+  }
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
-
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -170,7 +185,7 @@ clargs(int argc, char *argv[])
     if ( tiledImages % 2 )
       exit_on_error(command, string () +
         "Use of the " + table.desc(&st.originF) + " option requires even number of input images"
-        " (while " + toString(table.count(&images)) + " counted).");
+        " (while " + toString(tiledImages) + " counted).");
     tiledImages /= 2;
   }
   if ( table.count(&st.origin2) > table.count(&st.origin1) )
@@ -197,7 +212,7 @@ clargs(int argc, char *argv[])
     exit_on_error(command, "The list of splits contains only 0 (marking vertical splits).");
 
   st.angle *= M_PI/180;
-  st.nofIn = images.size();
+  st.nofIn = tiledImages;
   st.flipUsed=table.count(&st.originF);
   st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / (st.origin2size ? st.origin2size : 1);
 
@@ -664,7 +679,7 @@ void average_stack(Map & oar, const deque<ImagePath> & stack, const Shape & ish)
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  const Shape ish(ImageSizes(args.images[0].repr()));
+  const Shape ish(ImageSizes(args.images.at(0).at(0).repr()));
   StitchRules st = args.st;
   st.ish = ish;
 
@@ -681,10 +696,10 @@ int main(int argc, char *argv[]) {
   int nofProj = -1;
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
-    allInRd.at(curI).add(args.images.at(curI).repr());
+    allInRd.at(curI).add(args.images.at(curI));
     uint cSls = allInRd.at(curI).slices();
     if (!cSls)
-      exit_on_error(args.command, "No images in " + args.images.at(curI).repr());
+      exit_on_error(args.command, "No images in input "+ toString(curI) +".");
     if ( nofProj < 0  ||  cSls < nofProj )
       nofProj = cSls;
   }
@@ -747,7 +762,7 @@ int main(int argc, char *argv[]) {
       allIn.push_back(Map());
       allInRd[curI].read(sliceTable(ArrIndex(0), curI), allIn[curI]);
       if (allIn[curI].shape() != ish)
-        throw_error(args.command, "Unexpected image size of "+args.images.at(curI).repr()+".");
+        throw_error(args.command, "Unexpected image size in input "+toString(curI)+".");
     } else {
       allIn.push_back(test);
     }

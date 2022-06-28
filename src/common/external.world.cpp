@@ -54,6 +54,7 @@ initImageIO(){
   // whenever TIFFOpen is called
   try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
+  H5Eset_auto2(H5E_DEFAULT, NULL, NULL);
   //H5::Exception::dontPrint();
 
   return true;
@@ -63,177 +64,112 @@ initImageIO(){
 static const bool imageIOinited = initImageIO();
 
 
-
+/*
 Path imageFile(const std::string & filedesc) {
   return filedesc.substr(0 , filedesc.find(":"));
 }
+*/
 
 
 
 
 
-deque<string> split (string s, string delimiter) {
-  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-  string token;
-  deque<string> res;
-  while ((pos_end = s.find (delimiter, pos_start)) != string::npos) {
-    token = s.substr (pos_start, pos_end - pos_start);
-    pos_start = pos_end + delim_len;
-    res.push_back (token);
-  }
-  res.push_back (s.substr (pos_start));
-  return res;
-}
 
 
 struct HDFdesc {
 
-  Path name;
+  ImagePath name;
   string data;
   int sliceDim;
-  string slices;
+  string slicesStr;
 
+  /*
   static const string & checkFiledesc(const string & filedesc) {
     if ( HDFdesc(filedesc).isValid() )
       return filedesc;
     else
-      throw CtasErr(CtasErr::WARN, "HDFread",
-                    "Not an hdf file \"" + filedesc + "\".");
+      throw warn("HDF desc", "Not an hdf file \"" + filedesc + "\".");
   }
+  */
 
-  HDFdesc(const string & filedesc)
-    : sliceDim(0)
-  {
-
-    const string modmname = "HDF desc";
-    deque<string> hdfRd = split(filedesc, ":");
-    if ( hdfRd.size() < 2  ||  hdfRd.size() > 3 ) // not HDF5
+  HDFdesc(const ImagePath & filedesc) {
+    if (filedesc.desc().empty()) // not HDF5
       return;
-    name=hdfRd[0];
-    data=hdfRd[1];
-    slices  =  hdfRd.size() < 3  ||  hdfRd[2].empty()   ?   "Z"  :  hdfRd[2] ;
-    switch ( slices.at(0) ) {
+    name = filedesc;
+    deque<string> hdfRd = split(name.desc(), ":");
+    data=hdfRd[0];
+    slicesStr  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   "Z"  :  hdfRd[1] ;
+    switch ( slicesStr.at(0) ) {
       case 'x':
       case 'X':
-        sliceDim=2;  slices.erase(0,1); break;
+        sliceDim=2;  slicesStr.erase(0,1); break;
       case 'y':
       case 'Y':
-        sliceDim=1;  slices.erase(0,1); break;
+        sliceDim=1;  slicesStr.erase(0,1); break;
       case 'z':
       case 'Z':
-        sliceDim=0;  slices.erase(0,1); break;
+        sliceDim=0;  slicesStr.erase(0,1); break;
       default:
         sliceDim=0;
     }
-
   }
 
   string id() const {
-    return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ;
+    //return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ;
+    return name.repr();
   }
 
-  bool isValid() const { return name.length() ; }
-
+  inline bool isValid() const { return name.length() ; }
+  inline bool isValidHDF() const { return isValid() &&  H5Fis_hdf5(name.c_str()); }
   static bool isValid(const string & filedesc) { return HDFdesc(filedesc).isValid(); }
-
-  static bool isValidHDF(const string & filedesc) {
-    HDFdesc hdf(filedesc);
-    return hdf.isValid() && H5Fis_hdf5(hdf.name.c_str());
-  }
+  static bool isValidHDF(const string & filedesc) { return HDFdesc(filedesc).isValidHDF(); }
 
 };
 
 
-bool isHDFdesc(const std::string& filedesc) {
-  return HDFdesc::isValidHDF(filedesc);
-}
-
-
-
-
-
-struct HDFread : public HDFdesc {
+struct HDFrw : public HDFdesc {
 
 public :
 
   mutable Shape shape;
-  mutable vector<int> indices;
 
-private :
+  inline HDFrw(const ImagePath & filedesc)
+    : HDFdesc(filedesc)
+    , hdfFile(0)
+    , dataset(0)
+    , filespace(0)
+    , memspace(0)
+  {
+    if (!isValidHDF())
+      throw_error("HDF i/o", "Not an HDF in \""+filedesc.repr()+"\".");
+  }
 
-  const static string modname;
+  ~HDFrw() {
+    complete();
+  }
+
+protected :
+
   int rank;
   hid_t hdfFile;
   hid_t dataset;
   hid_t filespace;
   hid_t memspace;
-  //pthread_mutex_t rdLock;
+  //pthread_mutex_t rwLock;
   blitz::Array<hsize_t, 1> cnts;
 
-public :
-
-  HDFread(const string & filedesc)
-    : HDFdesc(checkFiledesc(filedesc))
-    , hdfFile(0)
-    , dataset(0)
-    , filespace(0)
-    , memspace(0)
-    //, rdLock(PTHREAD_MUTEX_INITIALIZER)
-  {
-
-#ifdef H5F_ACC_SWMR_READ
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
-#else
-    hdfFile = H5Fopen(name.c_str(), name, H5F_ACC_RDONLY, H5P_DEFAULT);
-#endif
-    if (hdfFile<0) complete();
-    else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<0) complete();
-    else if ((filespace = H5Dget_space(dataset))<0) complete();
-    else if ((rank = H5Sget_simple_extent_ndims(filespace))<0) complete();
-    if (hdfFile<0) // was completed
-      throw_error(modname, "Failed to open data " + filedesc + " for reading.");
-    if (rank!=2 && rank !=3) {
-      complete();
-      throw_error(modname, "Dataset is not 2D or 3D in " + filedesc);
-    }
-
-    cnts.resize(rank);
-    if ( H5Sget_simple_extent_dims(filespace, cnts.data(), 0) != rank ) {
-      complete();
-      throw_error(modname, "Failed to read dataset size in " + filedesc);
-    }
-    if ( rank == 2 ) {
-      indices.push_back(0);
-      shape = Shape(cnts(0), cnts(1));
-    } else if ( rank == 3 ) {
-      int idx=0, odx=0;
-      while (idx<rank) {
-        if (idx != sliceDim)
-          shape(odx++) = cnts(idx);
-        idx++;
-      }
-      indices = slice_str2vec(slices, cnts(sliceDim));
-    }
-
+  void commonInConstructor() {
     hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))},
             moffs[2] = {0, 0};
     if ((memspace = H5Screate_simple(2, mcnts, 0))<0) complete();
     else if ( H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )  complete();
     if (memspace<=0)
-      throw_error(modname, "Failed to prepare memory space to read file " + name + ".");
-    if (sliceDim==2) // need to transpose what I read in YZ plane
-      shape = Shape(shape(1),shape(0));
+      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
     if (rank==3 )
       cnts(sliceDim) = 1;
-
-  }
-
-  ~HDFread() {
-    complete();
   }
 
   void complete() {
-    indices.clear();
     if (memspace>0)
       H5Sclose(memspace);
     memspace=0;
@@ -248,6 +184,66 @@ public :
     hdfFile=0;
   }
 
+};
+
+
+
+
+struct HDFread : public HDFrw {
+
+private :
+
+  const static string modname;
+  mutable vector<int> indices;
+  int rank;
+
+public :
+
+  HDFread(const ImagePath & filedesc)
+    : HDFrw(filedesc)
+  {
+    if (!isValidHDF())
+      throw_error(modname, "Not an HDF file "+filedesc.repr()+".");
+
+#ifdef H5F_ACC_SWMR_READ
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
+#else
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+#endif
+    if (hdfFile<0) complete();
+    else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<0) complete();
+    else if ((filespace = H5Dget_space(dataset))<0) complete();
+    else if ((rank = H5Sget_simple_extent_ndims(filespace))<0) complete();
+    if (hdfFile<0) // was completed
+      throw_error(modname, "Failed to open data " + id() + " for reading.");
+    if (rank!=2 && rank !=3) {
+      complete();
+      throw_error(modname, "Dataset is not 2D or 3D in " + id());
+    }
+
+    cnts.resize(rank);
+    if ( H5Sget_simple_extent_dims(filespace, cnts.data(), 0) != rank ) {
+      complete();
+      throw_error(modname, "Failed to read dataset size in " + id());
+    }
+    if ( rank == 2 ) {
+      indices.push_back(0);
+      shape = Shape(cnts(0), cnts(1));
+    } else if ( rank == 3 ) {
+      int idx=0, odx=0;
+      while (idx<rank) {
+        if (idx != sliceDim)
+          shape(odx++) = cnts(idx);
+        idx++;
+      }
+      indices = slice_str2vec(slicesStr, cnts(sliceDim));
+    }
+
+    commonInConstructor();
+    if (sliceDim==2) // need to transpose what I read in YZ plane
+      shape = Shape(shape(1),shape(0));
+
+  }
 
   void read(int idx, Map & storage) {
     if ( ! hdfFile )
@@ -287,8 +283,17 @@ public :
     H5Sclose(lfillespace);
   }
 
-  Shape3 sizeToRead() {
-    return Shape3(indices.size(), shape(1), shape(0));
+  inline Shape faceShape() const {return shape;}
+  inline size_t slices() const {return indices.size();}
+  inline Shape3 volumeShape() const {return Shape3(indices.size(), shape(1), shape(0));}
+
+  inline static Shape3 volumeShape(const ImagePath & filedesc) {
+    try {
+      HDFread hdf(filedesc);
+      return hdf.volumeShape();
+    } catch (...) {
+      return Shape3();
+    }
   }
 
 };
@@ -296,56 +301,29 @@ public :
 const string HDFread::modname = "HDF read";
 
 
-Shape3 volumeShape(const string & filedesc) {
-  try {
-    HDFread hdf(filedesc);
-    return hdf.sizeToRead();
-  } catch (...) {
-    return Shape3();
-  }
-}
 
 
 
+struct HDFwrite : public HDFrw {
 
-
-struct HDFwrite : public HDFdesc {
-
-public :
-
-  const Shape shape;
-  size_t zsize;
-
-private :
+private:
 
   const static string modname;
-  hid_t hdfFile;
-  hid_t dataset;
-  hid_t filespace;
-  hid_t memspace;
+  size_t zsize;
   pthread_mutex_t rwLock; // HDF does not like multithread writing
-  blitz::Array<hsize_t, 1> cnts;
 
 public :
 
-  HDFwrite(const HDFdesc & desc, Shape _sh, size_t _zsize)
-    : HDFdesc(desc)
-    , shape(_sh)
+  HDFwrite(const ImagePath & filedesc, Shape _sh, size_t _zsize)
+    : HDFrw(filedesc)
     , zsize(_zsize)
-    , hdfFile(0)
-    , dataset(0)
-    , filespace(0)
-    , memspace(0)
-    , cnts(3)
     , rwLock(PTHREAD_MUTEX_INITIALIZER)
   {
-
-
+    shape=_sh;
     if ( ! zsize * area(shape) )
       throw warn(modname, "Zerro size to write.");
-    if ( ! isValid() )
-      throw warn(modname, "Invalid hdf file \"" + id() + "\".");
 
+    cnts.resize(3);
     int idx=0, odx=0;
     while (idx<3) {
       if (idx != sliceDim)
@@ -393,39 +371,9 @@ public :
       throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
     }
 
-    hsize_t mcnts[2] = { hsize_t(shape(0)), hsize_t(shape(1))},
-            moffs[2] = {0, 0};
-    if ((memspace = H5Screate_simple(2, mcnts, 0))<0) complete();
-    else if ( H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )  complete();
-    if (memspace<=0)
-      throw_error(modname, "Failed to prepare memory space to read file " + name + ".");
-    cnts(sliceDim) = 1; // from now used only to write 2D slices
-
+    commonInConstructor();
+#undef createNewGroup
   }
-
-  HDFwrite(const string & filedesc, Shape _sh, size_t _zsize)
-    : HDFwrite(HDFdesc(checkFiledesc(filedesc)), _sh, _zsize)
-  {}
-
-  ~HDFwrite() {
-    complete();
-  }
-
-  void complete() {
-    if (memspace>0)
-      H5Sclose(memspace);
-    memspace=0;
-    if (filespace>0)
-      H5Sclose(filespace);
-    filespace=0;
-    if (dataset>0)
-      H5Dclose(dataset);
-    dataset=0;
-    if (hdfFile>0)
-      H5Fclose(hdfFile);
-    hdfFile=0;
-  }
-
 
 
   void write(int idx, const Map & storage) {
@@ -484,7 +432,7 @@ const string HDFwrite::modname = "HDF write";
 
 
 float
-PixelSize(const Path & filename) {
+PixelSize(const ImagePath & filename) {
   static const float defaultSize = 1.0;
   Magick::Image imag;
   try { imag.ping(filename); }    catch ( Magick::WarningCoder err ) {}
@@ -511,14 +459,10 @@ PixelSize(const Path & filename) {
 
 
 Shape
-ImageSizes(const Path & filename){
-
+ImageSizes(const ImagePath & filename){
   try {
-
-    return HDFread(filename).shape;
-
+    return HDFread(filename).faceShape();
   } catch (CtasErr err) {
-
     Magick::Image imag;
     try {
       imag.ping(filename);
@@ -529,24 +473,14 @@ ImageSizes(const Path & filename){
                           " Caught Magick++ exception: \""+error.what()+"\".");
     }
     return Shape( imag.rows(), imag.columns() );
-
   }
-
 }
 
 
-void
-ImageSizes(const Path & filename, int *width, int *hight){
-  Shape shp = ImageSizes(filename);
-  if (width)
-    *width = shp(1);
-  if (hight)
-    *hight = shp(0);
-}
 
 
 void
-BadShape(const Path & filename, const Shape & shp){
+BadShape(const ImagePath & filename, const Shape & shp){
   Shape ashp = ImageSizes(filename);
   if ( ashp != shp )
     throw_error("load image", "The shape of the image"
@@ -584,9 +518,9 @@ pthread_mutex_t mut(PTHREAD_MUTEX_INITIALIZER);
 /// @param idxs The indexes of the line to read.
 ///        if empty then reads whole image.
 ///
+
 static void
-ReadImageLine_TIFF (const Path & filename, Map & storage,
-                    const vector<int> & idxs ) {
+ReadImage_TIFF (const Path & filename, Map & storage) {
 
   const string modname = "load image tiff";
 
@@ -594,31 +528,22 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
 
 
   if( ! tif )
-    throw CtasErr(CtasErr::WARN, modname,
-                  "Could not read tif from file\"" + filename + "\".");
+    throw warn(modname, "Could not read tif from file\"" + filename + "\".");
 
   uint32_t width = 0, height = 0;
   uint16_t spp = 0, bps = 0, fmt = 0, photo;
 
   if ( ! TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &width) )
-    throw warn(modname,
-               "Image \"" + filename + "\" has undefined width.");
-
+    throw warn(modname, "Image \"" + filename + "\" has undefined width.");
   if ( ! TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &height) )
-    throw warn(modname,
-               "Image \"" + filename + "\" has undefined height.");
-
+    throw warn(modname, "Image \"" + filename + "\" has undefined height.");
   if ( ! TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &spp) || spp != 1 )
-    throw warn(modname,
-               "Image \"" + filename + "\" has undefined samples per pixel"
-               " or is not a grayscale.");
+    throw warn(modname, "Image \"" + filename + "\" has undefined samples per pixel"
+                        " or is not a grayscale.");
   if ( spp != 1 )
-    throw warn(modname,
-               "Image \"" + filename + "\" is not grayscale.");
-
+    throw warn(modname, "Image \"" + filename + "\" is not grayscale.");
   if ( ! TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &bps) )
-    throw warn(modname,
-               "Image \"" + filename + "\" has undefined bits per sample.");
+    throw warn(modname, "Image \"" + filename + "\" has undefined bits per sample.");
   if ( bps != 8 && bps != 16 && bps != 32 )
     throw warn(modname,
                "Image \"" + filename + "\" has nonstandard " + toString(bps) +
@@ -634,12 +559,6 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
       warnadd = "32 bits per sample suggests float-point format.";
       fmt = SAMPLEFORMAT_IEEEFP;
     }
-    // Gives to many warnings
-    /*
-    warn(modname,
-         "Image \"" + filename + "\" has undefined sample format."
-         " Guessing! " + warnadd);
-    */
   }
   if ( fmt != SAMPLEFORMAT_UINT &&
        fmt != SAMPLEFORMAT_INT &&
@@ -653,71 +572,45 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
          "Image \"" + filename + "\" has undefined or unsupported"
          " photometric interpretation.");
 
-
-
-
-  const int readheight = idxs.size() ? idxs.size() : height;
-  storage.resize(readheight,width);
-
+  storage.resize(height,width);
   tdata_t buf = _TIFFmalloc(TIFFScanlineSize(tif));
-
-  for (uint curidx = 0; curidx < readheight; curidx++) {
-
-    uint32_t row = idxs.size() ? idxs[curidx] : curidx;
+  for (uint curidx = 0; curidx < height; curidx++) {
 
     pthread_mutex_lock(&mut); // I do not understand why,
     // but with no mutex storage(curidx,all) causes double free
     // or corruption on ASCI.
     Line ln(storage(curidx, all));
     pthread_mutex_unlock(&mut);
-
-
-    if ( row >= height || row < 0 ) {
-
-      warn("load imagelines tiff",
-      "The index of the line to be read (" + toString(row) + ")"
-      " is outside the image boundaries (" + toString(height) + ").");
-
-      ln = 0.0f;
-
-    } else {
-
-      if ( TIFFReadScanline(tif, buf, row) < 0 ) {
-        _TIFFfree(buf);
-        TIFFClose(tif);
-        throw warn(modname,
-                   "Failed to read line " + toString(row) +
-                   " in image \"" + filename + "\".");
-      }
-
-      #define blitzArrayFromData(type) \
-        blitz::Array<type,1> ( (type *) buf, \
-                               blitz::shape(width), \
-                               blitz::neverDeleteData)
-
-      switch (fmt) {
-      case SAMPLEFORMAT_UINT :
-        if (bps==8)
-          ln = 1.0 * blitzArrayFromData(uint8_t);
-        else if (bps==16)
-          ln = 1.0 * blitzArrayFromData(uint16_t);
-        else if (bps==32)
-          ln = 1.0 * blitzArrayFromData(uint32_t);
-        break;
-      case SAMPLEFORMAT_INT :
-        if (bps==8)
-          ln = 1.0 * blitzArrayFromData(int8_t);
-        else if (bps==16)
-          ln = 1.0 * blitzArrayFromData(int16_t);
-        else if (bps==32)
-          ln = 1.0 * blitzArrayFromData(int32_t);
-        break;
-      case SAMPLEFORMAT_IEEEFP :
-        ln = blitzArrayFromData(float);
-        break;
-      }
-
+    if ( TIFFReadScanline(tif, buf, curidx) < 0 ) {
+      _TIFFfree(buf);
+      TIFFClose(tif);
+      throw warn(modname, "Failed to read line " + toString(curidx) +" in image \"" + filename + "\".");
     }
+
+#define blitzArrayFromData(type) \
+  blitz::Array<type,1> ( (type *) buf, blitz::shape(width), blitz::neverDeleteData)
+    switch (fmt) {
+    case SAMPLEFORMAT_UINT :
+      if (bps==8)
+        ln = 1.0 * blitzArrayFromData(uint8_t);
+      else if (bps==16)
+        ln = 1.0 * blitzArrayFromData(uint16_t);
+      else if (bps==32)
+        ln = 1.0 * blitzArrayFromData(uint32_t);
+      break;
+    case SAMPLEFORMAT_INT :
+      if (bps==8)
+        ln = 1.0 * blitzArrayFromData(int8_t);
+      else if (bps==16)
+        ln = 1.0 * blitzArrayFromData(int16_t);
+      else if (bps==32)
+        ln = 1.0 * blitzArrayFromData(int32_t);
+      break;
+    case SAMPLEFORMAT_IEEEFP :
+      ln = blitzArrayFromData(float);
+      break;
+    }
+#undef blitzArrayFromData
 
     pthread_mutex_lock(&mut);
     ln.reference(Line(0));
@@ -729,31 +622,6 @@ ReadImageLine_TIFF (const Path & filename, Map & storage,
   _TIFFfree(buf);
   TIFFClose(tif);
 
-}
-
-/// Loads an image (lines) using TIFF library.
-///
-/// @param filename Name of the image
-/// @param storage The array to store the image.
-/// @param idxs The indexes of the line to read.
-///        if empty then reads whole image.
-///
-inline static void
-ReadImageLine_TIFF (const Path & filename, Line & storage, int idx) {
-  Map _storage;
-  ReadImageLine_TIFF(filename, _storage, vector<int>(1,idx) );
-  storage=_storage(0,all);
-}
-
-
-/// Loads an image using ImageMagick library.
-///
-/// @param filename Name of the image
-/// @param storage The array to store the image.
-///
-inline static void
-ReadImage_TIFF (const Path & filename, Map & storage) {
-  ReadImageLine_TIFF(filename, storage, vector<int>() );
 }
 
 
@@ -784,25 +652,25 @@ ReadImage_IM (const Path & filename, Map & storage ){
   storage.resize( hight, width );
 
   // below might be buggy - see notes in SaveImageINT_IM
-  /*
-  const Magick::PixelPacket
-    * pixels = imag.getConstPixels(0,0,width,hight);
-  float * data = storage.data();
-  for ( int k = 0 ; k < hight*width ; k++ )
-    *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
-  */
-
-  /* Replacement for the buggy block */
+  //const Magick::PixelPacket
+  //  * pixels = imag.getConstPixels(0,0,width,hight);
+  //float * data = storage.data();
+  //for ( int k = 0 ; k < hight*width ; k++ )
+  //  *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
+  // Replacement for the buggy block:
   for (ArrIndex curw = 0 ; curw < width ; curw++)
     for (ArrIndex curh = 0 ; curh < hight ; curh++)
       storage(curh,curw) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
-  /* end replacement */
+  // end replacement *
 
 }
 
 
+
 void
-ReadImage (const Path & filename, Map & storage ){
+ReadImage(const ImagePath & filename, Map & storage, const Shape & shp){
+  if (area(shp))
+    BadShape(filename, shp);
   try { ReadImage_HDF5(filename, storage); }
   catch (CtasErr err) {
     try { ReadImage_TIFF(filename, storage); }
@@ -812,157 +680,6 @@ ReadImage (const Path & filename, Map & storage ){
       ReadImage_IM(filename, storage);
     }
   }
-}
-
-
-
-void
-ReadImage(const Path & filename, Map & storage, const Shape & shp){
-  BadShape(filename, shp);
-  ReadImage(filename, storage);
-}
-
-
-
-
-
-
-
-
-/// \brief Reads one line of the image using ImageMagick library.
-///
-/// @param filename The name of the file with the image.
-/// @param storage Line to read into.
-/// @param idx The index of the line to read.
-///
-static void
-ReadImageLine_IM (const Path & filename, Line & storage, int idx){
-
-  Magick::Image imag;
-  try { imag.read(filename); } catch ( Magick::WarningCoder err ) {}
-  if ( imag.type() != Magick::GrayscaleType )
-    warn("load imageline IM",
-         "Input image \"" + filename + "\" is not grayscale.");
-
-  const int width = imag.columns();
-  if ( idx < 0 || (unsigned) idx >= imag.rows() )
-    throw_error("load imageline IM",
-                "The index of the line to be read (" + toString(idx) + ")"
-                " is outside the image boundaries (" + toString(imag.rows()) + ").");
-  storage.resize(width);
-
-  // below might be buggy - see notes in SaveImageINT_IM
-  /*
-  const Magick::PixelPacket
-    * pixels = imag.getConstPixels(0,idx,width,1);
-  float * data = storage.data();
-  for ( int k = 0 ; k < width ; k++ )
-    *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
-  */
-
-  /* Replacement for the buggy block */
-  for (ArrIndex curw = 0 ; curw < width ; curw++)
-    storage(curw) = Magick::ColorGray(imag.pixelColor(curw, idx)).shade();
-  /* end replacement */
-
-}
-
-
-void
-ReadImageLine (const Path & filename, Line & storage, int idx) {
-  try { ReadImageLine_TIFF(filename, storage, idx); }
-  catch (CtasErr err) {
-    if (err.type() != CtasErr::WARN)
-      throw;
-    ReadImageLine_IM(filename, storage, idx);
-  }
-}
-
-
-void
-ReadImageLine(const Path & filename, Line & storage, int idx,
-              const Shape &shp) {
-  BadShape(filename, shp);
-  ReadImageLine(filename, storage, idx);
-}
-
-
-
-
-/// \brief Reads many line of the image using ImageMagick library.
-///
-/// @param filename The name of the file with the image.
-/// @param storage Array to read into.
-/// @param idxs The indexes of the line to read.
-///
-static void
-ReadImageLine_IM (const Path & filename, Map & storage,
-                  const vector<int> &idxs) {
-
-  Magick::Image imag;
-  try { imag.read(filename); } catch ( Magick::WarningCoder err ) {}
-  if ( imag.type() != Magick::GrayscaleType )
-    warn("load imagelines IM",
-                 "Input image \"" + filename + "\" is not grayscale.");
-
-  const int width = imag.columns();
-  const int hight = imag.rows();
-  const int readheight = idxs.size() ? idxs.size() : hight;
-  storage.resize( readheight, width );
-
-  for ( ArrIndex curel = 0 ; curel < readheight ; curel++ ){
-    int cursl = idxs.size() ? idxs[curel] : curel;
-    if ( cursl >= hight ) {
-      warn("load imagelines IM",
-           "The index of the line to be read (" + toString(cursl) + ")"
-           " is outside the image boundaries (" + toString(hight) + ").");
-      storage(curel, all ) = 0.0;
-    } else {
-      // below might be buggy - see notes in SaveImageINT_IM
-      /*
-      const Magick::PixelPacket *pixels = imag.getConstPixels(0,cursl,width,1);
-      for ( ArrIndex k = 0 ; k < width ; k++ )
-        storage( (ArrIndex) curel, k) =
-          (float) Magick::ColorGray( *pixels++  ) .shade();
-      */
-      /* Replacement for the buggy block */
-      for (ArrIndex curw = 0 ; curw < width ; curw++)
-        storage(curel, curw) = Magick::ColorGray(imag.pixelColor(curw, cursl)).shade();
-      /* end replacement */
-
-    }
-
-  }
-
-}
-
-
-
-void
-ReadImageLine (const Path & filename, Map & storage,
-               const vector<int> & idxs) {
-
-  if ( ! idxs.size() ) {
-    ReadImage(filename, storage);
-    return;
-  }
-
-  try { ReadImageLine_TIFF(filename, storage, idxs); }
-  catch (CtasErr err) {
-    if (err.type() != CtasErr::WARN)
-      throw;
-      ReadImageLine_IM(filename, storage, idxs);
-  }
-
-}
-
-
-
-void
-ReadImageLine(const Path & filename, Map & storage,
-                          const vector<int> & idxs, const Shape & shp){
-  BadShape(filename, shp);
-  ReadImageLine(filename, storage, idxs);
 }
 
 
@@ -998,7 +715,7 @@ const std::string MaskDesc =
 
 class ReadVolInThread : public InThread {
 
-  deque< pair<Path,int> > slicelist;
+  deque< pair<ImagePath,int> > slicelist;
   Volume & storage;
   const float ang;
   const Crop crp;
@@ -1009,7 +726,7 @@ class ReadVolInThread : public InThread {
   Shape bsh;
   Shape sh;
   pthread_mutex_t proglock;
-  unordered_map<string,HDFread> hdfs;
+  unordered_map<ImagePath,HDFread> hdfs;
   unordered_map<pthread_t,Map> islices;
   unordered_map<pthread_t,Map> rslices;
   unordered_map<pthread_t,Map> cslices;
@@ -1017,7 +734,7 @@ class ReadVolInThread : public InThread {
 
 public:
 
-  ReadVolInThread(const std::deque<Path> & filelist, Volume & _storage,
+  ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & _storage,
                   float _angle, Crop _crop, Binn _binn, bool verbose=false)
     : InThread(verbose , "reading volume")
     , storage(_storage)
@@ -1025,24 +742,22 @@ public:
     , crp(_crop)
     , bnn(_binn)
   {
-
     if ( ! filelist.size() ) {
       storage.free();
       return;
     }
-
     size_t curSz=0;
     ish = ImageSizes(filelist[0]);
     rsh = shapeOnRotate(ish, ang);
     csh = Shape(rsh(0)-crp.top-crp.bottom, rsh(1)-crp.left-crp.right);
     bsh = shapeOnBinn(csh, bnn);
     sh = bsh;
-    for ( deque<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+    for ( deque<ImagePath>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       try {
         hdfs.emplace(*curI, *curI);
         HDFread & hdf = hdfs.at(*curI);
         slicelist.push_back(make_pair(*curI,curSz));
-        curSz += hdf.indices.size();
+        curSz += hdf.slices();
       } catch (...) {
         slicelist.push_back(make_pair(*curI,curSz));
         curSz++;
@@ -1051,8 +766,6 @@ public:
     storage.resize(curSz, sh(0), sh(1));
     if ( ! storage.size() )
       return;
-
-
   }
 
 
@@ -1096,12 +809,12 @@ public:
         binn(cslice, bslice, bnn); \
     }
 
-    const pair<Path,int> & slpr = slicelist.at(idx);
+    const pair<ImagePath,int> & slpr = slicelist.at(idx);
     if (hdfs.count(slpr.first)) {
       HDFread & hdf = hdfs.at(slpr.first);
       if ( hdf.shape != sh )
         throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
-      for (int idxV=0 ; idxV<hdf.indices.size() ; idxV++ ) {
+      for (int idxV=0 ; idxV<hdf.slices() ; idxV++ ) {
         hdf.read(idxV, islice);
         sliceTraining();
         storage(slpr.second+idxV, all, all) = bslice;
@@ -1131,7 +844,7 @@ public:
 
 
 void
-ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose) {
+ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbose) {
   ReadVolInThread(filelist, storage, 0, Crop(), Binn(), verbose).execute();
 }
 
@@ -1144,8 +857,8 @@ ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose) {
 
 struct _ReadVolBySlice  {
 
-  deque<Path> ilist;
-  unordered_map<string,HDFread> hdfs;
+  deque<ImagePath> ilist;
+  unordered_map<ImagePath,HDFread> hdfs;
   size_t ssize;
   const float ang;
   const Crop crp;
@@ -1159,7 +872,7 @@ struct _ReadVolBySlice  {
     , bnn(Binn3())
   {}
 
-  _ReadVolBySlice(const std::deque<Path> & filelist, float _angle, Crop _crop, Binn3 _binn)
+  _ReadVolBySlice(const std::deque<ImagePath> & filelist, float _angle, Crop _crop, Binn3 _binn)
     : ilist()
     , ssize(0)
     , ang(_angle)
@@ -1170,20 +883,19 @@ struct _ReadVolBySlice  {
   }
 
 
-  void add(const Path & fileind) {
+  void add(const ImagePath & fileind) {
       ilist.push_back(fileind);
       try {
-        //hdfs.insert({fileind,HDFread(fileind)});
         hdfs.emplace(fileind, fileind);
-        ssize += hdfs.at(fileind).indices.size();
+        ssize += hdfs.at(fileind).slices();
       } catch (...) {
         ssize++;
       }
   }
 
 
-  void add(const std::deque<Path> & filelist) {
-    for ( deque<Path>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+  void add(const std::deque<ImagePath> & filelist) {
+    for ( deque<ImagePath>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       add(*curI);
   }
 
@@ -1191,14 +903,14 @@ struct _ReadVolBySlice  {
   bool read (long int idx, Map & out) {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
-      const Path flnm = ilist[cfl];
+      const ImagePath flnm = ilist[cfl];
       if (hdfs.count(flnm)) {
         HDFread & hdf = hdfs.at(flnm);
-        if (idx < cfirst + hdf.indices.size()) {
+        if (idx < cfirst + hdf.slices()) {
           hdf.read(idx-cfirst, out);
           return true;
         }
-        cfirst += hdf.indices.size();
+        cfirst += hdf.slices();
       } else {
         if (idx==cfirst){
           ReadImage(flnm, out);
@@ -1213,20 +925,20 @@ struct _ReadVolBySlice  {
 };
 
 
-ReadVolumeBySlice::ReadVolumeBySlice(const deque<Path> & filelist)
+ReadVolumeBySlice::ReadVolumeBySlice(const deque<ImagePath> & filelist)
   : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn3()))
 {}
 
-ReadVolumeBySlice::ReadVolumeBySlice(const Path & file)
-  : guts(new _ReadVolBySlice(deque<Path>(1, file), 0, Crop(), Binn3()))
+ReadVolumeBySlice::ReadVolumeBySlice(const ImagePath & file)
+  : guts(new _ReadVolBySlice(deque<ImagePath>(1, file), 0, Crop(), Binn3()))
 {}
 
-void ReadVolumeBySlice::add(const Path & fileind) {
+void ReadVolumeBySlice::add(const ImagePath & fileind) {
   ((_ReadVolBySlice*) guts)->add(fileind);
 }
 
 
-void ReadVolumeBySlice::add(const std::deque<Path> & filelist) {
+void ReadVolumeBySlice::add(const std::deque<ImagePath> & filelist) {
   ((_ReadVolBySlice*) guts)->add(filelist);
 }
 
@@ -1270,30 +982,19 @@ private:
   const float maxcon;
 
 public:
-  Path ofile;
 
-public:
-
-  StackWriter(const Path & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
+  StackWriter(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
     : zsize(_zsize)
     , hdfFile(0)
     , mincon(mmin)
     , maxcon(mmax)
   {
-    HDFdesc hdfdesc(filedesc);
-    if ( hdfdesc.isValid() ) {
+    if ( HDFdesc::isValid(filedesc) )
       hdfFile = new HDFwrite(filedesc, _sh, _zsize);
-      ofile=hdfdesc.name;
-    } else {
-      if (zsize==1)
-        sliceformat=filedesc;
-      else {
-        const Path outmask = string(filedesc).find('@') == string::npos
-                           ? filedesc.dtitle() + "-@" + filedesc.ext()  :  string(filedesc) ;
-        sliceformat = mask2format(outmask, zsize);
-      }
-      ofile=filedesc;
-    }
+    else if ( zsize==1  ||  filedesc.find('@') != string::npos)
+      sliceformat=filedesc;
+    else
+      sliceformat = mask2format(filedesc.dtitle() + "-@" + filedesc.ext(), zsize);
   }
 
   ~StackWriter() {
@@ -1301,11 +1002,9 @@ public:
   }
 
   void complete() {
-    HDFwrite * hh = hdfFile;
-    hdfFile = 0;
-    if (hh)
-      hh->complete();
-    delete hh;
+    if (hdfFile)
+      delete hdfFile;
+    hdfFile=0;
   }
 
   void put(int idx, const Map & storage) {
@@ -1328,7 +1027,7 @@ public:
         hdfFile->write(idx, storage);
       }
     } else {
-      const Path fileName =  zsize == 1  ?  sliceformat : Path(toString(sliceformat, idx));
+      const ImagePath fileName =  zsize == 1  ?  sliceformat : toString(sliceformat, idx);
       if (mincon==maxcon)
         SaveImage(fileName, storage);
       else
@@ -1382,7 +1081,7 @@ private:
 
 public:
 
-  SaveVolInThread(const string & filedesc, const Volume & _vol, bool verbose,
+  SaveVolInThread(const ImagePath & filedesc, const Volume & _vol, bool verbose,
                   const std::string & slicedesc, float mmin, float mmax)
     : vol(_vol)
     , writer(filedesc, faceShape(vol.shape()), vol.shape()(0), mmin, mmax)
@@ -1416,7 +1115,7 @@ public:
 
   }
 
-  static void execute(const string & filedesc, const Volume & _vol, bool verbose,
+  static void execute(const ImagePath & filedesc, const Volume & _vol, bool verbose,
                       const std::string & slicedesc, float mmin, float mmax) {
     SaveVolInThread(filedesc, _vol, verbose, slicedesc, mmin, mmax)
         .InThread::execute();
@@ -1425,14 +1124,14 @@ public:
 };
 
 
-void SaveVolume(const Path & filedesc, Volume & storage, bool verbose,
+void SaveVolume(const ImagePath & filedesc, Volume & storage, bool verbose,
                 const string & slicedesc, float mmin, float mmax) {
   SaveVolInThread::execute(filedesc, storage, verbose, slicedesc, mmin, mmax);
 }
 
 
 
-SaveVolumeBySlice::SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize,
+SaveVolumeBySlice::SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize,
                                      float mmin, float mmax)
   : guts(new StackWriter(filedesc, _sh, _zsize, mmin, mmax))
 {}
@@ -1445,9 +1144,6 @@ void SaveVolumeBySlice::save(uint sl, const Map& trg) {
   ((StackWriter*) guts)->put(sl, trg);
 }
 
-const Path SaveVolumeBySlice::savePath() const {
-  return ((StackWriter*) guts)->ofile;
-}
 
 size_t SaveVolumeBySlice::slices() const {
   return ((StackWriter*) guts)->size();
@@ -1628,13 +1324,13 @@ SaveImageFP (const Path & filename, const Map & storage){
 
 
 void
-SaveImage(const Path & filename, const Map & storage, bool saveint){
+SaveImage(const ImagePath & filename, const Map & storage, bool saveint){
   if (saveint) SaveImageINT(filename, storage);
   else SaveImageFP(filename, storage);
 }
 
 void
-SaveImage(const Path & filename, const Map & storage,
+SaveImage(const ImagePath & filename, const Map & storage,
           float minval, float maxval ){
   SaveImageINT(filename, storage, minval, maxval);
 }

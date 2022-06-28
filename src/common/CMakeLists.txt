@@ -6,50 +6,12 @@ include_directories("../blitz-long")
 FIND_PACKAGE(ImageMagick 6.4.2  REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS Magick++ REQUIRED)
 FIND_PACKAGE(ImageMagick COMPONENTS MagickCore REQUIRED)
-
-# check it's version
-#find_program(MAGICKCONFIG Magick++-config)
-#if( "${MAGICKCONFIG}" MATCHES "MAGICKCONFIG-NOTFOUND" )
-#  set (IMV "${ImageMagick_VERSION_STRING}")
-#else()
-#  execute_process(
-#    COMMAND Magick++-config --version
-#    COMMAND cut -d\  -f1
-#    COMMAND sed -e s:\\.:\;:g
-#    OUTPUT_VARIABLE IMV
-#  )
-#endif()
-#list(GET IMV 0 IMV_MAJOR)
-#list(GET IMV 1 IMV_MINOR)
-#list(GET IMV 2 IMV_PATCH)
-#if (  # version < 6.4.2
-#  ( ${IMV_MAJOR} LESS 6 )
-#  OR ( ( ${IMV_MAJOR} EQUAL 6 )
-#    AND ( ( ${IMV_MINOR} LESS 4 )
-#      OR ( ( ${IMV_MINOR} EQUAL 4 ) AND ( ${IMV_PATCH} LESS 2 ) )
-#      )
-#    )
-#  )
-#  message("   ImageMagick version ... < 6.4.2")
-#  set(MAGICKLIB_NAMESPACE true) # for src/config.h
-#else()
-#  message("   ImageMagick version ... >= 6.4.2")
-#endif()
-# check HDRI support in ImageMagick
-#execute_process(
-#  COMMAND Magick++-config --version
-#  COMMAND grep HDRI --quiet
-#  RESULT_VARIABLE IMHDRI
-#)
-#if ( ${IMHDRI} EQUAL 0 )
-#  message(FATAL_ERROR "Install ImageMagick library with _NO_ HDRI supprt.")
-#endif()
-
 include_directories("${ImageMagick_INCLUDE_DIRS}")
-
 FIND_PACKAGE(TIFF REQUIRED)
-FIND_PACKAGE(HDF5 REQUIRED COMPONENTS)
+FIND_PACKAGE(HDF5 REQUIRED COMPONENTS C)
 include_directories("${HDF5_INCLUDE_DIRS}")
+#message("HDFPAR = ${HDF5_IS_PARALLEL}")
+
 
 
 find_library(HAVE_FFTW fftw3)

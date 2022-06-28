@@ -46,14 +46,14 @@ using namespace std;
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  Path outmask;
-  Path gaps;
-  deque<Path> dfs0;
-  deque<Path> dfs1;
-  deque<Path> bgs0;
-  deque<Path> bgs1;
-  deque<Path> ims0;
-  deque<Path> ims1;
+  ImagePath outmask;
+  ImagePath gaps;
+  deque<ImagePath> dfs0;
+  deque<ImagePath> dfs1;
+  deque<ImagePath> bgs0;
+  deque<ImagePath> bgs1;
+  deque<ImagePath> ims0;
+  deque<ImagePath> ims1;
   PointF2D shift;  // for frame formation
   float ashift;  // for frame formation
   Filter filter_type;  // for CT

@@ -21,10 +21,23 @@ private:
 
 public:
 
-  inline ImagePath(const std::string & str = std::string())
+  inline ImagePath(){}
+
+  inline ImagePath(const std::string & str)
     : Path(splitIn(str).first)
     , _desc(splitIn(str).second)
   {}
+
+  inline ImagePath(const ImagePath & other)
+    : Path(other)
+    , _desc(other._desc)
+  {}
+
+  inline ImagePath & operator=(const ImagePath & other) {
+    std::string::operator=(other);
+    _desc = other._desc;
+    return *this;
+  }
 
   inline const std::string & desc() const {return _desc;}
   inline const std::string repr() const {return *this + _desc;}
@@ -38,15 +51,11 @@ _conversion (ImagePath* _val, const std::string & in) {
 }
 
 
-
-Path COMMON_API
-imageFile(const std::string & filedesc);
-
-bool COMMON_API
-isHDFdesc(const std::string & filedesc);
-
-Shape3 COMMON_API
-hdfShape(const std::string & filedesc);
+template<> struct std::hash<ImagePath> {
+  std::size_t operator()(ImagePath const& s) const noexcept  {
+    return std::hash<std::string>{}(s.repr());
+  }
+};
 
 
 
@@ -69,7 +78,7 @@ hdfShape(const std::string & filedesc);
 /// @return pixel size in micron.
 ///
 float  COMMON_API
-PixelSize(const Path & filename);
+PixelSize(const ImagePath & filename);
 
 
 /// \brief Image sizes.
@@ -81,19 +90,8 @@ PixelSize(const Path & filename);
 /// @return Image sizes.
 ///
 Shape  COMMON_API
-ImageSizes(const Path & filename);
+ImageSizes(const ImagePath & filename);
 
-
-/// \brief Image sizes.
-///
-/// Read image sizes and return them as width and hight.
-///
-/// @param filename Image filename.
-/// @param width Width of the image.
-/// @param hight Height of the image.
-///
-void COMMON_API
-ImageSizes(const Path & filename, int *width, int *hight);
 
 
 /// \brief Check the shape of the image.
@@ -104,18 +102,8 @@ ImageSizes(const Path & filename, int *width, int *hight);
 /// @param shp The expected shape.
 ///
 void COMMON_API
-BadShape(const Path & filename, const Shape & shp);
+BadShape(const ImagePath & filename, const Shape & shp);
 
-
-/// \brief Load image.
-///
-/// Similar to ReadImage(), but uses preopened image object to read.
-///
-/// @param filename Image filename.
-/// @param storage  Array to load the image into.
-///
-void COMMON_API
-ReadImage(const Path & filename, Map & storage );
 
 
 /// \brief Load image checking the shape.
@@ -128,70 +116,7 @@ ReadImage(const Path & filename, Map & storage );
 /// @param shp The expected shape.
 ///
 void COMMON_API
-ReadImage(const Path & filename, Map & storage, const Shape & shp);
-
-
-/// \brief Load one line of the image.
-///
-/// Reads one line of the image from the file, resizes the array
-/// to fit and stores the line into the array.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idx  The index of the line to be read.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Line & storage, int idx);
-
-
-/// \brief Load one line of the image.
-///
-/// Same as ReadImageLine(const Path &, Line &, int),
-/// but checks the image shape before loading and throws the error if the
-/// shape is different from ::shp.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idx  The index of the line to be read.
-/// @param shp The expected shape.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Line & storage, int idx, const Shape & shp);
-
-
-/// \brief Load several lines of the image.
-///
-/// Reads lines of the image which are found in the ::idxs vector.
-/// If a line in the ::idxs is outside the image size then warns and
-/// fills the corresponding line with zeros. The lines are stored in
-/// the order they found in the ::idx vector. Array ::storage is resized
-/// to contain all lines. If the ::idxs array is empty - reads the whole image.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idxs vector of lines to be read. If empty, reads the whole image.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Map & storage,
-        const std::vector<int> & idxs);
-
-
-/// \brief Load several lines of the image.
-///
-/// Same as ReadImageLine(const Path &, Map &, const std::vector<int> &),
-/// but checks the image shape before loading and throws the error if the
-/// shape is different from ::shp.
-///
-/// @param filename File to read the image from.
-/// @param storage  Array to load the image into.
-/// @param idxs vector of lines to be read. If empty - reads the whole image.
-/// @param shp The expected shape.
-///
-void COMMON_API
-ReadImageLine(const Path & filename, Map & storage,
-        const std::vector<int> & idxs, const Shape & shp);
-
-
+ReadImage(const ImagePath & filename, Map & storage, const Shape & shp = Shape());
 
 
 
@@ -206,7 +131,7 @@ ReadImageLine(const Path & filename, Map & storage,
 /// @param saveint save image as 16-bit integer.
 ///
 void COMMON_API
-SaveImage(const Path & filename, const Map & storage, bool saveint=false);
+SaveImage(const ImagePath & filename, const Map & storage, bool saveint=false);
 
 
 /// \brief Save the array into integer image.
@@ -221,8 +146,7 @@ SaveImage(const Path & filename, const Map & storage, bool saveint=false);
 /// @param maxval the value corresponding to white.
 ///
 void COMMON_API
-SaveImage(const Path & filename, const Map & storage,
-    float minval, float maxval );
+SaveImage(const ImagePath & filename, const Map & storage, float minval, float maxval );
 
 
 
@@ -234,23 +158,75 @@ SaveImage(const Path & filename, const Map & storage,
 extern const std::string COMMON_API MaskDesc;
 
 void COMMON_API
-ReadVolume(const std::deque<Path> & filelist, Volume & storage, bool verbose=false);
+ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbose=false);
 
 inline void COMMON_API
-ReadVolume(const Path & filename, Volume & storage, bool verbose=false) {
-  ReadVolume(std::deque<Path>(1, filename), storage, verbose );
+ReadVolume(const ImagePath & filename, Volume & storage, bool verbose=false) {
+  ReadVolume(std::deque<ImagePath>(1, filename), storage, verbose );
 }
+
+
+void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           bool verbose, const std::string & slicedesc, float mmin, float mmax);
+
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           bool verbose, const std::string & slicedesc) {
+  SaveVolume(filedesc, storage, verbose, slicedesc, 0, 0);
+}
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           bool verbose) {
+  SaveVolume(filedesc, storage, verbose, "", 0, 0);
+}
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           const std::string & slicedesc) {
+  SaveVolume(filedesc, storage, false, slicedesc, 0, 0);
+}
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage) {
+  SaveVolume(filedesc, storage, false, "", 0, 0);
+}
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           bool verbose,
+           float mmin, float mmax) {
+  SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
+}
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           const std::string & slicedesc,
+           float mmin, float mmax) {
+  SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
+}
+
+inline void COMMON_API
+SaveVolume(const ImagePath & filedesc, Volume & storage,
+           float mmin, float mmax) {
+  SaveVolume(filedesc, storage, false, "", mmin, mmax);
+}
+
+
+
 
 
 class ReadVolumeBySlice {
 private:
   void * guts;
 public:
-  ReadVolumeBySlice(const std::deque<Path> & filelist = std::deque<Path>() );
-  ReadVolumeBySlice(const Path & file);
+  ReadVolumeBySlice(const std::deque<ImagePath> & filelist = std::deque<ImagePath>() );
+  ReadVolumeBySlice(const ImagePath & file);
   ~ReadVolumeBySlice();
-  void add(const std::deque<Path> & filelist);
-  void add(const Path & fileind);
+  void add(const std::deque<ImagePath> & filelist);
+  void add(const ImagePath & fileind);
   void read(uint sl, Map & trg);
   size_t slices() const;
 };
@@ -260,64 +236,11 @@ class SaveVolumeBySlice {
 private:
   void * guts;
 public:
-  SaveVolumeBySlice(const Path & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
+  SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
   ~SaveVolumeBySlice();
   void save(uint sl, const Map & trg);
-  const Path savePath() const;
   size_t slices() const;
 };
-
-
-void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose, const std::string & slicedesc, float mmin, float mmax);
-
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose, const std::string & slicedesc) {
-  SaveVolume(filedesc, storage, verbose, slicedesc, 0, 0);
-}
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose) {
-  SaveVolume(filedesc, storage, verbose, "", 0, 0);
-}
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           const std::string & slicedesc) {
-  SaveVolume(filedesc, storage, false, slicedesc, 0, 0);
-}
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage) {
-  SaveVolume(filedesc, storage, false, "", 0, 0);
-}
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           bool verbose,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
-}
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           const std::string & slicedesc,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
-}
-
-inline void COMMON_API
-SaveVolume(const Path & filedesc, Volume & storage,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, false, "", mmin, mmax);
-}
-
-
-
 
 
 

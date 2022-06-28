@@ -40,8 +40,8 @@ using namespace std;
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  deque<Path> images;        ///< input image
-  Path outmask;              ///< Name of the output image.
+  deque<ImagePath> images;        ///< input image
+  ImagePath outmask;              ///< Name of the output image.
   Crop3 crp;                  ///< Crop input projection image
   Binn3 bnn;                  ///< binning factor
   string slicedesc;       ///< String describing the slices to be sino'ed.

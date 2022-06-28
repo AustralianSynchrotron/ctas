@@ -51,6 +51,7 @@
 #endif
 
 #include <string>
+#include <deque>
 #include <vector>
 #include <math.h>
 
@@ -131,6 +132,10 @@ std::ostream & operator<<(std::ostream & o, const std::vector<T> & x) {
   o << ']';
   return o;
 }
+
+
+std::deque<std::string>
+split (const std::string & str, const std::string & delimiter);
 
 
 

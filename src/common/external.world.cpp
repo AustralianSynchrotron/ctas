@@ -120,7 +120,7 @@ struct HDFdesc {
   }
 
   inline bool isValid() const { return name.length() ; }
-  inline bool isValidHDF() const { return isValid() &&  H5Fis_hdf5(name.c_str()); }
+  inline bool isValidHDF() const { return isValid() && ( H5Fis_hdf5(name.c_str()) > 0 ); }
   static bool isValid(const string & filedesc) { return HDFdesc(filedesc).isValid(); }
   static bool isValidHDF(const string & filedesc) { return HDFdesc(filedesc).isValidHDF(); }
 

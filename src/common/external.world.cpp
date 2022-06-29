@@ -54,7 +54,7 @@ initImageIO(){
   // whenever TIFFOpen is called
   try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
-  H5Eset_auto2(H5E_DEFAULT, NULL, NULL);
+  H5Eset_auto(H5E_DEFAULT, NULL, NULL);
   //H5::Exception::dontPrint();
 
   return true;
@@ -80,23 +80,17 @@ struct HDFdesc {
 
   ImagePath name;
   string data;
-  int sliceDim;
   string slicesStr;
-
-  /*
-  static const string & checkFiledesc(const string & filedesc) {
-    if ( HDFdesc(filedesc).isValid() )
-      return filedesc;
-    else
-      throw warn("HDF desc", "Not an hdf file \"" + filedesc + "\".");
-  }
-  */
+  int sliceDim;
 
   HDFdesc(const ImagePath & filedesc) {
-    if (filedesc.desc().empty()) // not HDF5
+    string desc = filedesc.desc();
+    if (desc.size() && desc[0]==':')
+      desc.erase(0,1);
+    if (desc.empty()) // not HDF5
       return;
     name = filedesc;
-    deque<string> hdfRd = split(name.desc(), ":");
+    deque<string> hdfRd = split(desc, ":");
     data=hdfRd[0];
     slicesStr  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   "Z"  :  hdfRd[1] ;
     switch ( slicesStr.at(0) ) {
@@ -121,8 +115,8 @@ struct HDFdesc {
 
   inline bool isValid() const { return name.length() ; }
   inline bool isValidHDF() const { return isValid() && ( H5Fis_hdf5(name.c_str()) > 0 ); }
-  static bool isValid(const string & filedesc) { return HDFdesc(filedesc).isValid(); }
-  static bool isValidHDF(const string & filedesc) { return HDFdesc(filedesc).isValidHDF(); }
+  static bool isValid(const ImagePath & filedesc) { return HDFdesc(filedesc).isValid(); }
+  static bool isValidHDF(const ImagePath & filedesc) { return HDFdesc(filedesc).isValidHDF(); }
 
 };
 
@@ -139,9 +133,10 @@ public :
     , dataset(0)
     , filespace(0)
     , memspace(0)
+    //, rwLock(PTHREAD_MUTEX_INITIALIZER)
   {
-    if (!isValidHDF())
-      throw_error("HDF i/o", "Not an HDF in \""+filedesc.repr()+"\".");
+    if (!isValid())
+      throw CtasErr(CtasErr::ERR, "HDF i/o", "Not an HDF in \""+filedesc.repr()+"\".");
   }
 
   ~HDFrw() {
@@ -165,8 +160,9 @@ protected :
     else if ( H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )  complete();
     if (memspace<=0)
       throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
-    if (rank==3 )
+    if (rank==3)
       cnts(sliceDim) = 1;
+
   }
 
   void complete() {
@@ -195,7 +191,6 @@ private :
 
   const static string modname;
   mutable vector<int> indices;
-  int rank;
 
 public :
 
@@ -203,18 +198,19 @@ public :
     : HDFrw(filedesc)
   {
     if (!isValidHDF())
-      throw_error(modname, "Not an HDF file "+filedesc.repr()+".");
+      throw_error(modname, "No HDF file at "+id()+".");
+
 
 #ifdef H5F_ACC_SWMR_READ
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
 #else
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 #endif
-    if (hdfFile<0) complete();
+    if (hdfFile<=0) complete();
     else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<0) complete();
     else if ((filespace = H5Dget_space(dataset))<0) complete();
     else if ((rank = H5Sget_simple_extent_ndims(filespace))<0) complete();
-    if (hdfFile<0) // was completed
+    if (hdfFile<=0) // was completed
       throw_error(modname, "Failed to open data " + id() + " for reading.");
     if (rank!=2 && rank !=3) {
       complete();
@@ -266,7 +262,7 @@ public :
       return;
     }
 
-    //pthread_mutex_lock(&rdLock);
+    //pthread_mutex_lock(&rwLock);
     storage.resize(shape);
     Map rd;
     if (sliceDim==2)
@@ -279,7 +275,7 @@ public :
       rd.transposeSelf(blitz::secondDim, blitz::firstDim);
     if ( rd.data() != storage.data() )
       storage = rd;
-    //pthread_mutex_unlock(&rdLock);
+    //pthread_mutex_unlock(&rwLock);
     H5Sclose(lfillespace);
   }
 
@@ -310,15 +306,27 @@ private:
 
   const static string modname;
   size_t zsize;
-  pthread_mutex_t rwLock; // HDF does not like multithread writing
+
+  void createNewGroup() {
+    hid_t lcpl, dcpl;
+    if (hdfFile<=0) complete();
+    else if ((lcpl = H5Pcreate(H5P_LINK_CREATE)) == H5I_INVALID_HID) complete();
+    else if (H5Pset_create_intermediate_group(lcpl, 1) < 0) complete();
+    else if (H5Pset_char_encoding(lcpl, H5T_CSET_UTF8) < 0) complete();
+    else if ((dcpl = H5Pcreate(H5P_DATASET_CREATE)) == H5I_INVALID_HID) complete();
+    else if (H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER) < 0) complete();
+    else if ((filespace = H5Screate_simple(3, cnts.data(), NULL)) == H5I_INVALID_HID) complete();
+    else if ((dataset = H5Dcreate(hdfFile, data.c_str(), H5T_NATIVE_FLOAT, filespace, lcpl, dcpl, H5P_DEFAULT)) == H5I_INVALID_HID) complete();
+  }
+
 
 public :
 
   HDFwrite(const ImagePath & filedesc, Shape _sh, size_t _zsize)
     : HDFrw(filedesc)
     , zsize(_zsize)
-    , rwLock(PTHREAD_MUTEX_INITIALIZER)
   {
+    rank = 3;
     shape=_sh;
     if ( ! zsize * area(shape) )
       throw warn(modname, "Zerro size to write.");
@@ -334,20 +342,10 @@ public :
     int rank=0;
     blitz::Array<hsize_t,1> tcnts(3);
 
-#define createNewGroup() { \
-  hid_t lcpl, group; \
-  if ((lcpl = H5Pcreate(H5P_LINK_CREATE)) == H5I_INVALID_HID) complete(); \
-  else if (H5Pset_create_intermediate_group(lcpl, 1) < 0) complete(); \
-  else if (H5Pset_char_encoding(lcpl, H5T_CSET_UTF8) < 0) complete(); \
-  else if (H5Pset_fill_time(lcpl, H5D_FILL_TIME_NEVER) < 0) complete(); \
-  else if ((filespace = H5Screate_simple(3, cnts.data(), NULL)) == H5I_INVALID_HID) complete(); \
-  else if ((dataset = H5Dcreate(hdfFile, data.c_str(), H5T_NATIVE_FLOAT, filespace, lcpl, H5P_DEFAULT, H5P_DEFAULT)) == H5I_INVALID_HID) complete();  \
-}
-
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-    if (hdfFile<=0) complete();
-    else dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT);
-    if (dataset<=0) {
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+    if (hdfFile<=0) {
+      complete();
+    } else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<=0) {
       createNewGroup();
     } else {
       if ((filespace = H5Dget_space(dataset)) <= 0) complete();
@@ -360,9 +358,8 @@ public :
         if (zsize > tcnts(sliceDim)) complete();
       }
     }
-
     if (hdfFile<=0) {
-      hdfFile = H5Fopen(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT); // H5F_ACC_CREAT | H5F_ACC_TRUNC
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); // H5F_ACC_CREAT | H5F_ACC_TRUNC
       if (hdfFile>0)
         createNewGroup();
     }
@@ -372,13 +369,13 @@ public :
     }
 
     commonInConstructor();
-#undef createNewGroup
+
   }
 
 
   void write(int idx, const Map & storage) {
 
-    if ( ! zsize ) {
+    if ( hdfFile <= 0 ) {
       warn("HDF write", "File \"" + id() + "\" was previously closed and no more write possible.");
       return;
     }
@@ -408,10 +405,10 @@ public :
       return;
     }
 
-    pthread_mutex_lock(&rwLock);
+    //pthread_mutex_lock(&rwLock);
     if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, _storage.data()) < 0)
-      warn(modname, "Failed to read write " +toString(idx)+ " fo " + name + ".");
-    pthread_mutex_unlock(&rwLock);
+      warn(modname, "Failed to write slice " +toString(idx)+ " to " + name + ".");
+    //pthread_mutex_unlock(&rwLock);
 
   }
 
@@ -612,9 +609,9 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
     }
 #undef blitzArrayFromData
 
-    pthread_mutex_lock(&mut);
-    ln.reference(Line(0));
-    pthread_mutex_unlock(&mut);
+    //pthread_mutex_lock(&mut);
+    //ln.reference(Line(0));
+    //pthread_mutex_unlock(&mut);
 
   }
 

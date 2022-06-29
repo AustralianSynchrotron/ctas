@@ -33,7 +33,7 @@
 #include <string.h>
 #include <unordered_map>
 #include <deque>
-
+#include <unistd.h>
 
 
 
@@ -163,16 +163,21 @@ clargs(int argc, char *argv[])
     for ( int curI = 0 ; curI < tiledImages ; curI++ )
       images.at(curI).push_back(iimages.at(curI));
   }
-  string inputline;
-  while ( ! cin && getline(cin, inputline)) {
-    deque<string> inputdeque = split(inputline, " ");
-    if (!tiledImages)
-      tiledImages = inputdeque.size();
-    else if (inputdeque.size() != tiledImages)
-      exit_on_error(command, "Inconsistent number of input images given in stdin.");
-    for ( int curI = 0 ; curI < tiledImages ; curI++ )
-      images.at(curI).push_back(inputdeque.at(curI));
+  if (!isatty(fileno(stdin))) { // read from pipe
+    string inputline;
+    while ( ! cin.eof() && getline(cin, inputline) ) {
+      deque<string> inputdeque = split(inputline, " ");
+      if (!tiledImages) {
+        tiledImages = inputdeque.size();
+        images.resize(tiledImages);
+      } else if (inputdeque.size() != tiledImages) {
+        exit_on_error(command, "Inconsistent number of input images given in stdin.");
+      }
+      for ( int curI = 0 ; curI < tiledImages ; curI++ )
+        images.at(curI).push_back(inputdeque.at(curI));
+    }
   }
+
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
 

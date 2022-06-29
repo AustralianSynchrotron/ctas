@@ -21,9 +21,7 @@ private:
 
 public:
 
-  inline ImagePath(){}
-
-  inline ImagePath(const std::string & str)
+  inline ImagePath(const std::string & str = std::string())
     : Path(splitIn(str).first)
     , _desc(splitIn(str).second)
   {}

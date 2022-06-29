@@ -710,147 +710,6 @@ const std::string MaskDesc =
 
 
 
-class ReadVolInThread : public InThread {
-
-  deque< pair<ImagePath,int> > slicelist;
-  Volume & storage;
-  const float ang;
-  const Crop crp;
-  const Binn bnn;
-  Shape ish;
-  Shape rsh;
-  Shape csh;
-  Shape bsh;
-  Shape sh;
-  pthread_mutex_t proglock;
-  unordered_map<ImagePath,HDFread> hdfs;
-  unordered_map<pthread_t,Map> islices;
-  unordered_map<pthread_t,Map> rslices;
-  unordered_map<pthread_t,Map> cslices;
-  unordered_map<pthread_t,Map> bslices;
-
-public:
-
-  ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & _storage,
-                  float _angle, Crop _crop, Binn _binn, bool verbose=false)
-    : InThread(verbose , "reading volume")
-    , storage(_storage)
-    , ang(_angle)
-    , crp(_crop)
-    , bnn(_binn)
-  {
-    if ( ! filelist.size() ) {
-      storage.free();
-      return;
-    }
-    size_t curSz=0;
-    ish = ImageSizes(filelist[0]);
-    rsh = shapeOnRotate(ish, ang);
-    csh = Shape(rsh(0)-crp.top-crp.bottom, rsh(1)-crp.left-crp.right);
-    bsh = shapeOnBinn(csh, bnn);
-    sh = bsh;
-    for ( deque<ImagePath>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
-      try {
-        hdfs.emplace(*curI, *curI);
-        HDFread & hdf = hdfs.at(*curI);
-        slicelist.push_back(make_pair(*curI,curSz));
-        curSz += hdf.slices();
-      } catch (...) {
-        slicelist.push_back(make_pair(*curI,curSz));
-        curSz++;
-      }
-    bar.setSteps(curSz);
-    storage.resize(curSz, sh(0), sh(1));
-    if ( ! storage.size() )
-      return;
-  }
-
-
-  bool inThread (long int idx) {
-
-    if ( idx >= slicelist.size())
-      return false;
-
-    pthread_t me = pthread_self();
-    lock();
-    if ( ! islices.count(me) ) {
-      islices.emplace(me,ish);
-      rslices.emplace(me,Shape());
-      if (ang==0)
-        rslices.at(me).reference(islices.at(me));
-      else
-        rslices.at(me).resize(rsh);
-      cslices.emplace(me,Shape());
-      if (rsh==csh)
-        cslices.at(me).reference(rslices.at(me));
-      else
-        cslices.at(me).resize(csh);
-      bslices.emplace(me,Shape());
-      if (csh==bsh)
-        bslices.at(me).reference(cslices.at(me));
-      else
-        bslices.at(me).resize(bsh);
-    }
-    Map islice = islices.at(me);
-    Map rslice = rslices.at(me);
-    Map cslice = cslices.at(me);
-    Map bslice = bslices.at(me);
-    unlock();
-
-    #define sliceTraining() { \
-      if (ang!=0) \
-        rotate(islice, rslice, ang, 0.0); \
-      if (rsh != csh) \
-        crop(rslice, cslice, crp); \
-      if (csh != bsh) \
-        binn(cslice, bslice, bnn); \
-    }
-
-    const pair<ImagePath,int> & slpr = slicelist.at(idx);
-    if (hdfs.count(slpr.first)) {
-      HDFread & hdf = hdfs.at(slpr.first);
-      if ( hdf.shape != sh )
-        throw_error("Reading volume", "Missmatching image shape in " + hdf.id() + ".");
-      for (int idxV=0 ; idxV<hdf.slices() ; idxV++ ) {
-        hdf.read(idxV, islice);
-        sliceTraining();
-        storage(slpr.second+idxV, all, all) = bslice;
-        bar.update();
-      }
-    } else {
-      try {
-        //lock();
-        ReadImage(slpr.first, islice, sh);
-        //unlock();
-        sliceTraining();
-        storage(slpr.second, all, all) = bslice;
-      } catch (...) {
-        warn("ReadVolume", "Slice " + toString(slpr.second) + " artificially filled with 0s.");
-        storage(slpr.second, all, all) = 0;
-      }
-      bar.update();
-    }
-
-    #undef sliceTraining
-
-    return true;
-
-  }
-
-};
-
-
-void
-ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbose) {
-  ReadVolInThread(filelist, storage, 0, Crop(), Binn(), verbose).execute();
-}
-
-
-
-
-
-
-
 
 struct _ReadVolBySlice  {
 
@@ -859,17 +718,19 @@ struct _ReadVolBySlice  {
   size_t ssize;
   const float ang;
   const Crop crp;
-  const Binn3 bnn;
+  const Binn bnn;
 
-  _ReadVolBySlice(float _angle, Crop _crop, Binn3 _binn)
+
+  _ReadVolBySlice(float _angle, Crop _crop, Binn _binn)
     : ilist()
     , ssize(0)
     , ang(_angle)
     , crp(Crop())
-    , bnn(Binn3())
+    , bnn(Binn())
   {}
 
-  _ReadVolBySlice(const std::deque<ImagePath> & filelist, float _angle, Crop _crop, Binn3 _binn)
+
+  _ReadVolBySlice(const std::deque<ImagePath> & filelist, float _angle, Crop _crop, Binn _binn)
     : ilist()
     , ssize(0)
     , ang(_angle)
@@ -897,20 +758,38 @@ struct _ReadVolBySlice  {
   }
 
 
-  bool read (long int idx, Map & out) {
+  void sliceTraining(const Map & in, Map & rslice, Map & cslice, Map & out) {
+    if (ang!=0)
+      rotate(in, rslice, ang, 0.0);
+    else
+      rslice.reference(in);
+    if (crp != Crop())
+      crop(rslice, cslice, crp);
+    else
+      cslice.reference(rslice);
+    if (bnn != Binn())
+      binn(cslice, out, bnn);
+    else
+      out.reference(cslice);
+  }
+
+
+  bool read (long int idx, Map & rd, Map & rslice, Map & cslice, Map & out) {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
       const ImagePath flnm = ilist[cfl];
       if (hdfs.count(flnm)) {
         HDFread & hdf = hdfs.at(flnm);
         if (idx < cfirst + hdf.slices()) {
-          hdf.read(idx-cfirst, out);
+          hdf.read(idx-cfirst, rd);
+          sliceTraining(rd, rslice, cslice, out);
           return true;
         }
         cfirst += hdf.slices();
       } else {
         if (idx==cfirst){
-          ReadImage(flnm, out);
+          ReadImage(flnm, rd);
+          sliceTraining(rd, rslice, cslice, out);
           return true;
         }
         cfirst++;
@@ -919,15 +798,99 @@ struct _ReadVolBySlice  {
     return false;
   }
 
+
+  bool read (long int idx, Map & out) {
+    Map rd, rslice, cslice;
+    return read(idx, rd, rslice, cslice, out);
+  }
+
+
+  size_t size() const {return ssize;}
+
 };
 
 
+
+
+class ReadVolInThread : public InThread {
+
+  Volume & storage;
+  _ReadVolBySlice reader;
+  Shape sh;
+  pthread_mutex_t proglock;
+  unordered_map< pthread_t,deque<Map> > slices;
+  //unordered_map<pthread_t,Map> rslices;
+  //unordered_map<pthread_t,Map> cslices;
+  //unordered_map<pthread_t,Map> bslices;
+
+public:
+
+  ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & _storage,
+                  float _angle, Crop _crop, Binn _binn, bool verbose=false)
+    : InThread(verbose , "reading volume")
+    , storage(_storage)
+    , reader(filelist, _angle, _crop, _binn)
+  {
+    if ( ! filelist.size() ) {
+      storage.free();
+      return;
+    }
+    sh = ImageSizes(filelist[0]);
+    sh = shapeOnRotate(sh, _angle);
+    sh = Shape(sh(0)-_crop.top-_crop.bottom, sh(1)-_crop.left-_crop.right);
+    sh = shapeOnBinn(sh, _binn);
+    bar.setSteps(reader.size());
+    storage.resize(reader.size(), sh(0), sh(1));
+    if ( ! storage.size() )
+      return;
+  }
+
+
+  bool inThread (long int idx) {
+
+    if ( idx >= reader.size() )
+      return false;
+
+    pthread_t me = pthread_self();
+    lock();
+    if ( ! slices.count(me) )
+      slices.emplace(me, 4);
+    deque<Map> & myslices = slices.at(me);
+    unlock();
+    Map islice = myslices[0];
+    Map rslice = myslices[1];
+    Map cslice = myslices[2];
+    Map bslice = myslices[3];
+
+    const bool ret = reader.read(idx, islice, rslice, cslice, bslice);
+    if ( bslice.shape() != sh )
+      throw_error("Reading volume", "Missmatching image shape.");
+    storage(idx,all,all) = bslice;
+    bar.update();
+    return true;
+
+  }
+
+};
+
+
+void
+ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbose) {
+  ReadVolInThread(filelist, storage, 0, Crop(), Binn(), verbose).execute();
+}
+
+
+
+
+
+
+
 ReadVolumeBySlice::ReadVolumeBySlice(const deque<ImagePath> & filelist)
-  : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn3()))
+  : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn()))
 {}
 
 ReadVolumeBySlice::ReadVolumeBySlice(const ImagePath & file)
-  : guts(new _ReadVolBySlice(deque<ImagePath>(1, file), 0, Crop(), Binn3()))
+  : guts(new _ReadVolBySlice(deque<ImagePath>(1, file), 0, Crop(), Binn()))
 {}
 
 void ReadVolumeBySlice::add(const ImagePath & fileind) {
@@ -968,7 +931,7 @@ size_t ReadVolumeBySlice::slices() const {
 
 
 
-class StackWriter {
+class _SaveVolumeBySlice {
 
 private:
 
@@ -980,7 +943,7 @@ private:
 
 public:
 
-  StackWriter(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
+  _SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
     : zsize(_zsize)
     , hdfFile(0)
     , mincon(mmin)
@@ -994,7 +957,7 @@ public:
       sliceformat = mask2format(filedesc.dtitle() + "-@" + filedesc.ext(), zsize);
   }
 
-  ~StackWriter() {
+  ~_SaveVolumeBySlice() {
     complete();
   }
 
@@ -1045,7 +1008,7 @@ class SaveVolInThread : public InThread {
 private:
 
   const Volume & vol;
-  StackWriter writer;
+  _SaveVolumeBySlice writer;
   int sliceDim;
   Shape ssh;
   vector<int>indices;
@@ -1130,20 +1093,20 @@ void SaveVolume(const ImagePath & filedesc, Volume & storage, bool verbose,
 
 SaveVolumeBySlice::SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize,
                                      float mmin, float mmax)
-  : guts(new StackWriter(filedesc, _sh, _zsize, mmin, mmax))
+  : guts(new _SaveVolumeBySlice(filedesc, _sh, _zsize, mmin, mmax))
 {}
 
 SaveVolumeBySlice::~SaveVolumeBySlice() {
-  delete (StackWriter*) guts;
+  delete (_SaveVolumeBySlice*) guts;
 }
 
 void SaveVolumeBySlice::save(uint sl, const Map& trg) {
-  ((StackWriter*) guts)->put(sl, trg);
+  ((_SaveVolumeBySlice*) guts)->put(sl, trg);
 }
 
 
 size_t SaveVolumeBySlice::slices() const {
-  return ((StackWriter*) guts)->size();
+  return ((_SaveVolumeBySlice*) guts)->size();
 }
 
 

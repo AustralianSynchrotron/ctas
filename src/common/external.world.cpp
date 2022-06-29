@@ -761,15 +761,15 @@ struct _ReadVolBySlice  {
   void sliceTraining(const Map & in, Map & rslice, Map & cslice, Map & out) {
     if (ang!=0)
       rotate(in, rslice, ang, 0.0);
-    else
+    else if (rslice.data()!=in.data());
       rslice.reference(in);
     if (crp != Crop())
       crop(rslice, cslice, crp);
-    else
+    else if (cslice.data()!=rslice.data());
       cslice.reference(rslice);
     if (bnn != Binn())
       binn(cslice, out, bnn);
-    else
+    else if (out.data()!=cslice.data());
       out.reference(cslice);
   }
 
@@ -818,10 +818,7 @@ class ReadVolInThread : public InThread {
   _ReadVolBySlice reader;
   Shape sh;
   pthread_mutex_t proglock;
-  unordered_map< pthread_t,deque<Map> > slices;
-  //unordered_map<pthread_t,Map> rslices;
-  //unordered_map<pthread_t,Map> cslices;
-  //unordered_map<pthread_t,Map> bslices;
+  unordered_map< pthread_t, deque<Map> > slices;
 
 public:
 

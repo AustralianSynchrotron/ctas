@@ -261,7 +261,8 @@ class ProcProj {
   }
 
 
-  static void stitch(PointF2D origin, Map & oarr,  const deque<Map> & iarr,  const deque<Map> & gprr = deque<Map>() ) {
+  static void stitch(PointF2D origin, Map & oarr,  const deque<Map> & iarr
+                    ,  const deque<Map> & gprr = deque<Map>() ) {
 
     const int isz = iarr.size();
 
@@ -333,6 +334,7 @@ class ProcProj {
 
   }
 
+
   void prepareMask(Map & _gaps, bool bepicky) {
     const float mm = min(_gaps);
     const float MM = max(_gaps);
@@ -355,6 +357,7 @@ class ProcProj {
 
     for ( int stp = 1 ; stp <= st.edge ; stp++ ) {
       const float fill = step*stp;
+
       for (ArrIndex i = 0 ; i<ish(0) ; i++)
         for (ArrIndex j = 0 ; j<ish(1) ; j++)
 
@@ -369,6 +372,7 @@ class ProcProj {
     }
 
   }
+
 
 public:
 
@@ -432,6 +436,7 @@ public:
 
   }
 
+
   ProcProj(const ProcProj & other)
     : st(other.st)
     , canon(other.canon)
@@ -443,8 +448,6 @@ public:
     , mskf(other.mskf)
     , mskF(other.mskF)
   {}
-
-
 
 
   bool process(const deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
@@ -591,25 +594,12 @@ public:
 
   }
 
-  /*
-  static bool process( const StitchRules & _st, const Map & _bgar, const Map & _dfar
-                       , const Map & _dgar, const Map & _gpar
-                       , const deque<Map> & allInR, deque<Map> & res
-                       , const ImagePath & interim_name = string()) {
-    ProcProj proc(_st, _bgar, _dfar, _dgar, _gpar, interim_name.dtitle() + "_mask");
-    return proc.process(allInR, res, interim_name);
-  }
-  */
-
 
 };
 
 const string ProcProj::modname="ProcProj";
 
 
-//#define addElement(umap, key, ...) umap.emplace( \
-//  piecewise_construct, forward_as_tuple(key), forward_as_tuple(__VA_ARGS__));
-//#undef addElement
 
 class ProjInThread : public InThread {
 
@@ -772,7 +762,6 @@ int main(int argc, char *argv[]) {
       allIn.push_back(test);
     }
   }
-
   ProcProj canonPP(st, bgar, dfar, dgar, gpar, args.testMe >=0 ? args.out_name.dtitle() + "_mask.tif" : string() );
   canonPP.process(allIn, allOut, args.testMe >=0 ? args.out_name.dtitle() + ".tif" : string() );
 
@@ -785,6 +774,7 @@ int main(int argc, char *argv[]) {
     allOutSv.emplace_back(filedescind.repr(), allOut[curSplt].shape(), singleProc ? 1 : nofProj);
   }
 
+  // finally process
   if (singleProc)
     for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
       allOutSv[curSplt].save(0,allOut[curSplt]);

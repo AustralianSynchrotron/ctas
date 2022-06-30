@@ -83,7 +83,7 @@ struct clargs {
   string out_range;
   StitchRules st;
   int testMe;          ///< Prefix to save interim results
-  string sliceMatch;           ///< text file with list of matching slices
+  //string sliceMatch;           ///< text file with list of matching slices
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -139,9 +139,9 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of bluring mask edges.",
            "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
            " to produce seamless image stitching." )
-    .add(poptmx::OPTION, &sliceMatch, 0, "match", "File with slice match list",
-         "In the case of 3D i/o this file must contain lines with the integers,"
-         " each representing the slice in the corresponding input volume to be used for the projection.")
+    //.add(poptmx::OPTION, &sliceMatch, 0, "match", "File with slice match list",
+    //     "In the case of 3D i/o this file must contain lines with the integers,"
+    //     " each representing the slice in the corresponding input volume to be used for the projection.")
     .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
          "Uses output name with suffixes to store results. In case of multiple projections provides"
          " slice index to test; ignored for single image mode.")
@@ -166,18 +166,20 @@ clargs(int argc, char *argv[])
   if (!isatty(fileno(stdin))) { // read from pipe
     string inputline;
     while ( ! cin.eof() && getline(cin, inputline) ) {
-      deque<string> inputdeque = split(inputline, " ");
-      if (!tiledImages) {
-        tiledImages = inputdeque.size();
-        images.resize(tiledImages);
-      } else if (inputdeque.size() != tiledImages) {
-        exit_on_error(command, "Inconsistent number of input images given in stdin.");
+      trim(inputline);
+      if (inputline.size()) {
+        deque<string> inputdeque = split(inputline, " ");
+        if (!tiledImages) {
+          tiledImages = inputdeque.size();
+          images.resize(tiledImages);
+        } else if (inputdeque.size() != tiledImages) {
+          exit_on_error(command, "Inconsistent number of input images given in stdin.");
+        }
+        for ( int curI = 0 ; curI < tiledImages ; curI++ )
+          images.at(curI).push_back(inputdeque.at(curI));
       }
-      for ( int curI = 0 ; curI < tiledImages ; curI++ )
-        images.at(curI).push_back(inputdeque.at(curI));
     }
   }
-
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
 
@@ -603,10 +605,10 @@ const string ProcProj::modname="ProcProj";
 
 class ProjInThread : public InThread {
 
-  const ProcProj & proc;
   deque<ReadVolumeBySlice> & allInRd;
   deque<SaveVolumeBySlice> & allOutSv;
-  const blitz::Array<int,2> & slMatch;
+  const ProcProj & proc;
+  const vector<int> & projes;
 
   unordered_map<pthread_t, ProcProj> procs;
   unordered_map<pthread_t, deque<Map> > allInMaps;
@@ -614,7 +616,7 @@ class ProjInThread : public InThread {
 
   bool inThread(long int idx) {
 
-    if (idx >= allOutSv[0].slices())
+    if (idx >= projes.size() || projes[idx] >= allOutSv[0].slices())
       return false;
 
     const pthread_t me = pthread_self();
@@ -630,10 +632,10 @@ class ProjInThread : public InThread {
     unlock();
 
     for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
-      allInRd[curI].read( slMatch(idx, curI), myAllIn[curI]);
+      allInRd[curI].read(projes[idx], myAllIn[curI]);
     myProc.process(myAllIn, myRes);
     for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
-      allOutSv[curO].save(slMatch(idx, (ArrIndex)allInRd.size()), myRes[curO]);
+      allOutSv[curO].save(projes[idx], myRes[curO]);
 
     bar.update();
     return true;
@@ -642,11 +644,11 @@ class ProjInThread : public InThread {
 
 public:
 
-  ProjInThread(const ProcProj & _proc, deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
-              , const blitz::Array<int,2> & _slMatch, bool verbose=false)
+  ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
+              , const ProcProj & _proc, const vector<int> & _projes, bool verbose=false)
     : InThread(verbose, "processing projections", _outSave[0].slices() )
     , proc(_proc)
-    , slMatch(_slMatch)
+    , projes(_projes)
     , allInRd(_allInRd)
     , allOutSv(_outSave)
   {}
@@ -688,98 +690,65 @@ int main(int argc, char *argv[]) {
   average_stack(gpar, args.mks, ish);
 
   const int nofIn = args.images.size();
-  int nofProj = -1;
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
     allInRd.at(curI).add(args.images.at(curI));
     uint cSls = allInRd.at(curI).slices();
     if (!cSls)
       exit_on_error(args.command, "No images in input "+ toString(curI) +".");
-    if ( nofProj < 0  ||  cSls < nofProj )
-      nofProj = cSls;
+    if (curI && allInRd.at(0).slices() != cSls)
+      exit_on_error(args.command, "Not matching of slices in input "+ toString(curI) +".");
   }
-
-  // prepare list of slices to be processed
-  blitz::Array<int,2> sliceTable;
-  if (nofProj==1) {
-    sliceTable.resize(1,nofIn+1);
-    sliceTable = 0;
-  } else {
-    Map read_sliceTable;
-    if (!args.sliceMatch.empty())
-      LoadData(args.sliceMatch, read_sliceTable);
-    if ( min(read_sliceTable) < 0 )
-      throw_error(args.command, "Negative slice requested.");
-    if ( max(read_sliceTable) >= nofProj )
-      throw_error(args.command, "Slice beyond volume depth requested.");
-    if ( ! read_sliceTable.size() ) {
-      read_sliceTable.resize(1,1);
-      read_sliceTable = 0;
-    }
-    if ( read_sliceTable.shape()(1) == 1  &&  nofIn > 1 ) { // only one column
-      read_sliceTable.resizeAndPreserve(read_sliceTable.shape()(0), nofIn);
-      for (ArrIndex curP = 1 ; curP < nofIn ; curP++)
-        read_sliceTable(all,curP) = read_sliceTable(all,0);
-    }
-    if ( read_sliceTable.shape()(0) == 1  &&  nofProj > 1 ) { // only one row
-      nofProj -= max(read_sliceTable);
-      read_sliceTable.resizeAndPreserve(nofProj, nofIn);
-      for (int curP = 0 ; curP < nofProj ; curP++)
-        read_sliceTable(curP,all) = read_sliceTable(0,all) + curP;
-    }
-    nofProj = read_sliceTable.shape()(0);
-    if (args.testMe >= 0  &&  args.testMe >= nofProj)
-      throw_error(args.command, "Test slice beyond input volume size; check option " + args.table.desc(&args.testMe) + ".");
-    if (args.testMe >= 0) {
-      sliceTable.resize(1, nofIn+1);
-      for ( ArrIndex x=0 ; x < nofIn ; x++)
-        sliceTable((ArrIndex)0,x) = read_sliceTable((ArrIndex)args.testMe,x);
-      sliceTable((ArrIndex)0,(ArrIndex)nofIn) = args.testMe;
-    } else {
-      vector<int> selected = slice_str2vec(args.out_range, read_sliceTable.shape()(0));
-      sliceTable.resize(selected.size(), nofIn+1);
-      for ( ArrIndex y=0 ; y < nofProj ; y++)
-        if (binary_search(selected.begin(), selected.end(), y)) {
-          for ( ArrIndex x=0 ; x < nofIn ; x++)
-            sliceTable(y,x) = read_sliceTable(y,x);
-          sliceTable(y, (ArrIndex)nofIn) = y;
-        }
-    }
-  }
+  const int nofProj = allInRd.at(0).slices();
+  const vector<int> projes = slice_str2vec(args.out_range, nofProj);
+  const int nofOuts = projes.size();
+  if (!nofOuts)
+    exit_on_error(args.command, "Given range \"" + args.out_range + "\""
+                                " is beyond input slices"+toString(nofProj)+".");
+  if ( args.testMe >= nofProj )
+    exit_on_error(args.command, "Requested test is beyond number of projections.");
 
   // Process one slice
-  Map test(ish);
-  test=0.0;
+  Map zmap(ish);
+  zmap=0.0;
   deque<Map> allOut, allIn;
-  const bool singleProc = nofProj == 1 || args.testMe >= 0;
   for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++) {
-    if (singleProc) {
-      allIn.push_back(Map());
-      allInRd[curI].read(sliceTable(ArrIndex(0), curI), allIn[curI]);
-      if (allIn[curI].shape() != ish)
-        throw_error(args.command, "Unexpected image size in input "+toString(curI)+".");
-    } else {
-      allIn.push_back(test);
-    }
+    allIn.emplace_back(ish);
+    if (args.testMe >= 0)
+      allInRd[curI].read(args.testMe, allIn[curI]);
+    else if (nofOuts == 1)
+      allInRd[curI].read(projes[0], allIn[curI]);
+    else
+      allIn.back().reference(zmap);
   }
-  ProcProj canonPP(st, bgar, dfar, dgar, gpar, args.testMe >=0 ? args.out_name.dtitle() + "_mask.tif" : string() );
-  canonPP.process(allIn, allOut, args.testMe >=0 ? args.out_name.dtitle() + ".tif" : string() );
+  ProcProj canonPP(st, bgar, dfar, dgar, gpar
+                  , args.testMe >=0 ? args.out_name.dtitle() + "_mask.tif" : string() );
+  canonPP.process(allIn, allOut
+                  , args.testMe >=0 ? args.out_name.dtitle() + ".tif" : string() );
 
   // Prepare saving factories
+  const size_t nofSplts = allOut.size();
   const string spformat = mask2format("_split@", allOut.size());
   deque<SaveVolumeBySlice> allOutSv;
-  for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++) {
-    ImagePath filedescind  =  allOut.size()==1  ?  args.out_name.repr()
-      :  args.out_name.dtitle() + toString(spformat, curSplt) + args.out_name.ext() + args.out_name.desc();
-    allOutSv.emplace_back(filedescind.repr(), allOut[curSplt].shape(), singleProc ? 1 : nofProj);
+  for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
+    ImagePath filedescind = args.out_name;
+    if (args.testMe >= 0)
+      filedescind = args.out_name.dtitle() + ".tif";
+    if (nofSplts > 1)
+      filedescind =   filedescind.dtitle() + toString(spformat, curSplt)
+                    + filedescind.ext() + filedescind.desc();
+    allOutSv.emplace_back(filedescind, allOut[curSplt].shape(), nofProj);
   }
 
-  // finally process
-  if (singleProc)
+  // save or process
+  if ( args.testMe >= 0 )
     for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
-      allOutSv[curSplt].save(0,allOut[curSplt]);
-  else
-    ProjInThread(canonPP, allInRd, allOutSv, sliceTable, args.beverbose).execute();
+      allOutSv[curSplt].save(args.testMe, allOut[curSplt]);
+  else if ( nofOuts == 1 )
+    for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
+      allOutSv[curSplt].save(projes[0], allOut[curSplt]);
+  else // finally process
+    ProjInThread(allInRd, allOutSv, canonPP, projes, args.beverbose).execute();
 
   exit(0);
 

@@ -70,6 +70,20 @@ __attribute__((optimize("O0"))) static inline bool fisok(double x){ return std::
 #endif
 
 
+inline std::string& ltrim(std::string& s, const char* t = " \t\n\r\f\v") {
+  return s.erase(0, s.find_first_not_of(t));
+}
+
+// trim from right
+inline std::string& rtrim(std::string& s, const char* t = " \t\n\r\f\v"){
+    return s.erase(s.find_last_not_of(t) + 1);
+}
+
+// trim from left & right
+inline std::string& trim(std::string& s, const char* t = " \t\n\r\f\v"){
+    return ltrim(rtrim(s, t), t);
+}
+
 /// \brief Convert string to upper case
 ///
 /// @param str Input string.

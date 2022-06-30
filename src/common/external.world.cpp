@@ -761,15 +761,15 @@ struct _ReadVolBySlice  {
   void sliceTraining(const Map & in, Map & rslice, Map & cslice, Map & out) {
     if (ang!=0)
       rotate(in, rslice, ang, 0.0);
-    else if (rslice.data()!=in.data());
+    else if (rslice.data()!=in.data())
       rslice.reference(in);
     if (crp != Crop())
       crop(rslice, cslice, crp);
-    else if (cslice.data()!=rslice.data());
+    else if (cslice.data()!=rslice.data())
       cslice.reference(rslice);
     if (bnn != Binn())
       binn(cslice, out, bnn);
-    else if (out.data()!=cslice.data());
+    else if (out.data()!=cslice.data())
       out.reference(cslice);
   }
 

@@ -84,9 +84,7 @@ struct HDFdesc {
   int sliceDim;
 
   HDFdesc(const ImagePath & filedesc) {
-    string desc = filedesc.desc();
-    if (desc.size() && desc[0]==':')
-      desc.erase(0,1);
+    const string desc = trim(filedesc.desc(), ":");
     if (desc.empty()) // not HDF5
       return;
     name = filedesc;
@@ -948,10 +946,12 @@ public:
   {
     if ( HDFdesc::isValid(filedesc) )
       hdfFile = new HDFwrite(filedesc, _sh, _zsize);
-    else if ( zsize==1  ||  filedesc.find('@') != string::npos)
+    else if ( zsize==1 )
       sliceformat=filedesc;
-    else
+    else if ( filedesc.find('@') == string::npos )
       sliceformat = mask2format(filedesc.dtitle() + "-@" + filedesc.ext(), zsize);
+    else
+      sliceformat = mask2format(filedesc, zsize);
   }
 
   ~_SaveVolumeBySlice() {
@@ -964,7 +964,7 @@ public:
     hdfFile=0;
   }
 
-  void put(int idx, const Map & storage) {
+  void save(int idx, const Map & storage) {
     if (hdfFile) {
       if (mincon==maxcon)
         hdfFile->write(idx, storage);
@@ -1029,7 +1029,7 @@ private:
       case 1: cur = vol(all, idi, all); break;
       case 0: cur = vol(idi, all, all); break;
     }
-    writer.put(idi, cur);
+    writer.save(idi, cur);
     bar.update();
     return true;
 
@@ -1098,7 +1098,7 @@ SaveVolumeBySlice::~SaveVolumeBySlice() {
 }
 
 void SaveVolumeBySlice::save(uint sl, const Map& trg) {
-  ((_SaveVolumeBySlice*) guts)->put(sl, trg);
+  ((_SaveVolumeBySlice*) guts)->save(sl, trg);
 }
 
 

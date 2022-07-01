@@ -76,12 +76,17 @@ inline std::string& ltrim(std::string& s, const char* t = " \t\n\r\f\v") {
 
 // trim from right
 inline std::string& rtrim(std::string& s, const char* t = " \t\n\r\f\v"){
-    return s.erase(s.find_last_not_of(t) + 1);
+  return s.erase(s.find_last_not_of(t) + 1);
 }
 
 // trim from left & right
 inline std::string& trim(std::string& s, const char* t = " \t\n\r\f\v"){
-    return ltrim(rtrim(s, t), t);
+  return ltrim(rtrim(s, t), t);
+}
+
+inline std::string trim(const std::string& s, const char* t = " \t\n\r\f\v"){
+  std::string ss = s;
+  return ltrim(rtrim(ss, t), t);
 }
 
 /// \brief Convert string to upper case

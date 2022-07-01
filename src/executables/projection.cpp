@@ -64,7 +64,7 @@ struct StitchRules {
   : nofIn(0)
   , angle(0)
   , origin1size(1)
-  , origin2size(0)
+  , origin2size(1)
   , flipUsed(false)
   , edge(0)
   {}
@@ -221,7 +221,7 @@ clargs(int argc, char *argv[])
   st.angle *= M_PI/180;
   st.nofIn = tiledImages;
   st.flipUsed=table.count(&st.originF);
-  st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / (st.origin2size ? st.origin2size : 1);
+  st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / st.origin2size ;
 
 }
 
@@ -416,7 +416,7 @@ public:
         SaveMask(msk2, "2");
       }
       if ( st.flipUsed ) {
-        if ( ! st.origin2size )
+        if ( st.origin2size == 1 )
           mskf.reference(msk2);
         else {
           deque<Map> supply(st.origin2size, msk2);
@@ -452,6 +452,42 @@ public:
   {}
 
 
+  string sub_proc(uint orgsize, PointF2D origin, const deque<Map> & iar, deque<Map> & oar
+                 , uint nofin, const Map & msk, const string & format, const ImagePath & interim_name) {
+
+    if ( orgsize == 1 ) {
+      for(int curM = 0 ; curM < oar.size() ; curM++)
+        oar[curM].reference(iar[curM]);
+      return ImagePath();
+    }
+
+    ImagePath lastSaved;
+    for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
+      int cidx=inidx/orgsize;
+      deque<Map> supply( iar.begin() + inidx, iar.begin() + inidx + orgsize) ;
+      deque<Map> masks( msk.size() ? 1 : 0 , msk);
+      stitch(origin, oar[cidx], supply, masks);
+      if ( ! interim_name.empty() ) {
+        Map cres;
+        if ( ! origin.x * origin.y ) {
+          cres.reference(oar[cidx]);
+        } else if ( abs(origin.x) < abs(origin.y)  ) {
+          int crppx = abs(origin.x * (supply.size()-1));
+          crop(oar[cidx], cres, Crop(0, crppx, 0, crppx));
+        } else {
+          int crppx = abs(st.origin1.y * (supply.size()-1));
+          crop(o1Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
+        }
+        string svformat = mask2format(format+"@", oar.size() );
+        lastSaved = interim_name.dtitle() + toString(svformat, cidx) + ".tif";
+        SaveDenan(lastSaved, cres);
+      }
+    }
+    return lastSaved;
+
+  }
+
+
   bool process(const deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
 
     if (allInR.size() != st.nofIn)
@@ -463,17 +499,17 @@ public:
     for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
       procInImg(allInR[curproj], allIn[curproj]);
       if ( ! interim_name.empty() ) {
-        const string sfI = toString(mask2format("_T@", st.nofIn), curproj);
+        const string sfI = toString(mask2format("_I@", st.nofIn), curproj);
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
-        const string sf2 = st.origin2size ? toString(mask2format(".@", st.origin2size), cur2) : "";
-        const string sf1 = st.origin1size ? toString(mask2format(".@", st.origin1size), cur1) : "";
+        const string sf2 = st.origin2size > 1 ? toString(mask2format(".@", st.origin2size), cur2) : "";
+        const string sf1 = st.origin1size > 1 ? toString(mask2format(".@", st.origin1size), cur1) : "";
         lastSaved = interim_name.dtitle() + sfI + sfF + sf2 + sf1 + string(".tif");
         SaveDenan(lastSaved, allIn[curproj]);
         cur1++;
-        if (cur1>=st.origin1size) {
+        if (cur1==st.origin1size) {
           cur1=0;
           cur2++;
-          if (cur2>=st.origin2size) {
+          if (cur2==st.origin2size) {
             cur2=0;
             curF++;
           }
@@ -481,61 +517,11 @@ public:
       }
     }
 
-
     // first stitch
-    for ( int inidx=0 ; inidx<st.nofIn ; inidx += st.origin1size ) {
-      int cidx=inidx/st.origin1size;
-      deque<Map> supply( allIn.begin() + inidx, allIn.begin() + inidx + st.origin1size) ;
-      deque<Map> masks( msk1.size() ? 1 : 0 , msk1);
-      stitch(st.origin1, o1Stitch[cidx], supply, masks);
-
-      if ( ! interim_name.empty()  &&  st.origin1size != 1 ) {
-        Map cres;
-        if ( ! st.origin1.x * st.origin1.y ) {
-            cres.reference(o1Stitch[cidx]);
-        } else if ( abs(st.origin1.x) < abs(st.origin1.y)  ) {
-            int crppx = abs(st.origin1.x * (supply.size()-1));
-            crop(o1Stitch[cidx], cres, Crop(0, crppx, 0, crppx));
-        } else {
-            int crppx = abs(st.origin1.y * (supply.size()-1));
-            crop(o1Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
-        }
-        string svformat = mask2format("_U@", o1Stitch.size() );
-        lastSaved = interim_name.dtitle() + toString(svformat, cidx) + ".tif";
-        SaveDenan(lastSaved, cres);
-      }
-    }
+    sub_proc(st.origin1size, st.origin1, allIn, o1Stitch, st.nofIn, msk1, "_U", interim_name);
 
     // second stitch
-    if ( ! st.origin2size ) {
-      for(int curM = 0 ; curM < o2Stitch.size() ; curM++)
-          o2Stitch[curM].reference(o1Stitch[curM]);
-    } else {
-      for ( int inidx=0 ; inidx<o1Stitch.size() ; inidx += st.origin2size ) {
-
-        int cidx=inidx/st.origin2size;
-        deque<Map> supply( o1Stitch.begin() + inidx , o1Stitch.begin() + inidx + st.origin2size ) ;
-        deque<Map> masks( msk2.size() ? 1 : 0 , msk2);
-        stitch(st.origin2, o2Stitch[cidx], supply, masks);
-
-        if ( ! interim_name.empty()  &&  st.origin2size != 1 ) {
-          Map cres;
-          if ( ! st.origin2.x * st.origin2.y )
-            cres.reference(o2Stitch[cidx]);
-          else if ( abs(st.origin2.x) < abs(st.origin2.y) ) {
-            int crppx = abs(st.origin2.x * (supply.size()-1));
-            crop(o2Stitch[cidx], cres, Crop(0, crppx, 0, crppx));
-          } else {
-            int crppx = abs(st.origin2.y * (supply.size()-1));
-            crop(o2Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
-          }
-          string svformat = mask2format("_V@", o2Stitch.size() );
-          lastSaved = interim_name.dtitle() + toString( svformat, cidx)  + ".tif";
-          SaveDenan(lastSaved, cres);
-        }
-
-      }
-    }
+    sub_proc(st.origin2size, st.origin2, o1Stitch, o2Stitch, o1Stitch.size(), msk2, "_V", interim_name);
 
     // flip stitch
     if ( st.flipUsed ) {
@@ -680,6 +666,7 @@ int main(int argc, char *argv[]) {
   StitchRules st = args.st;
   st.ish = ish;
 
+  // Read auxilary images
   Map bgar;
   average_stack(bgar, args.bgs, ish);
   Map dfar;
@@ -689,6 +676,7 @@ int main(int argc, char *argv[]) {
   Map gpar;
   average_stack(gpar, args.mks, ish);
 
+  // Prepare read factories
   const int nofIn = args.images.size();
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
@@ -721,10 +709,10 @@ int main(int argc, char *argv[]) {
     else
       allIn.back().reference(zmap);
   }
-  ProcProj canonPP(st, bgar, dfar, dgar, gpar
-                  , args.testMe >=0 ? args.out_name.dtitle() + "_mask.tif" : string() );
-  canonPP.process(allIn, allOut
-                  , args.testMe >=0 ? args.out_name.dtitle() + ".tif" : string() );
+  const string testFormat =  args.testMe < 0 ? string()
+               : toString(mask2format(args.out_name.dtitle(), nofProj), args.testMe) + "%s";
+  ProcProj canonPP(st, bgar, dfar, dgar, gpar, toString(testFormat, "_mask.tif"));
+  canonPP.process(allIn, allOut, toString(testFormat, ".tif"));
 
   // Prepare saving factories
   const size_t nofSplts = allOut.size();

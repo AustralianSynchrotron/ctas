@@ -1195,8 +1195,8 @@ const string DimSliceOptionDesc = "[slice dimension][slice(s)],"
 ///
 /// @return Updated array.
 ///
-static inline vector<int> &
-rmadd(vector<int> & arr, int numb, bool negate){
+static inline deque<int> &
+rmadd(deque<int> & arr, int numb, bool negate){
   if (negate)
         arr.erase( remove( arr.begin(), arr.end(), numb ), arr.end() );
   else
@@ -1223,31 +1223,28 @@ static inline int str2n(const string & str){
 
 vector<int>
 slice_str2vec(const string & sliceS, int hight){
+  // empty string
+  if ( sliceS.empty() ) {
+    vector<int> ret(hight);
+    for (int slice = 0 ; slice < hight ; slice++)
+      ret[slice]=slice;
+    return ret;
+  }
 
   const char negatec = 'n';
   const string permitted_chars = string("0123456789,-") + negatec ;
-
-  vector<int> sliceV; // the array to be returned as the result.
-
-  // empty string
-  if ( sliceS.empty() ) {
-        for (int slice = 0 ; slice < hight ; slice++)
-          sliceV.push_back(slice);
-        return sliceV;
-  }
-
+  deque<int> sliceV; // the array to be returned as the result.
 
   // construct the vector of substrings and checks for the global negation.
-  vector<string> subSV;
+  deque<string> subSV;
   bool negateall = true; // turns to false if an unnegated substring found.
   string::size_type startidx=0, endidx;
   do {
 
     // extract substring
     endidx = sliceS.find(',', startidx);
-    string subS = sliceS.substr(startidx, ( endidx == string::npos ?
-                        sliceS.length() :
-                        endidx-startidx) );
+    string subS = sliceS.substr(startidx, ( endidx == string::npos
+                        ? sliceS.length() : endidx-startidx) );
     startidx=endidx+1;
 
     // checks for the non permitted characters
@@ -1304,15 +1301,13 @@ slice_str2vec(const string & sliceS, int hight){
 
   // Check for global negation.
   if ( ( negateall |= ( subSV[0] == string(1,negatec) ) ) )
-        for ( int icur = 0 ; icur < hight ; icur++)
-          sliceV.push_back(icur);
-  subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ),
-                           subSV.end() ); // no "negate" strings
+    for ( int icur = 0 ; icur < hight ; icur++)
+      sliceV.push_back(icur);
+  subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ), subSV.end() ); // no "negate" strings
 
   // adds/removes substrings into the array of slices
-  vector<string>::iterator subSVi = subSV.begin();
-  const vector<string>::iterator subSVe=subSV.end();
-
+  deque<string>::iterator subSVi = subSV.begin();
+  const deque<string>::iterator subSVe=subSV.end();
   while ( subSVi != subSVe ) {
 
     bool negatethis = (*subSVi)[0]==negatec;
@@ -1339,20 +1334,18 @@ slice_str2vec(const string & sliceS, int hight){
   }
 
   // sort and remove duplicates, too large numbers
-  sort(sliceV.begin(), sliceV.end());
-  sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
+  //sort(sliceV.begin(), sliceV.end());
+  //sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
   if ( sliceV.back() >= hight )
         warn("slice string", "The string describing set of slices includes slices beyond the size"
                              " of the input image (" + toString(hight) + "). These slices are ignored." );
-  sliceV.erase( find_if( sliceV.begin(), sliceV.end(),
-                         bind2nd( greater<int>(), hight-1 ) ),
-                         sliceV.end() );
+  sliceV.erase(find_if(sliceV.begin(), sliceV.end(), bind2nd(greater<int>(), hight-1 ) ), sliceV.end());
 
   // last check
   if ( sliceV.empty() )
         warn("slice string", "The string describing set of slices leads to the empty range of slices." );
-
-  return sliceV;
+  vector<int> ret(sliceV.begin(), sliceV.end());
+  return ret;
 
 }
 

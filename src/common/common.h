@@ -499,6 +499,7 @@ safe(const blitz::Array<T,N> & arr){
 /// \brief Shape of an 2D array.
 typedef blitz::TinyVector<ArrIndex,2> Shape;
 
+
 inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
 
 /// \brief Compare shapes.

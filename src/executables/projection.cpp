@@ -525,8 +525,6 @@ public:
 
     // flip stitch
     if ( st.flipUsed ) {
-      //if ( o2Stitch.size() != 2 ) // May it ever happen ?
-      //  throw_error(args.command, "Number of images requested to flip-stitch is not equal to two.");
       o2Stitch[1].reverseSelf(blitz::secondDim);
       deque<Map> masks = mskf.size() ? deque<Map>({mskf, mskF}) : deque<Map>();
       stitch(st.originF, final, o2Stitch, masks);

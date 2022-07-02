@@ -114,7 +114,7 @@ BadShape(const ImagePath & filename, const Shape & shp);
 /// @param shp The expected shape.
 ///
 void COMMON_API
-ReadImage(const ImagePath & filename, Map & storage, const Shape & shp = Shape());
+ReadImage(const ImagePath & filename, Map & storage, const Shape & shp = Shape(0,0));
 
 
 

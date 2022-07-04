@@ -1258,12 +1258,12 @@ SaveImageFP (const Path & filename, const Map & storage, uint attempts=3){
   #else
     fd = open (filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fd < 1)
-      throw_error(modname, "Could not open file \"" + filename + "\" for writing.");
+      throw warn(modname, "Could not open file \"" + filename + "\" for writing.");
     TIFF *image = TIFFFdOpen(fd, filename.c_str(), "w");
   #endif
     if( ! image ) {
       close(fd);
-      throw_error(modname, "Could make tif from file\"" + filename + "\".");
+      throw warn(modname, "Could make tif from file\"" + filename + "\".");
     }
 
     // We need to set some values for basic tags before we can add any data
@@ -1283,7 +1283,7 @@ SaveImageFP (const Path & filename, const Map & storage, uint attempts=3){
     TIFFClose(image);
     if (fd) close(fd);
     if ( -1 == wret )
-      throw_error(modname, "Could not save image to file \"" + filename + "\".");
+      throw warn(modname, "Could not save image to file \"" + filename + "\".");
   } catch (...) {
     return SaveImageFP(filename, storage, --attempts);
   }

@@ -607,8 +607,8 @@ class ProjInThread : public InThread {
     lock();
     if ( ! procs.count(me) ) { // first call
       procs.emplace(me, proc);
-      allInMaps.emplace(me, allInRd.size());
-      results.emplace(me,0);
+      allInMaps.emplace(me, deque<Map>(allInRd.size()));
+      results.emplace(me,deque<Map>());
     }
     ProcProj & myProc = procs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
@@ -630,7 +630,7 @@ public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
               , const ProcProj & _proc, const vector<int> & _projes, bool verbose=false)
-    : InThread(verbose, "processing projections", _outSave[0].slices() )
+    : InThread(verbose, "processing projections", _projes.size())
     , proc(_proc)
     , projes(_projes)
     , allInRd(_allInRd)
@@ -714,7 +714,7 @@ int main(int argc, char *argv[]) {
 
   // Prepare saving factories
   const size_t nofSplts = allOut.size();
-  const string spformat = mask2format("_split@", allOut.size());
+  const string spformat = mask2format("_split@", nofSplts);
   deque<SaveVolumeBySlice> allOutSv;
   for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
     ImagePath filedescind = args.out_name;
@@ -728,10 +728,10 @@ int main(int argc, char *argv[]) {
 
   // save or process
   if ( args.testMe >= 0 )
-    for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
+    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
       allOutSv[curSplt].save(args.testMe, allOut[curSplt]);
   else if ( nofOuts == 1 )
-    for (int curSplt = 0 ; curSplt < allOut.size() ; curSplt++)
+    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
       allOutSv[curSplt].save(projes[0], allOut[curSplt]);
   else // finally process
     ProjInThread(allInRd, allOutSv, canonPP, projes, args.beverbose).execute();

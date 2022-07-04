@@ -49,12 +49,13 @@ _conversion (ImagePath* _val, const std::string & in) {
 }
 
 
-template<> struct std::hash<ImagePath> {
-  std::size_t operator()(ImagePath const& s) const noexcept  {
-    return std::hash<std::string>{}(s.repr());
+namespace std {
+template<> struct hash<ImagePath> {
+  size_t operator()(ImagePath const& s) const noexcept  {
+    return hash<string>{}(s.repr());
   }
 };
-
+}
 
 
 

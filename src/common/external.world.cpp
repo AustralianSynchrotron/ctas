@@ -339,8 +339,11 @@ public :
     cnts(sliceDim) = zsize; // first will be used once as the 3D dimensions
     int rank=0;
     blitz::Array<hsize_t,1> tcnts(3);
-
+#ifdef H5F_ACC_SWMR_WRITE
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+#else    
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+#endif
     if (hdfFile<=0) {
       complete();
     } else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<=0) {
@@ -357,7 +360,11 @@ public :
       }
     }
     if (hdfFile<=0) {
-      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); // H5F_ACC_CREAT | H5F_ACC_TRUNC
+#ifdef H5F_ACC_SWMR_WRITE
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+#else
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); 
+#endif
       if (hdfFile>0)
         createNewGroup();
     }
@@ -849,7 +856,7 @@ public:
     pthread_t me = pthread_self();
     lock();
     if ( ! slices.count(me) )
-      slices.emplace(me, 4);
+      slices.emplace(me, deque<Map>(4));
     deque<Map> & myslices = slices.at(me);
     unlock();
     Map islice = myslices[0];

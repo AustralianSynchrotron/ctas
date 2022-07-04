@@ -341,7 +341,7 @@ public :
     blitz::Array<hsize_t,1> tcnts(3);
 #ifdef H5F_ACC_SWMR_WRITE
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
-#else    
+#else
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 #endif
     if (hdfFile<=0) {
@@ -363,7 +363,7 @@ public :
 #ifdef H5F_ACC_SWMR_WRITE
       hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 #else
-      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); 
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 #endif
       if (hdfFile>0)
         createNewGroup();
@@ -1231,10 +1231,13 @@ SaveImageINT (const Path &filename, const Map &storage,
 /// @param storage the array to be written to the image.
 ///
 void
-SaveImageFP (const Path & filename, const Map & storage){
+SaveImageFP (const Path & filename, const Map & storage, uint attempts=3){
 
+  static const string modname="save 32fp image";
+  if (!attempts)
+    throw_error(modname, "Failed to save image to file \"" + filename + "\" after all attempts.");
   if ( ! storage.size() ) {
-    warn("save image", "Zero-sized array for image.");
+    warn(modname, "Zero-sized array for image.");
     return;
   }
 
@@ -1247,42 +1250,44 @@ SaveImageFP (const Path & filename, const Map & storage){
   // while TIFFFdOpen works well. On the MS Windows the
   // TIFFFdOpen does not work, while TIFFOpen does.
 
-  int fd=0;
-#ifdef _WIN32
-  TIFF *image = TIFFOpen(filename.c_str(), "w");
-#else
-  fd = open (filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
-  if (fd < 1)
-        throw_error("save float-point image",
-                                "Could not open file \"" + filename + "\" for writing.");
-  TIFF *image = TIFFFdOpen(fd, filename.c_str(), "w");
-#endif
+  try {
 
-  if( ! image ) {
-        if (fd) close(fd);
-        throw_error("save float-point image",
-                                "Could create tif from file\"" + filename + "\".");
+    int fd=0;
+  #ifdef _WIN32
+    TIFF *image = TIFFOpen(filename.c_str(), "w");
+  #else
+    fd = open (filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    if (fd < 1)
+      throw_error(modname, "Could not open file \"" + filename + "\" for writing.");
+    TIFF *image = TIFFFdOpen(fd, filename.c_str(), "w");
+  #endif
+    if( ! image ) {
+      close(fd);
+      throw_error(modname, "Could make tif from file\"" + filename + "\".");
+    }
+
+    // We need to set some values for basic tags before we can add any data
+    TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width);
+    TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight);
+    TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32);
+    TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
+    TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight);
+    TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
+    TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+
+
+    pthread_mutex_lock(&mut); // without it many fails.
+    Map _storage(safe(storage));
+    pthread_mutex_unlock(&mut);
+    int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*4);
+    TIFFClose(image);
+    if (fd) close(fd);
+    if ( -1 == wret )
+      throw_error(modname, "Could not save image to file \"" + filename + "\".");
+  } catch (...) {
+    return SaveImageFP(filename, storage, --attempts);
   }
 
-  // We need to set some values for basic tags before we can add any data
-  TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width);
-  TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight);
-  TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32);
-  TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
-  TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight);
-  TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
-  TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-
-
-  pthread_mutex_lock(&mut); // without it many fails.
-  Map _storage(safe(storage));
-  pthread_mutex_unlock(&mut);
-  int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*4);
-  TIFFClose(image);
-  if (fd) close(fd);
-  if ( -1 == wret )
-        throw_error("save 32-bit image",
-                                "Could not save image to file \"" + filename + "\".");
 
 }
 

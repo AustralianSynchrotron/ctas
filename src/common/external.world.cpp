@@ -129,6 +129,7 @@ public :
     : HDFdesc(filedesc)
     , hdfFile(0)
     , dataset(0)
+    , dataset_xdpl(0)
     , filespace(0)
     , memspace(0)
     //, rwLock(PTHREAD_MUTEX_INITIALIZER)
@@ -146,6 +147,7 @@ protected :
   int rank;
   hid_t hdfFile;
   hid_t dataset;
+  hid_t dataset_xdpl;
   hid_t filespace;
   hid_t memspace;
   //pthread_mutex_t rwLock;
@@ -160,7 +162,9 @@ protected :
       throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
     if (rank==3)
       cnts(sliceDim) = 1;
-
+    if ( ( dataset_xdpl = H5Pcreate(H5P_DATASET_XFER)) == H5I_INVALID_HID
+       || H5Pset_buffer(dataset_xdpl, area(shape)*sizeof(float), 0, 0) < 0 )
+      dataset_xdpl=H5P_DEFAULT;
   }
 
   void complete() {
@@ -173,9 +177,26 @@ protected :
     if (dataset>0)
       H5Dclose(dataset);
     dataset=0;
+    if (dataset_xdpl && dataset_xdpl != H5P_DEFAULT)
+      H5Pclose(dataset_xdpl);
+    dataset_xdpl=H5P_DEFAULT;
     if (hdfFile>0)
       H5Fclose(hdfFile);
     hdfFile=0;
+  }
+
+  hid_t fapl() {
+    size_t bsize;
+    switch (sliceDim) {
+    case 0: bsize = area(shape); break;
+    case 1: bsize = shape(0); break;
+    case 2: bsize = 0; break;
+    }
+    hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+    if (   fapl_id == H5I_INVALID_HID
+        || H5Pset_sieve_buf_size(fapl_id, bsize*sizeof(float)) < 0 )
+      fapl_id = H5P_FILE_ACCESS_DEFAULT;
+    return fapl_id;
   }
 
 };
@@ -198,11 +219,11 @@ public :
     if (!isValidHDF())
       throw_error(modname, "No HDF file at "+id()+".");
 
-
+    shape = ImageSizes(filedesc);
 #ifdef H5F_ACC_SWMR_READ
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, fapl());
 #else
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, fapl);
 #endif
     if (hdfFile<=0) complete();
     else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<0) complete();
@@ -267,7 +288,7 @@ public :
       rd.resize(shape(1),shape(0));
     else
       rd.reference(safe(storage));
-    if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, rd.data()) < 0)
+    if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, dataset_xdpl, rd.data()) < 0)
       warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
     if (sliceDim==2)
       rd.transposeSelf(blitz::secondDim, blitz::firstDim);
@@ -339,8 +360,10 @@ public :
     cnts(sliceDim) = zsize; // first will be used once as the 3D dimensions
     int rank=0;
     blitz::Array<hsize_t,1> tcnts(3);
+
+    hid_t mfapl = fapl();
 #ifdef H5F_ACC_SWMR_WRITE
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, mfapl);
 #else
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 #endif
@@ -361,7 +384,7 @@ public :
     }
     if (hdfFile<=0) {
 #ifdef H5F_ACC_SWMR_WRITE
-      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, mfapl);
 #else
       hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 #endif
@@ -372,7 +395,6 @@ public :
       complete();
       throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
     }
-
     commonInConstructor();
 
   }
@@ -411,7 +433,7 @@ public :
     }
 
     //pthread_mutex_lock(&rwLock);
-    if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, _storage.data()) < 0)
+    if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, dataset_xdpl, _storage.data()) < 0)
       warn(modname, "Failed to write slice " +toString(idx)+ " to " + name + ".");
     //pthread_mutex_unlock(&rwLock);
 

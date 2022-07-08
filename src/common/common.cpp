@@ -340,7 +340,7 @@ mask2format(const string & mask, int maxslice){
   }
   //replace last '@' with the format expression.
   format.replace( format.rfind('@'), 1,
-                  "%0" + toString( toString(maxslice).length() ) + "u");
+                  "%0" + toString( toString(maxslice-1).length() ) + "u");
   return format;
 }
 

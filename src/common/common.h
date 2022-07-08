@@ -476,7 +476,7 @@ typedef blitz::MyIndexType ArrIndex;
 // That is data() method can be used safely. If input array is safe, it is
 // returned as is, otherwise safe copy of it is returned.
 template<class T, int N> const blitz::Array<T,N>
-safe(const blitz::Array<T,N> & arr){
+safe(const blitz::Array<T,N> & arr, bool preserve=true){
   if ( ! arr.size() )
     return arr;
   bool retRef = arr.isStorageContiguous();
@@ -488,7 +488,8 @@ safe(const blitz::Array<T,N> & arr){
   if (retRef)
     return arr;
   blitz::Array<T,N> retArr(arr.shape());
-  retArr = arr;
+  if (preserve)
+    retArr = arr;
   return retArr;
 }
 

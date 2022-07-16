@@ -1351,7 +1351,7 @@ SaveImageFP (const Path & filename, const Map & storage, uint attempts=3){
   #endif
     if( ! image ) {
       close(fd);
-      throw warn(modname, "Could make tif from file\"" + filename + "\".");
+      throw warn(modname, "Could not make tif file \"" + filename + "\".");
     }
 
     // We need to set some values for basic tags before we can add any data

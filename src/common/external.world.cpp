@@ -41,6 +41,7 @@ initImageIO(){
   using namespace MagickCore;
 #endif
 
+  //InitializeMagick(0);
   //MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
   //SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
   //SetMagickResourceLimit ( FileResource , 1024 * 1024);
@@ -54,6 +55,8 @@ initImageIO(){
   // whenever TIFFOpen is called
   try { Magick::Image imag; imag.ping("a.tif"); } catch (...) {}
   TIFFSetWarningHandler(0);
+  TIFFSetErrorHandler(0);
+  TIFFSetErrorHandlerExt(0);
   H5Eset_auto(H5E_DEFAULT, NULL, NULL);
   //H5::Exception::dontPrint();
 
@@ -556,11 +559,12 @@ ImageSizes(const ImagePath & filename){
     Magick::Image imag;
     try {
       imag.ping(filename);
-    }
-    catch ( Magick::WarningCoder err ) {}
-    catch ( Magick::Exception & error) {
-      throw_error("get image size", "Could not read image file\""+filename+"\"."
+    } catch ( Magick::WarningCoder err ) {
+    } catch ( Magick::Exception & error) {
+      throw_error("get image size", "Could not read image file \""+filename+"\"."
                           " Caught Magick++ exception: \""+error.what()+"\".");
+    } catch (...) {
+      throw_error("get image size", "Could not read image file \""+filename+"\".");
     }
     return Shape( imag.rows(), imag.columns() );
   }
@@ -598,7 +602,41 @@ ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
 
 
 
-pthread_mutex_t mut(PTHREAD_MUTEX_INITIALIZER);
+pthread_mutex_t tiffmut(PTHREAD_MUTEX_INITIALIZER);
+
+static inline void
+safelyCloseTIFFandThrow(TIFF *image, int fd, const string modname, const string report = string()) {
+  pthread_mutex_lock(&tiffmut);
+  if (image) TIFFClose(image);
+  pthread_mutex_unlock(&tiffmut);
+  if (fd>0) close(fd);
+  if ( report.size() )
+    throw warn(modname, report);
+  return;
+}
+
+static inline void
+safelyOpenTIFForThrow(TIFF **image, int *fd, const string modname, const Path & filename, bool rdonly) {
+    // BUG in libtiff
+    // On platforms (f.e. CentOS) the TIFFOpen function fails,
+    // while TIFFFdOpen works well. On the MS Windows the
+    // TIFFFdOpen does not work, while TIFFOpen does.
+  pthread_mutex_lock(&tiffmut);
+  #ifdef _WIN32
+  *image = TIFFOpen(filename.c_str(), rdonly ? "r" : "w");
+  #else
+  *fd = rdonly
+      ?  open (filename.c_str(), O_RDONLY)
+      :  open (filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+  if (*fd > 0)
+    *image = TIFFFdOpen(*fd, filename.c_str(), rdonly ? "r" : "w");
+  #endif
+  pthread_mutex_unlock(&tiffmut);
+  if (! *image)
+    safelyCloseTIFFandThrow(*image, *fd, modname,
+      "Failed to open TIFF file \"" + filename + "\" for " + (rdonly ? "reading" : "writing") + ".");
+}
+
 
 
 /// Loads an image (lines) using TIFF library.
@@ -614,71 +652,45 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
 
   const string modname = "load image tiff";
 
-  TIFF *tif = TIFFOpen(filename.c_str(), "r");
-
-
-  if( ! tif )
-    throw warn(modname, "Could not read tif from file\"" + filename + "\".");
-
+  int fd=0;
+  TIFF *image = 0;
+  safelyOpenTIFForThrow(&image, &fd, modname, filename, true);
   uint32_t width = 0, height = 0;
   uint16_t spp = 0, bps = 0, fmt = 0, photo;
-
-  if ( ! TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &width) )
-    throw warn(modname, "Image \"" + filename + "\" has undefined width.");
-  if ( ! TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &height) )
-    throw warn(modname, "Image \"" + filename + "\" has undefined height.");
-  if ( ! TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &spp) || spp != 1 )
-    throw warn(modname, "Image \"" + filename + "\" has undefined samples per pixel"
-                        " or is not a grayscale.");
-  if ( spp != 1 )
-    throw warn(modname, "Image \"" + filename + "\" is not grayscale.");
-  if ( ! TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &bps) )
-    throw warn(modname, "Image \"" + filename + "\" has undefined bits per sample.");
-  if ( bps != 8 && bps != 16 && bps != 32 )
-    throw warn(modname,
-               "Image \"" + filename + "\" has nonstandard " + toString(bps) +
-               " bits per sample. Do not know how to handle it.");
-
-  if ( ! TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &fmt) ) {
-    string warnadd;
-    if (bps != 32) {
-      warnadd = toString(bps) +
-           " bits per sample suggests unsigned integer format.";
-      fmt = SAMPLEFORMAT_UINT;
-    } else {
-      warnadd = "32 bits per sample suggests float-point format.";
-      fmt = SAMPLEFORMAT_IEEEFP;
-    }
-  }
+  if (    ! TIFFGetField(image, TIFFTAG_IMAGEWIDTH, &width)
+       || ! TIFFGetField(image, TIFFTAG_IMAGELENGTH, &height)
+       || ! TIFFGetField(image, TIFFTAG_SAMPLESPERPIXEL, &spp)
+       || spp != 1
+       || ! TIFFGetField(image, TIFFTAG_BITSPERSAMPLE, &bps)
+       || ( bps != 8 && bps != 16 && bps != 32 )
+       || ! TIFFGetField(image, TIFFTAG_PHOTOMETRIC, &photo)
+       || photo != PHOTOMETRIC_MINISBLACK )
+    safelyCloseTIFFandThrow(image, fd, modname,
+      "Lost in the fields of tif image \"" + filename + "\".");
+  if ( ! TIFFGetField(image, TIFFTAG_SAMPLEFORMAT, &fmt) )
+    fmt =  bps != 32  ?  SAMPLEFORMAT_UINT  :  SAMPLEFORMAT_IEEEFP;
   if ( fmt != SAMPLEFORMAT_UINT &&
        fmt != SAMPLEFORMAT_INT &&
        fmt != SAMPLEFORMAT_IEEEFP )
-    throw warn(modname,
-               "Image \"" + filename + "\" has unsupported sample format.");
-
-  if ( ! TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &photo) ||
-       photo != PHOTOMETRIC_MINISBLACK )
-    throw warn(modname,
-         "Image \"" + filename + "\" has undefined or unsupported"
-         " photometric interpretation.");
+    safelyCloseTIFFandThrow(image, fd, modname,
+      "Image \"" + filename + "\" has unsupported sample format.");
 
   storage.resize(height,width);
-  tdata_t buf = _TIFFmalloc(TIFFScanlineSize(tif));
+  tdata_t buf = _TIFFmalloc(TIFFScanlineSize(image));
   for (uint curidx = 0; curidx < height; curidx++) {
 
-    pthread_mutex_lock(&mut); // I do not understand why,
-    // but with no mutex storage(curidx,all) causes double free
-    // or corruption on ASCI.
-    Line ln(storage(curidx, all));
-    pthread_mutex_unlock(&mut);
-    if ( TIFFReadScanline(tif, buf, curidx) < 0 ) {
+    //pthread_mutex_lock(&mut);
+    if ( TIFFReadScanline(image, buf, curidx) < 0 ) {
       _TIFFfree(buf);
-      TIFFClose(tif);
-      throw warn(modname, "Failed to read line " + toString(curidx) +" in image \"" + filename + "\".");
+      //pthread_mutex_unlock(&mut);
+      safelyCloseTIFFandThrow(image, fd, modname,
+        "Failed to read line " + toString(curidx) +" in image \"" + filename + "\".");
     }
+    Line ln(storage(curidx, all));
+    //pthread_mutex_unlock(&mut);
 
-#define blitzArrayFromData(type) \
-  blitz::Array<type,1> ( (type *) buf, blitz::shape(width), blitz::neverDeleteData)
+    #define blitzArrayFromData(type) \
+      blitz::Array<type,1> ( (type *) buf, blitz::shape(width), blitz::neverDeleteData)
     switch (fmt) {
     case SAMPLEFORMAT_UINT :
       if (bps==8)
@@ -700,17 +712,17 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
       ln = blitzArrayFromData(float);
       break;
     }
-#undef blitzArrayFromData
-
-    //pthread_mutex_lock(&mut);
-    //ln.reference(Line(0));
-    //pthread_mutex_unlock(&mut);
+    #undef blitzArrayFromData
 
   }
 
-
+  //pthread_mutex_lock(&mut);
+  //ln.reference(Line(0));
   _TIFFfree(buf);
-  TIFFClose(tif);
+  //pthread_mutex_unlock(&mut);
+  safelyCloseTIFFandThrow(image, fd, modname, "");
+
+
 
 }
 
@@ -759,16 +771,18 @@ ReadImage_IM (const Path & filename, Map & storage ){
 
 void
 ReadImage(const ImagePath & filename, Map & storage, const Shape & shp){
-  if (area(shp))
-    BadShape(filename, shp);
-  try { ReadImage_HDF5(filename, storage); }
-  catch (CtasErr err) {
-    try { ReadImage_TIFF(filename, storage); }
-    catch (CtasErr err) {
-      if (err.type() != CtasErr::WARN)
-        throw;
+  try {
+    const string ext = lower(filename.ext());
+    if (area(shp))
+      BadShape(filename, shp);
+    if (HDFdesc::isValidHDF(filename))
+      ReadImage_HDF5(filename, storage);
+    else if ( ext == ".tif" || ext == ".tiff")
+      ReadImage_TIFF(filename, storage);
+    else
       ReadImage_IM(filename, storage);
-    }
+  } catch (...) {
+    throw_error("Read image", "Failed to read image " + filename.desc());
   }
 }
 
@@ -1325,53 +1339,29 @@ SaveImageFP (const Path & filename, const Map & storage, uint attempts=3){
   if (!attempts)
     throw_error(modname, "Failed to save image to file \"" + filename + "\" after all attempts.");
   if ( ! storage.size() ) {
-    warn(modname, "Zero-sized array for image.");
+    warn(modname, "Zero-sized array for image \"" + filename + "\".");
     return;
   }
-
   const int
     width = storage.columns(),
     hight = storage.rows();
 
-  // BUG in libtiff
-  // On platforms (f.e. CentOS) the TIFFOpen function fails,
-  // while TIFFFdOpen works well. On the MS Windows the
-  // TIFFFdOpen does not work, while TIFFOpen does.
-
   try {
-
+    TIFF *image = 0;
     int fd=0;
-  #ifdef _WIN32
-    TIFF *image = TIFFOpen(filename.c_str(), "w");
-  #else
-    fd = open (filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
-    if (fd < 1)
-      throw warn(modname, "Could not open file \"" + filename + "\" for writing.");
-    TIFF *image = TIFFFdOpen(fd, filename.c_str(), "w");
-  #endif
-    if( ! image ) {
-      close(fd);
-      throw warn(modname, "Could not make tif file \"" + filename + "\".");
-    }
-
-    // We need to set some values for basic tags before we can add any data
-    TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width);
-    TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight);
-    TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32);
-    TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
-    TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight);
-    TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP);
-    TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-
-
-    pthread_mutex_lock(&mut); // without it many fails.
+    safelyOpenTIFForThrow(&image, &fd, modname, filename, false);
+    if (   TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width) != 1
+        || TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight) !=1
+        || TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32) != 1
+        || TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1) != 1
+        || TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight) != 1
+        || TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP) != 1
+        || TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK) != 1 )
+      safelyCloseTIFFandThrow(image, fd, modname, "Could not set a field in image \"" + filename + "\".");
     Map _storage(safe(storage));
-    pthread_mutex_unlock(&mut);
-    int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*4);
-    TIFFClose(image);
-    if (fd) close(fd);
-    if ( -1 == wret )
-      throw warn(modname, "Could not save image to file \"" + filename + "\".");
+    int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*sizeof(float));
+    safelyCloseTIFFandThrow(image, fd, modname,  (-1 != wret) ? "" : "Could not save image to file \"" + filename + "\"." );
+
   } catch (...) {
     return SaveImageFP(filename, storage, --attempts);
   }

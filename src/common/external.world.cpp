@@ -782,7 +782,7 @@ ReadImage(const ImagePath & filename, Map & storage, const Shape & shp){
     else
       ReadImage_IM(filename, storage);
   } catch (...) {
-    throw_error("Read image", "Failed to read image " + filename.desc());
+    throw_error("Read image", "Failed to read image " + filename + ".");
   }
 }
 

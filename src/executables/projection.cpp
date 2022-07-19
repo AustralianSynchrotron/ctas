@@ -615,11 +615,15 @@ class ProjInThread : public InThread {
     deque<Map> & myRes = results.at(me);
     unlock();
 
-    for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
-      allInRd[curI].read(projes[idx], myAllIn[curI]);
-    myProc.process(myAllIn, myRes);
-    for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
-      allOutSv[curO].save(projes[idx], myRes[curO]);
+    try {
+      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
+        allInRd[curI].read(projes[idx], myAllIn[curI]);
+      myProc.process(myAllIn, myRes);
+      for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
+        allOutSv[curO].save(projes[idx], myRes[curO]);
+    } catch (...) {
+      warn("form projection", toString("Failed on index %i, slice %i.", idx, projes[idx]));
+    }
 
     bar.update();
     return true;

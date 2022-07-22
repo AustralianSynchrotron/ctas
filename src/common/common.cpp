@@ -1041,55 +1041,62 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps)
 /// @param curstep Current step. Advances +1 if zero.
 ///
 void
-ProgressBar::_update(int curstep){
-
+ProgressBar::update(int curstep){
   if ( !showme ) return; // Uninitialized progress bar.
 
-  if ( !reservedChs ) {
-
-    cout << "Starting process";
-    if (steps) cout << " (" + toString(steps) + " steps)";
-    cout << ": " << message << "." << endl;
-    fflush(stdout);
-
-    int nums = toString(steps).length();
-    reservedChs = 14 + 2*nums;
-    fmt = steps ?
-          "%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s" :
-          string( "progress: %i" );
-
-  }
-
-  int progln = getwidth() - reservedChs;
-  if ( progln <= 3 )  return; // if we have a very narrow terminal
-  step = curstep ? curstep+1 : step + 1;
-
-  if ( steps && step >= steps ) {
-        done();
-        return;
-  }
-
-  string outS;
-  if (steps) {
-    string eqs = string(progln*step/steps, '=') + string(progln, ' ') ;
-    eqs.erase(progln);
-    string prc = toString("%5.1f%% ", (100.0*step)/steps);
-    outS = toString(fmt, step, eqs.c_str(), prc.c_str() );
-  } else {
-    outS = toString(fmt, step);
-  }
-
-  cout << string(waswidth+1, '\b') << outS;
-  fflush(stdout);
-  waswidth = outS.length();
-
-}
-
-void
-ProgressBar::update(int curstep){
   pthread_mutex_lock(&proglock);
-  try { _update(curstep); }  catch (...) {}
+  try {
+
+    if ( !reservedChs ) {
+
+      cout << "Starting process";
+      if (steps) cout << " (" + toString(steps) + " steps)";
+      cout << ": " << message << "." << endl;
+      fflush(stdout);
+
+      int nums = toString(steps).length();
+      reservedChs = 14 + 2*nums;
+      fmt = steps
+            ? "%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s"
+            : string( "progress: %i" );
+
+    }
+
+    step = curstep ? curstep+1 : step + 1;
+    if ( steps && step >= steps ) {
+      done();
+      throw 1;
+    }
+    const int wdth = getwidth();
+    if (!wdth) {
+      cout << step;
+      if (steps)
+        cout << "/" << steps;
+      cout << std::endl;
+      fflush(stdout);
+      throw 1;
+    }
+    const int progln = wdth - reservedChs;
+    if ( progln <= 3 ) // if we have a very narrow terminal
+      throw 1;
+
+    string outS;
+    if (steps) {
+      string eqs = string(progln*step/steps, '=') + string(progln, ' ') ;
+      eqs.erase(progln);
+      string prc = toString("%5.1f%% ", (100.0*step)/steps);
+      outS = toString(fmt, step, eqs.c_str(), prc.c_str() );
+    } else {
+      outS = toString(fmt, step);
+    }
+
+    cout << string(waswidth+1, '\b') << outS;
+    fflush(stdout);
+    waswidth = outS.length();
+
+  }  catch (...) {}
   pthread_mutex_unlock(&proglock);
+
 }
 
 
@@ -1097,23 +1104,22 @@ ProgressBar::update(int curstep){
 
 void
 ProgressBar::done(){
-
-  if ( !showme || ! reservedChs ) return;
-
-  int progln = getwidth() - reservedChs;
-  if ( progln < 0 )  progln = 0; // if we have a very narrow terminal
-  string eqs(progln, '=');
-
-  cout << string(waswidth+1, '\r')
-       << ( steps ?
-            toString(fmt, steps, eqs.c_str(), "DONE. ") :
-            toString(fmt, step) + " steps. DONE." )
-       << endl
-       << "Successfully finished " << message << "." << endl;
+  if ( !showme || ! reservedChs )
+    return;
+  const int wdth = getwidth();
+  if (wdth) {
+    int progln = wdth - reservedChs;
+    if ( progln < 0 )  progln = 0; // if we have a very narrow terminal
+    string eqs(progln, '=');
+    cout << string(waswidth+1, '\r')
+         << ( steps ?
+                toString(fmt, steps, eqs.c_str(), "DONE. ") :
+                toString(fmt, step) + " steps. DONE." )
+         << endl;
+  }
+  cout << "Successfully finished " << message << "." << endl;
   fflush(stdout);
-
   reservedChs = 0;
-
 }
 
 
@@ -1135,7 +1141,12 @@ ProgressBar::getwidth(){
   //return (info.srWindow.Right - info.srWindow.Left + 1);
 #else
   winsize size;
-  return ( ioctl (STDOUT_FILENO, TIOCGWINSZ, &size ) < 0 ) ?  0 : size.ws_col - 1;
+  if ( ! isatty(fileno(stdout)) )
+    return 0;
+  else if ( ioctl (STDOUT_FILENO, TIOCGWINSZ, &size ) < 0  ||  size.ws_col < 2)
+    return 1;
+  else
+    return size.ws_col - 1;
 #endif
 }
 

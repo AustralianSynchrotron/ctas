@@ -1007,8 +1007,6 @@ private:
   int getwidth();		///< Returns current terminal width.
   pthread_mutex_t proglock;
 
-  void _update(int curstep);
-
 public:
 
   ProgressBar(bool _showme=false, const std::string & _message="", int _steps=0);

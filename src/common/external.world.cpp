@@ -821,7 +821,10 @@ const std::string MaskDesc =
 struct _ReadVolBySlice  {
 
   deque<ImagePath> ilist;
-  unordered_map<ImagePath,HDFread> hdfs;
+  // I have observed situation where using ImagePath as the key could not
+  // descriminate between different keys despite producing different hash.
+  //unordered_map<ImagePath,HDFread> hdfs;
+  unordered_map<size_t,HDFread> hdfs;
   size_t ssize;
   const float ang;
   const Crop crp;
@@ -851,8 +854,11 @@ struct _ReadVolBySlice  {
   void add(const ImagePath & fileind) {
       ilist.push_back(fileind);
       try {
-        hdfs.emplace(fileind, fileind);
-        ssize += hdfs.at(fileind).slices();
+        //hdfs.emplace(fileind, fileind);
+        const size_t key = hash<string>{}(fileind.repr());
+        hdfs.emplace(key, fileind);
+        //ssize += hdfs.at(fileind).slices();
+        ssize += hdfs.at(key).slices();
       } catch (...) {
         ssize++;
       }
@@ -885,8 +891,11 @@ struct _ReadVolBySlice  {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
       const ImagePath flnm = ilist[cfl];
-      if (hdfs.count(flnm)) {
-        HDFread & hdf = hdfs.at(flnm);
+      //if (hdfs.count(flnm)) {
+      const size_t key = hash<string>{}(flnm.repr());
+      if (hdfs.count(key)) {
+        //HDFread & hdf = hdfs.at(flnm);
+        HDFread & hdf = hdfs.at(key);
         if (idx < cfirst + hdf.slices()) {
           hdf.read(idx-cfirst, rd);
           sliceTraining(rd, rslice, cslice, out);

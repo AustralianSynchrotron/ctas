@@ -587,14 +587,18 @@ const string ProcProj::modname="ProcProj";
 
 
 
+
+
 class ProjInThread : public InThread {
 
-  deque<ReadVolumeBySlice> & allInRd;
+  const int nofIn;
+  const deque< deque<ImagePath> > & allInNm;
   deque<SaveVolumeBySlice> & allOutSv;
   const ProcProj & proc;
   const vector<int> & projes;
 
   unordered_map<pthread_t, ProcProj> procs;
+  unordered_map<pthread_t, deque<ReadVolumeBySlice> > allInReads;
   unordered_map<pthread_t, deque<Map> > allInMaps;
   unordered_map<pthread_t, deque<Map> > results;
 
@@ -607,17 +611,22 @@ class ProjInThread : public InThread {
     lock();
     if ( ! procs.count(me) ) { // first call
       procs.emplace(me, proc);
-      allInMaps.emplace(me, deque<Map>(allInRd.size()));
+      allInReads.emplace(me, deque<ReadVolumeBySlice>(nofIn));
+      allInMaps.emplace(me, deque<Map>(nofIn));
       results.emplace(me,deque<Map>());
+      deque<ReadVolumeBySlice> & allInRd = allInReads.at(me);
+      for ( int curI = 0 ; curI < nofIn ; curI++)
+        allInRd.at(curI).add(allInNm.at(curI));
     }
     ProcProj & myProc = procs.at(me);
+    deque<ReadVolumeBySlice> & myAllRd = allInReads.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
     deque<Map> & myRes = results.at(me);
     unlock();
 
     try {
-      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
-        allInRd[curI].read(projes[idx], myAllIn[curI]);
+      for (ArrIndex curI = 0  ;  curI<nofIn  ;  curI++ )
+        myAllRd[curI].read(projes[idx], myAllIn[curI]);
       myProc.process(myAllIn, myRes);
       for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
         allOutSv[curO].save(projes[idx], myRes[curO]);
@@ -632,12 +641,13 @@ class ProjInThread : public InThread {
 
 public:
 
-  ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
+  ProjInThread(const deque< deque<ImagePath> > & _allInNm, deque<SaveVolumeBySlice> & _outSave
               , const ProcProj & _proc, const vector<int> & _projes, bool verbose=false)
     : InThread(verbose, "processing projections", _projes.size())
+    , nofIn(_allInNm.size())
     , proc(_proc)
     , projes(_projes)
-    , allInRd(_allInRd)
+    , allInNm(_allInNm)
     , allOutSv(_outSave)
   {}
 
@@ -687,7 +697,7 @@ int main(int argc, char *argv[]) {
     if (!cSls)
       exit_on_error(args.command, "No images in input "+ toString(curI) +".");
     if (curI && allInRd.at(0).slices() != cSls)
-      exit_on_error(args.command, "Not matching of slices in input "+ toString(curI) +".");
+      exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
   }
   const int nofProj = allInRd.at(0).slices();
   const vector<int> projes = slice_str2vec(args.out_range, nofProj);
@@ -702,7 +712,7 @@ int main(int argc, char *argv[]) {
   Map zmap(ish);
   zmap=0.0;
   deque<Map> allOut, allIn;
-  for ( ArrIndex curI = 0 ; curI < allInRd.size() ; curI++) {
+  for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
     allIn.emplace_back(ish);
     if (args.testMe >= 0)
       allInRd[curI].read(args.testMe, allIn[curI]);
@@ -737,8 +747,9 @@ int main(int argc, char *argv[]) {
   else if ( nofOuts == 1 )
     for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
       allOutSv[curSplt].save(projes[0], allOut[curSplt]);
-  else // finally process
-    ProjInThread(allInRd, allOutSv, canonPP, projes, args.beverbose).execute();
+  else { // finally process
+    ProjInThread(args.images, allOutSv, canonPP, projes, args.beverbose).execute();
+  }
 
   exit(0);
 

@@ -1011,7 +1011,8 @@ public:
 
   ProgressBar(bool _showme=false, const std::string & _message="", int _steps=0);
 
-  void setSteps(int _steps) {steps=_steps;}
+  void setSteps(int _steps);
+  void start();
   void update(int curstep=0);	///< Updates the progress bar
   void done();					///< Finalizes the progress bar.
   bool isShown() const {return showme;}

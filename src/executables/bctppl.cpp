@@ -71,6 +71,7 @@ struct clargs {
   float dist;  // for phase
   bool SaveInt;
   bool beverbose;
+  int testme;
   /// \CLARGSF
   clargs(int argc, char *argv[]);
 };
@@ -92,6 +93,7 @@ clargs(int argc, char *argv[])
   , dist(1.0)
   , SaveInt(false)
   , beverbose(false)
+  , testme(-1)
 {
 
   poptmx::OptionTable table
@@ -138,6 +140,8 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &dd, 'r', "resolution",
            "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
 
+      .add(poptmx::OPTION, &testme, 't', "test", "Tests single projection given.",
+           "Outputs tif with the projection as well as processed masks." , "")
       .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
       .add_standard_options(&beverbose)
       .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -193,60 +197,14 @@ clargs(int argc, char *argv[])
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
          " the d2b parameter (given by "+table.desc(&d2b)+") for the correct results.");
   lambda /= 1.0E10; // convert A -> m
+
+  while (angle>=360)
+    angle -= 360;
+  while (angle<0)
+    angle += 360;
   angle *= M_PI / 180.0;
 
 }
-
-
-
-
-
-
-class FlatInThread : public InThread {
-
-  Volume & ivol;
-  const FlatFieldProc canon;
-  unordered_map<pthread_t,FlatFieldProc> ffProcs;
-
-  bool inThread (long int idx) {
-
-    if ( idx >= ivol.shape()(0) )
-      return false;
-
-    pthread_t me(pthread_self());
-    lock();
-    if ( ! ffProcs.count(me) )
-      ffProcs.insert({me, FlatFieldProc(canon)});
-    FlatFieldProc & myProc = ffProcs.at(me);
-    unlock();
-
-    Map frame(ivol(idx,all,all));
-    //frame=ivol(idx,all,all);
-    myProc.process(frame);
-    ivol(idx,all,all)=frame;
-    bar.update();
-    return true;
-
-  }
-
-public:
-
-  FlatInThread(Volume & iv, const Map & bg, const Map & df, const Map & mask, bool verbose=false)
-    : InThread(verbose , "performing flat field", iv.shape()(0))
-    , ivol(iv)
-    , canon(bg, df, mask)
-  {
-  }
-
-  static void execute( Volume & iv, const Map & bg, const Map & df, const Map & mask
-                     , bool verbose=false) {
-    FlatInThread(iv, bg, df, mask, verbose).InThread::execute();
-  }
-
-};
-
-
-
 
 
 
@@ -258,19 +216,27 @@ class FrameFormInThread : public InThread {
 
 private:
 
-  Volume & res;
-  const Volume & ims0;
-  const Volume & ims1;
-  const clargs & args;
-
-  const Shape ish;
-        Shape osh;
-  const float step;
-  const float oz;
-  const int nshift;
-
   static char formframe_src[];
   static const cl_program formframeProgram;
+
+  Volume & res;
+  ReadVolumeBySlice * imrd0;
+  ReadVolumeBySlice * imrd1;
+  SaveVolumeBySlice * imsv;
+  FlatFieldProc canon0;
+  FlatFieldProc canon1;
+  const clargs & args;
+
+  Shape ish;
+  Shape osh;
+  int npr;
+  float step;
+  int nshift;
+  int oz;
+
+  cl_mem clgaps0;
+  cl_mem clgaps1;
+  cl_mem clgapsF;
 
   struct PerThread {
     cl_kernel kernelFormFrame;
@@ -278,19 +244,21 @@ private:
     cl_mem clout;
     cl_mem clim1;
     cl_mem clim0;
-    PerThread(cl_kernel kFF, cl_kernel kF, cl_mem _clim0, cl_mem _clim1, cl_mem _clout)
+    Map rdim;
+    Map tim;
+    Map crim;
+    PerThread( cl_kernel kFF, cl_kernel kF, cl_mem _clim0, cl_mem _clim1, cl_mem _clout)
       : kernelFormFrame(kFF)
       , kernelFill(kF)
       , clout(_clout)
       , clim1(_clim1)
       , clim0(_clim0)
-    {}
+    { }
   } ;
   unordered_map<pthread_t,PerThread> perThread;
+  unordered_map<pthread_t, FlatFieldProc> ffproc0;
+  unordered_map<pthread_t, FlatFieldProc> ffproc1;
 
-  cl_mem clgaps0;
-  cl_mem clgaps1;
-  cl_mem clgapsF;
 
   ~FrameFormInThread() {
     clReleaseMemObject(clgaps0);
@@ -303,13 +271,21 @@ private:
       clReleaseMemObject(it.second.clim1);
       clReleaseMemObject(it.second.clout);
     }
+    if (imsv)
+      delete imsv;
+    if (imrd0)
+      delete imrd0;
+    if (imrd1)
+      delete imrd1;            
   }
 
 
   bool inThread(const long int idx) {
 
-    if ( idx >= oz || idx >= ims0.shape()(0) )
+    if ( idx >= npr )
       return false;
+    if (args.testme >= 0  &&  idx != args.testme)
+      return true;
 
     pthread_t me(pthread_self());
     lock();
@@ -335,27 +311,43 @@ private:
       }
 
       lock();
-      perThread.emplace( me, PerThread(kernelFormFrame, kernelFill, _clim0, _clim1, _clout) );
+      perThread.emplace(me, PerThread(kernelFormFrame, kernelFill, _clim0, _clim1, _clout));
+      ffproc0.emplace(me,canon0);
+      ffproc1.emplace(me,canon1);
     }
     PerThread & my = perThread.at(me);
+    FlatFieldProc & myff0 = ffproc0.at(me);
+    FlatFieldProc & myff1 = ffproc1.at(me);
     unlock();
 
-    Map tim;
-    //if (!idx) SaveImage("imor.tif", ims0(idx, all, all));
-    procImg(ims0(idx, all, all), tim, false, false);
-    blitz2cl(tim, my.clim0);
-    //if (!idx) SaveImage("imop.tif", tim);
+    int id1 = idx;
+    bool flp = false;
+    if (nshift) {
+      id1 += oz - nshift;
+      if ( id1 >= npr) {
+        id1 -= oz/2;
+        flp=true;
+      }
+      if ( id1 >= npr) { // NOT a mistake
+        id1 -= oz/2;
+        flp=false;
+      }
+    }
 
-    int id1 = idx-nshift;
-    if (id1 < 0)
-      id1 += oz-1;
-    if (id1 < 0) // yes, two times needed
-      id1 += oz-1;
-    const bool flp = idx < nshift  &&  idx > nshift - oz;
-    //if (!idx) SaveImage("imsr.tif", ims1(idx, all, all));
-    procImg(ims1(id1, all, all), tim, true, flp);
-    //if (!idx) SaveImage("imsp.tif", tim);
-    blitz2cl(tim, my.clim1);
+    #define getSlice(inp, tidx, dosft, doflp) \
+      imrd##inp->read(tidx, my.rdim); \
+      if (my.rdim.shape() != ish) \
+        throw_error("Frame formation", "Unexpected shape of source " #inp " at index " + toString(tidx) + "." ); \
+      myff##inp.process(my.rdim); \
+      procImg(my.rdim, my.tim, dosft, doflp); \
+      blitz2cl(my.tim, my.clim##inp); \
+      if (args.testme >= 0) \
+        SaveImage(args.outmask.dtitle() + "_src_" + string(inp?"sft":"org") + ".tif", my.tim);
+
+    getSlice(0,idx,false,false);
+    getSlice(1,id1,true,flp); 
+
+    #undef getSlice
 
     if (flp) {
       setArg( my.kernelFormFrame, 4, clgapsF );
@@ -370,13 +362,18 @@ private:
     execKernel(my.kernelFormFrame, area(osh));
     if (args.radFill)
       execKernel(my.kernelFill, osh);
+    cl2blitz(my.clout, my.tim);
+    crop(my.tim, my.crim, args.cropF);
 
-    cl2blitz(my.clout, tim);
-    crop(tim, args.cropF);
-    //if (!idx) SaveImage("imr.tif", tim);
-    res(idx, all, all) = tim;
-    bar.update();
-    return true;
+    if (args.testme >= 0) {
+      SaveImage(args.outmask.dtitle() + ".tif", my.tim);
+      return false;    
+    } else {
+      res(idx, all, all) = my.crim;
+      imsv->save(idx, my.crim);
+      bar.update(); 
+      return true;
+    }
 
   }
 
@@ -392,10 +389,9 @@ private:
     crop(om,tcrop);
     rotate(om, args.angle,0.0);
     crop(om, args.crop);
-    const float ccent = 2 * args.center
-                      + max(0.0f, args.shift.x)+args.crop.right
-                      + min(0.0f, args.shift.x)-args.crop.left;
-    crop(om, Crop(0,max(0.0f, ccent),0,-min(0.0f,ccent)));
+    const float ccent = 2 * args.center - args.shift.x
+                  + args.crop.right - args.crop.left;
+    crop(om, Crop(0,  max(0.0f, ccent), 0, -min(0.0f, ccent)));
     binn(om, args.bnn);
     if (flp)
       om.reverseSelf(blitz::secondDim);
@@ -438,52 +434,81 @@ private:
   }
 
 
-
-
 public:
 
-  FrameFormInThread( Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps
-                   , const clargs & _args)
-    : InThread(_args.beverbose , "performing frame formation", _ims0.shape()(0))
+  FrameFormInThread( const Map & bgar0, const Map & bgar1, const Map & dfar0, const Map & dfar1
+                   , const Map & gaps, const clargs & _args, Volume & _res)
+    : InThread( _args.beverbose && _args.testme < 0, "performing frame formation")
     , res(_res)
-    , ims0(_ims0)
-    , ims1(_ims1)
+    , imrd0(0)
+    , imrd1(0)
+    , imsv(0)
+    , canon0(bgar0, dfar0, gaps)
+    , canon1(bgar1, dfar1, gaps)
     , args(_args)
-    , ish(faceShape(_ims0.shape()))
-    , step( args.arc < 1.0  ?  args.arc  :  args.arc / (ims0.shape()(0)-1) )
-    , oz(1+(int)(180/step))
-    , nshift((int)(args.ashift/step))
   {
-    Map gapst;
-    procImg(_gaps, gapst, false, false);
-    prepareGaps(gapst);
-    //SaveImage("gp0.tif", gapst);
-    //Map sv(gapst.shape());
-    //sv = gapst;
-    clgaps0 = blitz2cl(gapst, CL_MEM_READ_ONLY);
-    procImg(_gaps, gapst, true, false);
-    prepareGaps(gapst);
-    //sv += gapst;
-    //SaveImage("gp1.tif", gapst);
-    clgaps1 = blitz2cl(gapst, CL_MEM_READ_ONLY);
-    procImg(_gaps, gapst, true, true);
-    prepareGaps(gapst);
-    //sv += gapst;
-    //SaveImage("gpF.tif", gapst);
-    //SaveImage("gpA.tif", sv);
 
+    imrd0 = new ReadVolumeBySlice(args.ims0);
+    imrd1 = new ReadVolumeBySlice(args.ims1);
+    npr = imrd0->slices();
+    if (npr<2)
+      throw_error("InputSets", "Less than 2 images in the input volume(s).");
+    if (imrd0->slices() != imrd1->slices())
+      throw_error("InputSets", "Input volumes are of different sizes.");
+    bar.setSteps(npr);
+    bar.start();
+
+    Map gapst;
+    procImg(gaps, gapst, false, false);
+    prepareGaps(gapst);
+    Map test_map;
+    const ImagePath test_file = args.outmask.dtitle();
+    if (args.testme >= 0) {
+      SaveImage(test_file + "_mask_org.tif", gapst);
+      test_map.resize(gapst.shape());
+      test_map = gapst;
+    }
+    clgaps0 = blitz2cl(gapst, CL_MEM_READ_ONLY);
+    procImg(gaps, gapst, true, false);
+    prepareGaps(gapst);
+    if (args.testme >= 0) {
+      SaveImage(test_file + "_mask_sft.tif", gapst);
+      test_map += gapst;
+    }
+    clgaps1 = blitz2cl(gapst, CL_MEM_READ_ONLY);
+    procImg(gaps, gapst, true, true);
+    prepareGaps(gapst);
+    if (args.testme >= 0) {
+      SaveImage(test_file + "_mask_flp.tif", gapst);
+      test_map += gapst;
+      SaveImage(test_file + "_mask_all.tif", test_map);
+    }    
     clgapsF = blitz2cl(gapst, CL_MEM_READ_ONLY);
+
+
+    ish = gaps.shape();
     osh = Shape( gapst.shape()(0) - args.cropF.top  - args.cropF.bottom
                , gapst.shape()(1) - args.cropF.left - args.cropF.right) ;
-    res.resize(oz, osh(0), osh(1));
+    step = args.arc < 1.0  ?  args.arc  :  args.arc / (npr-1);
+    nshift = args.ashift/step;
+    oz = 360/step;
 
-    const float arc =  args.arc > 1.0  ?  args.arc  :  args.arc * ims0.shape()(0);
+    if (args.testme >= npr)
+      throw_error("Test", toString( "Requested test %i is beyond number of input slices %i."
+                                  , args.testme, npr));
+    if (args.testme >= 0)
+      return;
+
+    res.resize(npr, osh(0), osh(1));
+    imsv = new SaveVolumeBySlice(args.outmask, osh, npr);
+
   }
 
 
-  static void execute( Volume & _res, const Volume & _ims0, const Volume & _ims1, const Map & _gaps
-                     , const clargs & _args) {
-    FrameFormInThread( _res, _ims0, _ims1, _gaps, _args)
+  static void execute( const Map & _bgar0, const Map & _bgar1
+                     , const Map & _dfar0, const Map & _dfar1
+                     , const Map & _gaps, const clargs & _args, Volume & _res) {
+    FrameFormInThread( _bgar0, _bgar1, _dfar0, _dfar1, _gaps,  _args, _res)
         .InThread::execute();
   }
 
@@ -494,7 +519,7 @@ char FrameFormInThread::formframe_src[] = {
 };
 
 const cl_program FrameFormInThread::formframeProgram =
-      initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
+  initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
 
 
 
@@ -651,41 +676,12 @@ int main(int argc, char *argv[]) {
   } else
     gaps = 1.0;
 
-  // Read sample sets
-  #define ReadSet(set, bmap, dmap, vol) { \
-    ReadVolume(set, vol, args.beverbose); \
-    if ( faceShape(vol.shape()) != ish ) \
-      exit_on_error("ReadSet", "Wrong image sizes."); \
-    FlatInThread::execute(vol, bmap, dmap, gaps, args.beverbose); \
-  }
-  Volume ims0; ReadSet(args.ims0, bgs0, dfs0, ims0);
-  Volume ims1; ReadSet(args.ims1, bgs1, dfs1, ims1);
-  #undef ReadSet
-  if (ims0.shape()(0)<2)
-    exit_on_error("InputSets", "Less than 2 images in the input volume(s).");
-  if (ims0.shape() != ims1.shape())
-    exit_on_error("InputSets", "Volumes are of different size.");
-  dfs0.free();
-  dfs1.free();
-  bgs0.free();
-  bgs1.free();
-
   Volume frames;
-  FrameFormInThread::execute(frames, ims0, ims1, gaps, args);
-  ims0.free();
-  ims1.free();
+  FrameFormInThread::execute(bgs0, bgs1, dfs0, dfs1, gaps, args, frames);
 
-  const float
-    mincon  =  args.SaveInt  ?  min(frames) : 0,
-    maxcon  =  args.SaveInt  ?  max(frames) : 0;
-  if (args.SaveInt)
-    SaveVolume(args.outmask, frames, args.beverbose, mincon, maxcon);
-  else
-    SaveVolume(args.outmask, frames, args.beverbose);
-
-
-  exit(0);
-
+  if (args.testme >= 0)
+    exit(0);
+  exit(0); // FOR tests only
 
 
   // TODO Rings

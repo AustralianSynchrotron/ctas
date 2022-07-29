@@ -1036,31 +1036,48 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps)
   reservedChs = 0;
 }
 
+
+void 
+ProgressBar::setSteps(int _steps) {
+  if (steps)
+    warn("ProgressBar", "Resetting steps of the progress bar.");
+  steps=_steps;
+}
+
+void
+ProgressBar::start(){
+  if ( !showme )
+    return;
+  if ( reservedChs ) 
+    return; // Was already started
+
+  cout << "Starting process";
+  if (steps>1) 
+    cout << " (" + toString(steps) + " steps)";
+  cout << ": " << message;
+  if ( steps == 1 )
+    cout << " ... ";
+  else 
+    cout << "." << endl;
+  fflush(stdout);
+
+  int nums = toString(steps).length();
+  reservedChs = 14 + 2*nums;
+  fmt = steps
+        ? "%" + toString(nums) + "i of " + toString(steps) + " [%s] %s"
+        : string( "progress: %i" );
+}
+
 /// \brief Updates the progress bar.
 ///
 /// @param curstep Current step. Advances +1 if zero.
 ///
 void
 ProgressBar::update(int curstep){
-  if ( !showme ) return; // Uninitialized progress bar.
-
+  if ( !showme ) return; 
   pthread_mutex_lock(&proglock);
   try {
-
-    if ( !reservedChs ) {
-
-      cout << "Starting process";
-      if (steps) cout << " (" + toString(steps) + " steps)";
-      cout << ": " << message << "." << endl;
-      fflush(stdout);
-
-      int nums = toString(steps).length();
-      reservedChs = 14 + 2*nums;
-      fmt = steps
-            ? "%" + toString(nums) + "i of " + toString(steps) + " [%s] %4s"
-            : string( "progress: %i" );
-
-    }
+    start(); // Does nothing if already started
 
     step = curstep ? curstep+1 : step + 1;
     if ( steps && step >= steps ) {
@@ -1096,10 +1113,7 @@ ProgressBar::update(int curstep){
 
   }  catch (...) {}
   pthread_mutex_unlock(&proglock);
-
 }
-
-
 
 
 void
@@ -1107,17 +1121,16 @@ ProgressBar::done(){
   if ( !showme || ! reservedChs )
     return;
   const int wdth = getwidth();
-  if (wdth) {
+  if (wdth && steps != 1) {
     int progln = wdth - reservedChs;
     if ( progln < 0 )  progln = 0; // if we have a very narrow terminal
     string eqs(progln, '=');
     cout << string(waswidth+1, '\r')
          << ( steps ?
-                toString(fmt, steps, eqs.c_str(), "DONE. ") :
-                toString(fmt, step) + " steps. DONE." )
-         << endl;
+                toString(fmt, steps, eqs.c_str(), "") :
+                toString(fmt, step) + " steps." );
   }
-  cout << "Successfully finished " << message << "." << endl;
+  cout << " DONE." << endl;
   fflush(stdout);
   reservedChs = 0;
 }

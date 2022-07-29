@@ -107,10 +107,11 @@ private :
     return 0;
   }
 
-
-  void start() {
+  void start(uint nThreads=0) {
     pthread_t thread;
-    for (int ith = 0 ; ith < run_threads ; ith++)
+    if (!nThreads)
+      nThreads=run_threads;
+    for (int ith = 0 ; ith < nThreads ; ith++)
       if ( pthread_create( & thread, NULL, in_thread, this ) )
         warn("Thread operation", "Can't create thread.");
       else
@@ -126,21 +127,21 @@ private :
 
 public:
 
-  static void execute( bool (*_thread_routine) (void *, long int), void * _arg ) {
+  static void execute( bool (*_thread_routine) (void *, long int), void * _arg, int nThreads=0 ) {
     ThreadDistributor dist(_thread_routine, _arg);
-    dist.start();
+    dist.start(nThreads);
     dist.finish();
   }
 
-  static void execute( bool (*_thread_routine) (long int)) {
+  static void execute( bool (*_thread_routine) (long int), int nThreads=0) {
     ThreadDistributor dist(_thread_routine);
-    dist.start();
+    dist.start(nThreads);
     dist.finish();
   }
 
-  static void execute( bool (*_thread_routine)()) {
+  static void execute( bool (*_thread_routine)(), int nThreads=0) {
     ThreadDistributor dist(_thread_routine);
-    dist.start();
+    dist.start(nThreads);
     dist.finish();
   }
 
@@ -150,17 +151,17 @@ public:
 
 
 
-
-void InThread::execute() {
-  ThreadDistributor::execute(inThread, this);
+void InThread::execute(int nThreads) {
+  bar.start();
+  ThreadDistributor::execute(inThread, this, nThreads);
 }
 
-void InThread::execute( bool (*_thread_routine) (long int)) {
-  ThreadDistributor::execute(_thread_routine);
+void InThread::execute( bool (*_thread_routine) (long int), int nThreads) {
+  ThreadDistributor::execute(_thread_routine, nThreads);
 }
 
-void InThread::execute( bool (*_thread_routine)()) {
-  ThreadDistributor::execute(_thread_routine);
+void InThread::execute( bool (*_thread_routine)(), int nThreads) {
+  ThreadDistributor::execute(_thread_routine, nThreads);
 }
 
 

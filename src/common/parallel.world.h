@@ -59,11 +59,11 @@ public:
   InThread(bool verbose=false, const std::string procName = std::string(), int steps=0)
     : proglock(PTHREAD_MUTEX_INITIALIZER)
     , bar(verbose, procName, steps)
-  {}
+  { if (steps) bar.start(); }
 
-  void execute();
-  static void execute( bool (*_thread_routine) (long int) );
-  static void execute( bool (*_thread_routine) () );
+  void execute(int nThreads=0);
+  static void execute( bool (*_thread_routine) (long int), int nThreads=0 );
+  static void execute( bool (*_thread_routine) (), int nThreads=0 );
 
   inline void lock() { pthread_mutex_lock(&proglock); }
   inline void unlock() { pthread_mutex_unlock(&proglock); }

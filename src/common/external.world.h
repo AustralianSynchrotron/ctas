@@ -26,6 +26,10 @@ public:
     , _desc(splitIn(str).second)
   {}
 
+  inline ImagePath(const char *str)
+    : ImagePath(std::string(str))
+  {};
+
   inline ImagePath(const ImagePath & other)
     : Path(other)
     , _desc(other._desc)
@@ -37,8 +41,9 @@ public:
     return *this;
   }
 
-  inline const std::string & desc() const {return _desc;}
   inline const std::string repr() const {return *this + _desc;}
+  inline const std::string & desc() const {return _desc;}
+  inline ImagePath & desc(const std::string & __desc) { _desc=__desc ; return *this;}
 
 };
 
@@ -228,6 +233,7 @@ public:
   void add(const ImagePath & fileind);
   void read(uint sl, Map & trg);
   size_t slices() const;
+  Shape face() const;
 };
 
 

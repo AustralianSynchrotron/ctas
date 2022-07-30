@@ -240,20 +240,25 @@ private:
 
   struct PerThread {
     cl_kernel kernelFormFrame;
+    cl_kernel kernelEqNoise;
     cl_kernel kernelFill;
     cl_mem clout;
+    cl_mem cleqn;
     cl_mem clim1;
     cl_mem clim0;
     Map rdim;
     Map tim;
     Map crim;
-    PerThread( cl_kernel kFF, cl_kernel kF, cl_mem _clim0, cl_mem _clim1, cl_mem _clout)
+    PerThread( cl_kernel kFF, cl_kernel kEN, cl_kernel kF
+             , cl_mem _clim0, cl_mem _clim1, cl_mem _clout, cl_mem _cleqn)
       : kernelFormFrame(kFF)
+      , kernelEqNoise(kEN)
       , kernelFill(kF)
       , clout(_clout)
+      , cleqn(_cleqn)
       , clim1(_clim1)
       , clim0(_clim0)
-    { }
+    {}
   } ;
   unordered_map<pthread_t,PerThread> perThread;
   unordered_map<pthread_t, FlatFieldProc> ffproc0;
@@ -266,10 +271,12 @@ private:
     clReleaseMemObject(clgapsF);
     for (auto& it: perThread) {
       clReleaseKernel(it.second.kernelFormFrame);
+      clReleaseKernel(it.second.kernelEqNoise);
       clReleaseKernel(it.second.kernelFill);
       clReleaseMemObject(it.second.clim0);
       clReleaseMemObject(it.second.clim1);
       clReleaseMemObject(it.second.clout);
+      clReleaseMemObject(it.second.cleqn);
     }
     if (imsv)
       delete imsv;
@@ -292,26 +299,38 @@ private:
     if ( ! perThread.count(me) ) { // first run
       unlock();
 
-      cl_kernel kernelFormFrame = createKernel(formframeProgram , "formframe");
       cl_mem _clout = clAllocArray<float>(area(osh));
+      cl_mem _cleqn = clAllocArray<float>(area(osh));
       cl_mem _clim0 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
       cl_mem _clim1 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
+
+      cl_kernel kernelFormFrame = createKernel(formframeProgram , "formframe"); 
       setArg(kernelFormFrame, 0, _clout );
       setArg(kernelFormFrame, 1, _clim0 );
       setArg(kernelFormFrame, 2, _clim1 );
       setArg(kernelFormFrame, 3, clgaps0 );
 
-      cl_kernel kernelFill = args.radFill ? createKernel(formframeProgram , "gapfill") : 0;
+      cl_kernel kernelEqNoise = createKernel(formframeProgram , "eqnoise"); 
+      setArg( kernelEqNoise, 0, (int) osh(1) );
+      setArg( kernelEqNoise, 1, (int) osh(0) );
+      setArg( kernelEqNoise, 2, _clout );
+      setArg( kernelEqNoise, 3, _cleqn );
+      setArg( kernelEqNoise, 4, clgaps0 );
+
+      cl_kernel kernelFill = 0;
       if (args.radFill) {
+        kernelFill = createKernel(formframeProgram , "gapfill");
         setArg( kernelFill, 0, (int) osh(1) );
         setArg( kernelFill, 1, (int) osh(0) );
         setArg( kernelFill, 2, args.radFill );
-        setArg( kernelFill, 3, _clout );
+        setArg( kernelFill, 3, _cleqn );
         setArg( kernelFill, 4, clgaps0 );
       }
 
       lock();
-      perThread.emplace(me, PerThread(kernelFormFrame, kernelFill, _clim0, _clim1, _clout));
+      perThread.emplace(me,
+        PerThread( kernelFormFrame, kernelEqNoise, kernelFill
+                 , _clim0, _clim1, _clout, _cleqn));
       ffproc0.emplace(me,canon0);
       ffproc1.emplace(me,canon1);
     }
@@ -346,23 +365,19 @@ private:
 
     getSlice(0,idx,false,false);
     getSlice(1,id1,true,flp); 
-
     #undef getSlice
 
-    if (flp) {
-      setArg( my.kernelFormFrame, 4, clgapsF );
-      if (args.radFill)
-        setArg( my.kernelFill, 5, clgapsF );
-    } else {
-      setArg( my.kernelFormFrame, 4, clgaps1 );
-      if (args.radFill)
-        setArg( my.kernelFill, 5, clgaps1 );
-    }
+    cl_mem & gaps1 = flp ? clgapsF : clgaps1;
+    setArg( my.kernelFormFrame, 4, gaps1 );
+    setArg( my.kernelEqNoise, 5, gaps1 );
+    if (args.radFill)
+      setArg( my.kernelFill, 5, gaps1 );
 
     execKernel(my.kernelFormFrame, area(osh));
+    execKernel(my.kernelEqNoise, Shape(osh(0)-2, osh(1)-2));
     if (args.radFill)
       execKernel(my.kernelFill, osh);
-    cl2blitz(my.clout, my.tim);
+    cl2blitz(my.cleqn, my.tim);
     crop(my.tim, my.crim, args.cropF);
 
     if (args.testme >= 0) {
@@ -518,12 +533,8 @@ char FrameFormInThread::formframe_src[] = {
   #include "formframe.cl.includeme"
 };
 
-const cl_program FrameFormInThread::formframeProgram =
-  initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
-
-
-
-
+const cl_program
+FrameFormInThread::formframeProgram = initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
 
 
 

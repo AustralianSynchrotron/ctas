@@ -374,7 +374,7 @@ private:
       setArg( my.kernelFill, 5, gaps1 );
 
     execKernel(my.kernelFormFrame, area(osh));
-    execKernel(my.kernelEqNoise, Shape(osh(0)-2, osh(1)-2));
+    execKernel(my.kernelEqNoise, Shape(osh(0), osh(1)));
     if (args.radFill)
       execKernel(my.kernelFill, osh);
     cl2blitz(my.cleqn, my.tim);

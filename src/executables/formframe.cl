@@ -42,6 +42,8 @@ kernel void  eqnoise (
   // gaussian
   float mass=0.0;
   float gsum=0.0;
+  bool isMax=true;
+  bool isMin=true;
   for (int dy = -1 ; dy <= 1 ; dy++) {
     int idyy = idy+dy;
     if (idyy<0 || idyy>=Ys)
@@ -52,11 +54,19 @@ kernel void  eqnoise (
       if (idxx<0 || idxx>=Xs)
         continue;
       int idii = idiy + idxx;
+
       if ( gaps0[idii] + gaps1[idii] == 0.0 )
         continue;
+      if (iim[idii]>iim[idi])
+        isMax=false;
+      if (iim[idii]<iim[idi])
+        isMin=false;
+      if (!isMax && !isMin)
+        return;      
       float gwght = exp(-(dx*dx + dy*dy)/gdiv);
       mass += gwght;
       gsum += gwght * iim[idii];
+    
     }
   }
   if (mass==0)

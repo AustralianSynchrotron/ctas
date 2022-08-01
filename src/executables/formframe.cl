@@ -39,39 +39,37 @@ kernel void  eqnoise (
   if (wght==0 || wght>=2.0) 
     return;
 
-  // gaussian
-  float mass=0.0;
-  float gsum=0.0;
-  bool isMax=true;
-  bool isMin=true;
+  int dots=0;
+  float sumd=0;
+  float arr[9];
   for (int dy = -1 ; dy <= 1 ; dy++) {
     int idyy = idy+dy;
     if (idyy<0 || idyy>=Ys)
-      continue;
+      continue;    
     int idiy = idyy * Xs;
     for (int dx = -1 ; dx <= 1 ; dx++) {
-      int idxx = idx+dx;
-      if (idxx<0 || idxx>=Xs)
-        continue;
+      int idxx = idx+dx; 
+      if (idyy<0 || idyy>=Ys)
+        continue;      
       int idii = idiy + idxx;
-
-      if ( gaps0[idii] + gaps1[idii] == 0.0 )
-        continue;
-      if (iim[idii]>iim[idi])
-        isMax=false;
-      if (iim[idii]<iim[idi])
-        isMin=false;
-      if (!isMax && !isMin)
-        return;      
-      float gwght = exp(-(dx*dx + dy*dy)/gdiv);
-      mass += gwght;
-      gsum += gwght * iim[idii];
-    
+      float lwght = gaps0[idii] + gaps1[idii];
+      if (lwght==0 || lwght>=2.0) 
+        continue;      
+      sumd += iim[idii];
+      arr[dots++] = iim[idii];
     }
   }
-  if (mass==0)
+  if (dots<2)
     return;
-  oim[idi] = gsum/mass;
+
+  float mean = sumd/dots;
+  sumd = 0;
+  for (int idl=0; idl<dots; idl++) {
+    float dd = arr[idl]-mean;
+    sumd += dd*dd;
+  }
+  sumd /= dots;
+  oim[idi] = mean + sign(iim[idi]-mean) * sqrt(sumd/2);
 
 }
 
@@ -146,6 +144,39 @@ kernel void  eqnoise (
 //  ov = arr[dots/2];
 
 
+// gaussian of extremes
+//  float mass=0.0;
+//  float gsum=0.0;
+//  bool isMax=true;
+//  bool isMin=true;
+//  for (int dy = -1 ; dy <= 1 ; dy++) {
+//    int idyy = idy+dy;
+//    if (idyy<0 || idyy>=Ys)
+//      continue;
+//    int idiy = idyy * Xs;
+//    for (int dx = -1 ; dx <= 1 ; dx++) {
+//      int idxx = idx+dx;
+//      if (idxx<0 || idxx>=Xs)
+//        continue;
+//      int idii = idiy + idxx;
+//
+//      if ( gaps0[idii] + gaps1[idii] == 0.0 )
+//        continue;
+//      if (iim[idii]>iim[idi])
+//        isMax=false;
+//      if (iim[idii]<iim[idi])
+//        isMin=false;
+//      if (!isMax && !isMin)
+//        return;      
+//      float gwght = exp(-(dx*dx + dy*dy)/gdiv);
+//      mass += gwght;
+//      gsum += gwght * iim[idii];
+//    
+//    }
+//  }
+//  if (mass==0)
+//    return;
+//  oim[idi] = gsum/mass;
 
 kernel void  gapfill (
   read_only            int  Xs,

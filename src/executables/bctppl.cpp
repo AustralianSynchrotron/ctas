@@ -229,10 +229,10 @@ private:
 
   Shape ish;
   Shape osh;
-  int npr;
+  int nofProj;
   float step;
   int nshift;
-  int oz;
+  int cshift;
 
   cl_mem clgaps0;
   cl_mem clgaps1;
@@ -242,20 +242,20 @@ private:
     cl_kernel kernelFormFrame;
     cl_kernel kernelEqNoise;
     cl_kernel kernelFill;
-    cl_mem clout;
-    cl_mem cleqn;
+    cl_mem clwA;
+    cl_mem clwB;
     cl_mem clim1;
     cl_mem clim0;
     Map rdim;
     Map tim;
     Map crim;
     PerThread( cl_kernel kFF, cl_kernel kEN, cl_kernel kF
-             , cl_mem _clim0, cl_mem _clim1, cl_mem _clout, cl_mem _cleqn)
+             , cl_mem _clim0, cl_mem _clim1, cl_mem _clwA, cl_mem _clwB)
       : kernelFormFrame(kFF)
       , kernelEqNoise(kEN)
       , kernelFill(kF)
-      , clout(_clout)
-      , cleqn(_cleqn)
+      , clwA(_clwA)
+      , clwB(_clwB)
       , clim1(_clim1)
       , clim0(_clim0)
     {}
@@ -275,21 +275,21 @@ private:
       clReleaseKernel(it.second.kernelFill);
       clReleaseMemObject(it.second.clim0);
       clReleaseMemObject(it.second.clim1);
-      clReleaseMemObject(it.second.clout);
-      clReleaseMemObject(it.second.cleqn);
+      clReleaseMemObject(it.second.clwA);
+      clReleaseMemObject(it.second.clwB);
     }
     if (imsv)
       delete imsv;
     if (imrd0)
       delete imrd0;
     if (imrd1)
-      delete imrd1;            
+      delete imrd1;
   }
 
 
   bool inThread(const long int idx) {
 
-    if ( idx >= npr )
+    if ( idx >= nofProj )
       return false;
     if (args.testme >= 0  &&  idx != args.testme)
       return true;
@@ -299,38 +299,33 @@ private:
     if ( ! perThread.count(me) ) { // first run
       unlock();
 
-      cl_mem _clout = clAllocArray<float>(area(osh));
-      cl_mem _cleqn = clAllocArray<float>(area(osh));
       cl_mem _clim0 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
       cl_mem _clim1 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
+      cl_mem _clwA = clAllocArray<float>(area(osh));
+      cl_mem _clwB = clAllocArray<float>(area(osh));
 
-      cl_kernel kernelFormFrame = createKernel(formframeProgram , "formframe"); 
-      setArg(kernelFormFrame, 0, _clout );
+      cl_kernel kernelFormFrame = createKernel(formframeProgram , "formframe");
+      setArg(kernelFormFrame, 0, _clwA );
       setArg(kernelFormFrame, 1, _clim0 );
       setArg(kernelFormFrame, 2, _clim1 );
       setArg(kernelFormFrame, 3, clgaps0 );
 
-      cl_kernel kernelEqNoise = createKernel(formframeProgram , "eqnoise"); 
+      cl_kernel kernelEqNoise = createKernel(formframeProgram , "eqnoise");
       setArg( kernelEqNoise, 0, (int) osh(1) );
       setArg( kernelEqNoise, 1, (int) osh(0) );
-      setArg( kernelEqNoise, 2, _clout );
-      setArg( kernelEqNoise, 3, _cleqn );
+      setArg( kernelEqNoise, 2, _clwA );
+      setArg( kernelEqNoise, 3, _clwB );
       setArg( kernelEqNoise, 4, clgaps0 );
 
-      cl_kernel kernelFill = 0;
-      if (args.radFill) {
-        kernelFill = createKernel(formframeProgram , "gapfill");
-        setArg( kernelFill, 0, (int) osh(1) );
-        setArg( kernelFill, 1, (int) osh(0) );
-        setArg( kernelFill, 2, args.radFill );
-        setArg( kernelFill, 3, _cleqn );
-        setArg( kernelFill, 4, clgaps0 );
-      }
+      cl_kernel kernelFill = createKernel(formframeProgram , "gapfill");
+      setArg( kernelFill, 0, (int) osh(1) );
+      setArg( kernelFill, 1, (int) osh(0) );
+      setArg( kernelFill, 2, _clwB);
 
       lock();
       perThread.emplace(me,
         PerThread( kernelFormFrame, kernelEqNoise, kernelFill
-                 , _clim0, _clim1, _clout, _cleqn));
+                 , _clim0, _clim1, _clwA, _clwB));
       ffproc0.emplace(me,canon0);
       ffproc1.emplace(me,canon1);
     }
@@ -342,13 +337,13 @@ private:
     int id1 = idx;
     bool flp = false;
     if (nshift) {
-      id1 += oz - nshift;
-      if ( id1 >= npr) {
-        id1 -= oz/2;
+      id1 += cshift - nshift;
+      if ( id1 >= nofProj) {
+        id1 -= cshift/2;
         flp=true;
       }
-      if ( id1 >= npr) { // NOT a mistake
-        id1 -= oz/2;
+      if ( id1 >= nofProj) { // NOT a mistake
+        id1 -= cshift/2;
         flp=false;
       }
     }
@@ -364,29 +359,27 @@ private:
         SaveImage(args.outmask.dtitle() + "_src_" + string(inp?"sft":"org") + ".tif", my.tim);
 
     getSlice(0,idx,false,false);
-    getSlice(1,id1,true,flp); 
+    getSlice(1,id1,true,flp);
     #undef getSlice
 
     cl_mem & gaps1 = flp ? clgapsF : clgaps1;
     setArg( my.kernelFormFrame, 4, gaps1 );
     setArg( my.kernelEqNoise, 5, gaps1 );
-    if (args.radFill)
-      setArg( my.kernelFill, 5, gaps1 );
 
     execKernel(my.kernelFormFrame, area(osh));
-    execKernel(my.kernelEqNoise, Shape(osh(0), osh(1)));
-    if (args.radFill)
-      execKernel(my.kernelFill, osh);
-    cl2blitz(my.cleqn, my.tim);
-    crop(my.tim, my.crim, args.cropF);
+    execKernel(my.kernelEqNoise, osh);
+    execKernel(my.kernelFill, osh);
+    execKernel(my.kernelFill, osh); // second call to make sure no 0-crosses were in the image
 
+    cl2blitz(my.clwB, my.tim);
+    crop(my.tim, my.crim, args.cropF);
     if (args.testme >= 0) {
       SaveImage(args.outmask.dtitle() + ".tif", my.tim);
-      return false;    
+      return false;
     } else {
       res(idx, all, all) = my.crim;
       imsv->save(idx, my.crim);
-      bar.update(); 
+      bar.update();
       return true;
     }
 
@@ -449,6 +442,15 @@ private:
   }
 
 
+  size_t countZeroes(const Map & im) {
+    size_t cnt=0;
+    for (ArrIndex i = 0 ; i<im.shape()(0) ; i++)
+      for (ArrIndex j = 0 ; j<im.shape()(1) ; j++)
+        if (im(i,j)==0.0)
+          cnt++;
+    return cnt;
+  }
+
 public:
 
   FrameFormInThread( const Map & bgar0, const Map & bgar1, const Map & dfar0, const Map & dfar1
@@ -465,12 +467,12 @@ public:
 
     imrd0 = new ReadVolumeBySlice(args.ims0);
     imrd1 = new ReadVolumeBySlice(args.ims1);
-    npr = imrd0->slices();
-    if (npr<2)
+    nofProj = imrd0->slices();
+    if (nofProj<2)
       throw_error("InputSets", "Less than 2 images in the input volume(s).");
     if (imrd0->slices() != imrd1->slices())
       throw_error("InputSets", "Input volumes are of different sizes.");
-    bar.setSteps(npr);
+    bar.setSteps(nofProj);
     bar.start();
 
     Map gapst;
@@ -497,25 +499,25 @@ public:
       SaveImage(test_file + "_mask_flp.tif", gapst);
       test_map += gapst;
       SaveImage(test_file + "_mask_all.tif", test_map);
-    }    
+    }
     clgapsF = blitz2cl(gapst, CL_MEM_READ_ONLY);
 
 
     ish = gaps.shape();
     osh = Shape( gapst.shape()(0) - args.cropF.top  - args.cropF.bottom
                , gapst.shape()(1) - args.cropF.left - args.cropF.right) ;
-    step = args.arc < 1.0  ?  args.arc  :  args.arc / (npr-1);
+    step = args.arc < 1.0  ?  args.arc  :  args.arc / (nofProj-1);
     nshift = args.ashift/step;
-    oz = 360/step;
+    cshift = 360/step;
 
-    if (args.testme >= npr)
+    if (args.testme >= nofProj)
       throw_error("Test", toString( "Requested test %i is beyond number of input slices %i."
-                                  , args.testme, npr));
+                                  , args.testme, nofProj));
     if (args.testme >= 0)
       return;
 
-    res.resize(npr, osh(0), osh(1));
-    imsv = new SaveVolumeBySlice(args.outmask, osh, npr);
+    res.resize(nofProj, osh(0), osh(1));
+    imsv = new SaveVolumeBySlice(args.outmask, osh, nofProj);
 
   }
 

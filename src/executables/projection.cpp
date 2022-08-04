@@ -591,14 +591,12 @@ const string ProcProj::modname="ProcProj";
 
 class ProjInThread : public InThread {
 
-  const int nofIn;
-  const deque< deque<ImagePath> > & allInNm;
+  deque<ReadVolumeBySlice> & allInRd;
   deque<SaveVolumeBySlice> & allOutSv;
   const ProcProj & proc;
   const vector<int> & projes;
 
   unordered_map<pthread_t, ProcProj> procs;
-  unordered_map<pthread_t, deque<ReadVolumeBySlice> > allInReads;
   unordered_map<pthread_t, deque<Map> > allInMaps;
   unordered_map<pthread_t, deque<Map> > results;
 
@@ -611,22 +609,17 @@ class ProjInThread : public InThread {
     lock();
     if ( ! procs.count(me) ) { // first call
       procs.emplace(me, proc);
-      allInReads.emplace(me, deque<ReadVolumeBySlice>(nofIn));
-      allInMaps.emplace(me, deque<Map>(nofIn));
+      allInMaps.emplace(me, deque<Map>(allInRd.size()));
       results.emplace(me,deque<Map>());
-      deque<ReadVolumeBySlice> & allInRd = allInReads.at(me);
-      for ( int curI = 0 ; curI < nofIn ; curI++)
-        allInRd.at(curI).add(allInNm.at(curI));
     }
     ProcProj & myProc = procs.at(me);
-    deque<ReadVolumeBySlice> & myAllRd = allInReads.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
     deque<Map> & myRes = results.at(me);
     unlock();
 
     try {
-      for (ArrIndex curI = 0  ;  curI<nofIn  ;  curI++ )
-        myAllRd[curI].read(projes[idx], myAllIn[curI]);
+      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
+        allInRd[curI].read(projes[idx], myAllIn[curI]);
       myProc.process(myAllIn, myRes);
       for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
         allOutSv[curO].save(projes[idx], myRes[curO]);
@@ -641,13 +634,12 @@ class ProjInThread : public InThread {
 
 public:
 
-  ProjInThread(const deque< deque<ImagePath> > & _allInNm, deque<SaveVolumeBySlice> & _outSave
+  ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
               , const ProcProj & _proc, const vector<int> & _projes, bool verbose=false)
     : InThread(verbose, "processing projections", _projes.size())
-    , nofIn(_allInNm.size())
     , proc(_proc)
     , projes(_projes)
-    , allInNm(_allInNm)
+    , allInRd(_allInRd)
     , allOutSv(_outSave)
   {}
 
@@ -747,9 +739,8 @@ int main(int argc, char *argv[]) {
   else if ( nofOuts == 1 )
     for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
       allOutSv[curSplt].save(projes[0], allOut[curSplt]);
-  else { // finally process
-    ProjInThread(args.images, allOutSv, canonPP, projes, args.beverbose).execute();
-  }
+  else // finally process
+    ProjInThread(allInRd, allOutSv, canonPP, projes, args.beverbose).execute();
 
   exit(0);
 

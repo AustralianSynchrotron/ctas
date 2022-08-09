@@ -182,6 +182,7 @@ clargs(int argc, char *argv[])
   }
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
+  st.nofIn = tiledImages;    
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -219,7 +220,6 @@ clargs(int argc, char *argv[])
     exit_on_error(command, "The list of splits contains only 0 (marking vertical splits).");
 
   st.angle *= M_PI/180;
-  st.nofIn = tiledImages;
   st.flipUsed=table.count(&st.originF);
   st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / st.origin2size ;
 

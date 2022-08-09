@@ -12,9 +12,13 @@ const cl_program ffProgram =
 
 
 Shape shapeMe(std::vector<Shape> shs) {
-  for (int idx=0 ; idx < shs.size() ; idx++)
-    if ( area(shs[idx]) && shs[idx] != shs[0] )
+  Shape firstSh(0,0);
+  for (int idx=0 ; idx < shs.size() ; idx++) {
+    if ( ! area(firstSh) )
+      firstSh = shs[idx];
+    if ( area(shs[idx]) && shs[idx] != firstSh )
       throw_error("FlatCL", "Non matching init shapes.");
+  }
   return shs.at(0);
 }
 

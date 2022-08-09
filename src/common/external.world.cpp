@@ -656,11 +656,10 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
   TIFF *image = 0;
   safelyOpenTIFForThrow(&image, &fd, modname, filename, true);
   uint32_t width = 0, height = 0;
-  uint16_t spp = 0, bps = 0, fmt = 0, photo;
+  uint16_t spp = 1, bps = 0, fmt = 0, photo;
   if (    ! TIFFGetField(image, TIFFTAG_IMAGEWIDTH, &width)
        || ! TIFFGetField(image, TIFFTAG_IMAGELENGTH, &height)
-       || ! TIFFGetField(image, TIFFTAG_SAMPLESPERPIXEL, &spp)
-       || spp != 1
+       || ( TIFFGetField(image, TIFFTAG_SAMPLESPERPIXEL, &spp) && spp != 1 ) 
        || ! TIFFGetField(image, TIFFTAG_BITSPERSAMPLE, &bps)
        || ( bps != 8 && bps != 16 && bps != 32 )
        || ! TIFFGetField(image, TIFFTAG_PHOTOMETRIC, &photo)

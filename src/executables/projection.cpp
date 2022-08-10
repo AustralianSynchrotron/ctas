@@ -182,7 +182,7 @@ clargs(int argc, char *argv[])
   }
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
-  st.nofIn = tiledImages;    
+  st.nofIn = tiledImages;
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -307,7 +307,7 @@ class ProcProj {
     for (ArrIndex ycur = 0 ; ycur < osh(0) ; ycur++ ) {
       for (ArrIndex xcur = 0 ; xcur < osh(1) ; xcur++ ) {
 
-        int sweight=0;
+        float sweight=0;
         float svals=0.0;
 
         for (int acur = 0 ; acur < isz ; acur++ ) {
@@ -317,7 +317,7 @@ class ProcProj {
           if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
             const float varcur = curar(coo);
             if ( fisok(varcur) ) {
-              int weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
+              float weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
                            * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
               if ( gprr.size() == 1 )
                 weight *= gprr[0](coo);
@@ -329,7 +329,7 @@ class ProcProj {
           }
         }
 
-        oarr(ycur,xcur) = sweight ? svals / sweight : NAN ;
+        oarr(ycur,xcur) = sweight == 0.0 ? 0.0 : svals / sweight ;
 
       }
     }
@@ -400,9 +400,9 @@ public:
       if (gpar.shape() != st.ish)
         throw_error(modname, "Unexpected mask shape.");
 
-    #define SaveMask(vol, suf) \
-       if (saveMasks.length()) \
-         SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
+      #define SaveMask(vol, suf) \
+        if (saveMasks.length()) \
+          SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
 
       procInImg(gpar, msk1, false);
       prepareMask(msk1, true);
@@ -430,10 +430,12 @@ public:
         if (saveMasks.length()) {
           Map maskA;
           stitch(st.originF, maskA, deque<Map>({mskf, mskF}));
+          prepareMask(maskA, false);
           SaveMask(maskA, "O");
         }
       }
-    #undef SaveMask
+      #undef SaveMask
+
     }
 
   }

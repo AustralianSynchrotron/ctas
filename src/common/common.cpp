@@ -339,8 +339,11 @@ mask2format(const string & mask, int maxslice){
     pos = format.find('%', pos+2);
   }
   //replace last '@' with the format expression.
-  format.replace( format.rfind('@'), 1,
-                  "%0" + toString( toString(maxslice-1).length() ) + "u");
+  auto atpos = format.rfind('@');
+  if (atpos == string::npos)
+    throw_error("mask2format", "no mask sign '@'");
+  else
+    format.replace( atpos, 1, "%0" + toString( toString(maxslice-1).length() ) + "u");
   return format;
 }
 
@@ -1037,7 +1040,7 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps)
 }
 
 
-void 
+void
 ProgressBar::setSteps(int _steps) {
   if (steps)
     warn("ProgressBar", "Resetting steps of the progress bar.");
@@ -1048,16 +1051,16 @@ void
 ProgressBar::start(){
   if ( !showme )
     return;
-  if ( reservedChs ) 
+  if ( reservedChs )
     return; // Was already started
 
   cout << "Starting process";
-  if (steps>1) 
+  if (steps>1)
     cout << " (" + toString(steps) + " steps)";
   cout << ": " << message;
   if ( steps == 1 )
     cout << " ... ";
-  else 
+  else
     cout << "." << endl;
   fflush(stdout);
 
@@ -1074,7 +1077,7 @@ ProgressBar::start(){
 ///
 void
 ProgressBar::update(int curstep){
-  if ( !showme ) return; 
+  if ( !showme ) return;
   pthread_mutex_lock(&proglock);
   try {
     start(); // Does nothing if already started

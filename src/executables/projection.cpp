@@ -27,20 +27,13 @@
 ///
 
 
-#include "../common/common.h"
 #include "../common/flatfield.h"
+#include "../common/poptmx.h"
 #include <algorithm>
 #include <string.h>
 #include <unordered_map>
 #include <deque>
 #include <unistd.h>
-
-
-
-
-
-
-#include "../common/poptmx.h"
 
 
 using namespace std;
@@ -78,7 +71,7 @@ struct clargs {
   deque<ImagePath> bgs;        ///< Array of the background images.
   deque<ImagePath> dfs;        ///< Array of the dark field images.
   deque<ImagePath> dgs;        ///< Array of the dark field images for backgrounds.
-  deque<ImagePath> mks;        ///< Mask Array.
+  deque<ImagePath> mss;        ///< Mask Array.
   ImagePath out_name;              ///< Name of the output image.
   string out_range;
   StitchRules st;
@@ -133,10 +126,10 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
     .add(poptmx::OPTION, &dgs, 'F', "dg", "Dark field image(s) for backgrounds", "")
-    .add(poptmx::OPTION, &mks, 'M', "mask", "Mask image",
+    .add(poptmx::OPTION, &mss, 'M', "mask", "Mask image",
          "Image where values are weights of corresponding pixels in superimposition operations."
          " F.e. 0 values exclude corresponding or affected pixels from further use.")
-    .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of bluring mask edges.",
+    .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of edge transition.",
            "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
            " to produce seamless image stitching." )
     //.add(poptmx::OPTION, &sliceMatch, 0, "match", "File with slice match list",
@@ -183,6 +176,17 @@ clargs(int argc, char *argv[])
   if ( ! tiledImages )
     exit_on_error(command, "No input images given.");
   st.nofIn = tiledImages;
+
+  #define chkNofIns(ims, lbl) \
+    if (ims.size() && ims.size() != 1 && ims.size() != st.nofIn) \
+      exit_on_error(command, "Number of " lbl " images given by " + table.desc(&ims) + " option " \
+                             " is neither 0, 1, nor the number of inputs (" + toString(st.nofIn) +  ").");
+
+  chkNofIns(bgs, "background");
+  chkNofIns(dfs, "darkfield");
+  chkNofIns(dgs, "darkground");
+  chkNofIns(mss, "mask");
+  #undef chkNofIns
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -240,21 +244,32 @@ void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=fal
 
 class ProcProj {
 
-  static const string modname;
-  StitchRules st;
-  FlatFieldProc canon;
 
-  Map msk1, msk2, mskf, mskF; // shared
+  static const string modname;
+  static const char proj_oCLsrc[];
+  static const cl_program proj_oCLprog;
+  StitchRules st;
+  deque<FlatFieldProc> ffprocs;
+
+  deque<Map> msksI, msks1, msks2; // shared
+  Map mskF; // shared
   Map iar, rar, car, final; // own
   deque<Map> allIn, o1Stitch, o2Stitch;
 
-  void procInImg(const Map & im, Map & om, bool doFF=true){
+  bool doGapsFill;
+  cl_kernel gaussCL;
+  CLmem iomCL;
+  CLmem maskCL_R;
+  CLmem & maskCL;
+
+
+  void procInImg(const Map & im, Map & om, FlatFieldProc * ffproc = 0){
     if (im.shape() != st.ish)
       throw_error(modname, "Unexpected shape of image to process.");
     iar.resize(st.ish);
     iar=im;
-    if ( doFF /*&& ( bgar.size() || dfar.size() )*/ )
-      canon.process(iar);
+    if (ffproc)
+      ffproc->process(iar);
     rotate(iar, rar, st.angle);
     crop(rar, car, st.crp);
     binn(car, final, st.bnn);
@@ -267,25 +282,24 @@ class ProcProj {
                     ,  const deque<Map> & gprr = deque<Map>() ) {
 
     const int isz = iarr.size();
-
     if ( isz == 0 )
       throw_error(modname, "Nothing to stitch.");
     if ( isz == 1 ) {
       oarr.reference(iarr[0]);
       return;
     }
-    if (!gprr.size()) {
-    } else if (gprr.size() == 1) {
+
+    if (gprr.size() == 1) {
       const Shape csz = gprr[0].shape();
       for (int acur = 0 ; acur < isz ; acur++ )
         if (iarr[acur].shape()!=csz)
           throw_error(modname, "Different image sizes in mask and inputs.");
-    } else if (gprr.size() != iarr.size()) {
-      throw_error(modname, "Inconsistent sizes of mask and arrays.");
-    } else {
+    } else if (gprr.size() == iarr.size()) {
       for (int acur = 0 ; acur < isz ; acur++ )
         if (iarr[acur].shape()!=gprr[acur].shape())
           throw_error(modname, "Non matching image sizes in mask and input arrays.");
+    } else if (gprr.size()) {
+      throw_error(modname, "Inconsistent sizes of mask and image arrays.");
     }
 
     int minx=0, maxx=0, miny=0, maxy=0;
@@ -303,13 +317,10 @@ class ProcProj {
 
     const Shape osh(maxy-miny+1, maxx-minx+1);
     oarr.resize(osh);
-
     for (ArrIndex ycur = 0 ; ycur < osh(0) ; ycur++ ) {
       for (ArrIndex xcur = 0 ; xcur < osh(1) ; xcur++ ) {
-
-        float sweight=0;
+        float sweight=0.0;
         float svals=0.0;
-
         for (int acur = 0 ; acur < isz ; acur++ ) {
           const Map & curar = iarr[acur];
           const Shape cursh = curar.shape();
@@ -318,7 +329,7 @@ class ProcProj {
             const float varcur = curar(coo);
             if ( fisok(varcur) ) {
               float weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
-                           * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
+                               * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
               if ( gprr.size() == 1 )
                 weight *= gprr[0](coo);
               else if ( gprr.size() == iarr.size() )
@@ -376,86 +387,142 @@ class ProcProj {
   }
 
 
+  void initCL() {
+    if (!doGapsFill)
+      return;
+    iomCL(clAllocArray<float>(mskF.size()));
+    if (!maskCL())
+      maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
+    gaussCL = createKernel(proj_oCLprog, "gauss");
+    setArg(gaussCL, 0, mskF.shape()(1));
+    setArg(gaussCL, 1, mskF.shape()(0));
+    setArg(gaussCL, 2, iomCL());
+    setArg(gaussCL, 3, maskCL());
+    setArg(gaussCL, 4, st.edge);
+  }
+
+
 public:
 
-  ProcProj( const StitchRules & _st, const Map & bgar, const Map & dfar
-          , const Map & dgar, const Map & gpar, const Path & saveMasks = Path())
+  ProcProj( const StitchRules & _st, const deque<Map> & bgas, const deque<Map> & dfas
+          , const deque<Map> & dgas, const deque<Map> & msas, const Path & saveMasks = Path())
     : st(_st)
-    , canon(bgar, dfar, gpar)
     , allIn(st.nofIn)
     , o1Stitch(st.nofIn/st.origin1size)
     , o2Stitch(st.flipUsed ? 2 : 1)
+    , doGapsFill(false)
+    , gaussCL(0)
+    , maskCL_R(0)
+    , maskCL(maskCL_R)
   {
+
     if ( ! area(st.ish) )
       throw_error(modname, "Zerro area to process.");
     if ( ! st.nofIn )
       throw_error(modname, "Zerro images for input.");
-    if (bgar.size() && bgar.shape() != st.ish)
-      throw_error(modname, "Unexpected BG shape.");
-    if (dfar.size() && dfar.shape() != st.ish)
-      throw_error(modname, "Unexpected DF shape.");
-    if (dgar.size() && dgar.shape() != st.ish)
-      throw_error(modname, "Unexpected DG shape.");
-    if (gpar.size()) {
-      if (gpar.shape() != st.ish)
-        throw_error(modname, "Unexpected mask shape.");
 
-      #define SaveMask(vol, suf) \
-        if (saveMasks.length()) \
-          SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
+    #define chkAuxImgs(imas, lbl) \
+      if (imas.size() && imas.size() != 1 && imas.size() != st.nofIn) \
+        throw_error(modname, "Number of " lbl " images is neither 0, 1 nor the number of inputs" \
+                             " (" + toString(st.nofIn) + ")."); \
+      for (int curI = 0; curI < imas.size() ; curI++) \
+        if ( imas.at(curI).size() && imas.at(curI).shape() != st.ish ) \
+          throw_error(modname, "Unexpected shape of " lbl " image.");
 
-      procInImg(gpar, msk1, false);
-      prepareMask(msk1, true);
-      SaveMask(msk1, "1");
-      if (st.origin1size==1)
-        msk2.reference(msk1);
-      else {
-        deque<Map> supply(st.origin1size, msk1);
-        stitch(st.origin1, msk2, supply);
-        prepareMask(msk2, false);
-        SaveMask(msk2, "2");
+    chkAuxImgs(bgas, "background");
+    chkAuxImgs(dfas, "darkfield");
+    chkAuxImgs(dgas, "darkground");
+    chkAuxImgs(msas, "mask");
+    #undef chkAuxImgs
+
+    const Map zmap;
+    if (bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1) {
+      for (int curI = 0; curI < st.nofIn ; curI++) {
+        const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : zmap;
+        const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : zmap;
+        const Map & mspl = msas.size() ?  msas[ msas.size() == 1 ? 0 : curI ] : zmap;
+        ffprocs.emplace_back(bgpl, dfpl, mspl);
       }
-      if ( st.flipUsed ) {
-        if ( st.origin2size == 1 )
-          mskf.reference(msk2);
-        else {
-          deque<Map> supply(st.origin2size, msk2);
-          stitch(st.origin2, mskf, supply);
-          prepareMask(mskf, false);
-        }
-        SaveMask(mskf, "D");
-        mskF.resize(mskf.shape());
-        mskF = mskf.reverse(blitz::secondDim);
-        SaveMask(mskF, "F");
-        if (saveMasks.length()) {
-          Map maskA;
-          stitch(st.originF, maskA, deque<Map>({mskf, mskF}));
-          prepareMask(maskA, false);
-          SaveMask(maskA, "O");
-        }
-      }
-      #undef SaveMask
-
+    } else {
+      ffprocs.emplace_back( bgas.size() ? bgas[0] : zmap
+                          , dfas.size() ? dfas[0] : zmap
+                          , msas.size() ? msas[0] : zmap );
     }
+
+    if ( ! msas.size() )
+      return;
+
+    #define SaveMask(vol, suf) \
+      if (saveMasks.length()) \
+        SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
+
+    for (int curI = 0; curI < msas.size() ; curI++) {
+      if (msas[curI].shape() != st.ish)
+        throw_error(modname, "Unexpected mask shape.");
+      Map msT;
+      procInImg(msas[curI], msT);
+      prepareMask(msT, true);
+      msksI.emplace_back(msT.shape());
+      msksI.back() = msT;
+      SaveMask(msT, "_" + toString(curI));
+    }
+    while (msksI.size() != st.nofIn)
+      msksI.emplace_back(msksI[0]);
+
+    msks1.resize(o1Stitch.size());
+    sub_proc(st.origin1size, st.origin1, msksI, deque<Map>(), msks1, string(), ImagePath());
+
+    msks2.resize(o2Stitch.size());
+    sub_proc(st.origin2size, st.origin2, msks1, deque<Map>(), msks2, string(), ImagePath());
+
+    if ( st.flipUsed ) {
+      msks2[1].reverseSelf(blitz::secondDim);
+      stitch(st.originF, mskF, msks2, deque<Map>());
+    } else
+      mskF.reference(msks2[0]);
+
+    for (int curM=0 ; curM < msks1.size() ; curM++) {
+      SaveMask(msks1[curM], "_S1_" + toString(curM) );
+      prepareMask(msks1[curM], false);
+    }
+    for (int curM=0 ; curM < msks2.size() ; curM++) {
+      SaveMask(msks1[curM], "_S2_" + toString(curM) );
+      prepareMask(msks2[curM], false);
+    }
+    SaveMask(mskF, "_F");
+    prepareMask(mskF, false);
+    #undef SaveMask
+
+    doGapsFill = st.edge>0 && any(mskF==0.0);
+    initCL();
 
   }
 
 
   ProcProj(const ProcProj & other)
     : st(other.st)
-    , canon(other.canon)
+    , ffprocs(other.ffprocs)
     , allIn(st.nofIn)
     , o1Stitch(st.nofIn/st.origin1size)
     , o2Stitch(st.flipUsed ? 2 : 1)
-    , msk1(other.msk1)
-    , msk2(other.msk2)
-    , mskf(other.mskf)
+    , msks1(other.msks1)
+    , msks2(other.msks2)
     , mskF(other.mskF)
-  {}
+    , doGapsFill(other.doGapsFill)
+    , maskCL(other.maskCL)
+  {
+    if (doGapsFill)
+      initCL();
+  }
+
+  ~ProcProj() {
+    if (gaussCL)
+      clReleaseKernel(gaussCL);
+  }
 
 
-  string sub_proc(uint orgsize, PointF2D origin, const deque<Map> & iar, deque<Map> & oar
-                 , uint nofin, const Map & msk, const string & format, const ImagePath & interim_name) {
+  string sub_proc(uint orgsize, PointF2D origin, const deque<Map> & iar, const deque<Map> & msks
+                 , deque<Map> & oar, const string & format, const ImagePath & interim_name) {
 
     if ( orgsize == 1 ) {
       for(int curM = 0 ; curM < oar.size() ; curM++)
@@ -463,21 +530,23 @@ public:
       return ImagePath();
     }
 
+    const int nofin = iar.size();
     ImagePath lastSaved;
     for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
       int cidx=inidx/orgsize;
-      deque<Map> supply( iar.begin() + inidx, iar.begin() + inidx + orgsize) ;
-      deque<Map> masks( msk.size() ? 1 : 0 , msk);
-      stitch(origin, oar[cidx], supply, masks);
+      deque<Map> supplyIm( iar.begin() + inidx, iar.begin() + inidx + orgsize) ;
+      deque<Map> supplyMs( msks.size() ? msks.begin() + inidx           : msks.begin(),
+                           msks.size() ? msks.begin() + inidx + orgsize : msks.begin() );
+      stitch(origin, oar[cidx], supplyIm, supplyMs);
       if ( ! interim_name.empty() ) {
         Map cres;
         if ( ! origin.x * origin.y ) {
           cres.reference(oar[cidx]);
         } else if ( abs(origin.x) < abs(origin.y)  ) {
-          int crppx = abs(origin.x * (supply.size()-1));
+          int crppx = abs(origin.x * (supplyIm.size()-1));
           crop(oar[cidx], cres, Crop(0, crppx, 0, crppx));
         } else {
-          int crppx = abs(st.origin1.y * (supply.size()-1));
+          int crppx = abs(st.origin1.y * (supplyIm.size()-1));
           crop(o1Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
         }
         string svformat = mask2format(format+"@", oar.size() );
@@ -520,16 +589,13 @@ public:
     }
 
     // first stitch
-    sub_proc(st.origin1size, st.origin1, allIn, o1Stitch, st.nofIn, msk1, "_U", interim_name);
-
+    sub_proc(st.origin1size, st.origin1, allIn, msksI, o1Stitch, "_U", interim_name);
     // second stitch
-    sub_proc(st.origin2size, st.origin2, o1Stitch, o2Stitch, o1Stitch.size(), msk2, "_V", interim_name);
-
+    sub_proc(st.origin2size, st.origin2, o1Stitch, msks1, o2Stitch, "_V", interim_name);
     // flip stitch
     if ( st.flipUsed ) {
       o2Stitch[1].reverseSelf(blitz::secondDim);
-      deque<Map> masks = mskf.size() ? deque<Map>({mskf, mskF}) : deque<Map>();
-      stitch(st.originF, final, o2Stitch, masks);
+      stitch(st.originF, final, o2Stitch, msks2);
       if ( ! interim_name.empty() )  {
         Map tmp;
         ReadImage(lastSaved, tmp);
@@ -541,11 +607,20 @@ public:
       final.reference(o2Stitch[0]);
     }
 
+    // closing gaps left after superimposition
+    if (doGapsFill) {
+      if (final.shape() != mskF.shape()) // should never happen
+        throw_bug(modname);
+      blitz2cl(final, iomCL());
+      execKernel(gaussCL, final.shape());
+      cl2blitz(iomCL(), final);
+    }
+
     // final crop
     if ( st.fcrp != Crop() ) {
       crop(final, st.fcrp);
       if ( ! interim_name.empty() )
-      SaveDenan( interim_name.dtitle() + "_X.tif", final );
+        SaveDenan( interim_name.dtitle() + "_X.tif", final );
     }
 
     // splits
@@ -586,8 +661,11 @@ public:
 };
 
 const string ProcProj::modname="ProcProj";
-
-
+const char ProcProj::proj_oCLsrc[] = {
+  #include "projection.cl.includeme"
+};
+const cl_program ProcProj::proj_oCLprog =
+    initProgram(proj_oCLsrc, sizeof(proj_oCLsrc), "Projection in OCL");
 
 
 
@@ -673,14 +751,17 @@ int main(int argc, char *argv[]) {
   st.ish = ish;
 
   // Read auxilary images
-  Map bgar;
-  average_stack(bgar, args.bgs, ish);
-  Map dfar;
-  average_stack(dfar, args.dfs, ish);
-  Map dgar;
-  average_stack(dgar, args.dgs, ish);
-  Map gpar;
-  average_stack(gpar, args.mks, ish);
+  #define rdAux(pfx) \
+  deque<Map> pfx##as(args. pfx##s.size()); \
+  for ( int curf = 0 ; curf < args. pfx##s.size() ; curf++) \
+    ReadImage(args. pfx##s[curf].repr(), pfx##as[curf], ish);
+
+  rdAux(bg);
+  rdAux(df);
+  rdAux(dg);
+  rdAux(ms);
+  #undef rdAux
+
 
   // Prepare read factories
   const int nofIn = args.images.size();
@@ -715,9 +796,14 @@ int main(int argc, char *argv[]) {
     else
       allIn.back().reference(zmap);
   }
-  const string testFormat =  args.testMe < 0 ? string()
-               : toString(mask2format(args.out_name.dtitle(), nofProj), args.testMe) + "%s";
-  ProcProj canonPP(st, bgar, dfar, dgar, gpar, toString(testFormat, "_mask.tif"));
+  string testFormat;
+  if (args.testMe >= 0) {
+    testFormat = args.out_name.dtitle();
+    if (testFormat.find('@') != string::npos)
+      testFormat = toString(mask2format(testFormat, nofProj), args.testMe);
+    testFormat += "%s";
+  }
+  ProcProj canonPP(st, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
   canonPP.process(allIn, allOut, toString(testFormat, ".tif"));
 
   // Prepare saving factories

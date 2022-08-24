@@ -97,8 +97,6 @@ public:
 
 const cl_image_format clfimage_format({CL_R, CL_FLOAT});
 
-bool clIsInited();
-
 cl_program initProgram(const char csrc[], size_t length, const std::string & modname);
 
 cl_kernel createKernel(cl_program program, const std::string & name);

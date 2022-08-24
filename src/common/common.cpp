@@ -583,14 +583,7 @@ crop(Map & io_arr, const Crop & crp) {
 
 
 #ifdef OPENCL_FOUND
-
-const char binnSource[] = {
-  #include "binn.cl.includeme"
-};
-
-const cl_program binnProgram =
-  initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
-
+cl_program binnProgram = 0;
 #endif
 
 
@@ -651,6 +644,16 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 #ifdef OPENCL_FOUND
 
   try {
+
+    if ( ! binnProgram ) {
+      const char binnSource[] = {
+        #include "binn.cl.includeme"
+      };
+      binnProgram =
+        initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
+      if (!binnProgram)
+        throw 1;
+    }
 
     CLmem clinarr(blitz2cl(inarr, CL_MEM_READ_ONLY));
     CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
@@ -801,6 +804,16 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
   outarr.resize(shapeOnBinn(inarr.shape(),ibnn));
 
 #ifdef OPENCL_FOUND
+
+  if ( ! binnProgram ) {
+    const char binnSource[] = {
+      #include "binn.cl.includeme"
+    };
+    binnProgram =
+      initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
+    if (!binnProgram)
+      throw_error("Binn on OCL", "Could not initiate binning program");
+  }
 
   CLmem clinarr(blitz2cl(inarr, CL_MEM_READ_ONLY));
   CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
@@ -1037,7 +1050,7 @@ ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps)
 }
 
 
-void 
+void
 ProgressBar::setSteps(int _steps) {
   if (steps)
     warn("ProgressBar", "Resetting steps of the progress bar.");
@@ -1048,16 +1061,16 @@ void
 ProgressBar::start(){
   if ( !showme )
     return;
-  if ( reservedChs ) 
+  if ( reservedChs )
     return; // Was already started
 
   cout << "Starting process";
-  if (steps>1) 
+  if (steps>1)
     cout << " (" + toString(steps) + " steps)";
   cout << ": " << message;
   if ( steps == 1 )
     cout << " ... ";
-  else 
+  else
     cout << "." << endl;
   fflush(stdout);
 
@@ -1074,7 +1087,7 @@ ProgressBar::start(){
 ///
 void
 ProgressBar::update(int curstep){
-  if ( !showme ) return; 
+  if ( !showme ) return;
   pthread_mutex_lock(&proglock);
   try {
     start(); // Does nothing if already started

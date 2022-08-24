@@ -266,9 +266,9 @@ public :
     setFace(sh);
 
 #ifdef H5F_ACC_SWMR_READ
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, file_fapl);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
 #else
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, file_fapl);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 #endif
     if (  hdfFile<=0
        || (dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<0
@@ -324,7 +324,7 @@ public :
       rd.reference(safe(storage, false));
 
     //pthread_mutex_lock(&rwLock);
-    if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, dataset_dxpl, rd.data()) < 0)
+    if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, rd.data()) < 0)
       warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
     //pthread_mutex_unlock(&rwLock);
 
@@ -390,9 +390,9 @@ public :
     cnts(sliceDim) = zsize; // first will be used once as the 3D dimensions
     blitz::Array<hsize_t,1> tcnts(3);
 #ifdef H5F_ACC_SWMR_WRITE
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, file_fapl);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
 #else
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, file_fapl);
+    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 #endif
     if (hdfFile<=0) {
       complete();
@@ -411,9 +411,9 @@ public :
     }
     if (hdfFile<=0) {
 #ifdef H5F_ACC_SWMR_WRITE
-      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, file_fapl);
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 #else
-      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, file_fapl);
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 #endif
       if (hdfFile>0)
         createNewGroup();
@@ -447,7 +447,7 @@ public :
     }
 
     //pthread_mutex_lock(&rwLock);
-    if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, dataset_dxpl, wr.data()) < 0)
+    if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, wr.data()) < 0)
       warn(modname, "Failed to write slice " +toString(idx)+ " to " + name + ".");
     //pthread_mutex_unlock(&rwLock);
 
@@ -659,7 +659,7 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
   uint16_t spp = 1, bps = 0, fmt = 0, photo;
   if (    ! TIFFGetField(image, TIFFTAG_IMAGEWIDTH, &width)
        || ! TIFFGetField(image, TIFFTAG_IMAGELENGTH, &height)
-       || ( TIFFGetField(image, TIFFTAG_SAMPLESPERPIXEL, &spp) && spp != 1 ) 
+       || ( TIFFGetField(image, TIFFTAG_SAMPLESPERPIXEL, &spp) && spp != 1 )
        || ! TIFFGetField(image, TIFFTAG_BITSPERSAMPLE, &bps)
        || ( bps != 8 && bps != 16 && bps != 32 )
        || ! TIFFGetField(image, TIFFTAG_PHOTOMETRIC, &photo)

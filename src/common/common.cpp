@@ -339,8 +339,11 @@ mask2format(const string & mask, int maxslice){
     pos = format.find('%', pos+2);
   }
   //replace last '@' with the format expression.
-  format.replace( format.rfind('@'), 1,
-                  "%0" + toString( toString(maxslice-1).length() ) + "u");
+  auto atpos = format.rfind('@');
+  if (atpos == string::npos)
+    throw_error("mask2format", "no mask sign '@'");
+  else
+    format.replace( atpos, 1, "%0" + toString( toString(maxslice-1).length() ) + "u");
   return format;
 }
 

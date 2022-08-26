@@ -568,7 +568,12 @@ public:
     // prepare input images
     int curF=0, cur2=0, cur1=0;
     for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
-      procInImg(allInR[curproj], allIn[curproj], & ffprocs[curproj]);
+      FlatFieldProc * ffproc = 0;
+      if (ffprocs.size() == 1)
+        ffproc = & ffprocs[0];
+      else if (ffprocs.size() == st.nofIn)
+        ffproc = & ffprocs[curproj];
+      procInImg(allInR[curproj], allIn[curproj], ffproc);
       if ( ! interim_name.empty() ) {
         const string sfI = toString(mask2format("_I@", st.nofIn), curproj);
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";

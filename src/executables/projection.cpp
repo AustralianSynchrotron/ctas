@@ -568,7 +568,7 @@ public:
     // prepare input images
     int curF=0, cur2=0, cur1=0;
     for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
-      procInImg(allInR[curproj], allIn[curproj]);
+      procInImg(allInR[curproj], allIn[curproj], & ffprocs[curproj]);
       if ( ! interim_name.empty() ) {
         const string sfI = toString(mask2format("_I@", st.nofIn), curproj);
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";

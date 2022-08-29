@@ -394,11 +394,11 @@ class ProcProj {
     if (!maskCL())
       maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
     gaussCL = createKernel(proj_oCLprog, "gauss");
-    setArg(gaussCL, 0, mskF.shape()(1));
-    setArg(gaussCL, 1, mskF.shape()(0));
+    setArg(gaussCL, 0, int(mskF.shape()(1)));
+    setArg(gaussCL, 1, int(mskF.shape()(0)));
     setArg(gaussCL, 2, iomCL());
     setArg(gaussCL, 3, maskCL());
-    setArg(gaussCL, 4, st.edge);
+    setArg(gaussCL, 4, float(st.edge) );
   }
 
 

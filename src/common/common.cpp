@@ -51,6 +51,8 @@ using namespace std;
 const clock_t startTV = clock();
 clock_t prevTV = startTV;
 
+
+
 void prdn( const string & str ) {
   clock_t nowTV = clock();
   double start_elapsed = double( nowTV - startTV ) / CLOCKS_PER_SEC;
@@ -59,6 +61,21 @@ void prdn( const string & str ) {
   fflush(stdout);
   prevTV=nowTV;
 }
+
+
+/*
+void
+prdn(const string fmt, ...){
+  va_list ap;
+  va_start(ap, fmt);
+  const int MAXLINE = 4096;
+  char buf[MAXLINE];
+  vsnprintf(buf, MAXLINE, fmt.c_str(), ap);
+  va_end(ap);
+  prdn(string(buf));
+}
+*/
+
 
 /// \brief Constructor.
 ///

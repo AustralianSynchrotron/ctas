@@ -53,6 +53,7 @@ struct StitchRules {
   bool flipUsed;               ///< indicates if originF was given in options.
   deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
+  float sigma;             ///< sigma used in gaussian gap closure.
   StitchRules()
   : nofIn(0)
   , angle(0)
@@ -60,6 +61,7 @@ struct StitchRules {
   , origin2size(1)
   , flipUsed(false)
   , edge(0)
+  , sigma(0)
   {}
 };
 
@@ -132,9 +134,9 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of edge transition.",
            "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
            " to produce seamless image stitching." )
-    //.add(poptmx::OPTION, &sliceMatch, 0, "match", "File with slice match list",
-    //     "In the case of 3D i/o this file must contain lines with the integers,"
-    //     " each representing the slice in the corresponding input volume to be used for the projection.")
+    .add(poptmx::OPTION, &st.sigma, 0, "sigma", "Sigma used in gaussian gap closure.",
+           "The gaps left by the mask superimpositions can be closed with the gaussian blur with the given sigma."
+           "If no mask is provided, the closure will be applied to pixels with values <= 0 or NAN." )
     .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
          "Uses output name with suffixes to store results. In case of multiple projections provides"
          " slice index to test; ignored for single image mode.")
@@ -187,6 +189,12 @@ clargs(int argc, char *argv[])
   chkNofIns(dgs, "darkground");
   chkNofIns(mss, "mask");
   #undef chkNofIns
+
+  if (dgs.size() && ! bgs.size())
+    exit_on_error(command, "No background images (" + table.desc(&bgs) + ") for provided darkgrounds (" + table.desc(&dgs) + ").");
+  if ( ! mss.size()  &&  ! bgs.size()  &&  (st.edge || st.sigma > 0.0) )
+    throw_error(command, "No background (" + table.desc(&bgs) + ") or mask (" + table.desc(&mss) + ") images provided while"
+                         " mask operation (" + table.desc(&st.edge) + " and/or " + table.desc(&st.sigma) + ") is requested.");
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -398,7 +406,7 @@ class ProcProj {
     setArg(gaussCL, 1, int(mskF.shape()(0)));
     setArg(gaussCL, 2, iomCL());
     setArg(gaussCL, 3, maskCL());
-    setArg(gaussCL, 4, float(st.edge) );
+    setArg(gaussCL, 4, float(st.sigma) );
   }
 
 
@@ -493,7 +501,7 @@ public:
     prepareMask(mskF, false);
     #undef SaveMask
 
-    doGapsFill = st.edge>0 && any(mskF==0.0);
+    doGapsFill = st.sigma > 0.0  &&  any(mskF==0.0);
     initCL();
 
   }
@@ -755,7 +763,7 @@ int main(int argc, char *argv[]) {
   StitchRules st = args.st;
   st.ish = ish;
 
-  // Read auxilary images
+  // Read flat-fielding images
   #define rdAux(pfx) \
   deque<Map> pfx##as(args. pfx##s.size()); \
   for ( int curf = 0 ; curf < args. pfx##s.size() ; curf++) \
@@ -767,6 +775,26 @@ int main(int argc, char *argv[]) {
   rdAux(ms);
   #undef rdAux
 
+  // Construct masks from bgs and df/gs if not provided but required by other parameters.
+  if ( ! msas.size()  &&  (args.st.edge || args.st.sigma > 0.0) ) {
+    deque<Map> & bgdf = dgas.size() ? dgas : dfas;
+    const int mssz = max(bgas.size(), bgdf.size());
+    msas.resize(mssz);
+    for (int curms=0 ; curms<mssz ; curms++) {
+      Map & mscur = msas[curms];
+      mscur.resize(ish);
+      Map bgcur = bgas[bgas.size() > curms ? curms : 0];
+      mscur = bgcur;
+      if (bgdf.size())
+        mscur -= bgdf[bgdf.size() > curms ? curms : 0];
+      for (ArrIndex ycur = 0 ; ycur < ish(0) ; ycur++ ) {
+        for (ArrIndex xcur = 0 ; xcur < ish(1) ; xcur++ ) {
+          float val = mscur(ycur,xcur);
+          mscur(ycur,xcur) = ( val <= 0.0 || ! fisok(val) ) ? 0 : 1.0;
+        }
+      }
+    }
+  }
 
   // Prepare read factories
   const int nofIn = args.images.size();

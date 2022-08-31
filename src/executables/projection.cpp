@@ -78,7 +78,6 @@ struct clargs {
   string out_range;
   StitchRules st;
   int testMe;          ///< Prefix to save interim results
-  //string sliceMatch;           ///< text file with list of matching slices
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -149,6 +148,7 @@ clargs(int argc, char *argv[])
   if ( ! table.count() ) {
     table.usage();
     exit(0);
+
   }
   command = table.name();
 
@@ -490,11 +490,11 @@ public:
       mskF.reference(msks2[0]);
 
     for (int curM=0 ; curM < msks1.size() ; curM++) {
-      SaveMask(msks1[curM], "_S1_" + toString(curM) );
+      SaveMask(msks1[curM], "_U" + toString(curM) );
       prepareMask(msks1[curM], false);
     }
     for (int curM=0 ; curM < msks2.size() ; curM++) {
-      SaveMask(msks1[curM], "_S2_" + toString(curM) );
+      SaveMask(msks1[curM], "_V" + toString(curM) );
       prepareMask(msks2[curM], false);
     }
     SaveMask(mskF, "_F");

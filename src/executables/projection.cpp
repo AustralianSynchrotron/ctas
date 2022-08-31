@@ -472,7 +472,7 @@ public:
       prepareMask(msT, true);
       msksI.emplace_back(msT.shape());
       msksI.back() = msT;
-      SaveMask(msT, "_" + toString(curI));
+      SaveMask(msT, "_I" + toString(curI));
     }
     while (msksI.size() != st.nofIn)
       msksI.emplace_back(msksI[0]);
@@ -581,7 +581,11 @@ public:
         ffproc = & ffprocs[0];
       else if (ffprocs.size() == st.nofIn)
         ffproc = & ffprocs[curproj];
+      if (!curproj)
+        SaveDenan("aa_0i.tif", allInR[curproj]);
       procInImg(allInR[curproj], allIn[curproj], ffproc);
+      if (!curproj)
+        SaveDenan("aa_0p.tif", allIn[curproj]);
       if ( ! interim_name.empty() ) {
         const string sfI = toString(mask2format("_I@", st.nofIn), curproj);
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
@@ -739,19 +743,6 @@ public:
 
 };
 
-
-void average_stack(Map & oar, const deque<ImagePath> & stack, const Shape & ish) {
-  if (stack.empty())
-    return;
-  oar.resize(ish);
-  oar=0.0;
-  Map iar;
-  for ( int curf = 0 ; curf < stack.size() ; curf++) {
-    ReadImage(stack[curf].repr(), iar, ish);
-    oar+=iar;
-  }
-  oar /= stack.size();
-}
 
 
 

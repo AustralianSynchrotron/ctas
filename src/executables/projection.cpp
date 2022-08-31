@@ -457,7 +457,8 @@ public:
                           , msas.size() ? msas[0] : zmap );
     }
 
-    if ( ! msas.size() )
+    const int mssz = msas.size();
+    if ( ! mssz )
       return;
 
     #define SaveMask(vol, suf) \
@@ -472,7 +473,7 @@ public:
       prepareMask(msT, true);
       msksI.emplace_back(msT.shape());
       msksI.back() = msT;
-      SaveMask(msT, "_I" + toString(curI));
+      SaveMask(msT, "_I" + (mssz>1 ? toString(curI) : string()) );
     }
     while (msksI.size() != st.nofIn)
       msksI.emplace_back(msksI[0]);
@@ -486,21 +487,19 @@ public:
     if ( st.flipUsed ) {
       msks2[1].reverseSelf(blitz::secondDim);
       stitch(st.originF, mskF, msks2, deque<Map>());
+      SaveMask(mskF, "_W");
     } else
       mskF.reference(msks2[0]);
 
-    for (int curM=0 ; curM < msks1.size() ; curM++) {
-      //SaveMask(msks1[curM], "_U" + toString(curM) );
-      prepareMask(msks1[curM], false);
-    }
-    for (int curM=0 ; curM < msks2.size() ; curM++) {
-      //SaveMask(msks2[curM], "_V" + toString(curM) );
-      prepareMask(msks2[curM], false);
-    }
-    SaveMask(mskF, "_F");
-    prepareMask(mskF, false);
+
     #undef SaveMask
 
+
+    for (int curM=0 ; curM < msks1.size() ; curM++)
+      prepareMask(msks1[curM], false);
+    for (int curM=0 ; curM < msks2.size() ; curM++)
+      prepareMask(msks2[curM], false);
+    prepareMask(mskF, false);
     doGapsFill = st.sigma > 0.0  &&  any(mskF==0.0);
     initCL();
 
@@ -529,17 +528,16 @@ public:
   }
 
 
-  string sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks
+  void sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks
                  , deque<Map> & oar, const string & format, const ImagePath & interim_name) {
 
     if ( orgsize == 1 ) {
       for(int curM = 0 ; curM < oar.size() ; curM++)
         oar[curM].reference(hiar[curM]);
-      return ImagePath();
+      return;
     }
 
     const int nofin = hiar.size();
-    ImagePath lastSaved;
     for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
       int cidx=inidx/orgsize;
       deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + orgsize) ;
@@ -557,12 +555,13 @@ public:
           int crppx = abs(st.origin1.y * (supplyIm.size()-1));
           crop(oar[cidx], cres, Crop(crppx, 0, crppx, 0));
         }
-        string svformat = mask2format(format+"@", oar.size() );
-        lastSaved = interim_name.dtitle() + toString(svformat, cidx) + ".tif";
-        SaveDenan(lastSaved, cres);
+        string svName = interim_name.dtitle() + format;
+        if (orgsize<nofin) // more than one result
+          svName += toString(mask2format("@", oar.size()),cidx);
+        SaveDenan(svName + ".tif", cres);
       }
     }
-    return lastSaved;
+    return;
 
   }
 
@@ -571,7 +570,6 @@ public:
 
     if (allInR.size() != st.nofIn)
       return false;
-    ImagePath lastSaved;
 
     // prepare input images
     int curF=0, cur2=0, cur1=0;
@@ -583,12 +581,12 @@ public:
         ffproc = & ffprocs[curproj];
       procInImg(allInR[curproj], allIn[curproj], ffproc);
       if ( ! interim_name.empty() ) {
-        const string sfI = toString(mask2format("_I@", st.nofIn), curproj);
+        const string sfI = st.nofIn > 1 ? toString(mask2format("@", st.nofIn), curproj) : "";
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
         const string sf2 = st.origin2size > 1 ? toString(mask2format(".@", st.origin2size), cur2) : "";
         const string sf1 = st.origin1size > 1 ? toString(mask2format(".@", st.origin1size), cur1) : "";
-        lastSaved = interim_name.dtitle() + sfI + sfF + sf2 + sf1 + string(".tif");
-        SaveDenan(lastSaved, allIn[curproj]);
+        const string svName = interim_name.dtitle() + "_I" + sfI + sfF + sf2 + sf1 + string(".tif");
+        SaveDenan(svName, allIn[curproj]);
         cur1++;
         if (cur1==st.origin1size) {
           cur1=0;
@@ -610,10 +608,8 @@ public:
       o2Stitch[1].reverseSelf(blitz::secondDim);
       stitch(st.originF, final, o2Stitch, msks2);
       if ( ! interim_name.empty() )  {
-        Map tmp;
-        ReadImage(lastSaved, tmp);
-        tmp.reverseSelf(blitz::secondDim);
-        SaveImage(lastSaved, tmp);
+        SaveDenan(interim_name.dtitle() + "_WD.tif" , o2Stitch[0]);
+        SaveDenan(interim_name.dtitle() + "_WF.tif" , o2Stitch[1]);
         SaveDenan(interim_name.dtitle() + "_W.tif" , final);
       }
     } else {
@@ -633,7 +629,7 @@ public:
     if ( st.fcrp != Crop() ) {
       crop(final, st.fcrp);
       if ( ! interim_name.empty() )
-        SaveDenan( interim_name.dtitle() + "_X.tif", final );
+        SaveDenan( interim_name.dtitle() + "_Y.tif", final );
     }
 
     // splits

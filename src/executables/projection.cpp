@@ -478,10 +478,10 @@ public:
       msksI.emplace_back(msksI[0]);
 
     msks1.resize(o1Stitch.size());
-    sub_proc(st.origin1size, st.origin1, msksI, deque<Map>(), msks1, string(), ImagePath());
+    sub_proc(st.origin1size, st.origin1, msksI, deque<Map>(), msks1, "_U", saveMasks.dtitle());
 
     msks2.resize(o2Stitch.size());
-    sub_proc(st.origin2size, st.origin2, msks1, deque<Map>(), msks2, string(), ImagePath());
+    sub_proc(st.origin2size, st.origin2, msks1, deque<Map>(), msks2, "_V", saveMasks.dtitle());
 
     if ( st.flipUsed ) {
       msks2[1].reverseSelf(blitz::secondDim);
@@ -490,11 +490,11 @@ public:
       mskF.reference(msks2[0]);
 
     for (int curM=0 ; curM < msks1.size() ; curM++) {
-      SaveMask(msks1[curM], "_U" + toString(curM) );
+      //SaveMask(msks1[curM], "_U" + toString(curM) );
       prepareMask(msks1[curM], false);
     }
     for (int curM=0 ; curM < msks2.size() ; curM++) {
-      SaveMask(msks1[curM], "_V" + toString(curM) );
+      //SaveMask(msks2[curM], "_V" + toString(curM) );
       prepareMask(msks2[curM], false);
     }
     SaveMask(mskF, "_F");
@@ -529,33 +529,33 @@ public:
   }
 
 
-  string sub_proc(uint orgsize, PointF2D origin, const deque<Map> & iar, const deque<Map> & msks
+  string sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks
                  , deque<Map> & oar, const string & format, const ImagePath & interim_name) {
 
     if ( orgsize == 1 ) {
       for(int curM = 0 ; curM < oar.size() ; curM++)
-        oar[curM].reference(iar[curM]);
+        oar[curM].reference(hiar[curM]);
       return ImagePath();
     }
 
-    const int nofin = iar.size();
+    const int nofin = hiar.size();
     ImagePath lastSaved;
     for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
       int cidx=inidx/orgsize;
-      deque<Map> supplyIm( iar.begin() + inidx, iar.begin() + inidx + orgsize) ;
+      deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + orgsize) ;
       deque<Map> supplyMs( msks.size() ? msks.begin() + inidx           : msks.begin(),
                            msks.size() ? msks.begin() + inidx + orgsize : msks.begin() );
       stitch(origin, oar[cidx], supplyIm, supplyMs);
       if ( ! interim_name.empty() ) {
         Map cres;
-        if ( ! origin.x * origin.y ) {
+        if ( origin.x * origin.y == 0.0 ) {
           cres.reference(oar[cidx]);
         } else if ( abs(origin.x) < abs(origin.y)  ) {
           int crppx = abs(origin.x * (supplyIm.size()-1));
           crop(oar[cidx], cres, Crop(0, crppx, 0, crppx));
         } else {
           int crppx = abs(st.origin1.y * (supplyIm.size()-1));
-          crop(o1Stitch[cidx], cres, Crop(crppx, 0, crppx, 0));
+          crop(oar[cidx], cres, Crop(crppx, 0, crppx, 0));
         }
         string svformat = mask2format(format+"@", oar.size() );
         lastSaved = interim_name.dtitle() + toString(svformat, cidx) + ".tif";

@@ -581,11 +581,7 @@ public:
         ffproc = & ffprocs[0];
       else if (ffprocs.size() == st.nofIn)
         ffproc = & ffprocs[curproj];
-      if (!curproj)
-        SaveDenan("aa_0i.tif", allInR[curproj]);
       procInImg(allInR[curproj], allIn[curproj], ffproc);
-      if (!curproj)
-        SaveDenan("aa_0p.tif", allIn[curproj]);
       if ( ! interim_name.empty() ) {
         const string sfI = toString(mask2format("_I@", st.nofIn), curproj);
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";

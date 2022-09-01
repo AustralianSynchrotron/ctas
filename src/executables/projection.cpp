@@ -491,9 +491,7 @@ public:
     } else
       mskF.reference(msks2[0]);
 
-
     #undef SaveMask
-
 
     for (int curM=0 ; curM < msks1.size() ; curM++)
       prepareMask(msks1[curM], false);

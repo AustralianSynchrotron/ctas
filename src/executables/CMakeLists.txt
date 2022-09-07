@@ -138,11 +138,6 @@ target_link_libraries(ct-ipc
   lipc
 )
 
-add_executable(f2i f2i.cpp)
-target_link_libraries(f2i
-  common
-  poptmx
-)
 
 add_executable(simulate-ipc simulate-ipc.cpp)
 target_link_libraries(simulate-ipc
@@ -208,7 +203,7 @@ set( all_targets
   multipc ipc dei edei norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ts rc2fd f2i proj v2v test
+  ts rc2fd proj v2v test
   bctppl
 )
 

@@ -448,12 +448,14 @@ public:
       for (int curI = 0; curI < st.nofIn ; curI++) {
         const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : zmap;
         const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : zmap;
+        const Map & dgpl = dgas.size() ?  dgas[ dgas.size() == 1 ? 0 : curI ] : zmap;
         const Map & mspl = msas.size() ?  msas[ msas.size() == 1 ? 0 : curI ] : zmap;
-        ffprocs.emplace_back(bgpl, dfpl, mspl);
+        ffprocs.emplace_back(bgpl, dfpl, dgpl, mspl);
       }
     } else {
       ffprocs.emplace_back( bgas.size() ? bgas[0] : zmap
                           , dfas.size() ? dfas[0] : zmap
+                          , dgas.size() ? dgas[0] : zmap
                           , msas.size() ? msas[0] : zmap );
     }
 

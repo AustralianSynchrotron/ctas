@@ -50,6 +50,7 @@ __kernel void ffm(
     global float * io,
     read_only global float * bg,
     read_only global float * df,
+    read_only global float * dg,
     read_only global float * mask )
 {
 
@@ -62,14 +63,20 @@ __kernel void ffm(
   }
 
   float fgg = io[idx];
-  float didx = df ? df[idx] : 0.0f;
-  float bidx = bg ? bg[idx] : 1.0f;
-  if ( didx >= bidx )
-    io[idx] = 1.0f;
-  else if (didx >= fgg )
-    io[idx] = 0.0f;
-  else
-    io[idx] = (fgg - didx) / (bidx - didx);
+  if (df)
+    fgg -= df[idx];
+  if (bg) {
+    bgg = bg[idx];
+    if (dg)
+      bgg -= dg[idx];
+    else if (df)
+      bgg -= df[idx];
+    if (bgg == 0.0)
+      fgg = 0.0f;
+    else
+      fgg /= bgg;
+  }
+  io[idx] = fgg;
 
 }
 

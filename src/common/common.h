@@ -617,6 +617,12 @@ operator!=( const Crop & cr1, const Crop & cr2){
   cr1.left != cr2.left || cr1.right != cr2.right;
 }
 
+
+inline bool isNonZero(const Crop cr) {
+  return cr.top || cr.bottom || cr.left || cr.right;
+}
+
+
 std::string COMMON_API
 type_desc (Crop*);
 
@@ -644,7 +650,13 @@ void COMMON_API
 crop(Map & io_arr, const Crop & crp);
 
 
-
+inline Shape
+crop(const Shape & sh, const Crop & crp) {
+  const Shape csz(sh(0) - crp.top  - crp.bottom, sh(1) - crp.left - crp.right);
+  if ( csz(0) <= 0 || csz(1) <= 0 )
+    throw_error("Crop", "Cropping is larger than the shape of input volume.");
+  return csz;
+}
 
 
 
@@ -667,6 +679,10 @@ struct Crop3 {
 
   inline Crop3(const Crop & crp, unsigned int f=0, unsigned int k=0)
   : top(crp.top), left(crp.left), bottom(crp.bottom), right(crp.right) , face(f), back(k) {}
+
+  inline operator Crop() const {
+    return Crop(top, left, bottom, right);
+  }
 
 };
 
@@ -766,6 +782,86 @@ crop(Volume & io_arr, const Crop & crp) {
 
 
 
+inline size_t
+dimOnBinn(size_t sz, unsigned int bn) {
+//return bn ? (sz + bn - 1) / bn : 1;
+  return bn ? sz / bn : 1;
+}
+
+
+
+
+struct Binn {
+  unsigned int x;      ///< X binning
+  unsigned int y;       ///< Y binning
+  inline Binn(unsigned int _x=1, unsigned int _y=1)
+  : x(_x), y(_y) {
+    if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
+  }
+};
+
+inline std::string toString (const Binn & bnn) {
+  return bnn.x == bnn.y ? toString(bnn.x) : toString ("%ux%u", bnn.x, bnn.y);
+}
+
+/// \brief Compare binnings.
+///
+/// @param bn1 first binning.
+/// @param bn2 second binning.
+///
+/// @return \c true if the binnings are equal, \c false otherwise.
+///
+inline bool
+operator==( const Binn & bn1, const Binn & bn2){
+  return bn1.x == bn2.x && bn1.y == bn2.y;
+}
+
+/// \brief Compare binnings.
+///
+/// @param bn1 first binning.
+/// @param bn2 second binning.
+///
+/// @return \c true if the binnings are not equal, \c false otherwise.
+///
+inline bool
+operator!=( const Binn & bn1, const Binn & bn2){
+  return bn1.x != bn2.x || bn1.y != bn2.y;
+}
+
+
+
+std::string COMMON_API
+type_desc (Binn*);
+
+int COMMON_API
+_conversion (Binn* _val, const std::string & in);
+
+extern const std::string COMMON_API
+BinnOptionDesc;
+
+
+Shape COMMON_API
+binn(const Shape & sh, const Binn & ibnn);
+
+/// \brief Apply binning to the array.
+///
+/// @param inarr Input array.
+/// @param outarr Output array.
+/// @param binn Binning factor
+///
+void COMMON_API
+binn(const Map & inarr, Map & outarr, const Binn & bnn);
+
+/// \brief Apply binning to the array.
+///
+/// @param io_arr Input/output array.
+/// @param binn Binning factor
+///
+void COMMON_API
+binn(Map & io_arr, const Binn & bnn);
+
+
+
 
 
 
@@ -774,10 +870,9 @@ struct Binn3 {
   unsigned int y;       ///< Y binning
   unsigned int z;       ///< Z binning
   inline Binn3(unsigned int _x=1, unsigned int _y=1, unsigned int _z=1)
-  : x(_x)
-  , y(_y)
-  , z(_z) {
-    if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
+    : x(_x), y(_y), z(_z) {}
+  inline operator Binn() const {
+    return Binn(x,y);
   }
 };
 
@@ -838,79 +933,8 @@ binn(Volume & io_arr, const Binn3 & bnn);
 
 
 
-struct Binn {
-  unsigned int x;      ///< X binning
-  unsigned int y;       ///< Y binning
-  inline Binn(unsigned int _x=1, unsigned int _y=1)
-  : x(_x), y(_y) {
-    if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
-  }
-};
 
-inline std::string toString (const Binn & bnn) {
-  return bnn.x == bnn.y ? toString(bnn.x) : toString ("%ux%u", bnn.x, bnn.y);
-}
-
-/// \brief Compare binnings.
-///
-/// @param bn1 first binning.
-/// @param bn2 second binning.
-///
-/// @return \c true if the binnings are equal, \c false otherwise.
-///
-inline bool
-operator==( const Binn & bn1, const Binn & bn2){
-  return bn1.x == bn2.x && bn1.y == bn2.y;
-}
-
-/// \brief Compare binnings.
-///
-/// @param bn1 first binning.
-/// @param bn2 second binning.
-///
-/// @return \c true if the binnings are not equal, \c false otherwise.
-///
-inline bool
-operator!=( const Binn & bn1, const Binn & bn2){
-  return bn1.x != bn2.x || bn1.y != bn2.y;
-}
-
-
-std::string COMMON_API
-type_desc (Binn*);
-
-int COMMON_API
-_conversion (Binn* _val, const std::string & in);
-
-extern const std::string COMMON_API
-BinnOptionDesc;
-
-
-Shape COMMON_API
-shapeOnBinn(const Shape & sh, const Binn & ibnn);
-
-/// \brief Apply binning to the array.
-///
-/// @param inarr Input array.
-/// @param outarr Output array.
-/// @param binn Binning factor
-///
-void COMMON_API
-binn(const Map & inarr, Map & outarr, const Binn & bnn);
-
-/// \brief Apply binning to the array.
-///
-/// @param io_arr Input/output array.
-/// @param binn Binning factor
-///
-void COMMON_API
-binn(Map & io_arr, const Binn & bnn);
-
-
-
-
-
-Shape shapeOnRotate(const Shape & sh, float angle);
+Shape rotate(const Shape & sh, float angle);
 
 /// \brief Rotate the array.
 ///

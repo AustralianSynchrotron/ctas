@@ -348,9 +348,12 @@ struct HDFwrite : public HDFrw {
 private:
 
   const static string modname;
+  const float mincon;
+  const float maxcon;
+
 
   void createNewGroup() {
-    hid_t lcpl, dcpl;
+    hid_t lcpl=0, dcpl=0;
     if (  hdfFile<=0
        || (lcpl = H5Pcreate(H5P_LINK_CREATE)) == H5I_INVALID_HID
        || H5Pset_create_intermediate_group(lcpl, 1) < 0
@@ -371,8 +374,11 @@ private:
 
 public :
 
-  HDFwrite(const ImagePath & filedesc, Shape _sh, const size_t zsize)
+  HDFwrite( const ImagePath & filedesc, Shape _sh, const size_t zsize
+          , float _mincon=0, float _maxcon=0)
     : HDFrw(filedesc)
+    , mincon(_mincon)
+    , maxcon(_maxcon)
   {
     rank = 3;
     setFace(_sh);
@@ -825,6 +831,7 @@ struct _ReadVolBySlice  {
   //unordered_map<ImagePath,HDFread> hdfs;
   unordered_map<size_t,HDFread> hdfs;
   size_t ssize;
+  Shape face;
   const float ang;
   const Crop crp;
   const Binn bnn;
@@ -833,6 +840,7 @@ struct _ReadVolBySlice  {
   _ReadVolBySlice(float _angle, Crop _crop, Binn _binn)
     : ilist()
     , ssize(0)
+    , face()
     , ang(_angle)
     , crp(Crop())
     , bnn(Binn())
@@ -842,6 +850,7 @@ struct _ReadVolBySlice  {
   _ReadVolBySlice(const std::deque<ImagePath> & filelist, float _angle, Crop _crop, Binn _binn)
     : ilist()
     , ssize(0)
+    , face()
     , ang(_angle)
     , crp(_crop)
     , bnn(_binn)
@@ -851,6 +860,8 @@ struct _ReadVolBySlice  {
 
 
   void add(const ImagePath & fileind) {
+      if (!ilist.size())
+        face = ImageSizes(fileind);
       ilist.push_back(fileind);
       try {
         //hdfs.emplace(fileind, fileind);
@@ -893,7 +904,6 @@ struct _ReadVolBySlice  {
       //if (hdfs.count(flnm)) {
       const size_t key = hash<string>{}(flnm.repr());
       if (hdfs.count(key)) {
-        //HDFread & hdf = hdfs.at(flnm);
         HDFread & hdf = hdfs.at(key);
         if (idx < cfirst + hdf.slices()) {
           hdf.read(idx-cfirst, rd);
@@ -948,9 +958,9 @@ public:
       return;
     }
     sh = ImageSizes(filelist[0]);
-    sh = shapeOnRotate(sh, _angle);
-    sh = Shape(sh(0)-_crop.top-_crop.bottom, sh(1)-_crop.left-_crop.right);
-    sh = shapeOnBinn(sh, _binn);
+    sh = rotate(sh, _angle);
+    sh = crop(sh, _crop);
+    sh = binn(sh, _binn);
     bar.setSteps(reader.size());
     storage.resize(reader.size(), sh(0), sh(1));
     if ( ! storage.size() )
@@ -1029,6 +1039,10 @@ size_t ReadVolumeBySlice::slices() const {
 }
 
 
+Shape ReadVolumeBySlice::face() const {
+  return ((_ReadVolBySlice*) guts)->face;
+}
+
 
 
 
@@ -1062,7 +1076,7 @@ public:
     , maxcon(mmax)
   {
     if ( HDFdesc::isValid(filedesc) )
-      hdfFile = new HDFwrite(filedesc, _sh, _zsize);
+      hdfFile = new HDFwrite(filedesc, _sh, _zsize, mincon, maxcon);
     else if ( zsize==1 )
       sliceformat=filedesc;
     else if ( filedesc.find('@') == string::npos )

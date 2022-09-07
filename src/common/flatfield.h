@@ -45,33 +45,36 @@ public:
 
 private:
 
-  CLmem   io;
-  const CLmem bgR;
-  const CLmem & bg;
-  const CLmem dfR;
-  const CLmem & df;
-  const CLmem maskR;
-  const CLmem & mask;
+  static cl_program ffProgram();
+
+
   cl_kernel kernel;
+  CLmem   io;
+  const CLmem bg;
+  const CLmem df;
+  const CLmem dg;
+  const CLmem ms;
 
 public:
 
-  FlatFieldProc(const Map & _bg, const Map & _df,
-                const Map & _mask);
+  FlatFieldProc( const Map & _bg, const Map & _df
+               , const Map & _dg, const Map & _ms);
 
   FlatFieldProc(const FlatFieldProc & other);
 
 
 
   ~FlatFieldProc() {
-    clReleaseKernel(kernel);
+    if (kernel)
+      clReleaseKernel(kernel);
   }
 
-  void execute(const Map & _io);
+  cl_mem execute(const Map & _io);
 
   Map & process(Map & _io) {
-    execute(_io);
-    return io() ? cl2blitz(io(), _io) : _io;
+    if (execute(_io))
+      cl2blitz(io(), _io);
+    return _io;
   }
 
 };

@@ -656,24 +656,24 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
   Binn3 bnn( ibnn.x ? ibnn.x : inarr.shape()(2) ,
              ibnn.y ? ibnn.y : inarr.shape()(1) ,
              ibnn.z ? ibnn.z : inarr.shape()(0) );
-  Shape3 osh(inarr.shape()(0) / bnn.z
-               , inarr.shape()(1) / bnn.y
-               , inarr.shape()(2) / bnn.x);
+  Shape3 osh( inarr.shape()(0) / bnn.z
+            , inarr.shape()(1) / bnn.y
+            , inarr.shape()(2) / bnn.x);
   outarr.resize(osh);
 
 #ifdef OPENCL_FOUND
 
-  try {
+  if ( ! binnProgram ) {
+    const char binnSource[] = {
+      #include "binn.cl.includeme"
+    };
+    binnProgram =
+      initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
+    if (!binnProgram)
+      throw 1;
+  }
 
-    if ( ! binnProgram ) {
-      const char binnSource[] = {
-        #include "binn.cl.includeme"
-      };
-      binnProgram =
-        initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
-      if (!binnProgram)
-        throw 1;
-    }
+  try {
 
     CLmem clinarr(blitz2cl(inarr, CL_MEM_READ_ONLY));
     CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
@@ -694,6 +694,7 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
   }  catch (...) { // full volume was too big for the gpu
 
+    warn("Binning", "Trying another method.");
     Map inslice(inarr.shape()(1), inarr.shape()(0));
     CLmem clinslice(clAllocArray<float>(inslice.size(), CL_MEM_READ_ONLY));
     Map outslice(osh(1), osh(0));
@@ -808,8 +809,9 @@ _conversion (Binn* _val, const string & in) {
 
 
 
-Shape shapeOnBinn(const Shape & sh, const Binn & ibnn) {
-  return Shape(ibnn.y ? sh(0)/ibnn.y : 1, ibnn.x ? sh(1)/ibnn.x : 1);
+
+Shape binn(const Shape & sh, const Binn & ibnn) {
+  return Shape(dimOnBinn(sh(0),ibnn.y), dimOnBinn(sh(1),ibnn.x));
 }
 
 void
@@ -821,7 +823,7 @@ binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
   }
   Binn bnn( ibnn.x ? ibnn.x : inarr.shape()(1) ,
             ibnn.y ? ibnn.y : inarr.shape()(0) );
-  outarr.resize(shapeOnBinn(inarr.shape(),ibnn));
+  outarr.resize(binn(inarr.shape(),ibnn));
 
 #ifdef OPENCL_FOUND
 
@@ -874,7 +876,7 @@ binn(Map & io_arr, const Binn & bnn) {
 
 
 
-Shape shapeOnRotate(const Shape & sh, float angle) {
+Shape rotate(const Shape & sh, float angle) {
   if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) // close to a 90-deg step
     if ( ! ( ((int) round(2*angle/M_PI)) % 2 ) )
       return sh;
@@ -891,7 +893,7 @@ Shape shapeOnRotate(const Shape & sh, float angle) {
 void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
 
   const Shape sh = inarr.shape();
-  const Shape osh = shapeOnRotate(sh, angle);
+  const Shape osh = rotate(sh, angle);
 
   if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
     const int nof90 = round(2*angle/M_PI);

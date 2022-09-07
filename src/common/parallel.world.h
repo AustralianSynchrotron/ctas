@@ -85,13 +85,16 @@ extern cl_context CL_context;
 extern cl_command_queue CL_queue;
 
 class CLmem {
-    cl_mem cl;
+    cl_mem clR;
+    cl_mem & cl;
 public:
-    inline CLmem(cl_mem _cl=0) : cl(_cl) {}
+    inline CLmem(cl_mem _cl=0) : clR(_cl) , cl(clR) {}
+    inline CLmem(const CLmem & other) : clR(0) , cl(other.cl) {}
     inline ~CLmem() { free(); }
-    inline cl_mem operator()() const { return cl; }
-    inline CLmem & operator()(cl_mem _cl) { cl=_cl; return *this; }
-    inline void free() { if (cl) clReleaseMemObject(cl); cl=0; }
+    inline cl_mem & operator()() const { return cl; }
+    inline CLmem & operator()(cl_mem _cl) { free(); clR=_cl; cl=clR;  return *this; }
+    inline CLmem & operator()(const CLmem & other) { free(); cl=other.cl; return *this; }
+    inline void free() { if (clR) clReleaseMemObject(clR); clR=0; }
 };
 
 

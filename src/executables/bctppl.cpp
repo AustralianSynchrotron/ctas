@@ -460,8 +460,8 @@ public:
     , imrd0(0)
     , imrd1(0)
     , imsv(0)
-    , canon0(bgar0, dfar0, gaps)
-    , canon1(bgar1, dfar1, gaps)
+    , canon0(bgar0, dfar0, Map(), gaps)
+    , canon1(bgar1, dfar1, Map(), gaps)
     , args(_args)
   {
 

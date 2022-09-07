@@ -166,19 +166,9 @@ target_link_libraries(proj
   flatfield
 )
 
-if(OPENCL_FOUND)
-  add_executable(flat flat.cpp)
-  target_clsrc(flat flat.cl)
-  target_link_libraries(flat
-    common
-    poptmx
-    #    ${OPENCL_LL}
-    ${OpenCL_LIBRARIES}
-  )
-endif()
-
 
 add_executable(v2v vol2vol.cpp)
+target_clsrc(v2v ../common/binn.cl)
 target_link_libraries(v2v
   common
   poptmx
@@ -218,7 +208,7 @@ set( all_targets
   multipc ipc dei edei norm
   sino sino-abs sino-dei sino-edei sino-ipc
   ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ts rc2fd f2i proj v2v flat test
+  ts rc2fd f2i proj v2v test
   bctppl
 )
 

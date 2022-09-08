@@ -66,7 +66,7 @@ __kernel void ffm(
   if (df)
     fgg -= df[idx];
   if (bg) {
-    bgg = bg[idx];
+    float bgg = bg[idx];
     if (dg)
       bgg -= dg[idx];
     else if (df)

@@ -134,7 +134,6 @@ public :
     , dataset(0)
     , dataset_dxpl(0)
     , filespace(0)
-    , memspace(0)
     //, rwLock(PTHREAD_MUTEX_INITIALIZER)
   {
     if (!isValid())
@@ -143,8 +142,6 @@ public :
 
   ~HDFrw() {
     complete();
-    if (memspace>0)
-      H5Sclose(memspace);
     if (dataset_dxpl > 0)
       H5Pclose(dataset_dxpl);
     dataset_dxpl=0;
@@ -173,31 +170,22 @@ protected :
   hid_t dataset;
   hid_t dataset_dxpl;
   hid_t filespace;
-  hid_t memspace;
   //pthread_mutex_t rwLock;
   blitz::Array<hsize_t, 1> cnts;
 
   void setFace(const Shape & fcsh) {
     iosh[1] = fcsh(sliceDim == 2 ? 1 : 0);
     iosh[2] = fcsh(sliceDim == 2 ? 0 : 1);
-    const Shape sh(iosh[1],iosh[2]);
-    const size_t ar = area(sh);
+    const size_t ar = area(fcsh);
     if ( ! ar )
       return;
-    hsize_t mcnts[2] = { hsize_t(sh(0)), hsize_t(sh(1))},
-            moffs[2] = {0, 0};
-    if ( (memspace = H5Screate_simple(2, mcnts, 0))<0
-       || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 ) {
-      complete();
-      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
-    }
     if (  (dataset_dxpl = H5Pcreate(H5P_DATASET_XFER)) == H5I_INVALID_HID
        || H5Pset_buffer(dataset_dxpl, ar*sizeof(float), 0, 0) < 0 )
       dataset_dxpl=H5P_DEFAULT;
     size_t bsize;
     switch (sliceDim) {
       case 0: bsize = ar; break;
-      case 1: bsize = sh(0); break;
+      case 1: bsize = iosh[1] ; break;
       case 2: bsize = 1; break;
     }
     if (  (file_fapl = H5Pcreate(H5P_FILE_ACCESS)) == H5I_INVALID_HID
@@ -222,18 +210,20 @@ protected :
     hdfFile=0;
   }
 
-  hid_t local_fs(int idx) {
+  hid_t local_fs(int idx, const Crop & crp = Crop()) {
     hid_t ret_fs=H5Scopy(filespace);
     if (ret_fs<0)
       throw_error("HDF i/o", "Failed to copy filespace accessing slice " +toString(idx)+ " from " + id() + ".");
     hsize_t offs[rank], mcns[rank];
+    unsigned cdim = sliceDim == 2 ? 1 : 0;
     for (int dim=0; dim<rank ; dim++) {
       if (rank==3 && dim == sliceDim) {
         offs[dim]=idx;
         mcns[dim]=1;
       } else {
-        offs[dim]=0;
-        mcns[dim]=cnts(dim);
+        offs[dim]=crp(cdim,0);
+        mcns[dim]=cnts(dim)-crp(cdim,1);
+        cdim += sliceDim == 2 ? -1 : 1;
       }
     }
     if ( H5Sselect_hyperslab(ret_fs, H5S_SELECT_SET, offs, NULL, mcns, NULL) < 0) {
@@ -309,24 +299,32 @@ public :
   }
 
 
-  void read(uint idx, Map & storage) {
+  void read(uint idx, Map & storage, const Crop & crp = Crop()) {
     if ( ! hdfFile )
       throw_error(modname, "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
       throw_error(modname, "Index is beyond slices to read from " + name + ".");
 
-    hid_t lfillespace=local_fs(indices.at(idx));
-    storage.resize(face());
+    hid_t lfillespace=local_fs(indices.at(idx), crp);
+    storage.resize(crop(face(),crp));
     Map rd;
     if (sliceDim==2)
-      rd.resize(ioface()); // must be swap of face
+      rd.resize(storage.transpose(blitz::secondDim, blitz::firstDim).shape()); // must be swap of face
     else
       rd.reference(safe(storage, false));
+
+    hsize_t mcnts[2] = {hsize_t(rd.shape()(0)), hsize_t(rd.shape()(1))},
+            moffs[2] = {0, 0};
+    hid_t memspace = H5Screate_simple(2, mcnts, 0);
+    if (  memspace < 0
+       || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
+      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
 
     //pthread_mutex_lock(&rwLock);
     if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, rd.data()) < 0)
       warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
     //pthread_mutex_unlock(&rwLock);
+    H5Sclose(memspace);
 
     if (sliceDim==2)
       rd.transposeSelf(blitz::secondDim, blitz::firstDim);
@@ -350,6 +348,7 @@ private:
   const static string modname;
   const float mincon;
   const float maxcon;
+  hid_t memspace;
 
 
   void createNewGroup() {
@@ -429,8 +428,21 @@ public :
       throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
     }
 
+    hsize_t mcnts[2] = { hsize_t(ioface()(0)), hsize_t(ioface()(1))},
+            moffs[2] = {0, 0};
+    if ( (memspace = H5Screate_simple(2, mcnts, 0))<0
+       || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 ) {
+      complete();
+      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
+    }
+
   }
 
+
+  ~HDFwrite() {
+    if (memspace)
+      H5Sclose(memspace);
+  }
 
   void write(int idx, const Map & storage) {
     if ( hdfFile <= 0 )
@@ -597,9 +609,9 @@ BadShape(const ImagePath & filename, const Shape & shp){
 /// @param storage The array to store the image.
 ///
 static void
-ReadImage_HDF5 (const Path & filedesc, Map & storage ) {
+ReadImage_HDF5 (const Path & filedesc, Map & storage, const Crop & crp = Crop() ) {
   try {
-    HDFread(filedesc).read(0,storage);
+    HDFread(filedesc).read(0,storage,crp);
   } catch( ... ) {
     throw CtasErr(CtasErr::ERR, "HDF read", "Failed to read HDF5 from " + filedesc);
   }
@@ -654,7 +666,7 @@ safelyOpenTIFForThrow(TIFF **image, int *fd, const string modname, const Path & 
 ///
 
 static void
-ReadImage_TIFF (const Path & filename, Map & storage) {
+ReadImage_TIFF (const Path & filename, Map & storage, const Crop & crp = Crop()) {
 
   const string modname = "load image tiff";
 
@@ -680,9 +692,10 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
     safelyCloseTIFFandThrow(image, fd, modname,
       "Image \"" + filename + "\" has unsupported sample format.");
 
-  storage.resize(height,width);
+  const Shape osh = crop(Shape(height,width),crp);
+  storage.resize(osh);
   tdata_t buf = _TIFFmalloc(TIFFScanlineSize(image));
-  for (uint curidx = 0; curidx < height; curidx++) {
+  for (uint curidx = crp.top; curidx < height - crp.bottom; curidx++) {
 
     //pthread_mutex_lock(&mut);
     if ( TIFFReadScanline(image, buf, curidx) < 0 ) {
@@ -691,11 +704,11 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
       safelyCloseTIFFandThrow(image, fd, modname,
         "Failed to read line " + toString(curidx) +" in image \"" + filename + "\".");
     }
-    Line ln(storage(curidx, all));
+    Line ln(storage(curidx-crp.top, all));
     //pthread_mutex_unlock(&mut);
 
     #define blitzArrayFromData(type) \
-      blitz::Array<type,1> ( (type *) buf, blitz::shape(width), blitz::neverDeleteData)
+      blitz::Array<type,1> ( ((type*)buf) + crp.left, blitz::shape(osh(1)), blitz::neverDeleteData)
     switch (fmt) {
     case SAMPLEFORMAT_UINT :
       if (bps==8)
@@ -740,7 +753,7 @@ ReadImage_TIFF (const Path & filename, Map & storage) {
 /// @param storage The array to store the image.
 ///
 static void
-ReadImage_IM (const Path & filename, Map & storage ){
+ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
 
   Magick::Image imag;
   try { imag.read(filename); }
@@ -756,7 +769,8 @@ ReadImage_IM (const Path & filename, Map & storage ){
   const int
     width = imag.columns(),
     hight = imag.rows();
-  storage.resize( hight, width );
+  const Shape osh = crop(Shape(hight,width),crp);
+  storage.resize(osh);
 
   // below might be buggy - see notes in SaveImageINT_IM
   //const Magick::PixelPacket
@@ -765,9 +779,9 @@ ReadImage_IM (const Path & filename, Map & storage ){
   //for ( int k = 0 ; k < hight*width ; k++ )
   //  *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
   // Replacement for the buggy block:
-  for (ArrIndex curw = 0 ; curw < width ; curw++)
-    for (ArrIndex curh = 0 ; curh < hight ; curh++)
-      storage(curh,curw) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
+  for (ArrIndex curh = crp.top ; curh < hight-crp.bottom ; curh++)
+    for (ArrIndex curw = crp.left ; curw < width-crp.right ; curw++)
+      storage(curh-crp.top, curw-crp.left) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
   // end replacement *
 
 }
@@ -775,17 +789,17 @@ ReadImage_IM (const Path & filename, Map & storage ){
 
 
 void
-ReadImage(const ImagePath & filename, Map & storage, const Shape & shp){
+ReadImage(const ImagePath & filename, Map & storage, const Crop & crp, const Shape & shp){
   try {
     const string ext = lower(filename.ext());
     if (area(shp))
       BadShape(filename, shp);
     if (HDFdesc::isValidHDF(filename))
-      ReadImage_HDF5(filename, storage);
+      ReadImage_HDF5(filename, storage, crp);
     else if ( ext == ".tif" || ext == ".tiff")
-      ReadImage_TIFF(filename, storage);
+      ReadImage_TIFF(filename, storage, crp);
     else
-      ReadImage_IM(filename, storage);
+      ReadImage_IM(filename, storage, crp);
   } catch (...) {
     throw_error("Read image", "Failed to read image " + filename + ".");
   }
@@ -1011,9 +1025,6 @@ ReadVolumeBySlice::ReadVolumeBySlice(const deque<ImagePath> & filelist)
   : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn()))
 {}
 
-ReadVolumeBySlice::ReadVolumeBySlice(const ImagePath & file)
-  : guts(new _ReadVolBySlice(deque<ImagePath>(1, file), 0, Crop(), Binn()))
-{}
 
 void ReadVolumeBySlice::add(const ImagePath & fileind) {
   ((_ReadVolBySlice*) guts)->add(fileind);

@@ -193,6 +193,7 @@ class SliceInThread : public InThread {
   unordered_map<pthread_t, Map> rdmaps;
   unordered_map<pthread_t, Map> crmaps;
   unordered_map<pthread_t, Map> bnmaps;
+  unordered_map<pthread_t, BinnProc> bnprocs;
   deque<CLacc> accs;
 
 
@@ -212,10 +213,12 @@ class SliceInThread : public InThread {
       rdmaps.emplace(me, ish);
       crmaps.emplace(me, Map());
       bnmaps.emplace(me, Map());
+      bnprocs.try_emplace(me, crop(ish, crp), bnn);
     }
     Map & myrdmap = rdmaps[me];
     Map & mycrmap = crmaps[me];
     Map & mybnmap = bnmaps[me];
+    BinnProc & mybnproc = bnprocs.at(me);
 
     if (!accs.size())
       accs.emplace_back(osh, bnz);
@@ -242,7 +245,7 @@ class SliceInThread : public InThread {
 
     ivolRd->read(indices[idx], myrdmap);
     crop(myrdmap, mycrmap, crp);
-    binn(mycrmap, mybnmap, bnn);
+    mybnproc(mycrmap, mybnmap);
     if ( ! myacc.addme(mybnmap) )
       ovolSv->save(sodx, mybnmap);
 
@@ -267,7 +270,7 @@ public:
     bnn = args.bnn;
     bnz = args.bnn.z ? args.bnn.z : isz;
     osh = binn(crop(ish, crp), bnn);
-    osz = dimOnBinn(isz, bnz);
+    osz = binn(isz, bnz);
     if ( osh(0) <= 0 || osh(1) <= 0 || osz <=0 )
       throw_error(args.command, "Cropping or binning is larger than the shape of input volume.");
     string sindex = args.slicedesc;

@@ -120,7 +120,52 @@ BadShape(const ImagePath & filename, const Shape & shp);
 /// @param shp The expected shape.
 ///
 void COMMON_API
-ReadImage(const ImagePath & filename, Map & storage, const Shape & shp = Shape(0,0));
+ReadImage( const ImagePath & filename, Map & storage
+         , const Crop & crp = Crop(), const Shape & shp = Shape());
+
+inline void COMMON_API
+ReadImage(const ImagePath & filename, Map & storage, const Shape & shp) {
+  ReadImage(filename, storage, Crop(), shp);
+}
+
+
+class ImageReader {
+private:
+  const Shape ish;
+  const float ang;
+  const Crop crp;
+  BinnProc bnn;
+
+  Map rdmap;
+  Map rotmap;
+  Map crpmap;
+
+public:
+
+  ImageReader(const Shape _ish, float _ang, const Crop & _crp, const Binn & _bnn)
+    : ish(_ish)
+    , ang(_ang)
+    , crp(_crp)
+    , bnn(ish,_bnn)
+  {
+    if (ang==0.0)
+      crpmap.reference(rdmap);
+  }
+
+  void read(const ImagePath & filename, Map & storage) {
+
+
+    if (ang == 0.0) {
+      ReadImage(filename, rdmap, crp, ish);
+    } else {
+      ReadImage(filename, rdmap, ish);
+      rotate(rdmap, rotmap, ang);
+      crop(rotmap, crpmap, crp);
+    }
+    bnn(crpmap,storage);
+  }
+
+};
 
 
 
@@ -227,7 +272,8 @@ private:
   void * guts;
 public:
   ReadVolumeBySlice(const std::deque<ImagePath> & filelist = std::deque<ImagePath>() );
-  ReadVolumeBySlice(const ImagePath & file);
+  inline ReadVolumeBySlice(const ImagePath & file)
+    : ReadVolumeBySlice(std::deque<ImagePath>(1, file)) {};
   ~ReadVolumeBySlice();
   void add(const std::deque<ImagePath> & filelist);
   void add(const ImagePath & fileind);

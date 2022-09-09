@@ -810,68 +810,117 @@ _conversion (Binn* _val, const string & in) {
 
 
 
-Shape binn(const Shape & sh, const Binn & ibnn) {
-  return Shape(dimOnBinn(sh(0),ibnn.y), dimOnBinn(sh(1),ibnn.x));
-}
 
-void
-binn(const Map & inarr, Map & outarr, const Binn & ibnn) {
 
-  if ( ibnn.x == 1 && ibnn.y == 1 ) {
-    outarr.reference(inarr);
-    return;
-  }
-  Binn bnn( ibnn.x ? ibnn.x : inarr.shape()(1) ,
-            ibnn.y ? ibnn.y : inarr.shape()(0) );
-  outarr.resize(binn(inarr.shape(),ibnn));
 
-#ifdef OPENCL_FOUND
+class _BinnProc {
 
-  if ( ! binnProgram ) {
-    const char binnSource[] = {
-      #include "binn.cl.includeme"
-    };
-    binnProgram =
-      initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
+private:
+  const Binn bnn;
+  const Shape ish;
+  const Shape osh;
+  CLmem clinarr;
+  CLmem cloutarr;
+  cl_kernel kernelBinn;
+
+  static const string modname;
+  static cl_program binnProgram;
+  static pthread_mutex_t protectProgramCompilation;
+
+public:
+
+  _BinnProc(const Shape & _ish, const Binn & _bnn)
+    : bnn( _bnn.x ? _bnn.x : _ish(1), _bnn.y ? _bnn.y : _ish(0) )
+    , ish(_ish)
+    , osh(binn(ish,bnn))
+  {
+    if ( bnn.x == 1 && bnn.y == 1 )
+      return;
+    if (!area(ish))
+      throw_error(modname, "Zero input size.");
+    if (!area(osh))
+      throw_error(modname, "Zero result of binning"
+                           " ("+toString(ish)+") by ("+toString(bnn)+").");
+
+    pthread_mutex_lock(&protectProgramCompilation);
+    if ( ! binnProgram ) {
+      const char binnSource[] = {
+        #include "binn.cl.includeme"
+      };
+      binnProgram =
+        initProgram( binnSource, sizeof(binnSource), modname );
+    }
+    pthread_mutex_unlock(&protectProgramCompilation);
     if (!binnProgram)
-      throw_error("Binn on OCL", "Could not initiate binning program");
+      throw_error(modname, "Could not initiate binning program.");
+
+    clinarr(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
+    cloutarr(clAllocArray<float>(area(osh), CL_MEM_WRITE_ONLY));
+    kernelBinn = createKernel(binnProgram, "binn2");
+    if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
+      throw_error(modname, "Failed to prepare for operation.");
+    setArg(kernelBinn, 0, clinarr());
+    setArg(kernelBinn, 1, cloutarr());
+    setArg(kernelBinn, 2, (cl_int) bnn.x);
+    setArg(kernelBinn, 3, (cl_int) bnn.y);
+    setArg(kernelBinn, 4, (cl_int) ish(1));
+    setArg(kernelBinn, 5, (cl_int) osh(1));
+
   }
 
-  CLmem clinarr(blitz2cl(inarr, CL_MEM_READ_ONLY));
-  CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
-  cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
 
-  setArg(kernelBinn2, 0, clinarr());
-  setArg(kernelBinn2, 1, cloutarr());
-  setArg(kernelBinn2, 2, (cl_int) bnn.x);
-  setArg(kernelBinn2, 3, (cl_int) bnn.y);
-  setArg(kernelBinn2, 4, (cl_int) inarr.shape()(1));
-  setArg(kernelBinn2, 5, (cl_int) outarr.shape()(1));
+  ~_BinnProc() {
+    if (kernelBinn)
+      clReleaseKernel(kernelBinn);
+  }
 
-  execKernel(kernelBinn2, outarr.shape());
-  cl2blitz(cloutarr(), outarr);
 
-#else // OPENCL_FOUND
+  void operator() (const Map & imap, Map & omap) {
+    if ( bnn.x == 1 && bnn.y == 1 ) {
+      if (!omap.size())
+        omap.reference(imap);
+      else if (omap.data() != imap.data()){
+        omap.resize(ish);
+        omap = imap;
+      }
+      return;
+    }
+    if (imap.shape() != ish)
+      throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
+                           " with expected ("+toString(ish)+").");
+    blitz2cl(imap, clinarr());
+    execKernel(kernelBinn, osh);
+    omap.resize(osh);
+    cl2blitz(cloutarr(), omap);
+  }
 
-  for (ArrIndex ycur = 0 ; ycur < outarr.shape()(0) ; ycur++ )
-    for (ArrIndex xcur = 0 ; xcur < outarr.shape()(1) ; xcur++ )
-      outarr(ycur,xcur) = mean(
-        inarr( bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  all
-             , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  all ) );
+};
 
-#endif // OPENCL_FOUND
+const string _BinnProc::modname = "BinnOCL";
+cl_program _BinnProc::binnProgram = 0;
+pthread_mutex_t _BinnProc::protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
 
+
+BinnProc::BinnProc(const Shape & ish, const Binn & bnn)
+  : guts(new _BinnProc(ish,bnn))
+{}
+
+BinnProc::~BinnProc() {
+  if (guts)
+    delete (_BinnProc*) guts;
 }
 
-void
-binn(Map & io_arr, const Binn & bnn) {
-  Map outarr;
-  binn(io_arr, outarr, bnn);
-  if( io_arr.data() == outarr.data() )
-    return;
-  io_arr.resize(outarr.shape());
-  io_arr=outarr.copy();
+void BinnProc::operator() (const Map & imap, Map & omap) {
+  if (guts)
+    ((_BinnProc*) guts)->operator()(imap, omap);
 }
+
+
+
+
+
+
+
 
 
 
@@ -912,12 +961,7 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
   }
 
   const float cosa = cos(-angle), sina = sin(-angle);
-  const int
-    rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
-    rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
-
-  const Shape shf(rheight, rwidth);
-  outarr.resize(shf);
+  outarr.resize(osh);
 
   if ( ! isnormal(bg) ) {
     bg=0;
@@ -929,11 +973,11 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
   }
 
   const float
-    constinx = ( sh(1) + rheight*sina - rwidth*cosa ) / 2.0,
-    constiny = ( sh(0) - rwidth*sina - rheight*cosa ) / 2.0;
+    constinx = ( sh(1) + osh(0)*sina - osh(1)*cosa ) / 2.0,
+    constiny = ( sh(0) - osh(1)*sina - osh(0)*cosa ) / 2.0;
 
-  for ( ArrIndex x=0 ; x < shf(1) ; x++) {
-    for ( ArrIndex y=0 ; y < shf(0) ; y++) {
+  for ( ArrIndex x=0 ; x < osh(1) ; x++) {
+    for ( ArrIndex y=0 ; y < osh(0) ; y++) {
 
       const float xf = x*cosa - y*sina + constinx;
       const float yf = x*sina + y*cosa + constiny;

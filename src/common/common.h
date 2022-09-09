@@ -583,7 +583,18 @@ struct Crop {
   unsigned int bottom;     ///< Crop from bottom
   unsigned int right;     ///< Crop from right
   inline Crop(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0)
-  : top(t), left(l), bottom(b), right(r) {}
+    : top(t), left(l), bottom(b), right(r) {}
+  explicit operator bool() {
+    return top || left || bottom || right;
+  }
+  inline unsigned int operator()(unsigned dim, unsigned edge) const {
+    switch (dim) {
+    case 0: return edge ? bottom : top  ;
+    case 1: return edge ? right  : left ;
+    default: throw_error("Crop", "Invalid dimension "+toString(dim)+".");
+    }
+    return 0;
+  }
 };
 
 inline std::string toString (const Crop & crp)  {
@@ -782,13 +793,6 @@ crop(Volume & io_arr, const Crop & crp) {
 
 
 
-inline size_t
-dimOnBinn(size_t sz, unsigned int bn) {
-//return bn ? (sz + bn - 1) / bn : 1;
-  return bn ? sz / bn : 1;
-}
-
-
 
 
 struct Binn {
@@ -840,25 +844,31 @@ extern const std::string COMMON_API
 BinnOptionDesc;
 
 
-Shape COMMON_API
-binn(const Shape & sh, const Binn & ibnn);
+class BinnProc {
+private:
+  void * guts;
+public:
+  BinnProc(const Shape & ish, const Binn & bnn);
+  ~BinnProc();
+  void operator() (const Map & imap, Map & omap);
+};
 
-/// \brief Apply binning to the array.
-///
-/// @param inarr Input array.
-/// @param outarr Output array.
-/// @param binn Binning factor
-///
-void COMMON_API
-binn(const Map & inarr, Map & outarr, const Binn & bnn);
+inline int binn(int sz, unsigned bn) {
+  return bn ? sz/bn : 1 ;
+}
 
-/// \brief Apply binning to the array.
-///
-/// @param io_arr Input/output array.
-/// @param binn Binning factor
-///
-void COMMON_API
-binn(Map & io_arr, const Binn & bnn);
+inline Shape binn(const Shape & sh, const Binn & bnn) {
+  return Shape(binn(sh(0),bnn.y), binn(sh(1),bnn.x) );
+}
+
+inline void binn(const Map & imap, Map & omap, const Binn & bnn) {
+  BinnProc(imap.shape(), bnn)(imap, omap);
+}
+
+inline void binn(Map & iomap, const Binn & bnn) {
+  BinnProc(iomap.shape(), bnn)(iomap, iomap);
+}
+
 
 
 
@@ -961,7 +971,47 @@ rotate(Map & io_arr, float angle, float bg=NAN);
 
 
 
+class ManipulateMap {
 
+private:
+  const Shape ish;
+  const float ang;
+  const Crop crp;
+  BinnProc bnn;
+
+  Map rmap;
+  Map cmap;
+  Map bmap;
+
+public:
+
+  ManipulateMap(const Shape & _ish, float _ang, const Crop & _crp, const Binn & _bnn)
+    : ish(_ish)
+    , ang(_ang)
+    , crp(_crp)
+    , bnn(ish,_bnn)
+  {}
+
+  void operator() (const Map & imap, Map & omap) {
+    if ( ish != imap.shape() ) {
+      throw_error("Map manipulation",
+                  "Missmatch of input shape ("+toString(imap.shape())+")"
+                  " with expected ("+toString(ish)+").");
+    }
+    rotate(imap, rmap, ang);
+    crop(rmap, cmap, crp);
+    bnn(cmap, bmap);
+    if (!omap.size())
+      omap.reference(bmap);
+    else
+      omap.resize(bmap.shape());
+    if (omap.data() != bmap.data())
+      omap=bmap;
+  }
+
+
+
+};
 
 
 

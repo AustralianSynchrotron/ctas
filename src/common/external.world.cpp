@@ -222,7 +222,7 @@ protected :
         mcns[dim]=1;
       } else {
         offs[dim]=crp(cdim,0);
-        mcns[dim]=cnts(dim)-crp(cdim,1);
+        mcns[dim]=cnts(dim) - crp(cdim);
         cdim += sliceDim == 2 ? -1 : 1;
       }
     }
@@ -319,7 +319,6 @@ public :
     if (  memspace < 0
        || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
       throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
-
     //pthread_mutex_lock(&rwLock);
     if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, rd.data()) < 0)
       warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
@@ -846,28 +845,16 @@ struct _ReadVolBySlice  {
   unordered_map<size_t,HDFread> hdfs;
   size_t ssize;
   Shape face;
-  const float ang;
-  const Crop crp;
-  const Binn bnn;
 
-
-  _ReadVolBySlice(float _angle, Crop _crop, Binn _binn)
+  _ReadVolBySlice()
     : ilist()
     , ssize(0)
     , face()
-    , ang(_angle)
-    , crp(Crop())
-    , bnn(Binn())
   {}
 
 
-  _ReadVolBySlice(const std::deque<ImagePath> & filelist, float _angle, Crop _crop, Binn _binn)
-    : ilist()
-    , ssize(0)
-    , face()
-    , ang(_angle)
-    , crp(_crop)
-    , bnn(_binn)
+  _ReadVolBySlice(const std::deque<ImagePath> & filelist)
+    : _ReadVolBySlice()
   {
     add(filelist);
   }
@@ -894,7 +881,7 @@ struct _ReadVolBySlice  {
       add(*curI);
   }
 
-
+/*
   void sliceTraining(const Map & in, Map & rslice, Map & cslice, Map & out) {
     if (ang!=0)
       rotate(in, rslice, ang, 0.0);
@@ -909,9 +896,9 @@ struct _ReadVolBySlice  {
     else if (out.data()!=cslice.data())
       out.reference(cslice);
   }
+*/
 
-
-  bool read (long int idx, Map & rd, Map & rslice, Map & cslice, Map & out) {
+  bool read (long int idx, Map & out, const Crop & crp = Crop()) {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
       const ImagePath flnm = ilist[cfl];
@@ -920,15 +907,15 @@ struct _ReadVolBySlice  {
       if (hdfs.count(key)) {
         HDFread & hdf = hdfs.at(key);
         if (idx < cfirst + hdf.slices()) {
-          hdf.read(idx-cfirst, rd);
-          sliceTraining(rd, rslice, cslice, out);
+          hdf.read(idx-cfirst, out, crp);
+          //sliceTraining(rd, rslice, cslice, out);
           return true;
         }
         cfirst += hdf.slices();
       } else {
         if (idx==cfirst){
-          ReadImage(flnm, rd);
-          sliceTraining(rd, rslice, cslice, out);
+          ReadImage(flnm, out, crp);
+          //sliceTraining(rd, rslice, cslice, out);
           return true;
         }
         cfirst++;
@@ -936,13 +923,6 @@ struct _ReadVolBySlice  {
     }
     return false;
   }
-
-
-  bool read (long int idx, Map & out) {
-    Map rd, rslice, cslice;
-    return read(idx, rd, rslice, cslice, out);
-  }
-
 
   size_t size() const {return ssize;}
 
@@ -954,29 +934,37 @@ struct _ReadVolBySlice  {
 class ReadVolInThread : public InThread {
 
   Volume & storage;
-  _ReadVolBySlice reader;
+  Shape ish;
   Shape sh;
+  const float ang;
+  const Crop crp;
+  const Binn bnn;
+  ReadVolumeBySlice reader;
   pthread_mutex_t proglock;
-  unordered_map< pthread_t, deque<Map> > slices;
+  unordered_map< pthread_t, ImageProc> rdprocs;
+  unordered_map< pthread_t, Map> rdmaps;
 
 public:
 
   ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & _storage,
-                  float _angle, Crop _crop, Binn _binn, bool verbose=false)
+                  float _ang, Crop _crp, Binn _bnn, bool verbose=false)
     : InThread(verbose , "reading volume")
     , storage(_storage)
-    , reader(filelist, _angle, _crop, _binn)
+    , ang(_ang)
+    , crp(_crp)
+    , bnn(_bnn)
+    , reader(filelist)
   {
     if ( ! filelist.size() ) {
       storage.free();
       return;
     }
-    sh = ImageSizes(filelist[0]);
-    sh = rotate(sh, _angle);
-    sh = crop(sh, _crop);
-    sh = binn(sh, _binn);
-    bar.setSteps(reader.size());
-    storage.resize(reader.size(), sh(0), sh(1));
+    ish = ImageSizes(filelist[0]);
+    sh = rotate(ish, ang);
+    sh = crop(sh, crp);
+    sh = binn(sh, bnn);
+    bar.setSteps(reader.slices());
+    storage.resize(reader.slices(), sh(0), sh(1));
     if ( ! storage.size() )
       return;
   }
@@ -984,24 +972,21 @@ public:
 
   bool inThread (long int idx) {
 
-    if ( idx >= reader.size() )
+    if ( idx >= reader.slices() )
       return false;
 
     pthread_t me = pthread_self();
     lock();
-    if ( ! slices.count(me) )
-      slices.emplace(me, deque<Map>(4));
-    deque<Map> & myslices = slices.at(me);
+    if ( ! rdprocs.count(me) ) {
+      rdprocs.try_emplace(me, ang, crp, bnn, ish);
+      rdmaps.try_emplace(me, sh);
+    }
+    ImageProc & myrdproc = rdprocs.at(me);
+    Map & myrdmap = rdmaps.at(me);
     unlock();
-    Map islice = myslices[0];
-    Map rslice = myslices[1];
-    Map cslice = myslices[2];
-    Map bslice = myslices[3];
 
-    const bool ret = reader.read(idx, islice, rslice, cslice, bslice);
-    if ( bslice.shape() != sh )
-      throw_error("Reading volume", "Missmatching image shape.");
-    storage(idx,all,all) = bslice;
+    myrdproc.read(reader, idx, myrdmap);
+    storage(idx,all,all) = myrdmap;
     bar.update();
     return true;
 
@@ -1022,7 +1007,7 @@ ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbos
 
 
 ReadVolumeBySlice::ReadVolumeBySlice(const deque<ImagePath> & filelist)
-  : guts(new _ReadVolBySlice(filelist, 0, Crop(), Binn()))
+  : guts(new _ReadVolBySlice(filelist))
 {}
 
 
@@ -1041,8 +1026,8 @@ ReadVolumeBySlice::~ReadVolumeBySlice() {
   delete (_ReadVolBySlice*) guts;
 }
 
-void ReadVolumeBySlice::read(uint sl, Map& trg) {
-  ((_ReadVolBySlice*) guts)->read(sl, trg);
+void ReadVolumeBySlice::read(uint sl, Map& trg, const Crop & crp) {
+  ((_ReadVolBySlice*) guts)->read(sl, trg, crp);
 }
 
 size_t ReadVolumeBySlice::slices() const {
@@ -1057,6 +1042,63 @@ Shape ReadVolumeBySlice::face() const {
 
 
 
+
+ImageProc::ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish)
+  : ish(_ish)
+  , ang(_ang)
+  , crp(_crp)
+  , bnnprc(crop(rotate(ish,ang), crp),_bnn)
+{
+  if (ang == 0.0)
+    crpmap.reference(inmap);
+}
+
+void ImageProc::proc(Map & storage) {
+  if (ang != 0.0) {
+    rotate(inmap, rotmap, ang);
+    crop(rotmap, crpmap, crp);
+  }
+  bnnprc(crpmap,storage);
+}
+
+void ImageProc::proc(const Map & imap, Map & omap) {
+  if (imap.shape() != ish)
+    throw_error("ImageProc",
+                "Missmatch of input shape ("+toString(imap.shape())+")"
+                " with expected ("+toString(ish)+").");
+  if (ang==0.0 && ! crp && ! bnn) {
+    if (!omap.size()) {
+      omap.reference(imap);
+    } else if (!areSame(omap, imap)) {
+      omap.resize(ish);
+      omap = imap;
+    }
+    return;
+  }
+  inmap.resize(ish);
+  inmap = imap;
+  if (ang==0.0)
+    crop(imap, crpmap, crp);
+  proc(omap);
+}
+
+void ImageProc::read(const ImagePath & filename, Map & storage) {
+  if (ang == 0.0)
+    ReadImage(filename, crpmap, crp, ish);
+  else
+    ReadImage(filename, inmap, ish);
+  proc(storage);
+}
+
+void ImageProc::read(ReadVolumeBySlice & volRd, uint sl, Map & storage) {
+  if (volRd.face() != ish)
+    throw_error("Image reader", "Non matching shape.");
+  if (ang == 0.0)
+    volRd.read(sl, crpmap, crp);
+  else
+    volRd.read(sl, inmap);
+  proc(storage);
+}
 
 
 

@@ -250,6 +250,8 @@ void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=fal
 }
 
 
+
+
 class ProcProj {
 
 
@@ -261,7 +263,8 @@ class ProcProj {
 
   deque<Map> msksI, msks1, msks2; // shared
   Map mskF; // shared
-  Map iar, rar, car, final; // own
+  ImageProc iproc; // own
+  Map stitched, final; // own
   deque<Map> allIn, o1Stitch, o2Stitch;
 
   bool doGapsFill;
@@ -271,22 +274,7 @@ class ProcProj {
   CLmem & maskCL;
 
 
-  void procInImg(const Map & im, Map & om, FlatFieldProc * ffproc = 0){
-    if (im.shape() != st.ish)
-      throw_error(modname, "Unexpected shape of image to process.");
-    iar.resize(st.ish);
-    iar=im;
-    if (ffproc)
-      ffproc->process(iar);
-    rotate(iar, rar, st.angle);
-    crop(rar, car, st.crp);
-    binn(car, final, st.bnn);
-    om.resize(final.shape());
-    om = final;
-  }
-
-
-  static void stitch(PointF2D origin, Map & oarr,  const deque<Map> & iarr
+  static void stitch(PointF2D origin,  const deque<Map> & iarr, Map & oarr
                     ,  const deque<Map> & gprr = deque<Map>() ) {
 
     const int isz = iarr.size();
@@ -415,6 +403,7 @@ public:
   ProcProj( const StitchRules & _st, const deque<Map> & bgas, const deque<Map> & dfas
           , const deque<Map> & dgas, const deque<Map> & msas, const Path & saveMasks = Path())
     : st(_st)
+    , iproc(st.angle, st.crp, st.bnn, st.ish)
     , allIn(st.nofIn)
     , o1Stitch(st.nofIn/st.origin1size)
     , o2Stitch(st.flipUsed ? 2 : 1)
@@ -459,6 +448,9 @@ public:
                           , msas.size() ? msas[0] : zmap );
     }
 
+    if (!st.fcrp)
+      final.reference(stitched);
+
     const int mssz = msas.size();
     if ( ! mssz )
       return;
@@ -471,7 +463,7 @@ public:
       if (msas[curI].shape() != st.ish)
         throw_error(modname, "Unexpected mask shape.");
       Map msT;
-      procInImg(msas[curI], msT);
+      iproc.proc(msas[curI], msT);
       prepareMask(msT, true);
       msksI.emplace_back(msT.shape());
       msksI.back() = msT;
@@ -488,7 +480,7 @@ public:
 
     if ( st.flipUsed ) {
       msks2[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, mskF, msks2, deque<Map>());
+      stitch(st.originF, msks2, mskF, deque<Map>());
       SaveMask(mskF, "_W");
     } else
       mskF.reference(msks2[0]);
@@ -508,6 +500,7 @@ public:
 
   ProcProj(const ProcProj & other)
     : st(other.st)
+    , iproc(other.iproc)
     , ffprocs(other.ffprocs)
     , allIn(st.nofIn)
     , o1Stitch(st.nofIn/st.origin1size)
@@ -520,6 +513,8 @@ public:
   {
     if (doGapsFill)
       initCL();
+    if (!st.fcrp)
+      final.reference(stitched);
   }
 
   ~ProcProj() {
@@ -543,7 +538,7 @@ public:
       deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + orgsize) ;
       deque<Map> supplyMs( msks.size() ? msks.begin() + inidx           : msks.begin(),
                            msks.size() ? msks.begin() + inidx + orgsize : msks.begin() );
-      stitch(origin, oar[cidx], supplyIm, supplyMs);
+      stitch(origin, supplyIm, oar[cidx], supplyMs);
       if ( ! interim_name.empty() ) {
         Map cres;
         if ( origin.x * origin.y == 0.0 ) {
@@ -566,7 +561,7 @@ public:
   }
 
 
-  bool process(const deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
+  bool process(deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
 
     if (allInR.size() != st.nofIn)
       return false;
@@ -574,12 +569,11 @@ public:
     // prepare input images
     int curF=0, cur2=0, cur1=0;
     for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
-      FlatFieldProc * ffproc = 0;
       if (ffprocs.size() == 1)
-        ffproc = & ffprocs[0];
+        ffprocs[0].process(allInR[curproj]);
       else if (ffprocs.size() == st.nofIn)
-        ffproc = & ffprocs[curproj];
-      procInImg(allInR[curproj], allIn[curproj], ffproc);
+        ffprocs[curproj].process(allInR[curproj]);
+      iproc.proc(allInR[curproj], allIn[curproj]);
       if ( ! interim_name.empty() ) {
         const string sfI = st.nofIn > 1 ? toString(mask2format("@", st.nofIn), curproj) : "";
         const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
@@ -606,30 +600,30 @@ public:
     // flip stitch
     if ( st.flipUsed ) {
       o2Stitch[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, final, o2Stitch, msks2);
+      stitch(st.originF, o2Stitch, stitched, msks2);
       if ( ! interim_name.empty() )  {
         SaveDenan(interim_name.dtitle() + "_WD.tif" , o2Stitch[0]);
         SaveDenan(interim_name.dtitle() + "_WF.tif" , o2Stitch[1]);
-        SaveDenan(interim_name.dtitle() + "_W.tif" , final);
+        SaveDenan(interim_name.dtitle() + "_W.tif" , stitched);
       }
     } else {
-      final.reference(o2Stitch[0]);
+      stitched.reference(o2Stitch[0]);
     }
 
     // closing gaps left after superimposition
     if (doGapsFill) {
-      if (final.shape() != mskF.shape()) // should never happen
+      if (stitched.shape() != mskF.shape()) // should never happen
         throw_bug(modname);
-      blitz2cl(final, iomCL());
-      execKernel(gaussCL, final.shape());
-      cl2blitz(iomCL(), final);
+      blitz2cl(stitched, iomCL());
+      execKernel(gaussCL, stitched.shape());
+      cl2blitz(iomCL(), stitched);
     }
 
     // final crop
-    if ( st.fcrp != Crop() ) {
-      crop(final, st.fcrp);
+    if (st.fcrp) {
+      crop(stitched, final, st.fcrp);
       if ( ! interim_name.empty() )
-        SaveDenan( interim_name.dtitle() + "_Y.tif", final );
+        SaveDenan( interim_name.dtitle() + "_Y.tif", stitched );
     }
 
     // splits

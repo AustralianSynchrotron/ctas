@@ -129,45 +129,6 @@ ReadImage(const ImagePath & filename, Map & storage, const Shape & shp) {
 }
 
 
-class ImageReader {
-private:
-  const Shape ish;
-  const float ang;
-  const Crop crp;
-  BinnProc bnn;
-
-  Map rdmap;
-  Map rotmap;
-  Map crpmap;
-
-public:
-
-  ImageReader(const Shape _ish, float _ang, const Crop & _crp, const Binn & _bnn)
-    : ish(_ish)
-    , ang(_ang)
-    , crp(_crp)
-    , bnn(ish,_bnn)
-  {
-    if (ang==0.0)
-      crpmap.reference(rdmap);
-  }
-
-  void read(const ImagePath & filename, Map & storage) {
-
-
-    if (ang == 0.0) {
-      ReadImage(filename, rdmap, crp, ish);
-    } else {
-      ReadImage(filename, rdmap, ish);
-      rotate(rdmap, rotmap, ang);
-      crop(rotmap, crpmap, crp);
-    }
-    bnn(crpmap,storage);
-  }
-
-};
-
-
 
 /// \brief Save the array into image.
 ///
@@ -219,7 +180,6 @@ void COMMON_API
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            bool verbose, const std::string & slicedesc, float mmin, float mmax);
 
-
 inline void COMMON_API
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            bool verbose, const std::string & slicedesc) {
@@ -245,15 +205,13 @@ SaveVolume(const ImagePath & filedesc, Volume & storage) {
 
 inline void COMMON_API
 SaveVolume(const ImagePath & filedesc, Volume & storage,
-           bool verbose,
-           float mmin, float mmax) {
+           bool verbose, float mmin, float mmax) {
   SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
 }
 
 inline void COMMON_API
 SaveVolume(const ImagePath & filedesc, Volume & storage,
-           const std::string & slicedesc,
-           float mmin, float mmax) {
+           const std::string & slicedesc, float mmin, float mmax) {
   SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
 }
 
@@ -277,7 +235,7 @@ public:
   ~ReadVolumeBySlice();
   void add(const std::deque<ImagePath> & filelist);
   void add(const ImagePath & fileind);
-  void read(uint sl, Map & trg);
+  void read(uint sl, Map & trg, const Crop & crp = Crop());
   size_t slices() const;
   Shape face() const;
 };
@@ -297,6 +255,46 @@ public:
 
 
 
+class ImageProc {
+private:
+  const Shape ish;
+  const float ang;
+  const Crop crp;
+  const Binn bnn;
+  BinnProc bnnprc;
+  Map inmap;
+  Map rotmap;
+  Map crpmap;
+  void proc(Map & storage);
+public:
+  ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish);
+  ImageProc(const ImageProc & other) : ImageProc(other.ang, other.crp, other.bnn, other.ish) {} ;
+  void read(const ImagePath & filename, Map & storage);
+  void read(ReadVolumeBySlice & volRd, uint sl, Map & storage);
+  void proc(const Map & imap, Map & omap);
+
+  static void read(const ImagePath & filename, Map & storage
+                   , float _ang, const Crop & _crp, const Binn & _bnn
+                   , const Shape _ish = Shape()) {
+    ImageProc(_ang, _crp, _bnn, area(_ish) ? _ish : ImageSizes(filename))
+        .read(filename, storage);
+  }
+
+  static void read(ReadVolumeBySlice & volRd, uint sl, Map & storage
+                   , float _ang, const Crop & _crp, const Binn & _bnn
+                   , const Shape _ish = Shape()) {
+    ImageProc(_ang, _crp, _bnn, area(_ish) ? _ish : volRd.face())
+        .read(volRd, sl, storage);
+  }
+
+  static void proc(const Map & imap, Map & omap
+                   , float _ang, const Crop & _crp, const Binn & _bnn) {
+    ImageProc(_ang, _crp, _bnn, imap.shape())
+        .proc(imap,omap);
+  }
+
+
+};
 
 
 

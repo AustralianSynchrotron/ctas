@@ -833,6 +833,7 @@ public:
     : bnn( _bnn.x ? _bnn.x : _ish(1), _bnn.y ? _bnn.y : _ish(0) )
     , ish(_ish)
     , osh(binn(ish,bnn))
+    , kernelBinn(0)
   {
     if ( bnn.x == 1 && bnn.y == 1 )
       return;
@@ -1005,6 +1006,9 @@ rotate(Map & io_arr, float angle, float bg) {
   io_arr.resize(outarr.shape());
   io_arr=outarr.copy();
 }
+
+
+
 
 
 

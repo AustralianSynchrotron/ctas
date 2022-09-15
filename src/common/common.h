@@ -495,11 +495,23 @@ safe(const blitz::Array<T,N> & arr, bool preserve=true){
 }
 
 
+template<class T, int N> bool areSame(const blitz::Array<T,N> & arr1,
+                                      const blitz::Array<T,N> & arr2) {
+  return arr1.data()   == arr2.data()   &&
+         arr1.stride() == arr2.stride() &&
+         arr1.shape()  == arr2.shape();
+}
+
 
 
 
 /// \brief Shape of an 2D array.
-typedef blitz::TinyVector<ArrIndex,2> Shape;
+//typedef blitz::TinyVector<ArrIndex,2> Shape;
+
+struct Shape : public blitz::TinyVector<ArrIndex,2> {
+  Shape(ArrIndex hght=0, ArrIndex wdth=0) : blitz::TinyVector<ArrIndex,2>(hght,wdth) {}
+  Shape(const blitz::TinyVector<ArrIndex,2> & other) : blitz::TinyVector<ArrIndex,2>(other) {}
+};
 
 
 inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
@@ -584,13 +596,21 @@ struct Crop {
   unsigned int right;     ///< Crop from right
   inline Crop(unsigned int t=0, unsigned int l=0, unsigned int b=0, unsigned int r=0)
     : top(t), left(l), bottom(b), right(r) {}
-  explicit operator bool() {
+  explicit operator bool() const {
     return top || left || bottom || right;
   }
   inline unsigned int operator()(unsigned dim, unsigned edge) const {
     switch (dim) {
     case 0: return edge ? bottom : top  ;
     case 1: return edge ? right  : left ;
+    default: throw_error("Crop", "Invalid dimension "+toString(dim)+".");
+    }
+    return 0;
+  }
+  inline unsigned int operator()(unsigned dim) const {
+    switch (dim) {
+    case 0: return bottom + top  ;
+    case 1: return right  + left ;
     default: throw_error("Crop", "Invalid dimension "+toString(dim)+".");
     }
     return 0;
@@ -799,8 +819,12 @@ struct Binn {
   unsigned int x;      ///< X binning
   unsigned int y;       ///< Y binning
   inline Binn(unsigned int _x=1, unsigned int _y=1)
-  : x(_x), y(_y) {
+    : x(_x), y(_y)
+  {
     if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
+  }
+  explicit operator bool() const {
+    return x != 1 || y != 1;
   }
 };
 
@@ -966,53 +990,6 @@ rotate(const Map & inarr, Map & outarr, float angle, float bg=NAN);
 ///
 void COMMON_API
 rotate(Map & io_arr, float angle, float bg=NAN);
-
-
-
-
-
-class ManipulateMap {
-
-private:
-  const Shape ish;
-  const float ang;
-  const Crop crp;
-  BinnProc bnn;
-
-  Map rmap;
-  Map cmap;
-  Map bmap;
-
-public:
-
-  ManipulateMap(const Shape & _ish, float _ang, const Crop & _crp, const Binn & _bnn)
-    : ish(_ish)
-    , ang(_ang)
-    , crp(_crp)
-    , bnn(ish,_bnn)
-  {}
-
-  void operator() (const Map & imap, Map & omap) {
-    if ( ish != imap.shape() ) {
-      throw_error("Map manipulation",
-                  "Missmatch of input shape ("+toString(imap.shape())+")"
-                  " with expected ("+toString(ish)+").");
-    }
-    rotate(imap, rmap, ang);
-    crop(rmap, cmap, crp);
-    bnn(cmap, bmap);
-    if (!omap.size())
-      omap.reference(bmap);
-    else
-      omap.resize(bmap.shape());
-    if (omap.data() != bmap.data())
-      omap=bmap;
-  }
-
-
-
-};
-
 
 
 

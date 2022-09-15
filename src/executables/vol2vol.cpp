@@ -190,12 +190,9 @@ class SliceInThread : public InThread {
 
   };
 
+  unordered_map<pthread_t, ImageProc> rdprocs;
   unordered_map<pthread_t, Map> rdmaps;
-  unordered_map<pthread_t, Map> crmaps;
-  unordered_map<pthread_t, Map> bnmaps;
-  unordered_map<pthread_t, BinnProc> bnprocs;
   deque<CLacc> accs;
-
 
 
   bool inThread(long int idx) {
@@ -209,16 +206,12 @@ class SliceInThread : public InThread {
     const pthread_t me = pthread_self();
     lock();
 
-    if ( ! rdmaps.count(me) ) {
-      rdmaps.emplace(me, ish);
-      crmaps.emplace(me, Map());
-      bnmaps.emplace(me, Map());
-      bnprocs.try_emplace(me, crop(ish, crp), bnn);
+    if ( ! rdprocs.count(me) ) {
+      rdprocs.try_emplace(me, 0, crp, bnn, ish);
+      rdmaps.emplace(me,osh);
     }
-    Map & myrdmap = rdmaps[me];
-    Map & mycrmap = crmaps[me];
-    Map & mybnmap = bnmaps[me];
-    BinnProc & mybnproc = bnprocs.at(me);
+    ImageProc & myrdproc = rdprocs.at(me);
+    Map & myrdmap = rdmaps.at(me);
 
     if (!accs.size())
       accs.emplace_back(osh, bnz);
@@ -243,11 +236,9 @@ class SliceInThread : public InThread {
 
     unlock();
 
-    ivolRd->read(indices[idx], myrdmap);
-    crop(myrdmap, mycrmap, crp);
-    mybnproc(mycrmap, mybnmap);
-    if ( ! myacc.addme(mybnmap) )
-      ovolSv->save(sodx, mybnmap);
+    myrdproc.read(*ivolRd, indices[idx], myrdmap);
+    if ( ! myacc.addme(myrdmap) )
+      ovolSv->save(sodx, myrdmap);
 
     bar.update();
     return true;

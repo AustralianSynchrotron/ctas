@@ -978,8 +978,11 @@ public:
     pthread_t me = pthread_self();
     lock();
     if ( ! rdprocs.count(me) ) {
-      rdprocs.try_emplace(me, ang, crp, bnn, ish);
-      rdmaps.try_emplace(me, sh);
+      rdprocs.emplace(piecewise_construct,
+                      forward_as_tuple(me),
+                      forward_as_tuple(ang, crp, bnn, ish));
+      //rdprocs.try_emplace(me, ang, crp, bnn, ish);
+      rdmaps.emplace(me, sh);
     }
     ImageProc & myrdproc = rdprocs.at(me);
     Map & myrdmap = rdmaps.at(me);

@@ -207,8 +207,11 @@ class SliceInThread : public InThread {
     lock();
 
     if ( ! rdprocs.count(me) ) {
-      rdprocs.try_emplace(me, 0, crp, bnn, ish);
-      rdmaps.emplace(me,osh);
+      rdprocs.emplace(piecewise_construct,
+                      forward_as_tuple(me),
+                      forward_as_tuple(0, crp, bnn, ish));
+      //rdprocs.try_emplace(me, 0, crp, bnn, ish);
+      rdmaps.emplace(me, osh);
     }
     ImageProc & myrdproc = rdprocs.at(me);
     Map & myrdmap = rdmaps.at(me);

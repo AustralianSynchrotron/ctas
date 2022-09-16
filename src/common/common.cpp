@@ -677,19 +677,19 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
     CLmem clinarr(blitz2cl(inarr, CL_MEM_READ_ONLY));
     CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
-    cl_kernel kernelBinn3 = createKernel(binnProgram, "binn3");
+    CLkernel kernelBinn3(binnProgram, "binn3");
 
-    setArg(kernelBinn3, 0, clinarr());
-    setArg(kernelBinn3, 1, cloutarr());
-    setArg(kernelBinn3, 2, (cl_int) bnn.x);
-    setArg(kernelBinn3, 3, (cl_int) bnn.y);
-    setArg(kernelBinn3, 4, (cl_int) bnn.z);
-    setArg(kernelBinn3, 5, (cl_int) inarr.shape()(2));
-    setArg(kernelBinn3, 6, (cl_int) inarr.shape()(1));
-    setArg(kernelBinn3, 7, (cl_int) osh(2));
-    setArg(kernelBinn3, 8, (cl_int) osh(1));
+    kernelBinn3.setArg(0, clinarr());
+    kernelBinn3.setArg(1, cloutarr());
+    kernelBinn3.setArg(2, (cl_int) bnn.x);
+    kernelBinn3.setArg(3, (cl_int) bnn.y);
+    kernelBinn3.setArg(4, (cl_int) bnn.z);
+    kernelBinn3.setArg(5, (cl_int) inarr.shape()(2));
+    kernelBinn3.setArg(6, (cl_int) inarr.shape()(1));
+    kernelBinn3.setArg(7, (cl_int) osh(2));
+    kernelBinn3.setArg(8, (cl_int) osh(1));
 
-    execKernel(kernelBinn3, osh);
+    kernelBinn3.exec(osh);
     cl2blitz(cloutarr(), outarr);
 
   }  catch (...) { // full volume was too big for the gpu
@@ -702,31 +702,31 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
     Map tmpslice(osh(1), osh(0));
     CLmem cltmpslice(clAllocArray<float>(outslice.size()));
 
-    cl_kernel kernelBinn2 = createKernel(binnProgram, "binn2");
-    setArg(kernelBinn2, 0, clinslice());
-    setArg(kernelBinn2, 1, cltmpslice());
-    setArg(kernelBinn2, 2, (cl_int) bnn.x);
-    setArg(kernelBinn2, 3, (cl_int) bnn.y);
-    setArg(kernelBinn2, 4, (cl_int) inslice.shape()(1));
-    setArg(kernelBinn2, 5, (cl_int) outslice.shape()(1));
+    CLkernel kernelBinn2(binnProgram, "binn2");
+    kernelBinn2.setArg(0, clinslice());
+    kernelBinn2.setArg(1, cltmpslice());
+    kernelBinn2.setArg(2, (cl_int) bnn.x);
+    kernelBinn2.setArg(3, (cl_int) bnn.y);
+    kernelBinn2.setArg(4, (cl_int) inslice.shape()(1));
+    kernelBinn2.setArg(5, (cl_int) outslice.shape()(1));
 
-    cl_kernel kernelAddTo = createKernel(binnProgram, "addToSecond");
-    setArg(kernelAddTo, 0, cltmpslice());
-    setArg(kernelAddTo, 1, cloutslice());
+    CLkernel kernelAddTo(binnProgram, "addToSecond");
+    kernelAddTo.setArg(0, cltmpslice());
+    kernelAddTo.setArg(1, cloutslice());
 
-    cl_kernel kernelMulti = createKernel(binnProgram, "multiplyArray");
-    setArg(kernelMulti, 0, cloutslice());
-    setArg(kernelMulti, 1, (cl_float) bnn.z);
+    CLkernel kernelMulti(binnProgram, "multiplyArray");
+    kernelMulti.setArg(0, cloutslice());
+    kernelMulti.setArg(1, (cl_float) bnn.z);
 
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
       fillClArray(cloutslice(), outslice.size(), 0);
       for (int cz=0 ; cz<bnn.z ; cz++) {
         inslice = inarr(z*bnn.z+cz, all, all);
         blitz2cl(inslice, clinslice());
-        execKernel(kernelBinn2, outslice.shape());
-        execKernel(kernelAddTo, outslice.size());
+        kernelBinn2.exec(outslice.shape());
+        kernelAddTo.exec(outslice.size());
       }
-      execKernel(kernelMulti, outslice.shape());
+      kernelMulti.exec(outslice.shape());
       cl2blitz(cloutslice(), outslice);
       outarr(z, all, all) = outslice;
     }
@@ -821,7 +821,7 @@ private:
   const Shape osh;
   CLmem clinarr;
   CLmem cloutarr;
-  cl_kernel kernelBinn;
+  CLkernel kernelBinn;
 
   static const string modname;
   static cl_program binnProgram;
@@ -857,22 +857,16 @@ public:
 
     clinarr(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
     cloutarr(clAllocArray<float>(area(osh), CL_MEM_WRITE_ONLY));
-    kernelBinn = createKernel(binnProgram, "binn2");
+    kernelBinn(binnProgram, "binn2");
     if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
       throw_error(modname, "Failed to prepare for operation.");
-    setArg(kernelBinn, 0, clinarr());
-    setArg(kernelBinn, 1, cloutarr());
-    setArg(kernelBinn, 2, (cl_int) bnn.x);
-    setArg(kernelBinn, 3, (cl_int) bnn.y);
-    setArg(kernelBinn, 4, (cl_int) ish(1));
-    setArg(kernelBinn, 5, (cl_int) osh(1));
+    kernelBinn.setArg(0, clinarr());
+    kernelBinn.setArg(1, cloutarr());
+    kernelBinn.setArg(2, (cl_int) bnn.x);
+    kernelBinn.setArg(3, (cl_int) bnn.y);
+    kernelBinn.setArg(4, (cl_int) ish(1));
+    kernelBinn.setArg(5, (cl_int) osh(1));
 
-  }
-
-
-  ~_BinnProc() {
-    if (kernelBinn)
-      clReleaseKernel(kernelBinn);
   }
 
 
@@ -890,7 +884,7 @@ public:
       throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
                            " with expected ("+toString(ish)+").");
     blitz2cl(imap, clinarr());
-    execKernel(kernelBinn, osh);
+    kernelBinn.exec(osh);
     omap.resize(osh);
     cl2blitz(cloutarr(), omap);
   }

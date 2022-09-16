@@ -29,7 +29,7 @@ cl_program FlatFieldProc::ffProgram() {
 FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
                             , const Map & _dg, const Map & _ms)
   : sh( shapeMe( {_bg.shape(), _df.shape(), _dg.shape(), _ms.shape()} ) )
-  , kernel( area(sh) ? createKernel(ffProgram(), "ffm") : 0)
+  , kernel( area(sh) ? ffProgram() : 0, "ffm" )
   , io( area(sh) ? clAllocArray<float>(area(sh)) : 0)
   , bg( _bg.size() ? blitz2cl(_bg, CL_MEM_READ_ONLY) : 0)
   , df( _df.size() ? blitz2cl(_df, CL_MEM_READ_ONLY) : 0)
@@ -38,17 +38,17 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
 {
   if (!kernel)
     return;
-  setArg(kernel, 0, io());
-  setArg(kernel, 1, bg());
-  setArg(kernel, 2, df());
-  setArg(kernel, 3, dg());
-  setArg(kernel, 4, ms());
+  kernel.setArg(0, io());
+  kernel.setArg(1, bg());
+  kernel.setArg(2, df());
+  kernel.setArg(3, dg());
+  kernel.setArg(4, ms());
 }
 
 
 FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
   : sh(other.sh)
-  , kernel( area(sh) ? createKernel(ffProgram(), "ffm") : 0)
+  , kernel( area(sh) ? ffProgram() : 0, "ffm")
   , io( area(sh) ? clAllocArray<float>(area(sh)) : 0)
   , bg(other.bg)
   , df(other.df)
@@ -57,20 +57,19 @@ FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
 {
   if (!kernel)
     return;
-  setArg(kernel, 0, io());
-  setArg(kernel, 1, bg());
-  setArg(kernel, 2, df());
-  setArg(kernel, 3, dg());
-  setArg(kernel, 4, ms());
+  kernel.setArg(0, io());
+  kernel.setArg(1, bg());
+  kernel.setArg(2, df());
+  kernel.setArg(3, dg());
+  kernel.setArg(4, ms());
 }
 
 
-cl_mem FlatFieldProc::execute(const Map & _io) {
+bool FlatFieldProc::execute(const Map & _io) {
   if ( !io() || !kernel )
     return 0;
   if (_io.shape() != sh)
     throw_error("FlatCL", "Non matching input shape");
-  return ( blitz2cl(_io, io()) && execKernel(kernel, _io.size()) == CL_SUCCESS )
-      ? io() : 0;
+  return blitz2cl(_io, io()) && kernel.exec(_io.size()) == CL_SUCCESS;
 }
 

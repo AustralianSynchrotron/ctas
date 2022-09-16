@@ -132,8 +132,8 @@ class SliceInThread : public InThread {
     CLmem addmem;
     pthread_mutex_t locker;
     static cl_program binnProgram;
-    cl_kernel addKernel;
-    cl_kernel divKernel;
+    CLkernel addKernel;
+    CLkernel divKernel;
 
     CLacc(Shape _mish, unsigned _bn)
       : mish(_mish)
@@ -141,8 +141,6 @@ class SliceInThread : public InThread {
       , odx(-1)
       , cnt(0)
       , locker(PTHREAD_MUTEX_INITIALIZER)
-      , addKernel(0)
-      , divKernel(0)
     {
       if (!bn)
         throw_bug("CLacc: zero binning. Here must be size.");
@@ -159,20 +157,13 @@ class SliceInThread : public InThread {
       }
       resmem(clAllocArray<float>(area(mish)));
       addmem(clAllocArray<float>(area(mish), CL_MEM_READ_ONLY) );
-      addKernel = createKernel(binnProgram, "addToSecond");
-      setArg(addKernel, 0, addmem());
-      setArg(addKernel, 1, resmem());
+      addKernel(binnProgram, "addToSecond");
+      addKernel.setArg(0, addmem());
+      addKernel.setArg(1, resmem());
       fillClArray<float>(resmem(), area(mish), 0);
-      divKernel = createKernel(binnProgram, "multiplyArray");
-      setArg(divKernel, 0, resmem());
-      setArg(divKernel, 1, (float)1.0/bn);
-    }
-
-    ~CLacc() {
-      if (addKernel)
-        clReleaseKernel(addKernel);
-      if (divKernel)
-        clReleaseKernel(divKernel);
+      divKernel(binnProgram, "multiplyArray");
+      divKernel.setArg(0, resmem());
+      divKernel.setArg(1, (float)1.0/bn);
     }
 
     bool addme (Map & nmap) {
@@ -182,10 +173,10 @@ class SliceInThread : public InThread {
         throw_error("Sum on CL", "Wrong input image shape.");
       pthread_mutex_lock(&locker);
       blitz2cl(nmap, addmem());
-      execKernel(addKernel, area(mish));
+      addKernel.exec(area(mish));
       cnt++;
       if (cnt==bn) {
-        execKernel(divKernel, area(mish));
+        divKernel.exec(area(mish));
         cl2blitz(resmem(), nmap);
         fillClArray<float>(resmem(), area(mish), 0);
         cnt=0;

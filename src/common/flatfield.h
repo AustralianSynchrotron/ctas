@@ -39,44 +39,26 @@
 
 
 class FlatFieldProc {
-
 public:
   const Shape sh; // must be first
-
 private:
-
   static cl_program ffProgram();
-
-
-  cl_kernel kernel;
+  CLkernel kernel;
   CLmem   io;
   const CLmem bg;
   const CLmem df;
   const CLmem dg;
   const CLmem ms;
-
 public:
-
   FlatFieldProc( const Map & _bg, const Map & _df
                , const Map & _dg, const Map & _ms);
-
   FlatFieldProc(const FlatFieldProc & other);
-
-
-
-  ~FlatFieldProc() {
-    if (kernel)
-      clReleaseKernel(kernel);
-  }
-
-  cl_mem execute(const Map & _io);
-
-  Map & process(Map & _io) {
+  bool execute(const Map & _io);
+  inline Map & process(Map & _io) {
     if (execute(_io))
       cl2blitz(io(), _io);
     return _io;
   }
-
 };
 
 

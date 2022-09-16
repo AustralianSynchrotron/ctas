@@ -209,49 +209,28 @@ class KERNEL_API CTrec {
 
 private:
 
-  const int _projections;    ///< Number of projections in sinogram.
-  const int _width;          ///< Width of the reconstructed image.
-  const int _zidth;          ///< zero-padded width
+  static const std::string modname; ///< Module name.
+  static cl_program program;
+  static pthread_mutex_t ctrec_lock;
 
-  int projection_counter;          ///< Counting projections.
-  bool nextAddLineResets;          ///< If true, resets _result to 0 on next addLine.
+  const Shape ish;
+  const Shape osh;
+  const int zidth;          ///< zero-padded width
+  Contrast contrast;     ///< Type of the contrast.
+  Filter filter;       ///< Type of the filter function.
 
-  // Settable parameters
-  Contrast _contrast;     ///< Type of the contrast.
-  Filter _filter;       ///< Type of the filter function.
-
-  Map _result;
-
-  // divergent parameters.
   Line filt_window;       ///< The array containing the filter window.
   fftwf_plan planF;       ///< Forward FFT transformation.
   fftwf_plan planB;       ///< Backward FFT transformation.
 
-#ifdef OPENCL_FOUND
-
-  static cl_int err;
-  static cl_program program;
-
-  mutable cl_kernel kernelSino;
-  mutable cl_kernel kernelLine;
-
-  cl_mem clSlice;
-  cl_mem clSinoImage;
-  cl_mem  clAngles;
-  cl_sampler clSinoSampler;
-
-#endif // OPENCL_FOUND
-
-  static pthread_mutex_t ctrec_lock;
+  CLkernel kernelSino;
+  CLkernel kernelLine;
+  CLmem clSlice;
+  CLmem clSino;
+  CLmem clAngles;
 
   void prepare_sino(Map & sinogram);
 
-  /// \brief Prepares internal storage for new data.
-  ///
-  /// Mainly to be used in the conjunction with the ::addLine(),
-  /// between two complete reconstructions.
-  ///
-  void reset();
 
 public:
 
@@ -259,33 +238,14 @@ public:
 
   ~CTrec();
 
-  static Map reconstruct(Map &sinogram, Contrast cn, float arc=180, const Filter &ft=Filter(),
-                         const float center=0, float pixelSize=1.0);
+  void reconstruct(Map &sinogram, Map & slice, float center, float pixelSize=1.0);
 
-  const Map & reconstruct(Map &sinogram, const float center, float pixelSize=1.0);
+  inline static void reconstruct(Map &sinogram, Map & slice
+                                 , Contrast cn, float arc=180, const Filter &ft=Filter()
+                                 , float center=0, float pixelSize=1.0) {
+    CTrec(sinogram.shape(), cn, arc, ft).reconstruct(sinogram, slice, center, pixelSize);
+  }
 
-  /// Adding one sinogram line to the reconstruction array.
-  void addLine(Line &sinoline, const float Theta, const float center);
-
-  /// \brief Finalizes the reconstruction and returns the result.
-  ///
-  /// Intended to be used in the conjunction with the ::addLine(), as
-  /// ::reconstruct() finilizes the results. After calling this method,
-  /// next call to ::addLine() will first reset the internal results to 0.
-  ///
-  /// @param pixelSize Physical size of the pixel.
-  ///
-  const Map & result(float pixelSize=1.0);
-
-  static const std::string modname; ///< Module name.
-
-  // Set/get parameters.
-  int width() const ;
-  int projections() const;
-  void contrast(Contrast cn);
-  Contrast contrast() const ;
-  void filter(const Filter & ft);
-  Filter filter() const ;
 
 };
 
@@ -307,8 +267,8 @@ public:
 ///
 void KERNEL_API
 ts_add( Map &projection, Map &result, const Filter & filter,
-		const float center, const Contrast contrast,
-		const float angle, const int plane);
+    const float center, const Contrast contrast,
+    const float angle, const int plane);
 
 
 /// @}

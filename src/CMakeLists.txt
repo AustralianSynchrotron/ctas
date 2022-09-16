@@ -1,35 +1,24 @@
 
-
-if( NOT DEFINED no_opencl )
-
-  FIND_PACKAGE (OpenCL)
-  if (OPENCL_FOUND)
-    include_directories("${OpenCL_INCLUDE_DIRS}")
-    add_definitions(-DOPENCL_FOUND)
-    add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
-    set(OPENCL_LL "OpenCL")
-    find_package(clFFT REQUIRED)
-    set(CLFFT_LL "clFFT")
-    else()
-    message(WARNING "No OpenCL implementation found. Building for CPU only.")
-  endif()
-  
-endif()
+FIND_PACKAGE (OpenCL REQUIRED)
+include_directories("${OpenCL_INCLUDE_DIRS}")
+add_definitions(-DOPENCL_FOUND)
+add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
+set(OPENCL_LL "OpenCL")
+find_package(clFFT REQUIRED)
+set(CLFFT_LL "clFFT")
 
 macro (target_clsrc trg clf)
-if (OPENCL_FOUND)
-  set( CLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${clf}" )
-  set( CLINC "${CMAKE_CURRENT_BINARY_DIR}/${clf}.includeme" )
-  add_custom_command(
-    OUTPUT ${CLINC}
-    COMMAND cat ${CLSRC} | xxd -i > ${CLINC}
-    DEPENDS ${CLSRC}
-  )
-  target_include_directories(${trg} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-  target_sources( ${trg} PRIVATE ${CLINC} )
-  unset(CLSRC)
-  unset(CLINC)
-endif()
+set( CLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${clf}" )
+set( CLINC "${CMAKE_CURRENT_BINARY_DIR}/${clf}.includeme" )
+add_custom_command(
+  OUTPUT ${CLINC}
+  COMMAND cat ${CLSRC} | xxd -i > ${CLINC}
+  DEPENDS ${CLSRC}
+)
+target_include_directories(${trg} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_sources( ${trg} PRIVATE ${CLINC} )
+unset(CLSRC)
+unset(CLINC)
 endmacro()
 
 

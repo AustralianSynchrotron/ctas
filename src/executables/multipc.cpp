@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     warn (args.command, "The \\alpha parameter of the BAC is zero."
                         " Always produces (almost) flat absorption.");
 
-    ProgressBar bar( args.beverbose, "ipc processing", args.zD_name.size() );
+  ProgressBar bar( args.beverbose, "ipc processing", args.zD_name.size() );
 
   for (int i=0; i<args.zD_name.size(); i++) {
 

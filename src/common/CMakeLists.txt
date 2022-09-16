@@ -48,10 +48,9 @@ add_library(common SHARED
   external.world.cpp )
 target_clsrc(common binn.cl)
 target_link_libraries(common
+  tiff
   ${HDF5_LIBRARIES}
   ${ImageMagick_LIBRARIES}
-  tiff
-  #${OPENCL_LL}
   ${OpenCL_LIBRARIES}
 )
 
@@ -80,14 +79,8 @@ target_link_libraries(lipc
 add_library(ldei SHARED ldei.cpp)
 add_library(ledei SHARED ledei.cpp)
 
-add_library(experiment SHARED experiment.cpp)
-target_clsrc(experiment ff.cl)
-target_link_libraries(experiment
-  common
-)
-
 install(TARGETS
-  poptmx common kernel lipc ldei ledei experiment flatfield
+  poptmx common kernel lipc ldei ledei flatfield
   LIBRARY DESTINATION ${LIB_DESTINATION}
 )
 

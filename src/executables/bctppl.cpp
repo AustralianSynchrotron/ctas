@@ -234,31 +234,47 @@ private:
   int nshift;
   int cshift;
 
-  cl_mem clgaps0;
-  cl_mem clgaps1;
-  cl_mem clgapsF;
+  CLmem clgaps0;
+  CLmem clgaps1;
+  CLmem clgapsF;
 
   struct PerThread {
-    cl_kernel kernelFormFrame;
-    cl_kernel kernelEqNoise;
-    cl_kernel kernelFill;
-    cl_mem clwA;
-    cl_mem clwB;
-    cl_mem clim1;
-    cl_mem clim0;
+    CLkernel kernelFormFrame;
+    CLkernel kernelEqNoise;
+    CLkernel kernelFill;
+    CLmem clwA;
+    CLmem clwB;
+    CLmem clim1;
+    CLmem clim0;
     Map rdim;
     Map tim;
     Map crim;
-    PerThread( cl_kernel kFF, cl_kernel kEN, cl_kernel kF
-             , cl_mem _clim0, cl_mem _clim1, cl_mem _clwA, cl_mem _clwB)
-      : kernelFormFrame(kFF)
-      , kernelEqNoise(kEN)
-      , kernelFill(kF)
-      , clwA(_clwA)
-      , clwB(_clwB)
-      , clim1(_clim1)
-      , clim0(_clim0)
-    {}
+
+    void prepareme(const Shape & _osh, CLmem & _clgaps) {
+      kernelFormFrame(formframeProgram , "formframe");
+      kernelEqNoise(formframeProgram , "eqnoise");
+      kernelFill(formframeProgram , "gapfill");
+
+      clwA(clAllocArray<float>(area(_osh)));
+      clwB(clAllocArray<float>(area(_osh)));
+      clim1(clAllocArray<float>(area(_osh),CL_MEM_READ_ONLY));
+      clim0(clAllocArray<float>(area(_osh),CL_MEM_READ_ONLY));
+
+      kernelFormFrame.setArg(0, clwA );
+      kernelFormFrame.setArg(1, clim0 );
+      kernelFormFrame.setArg(2, clim1 );
+      kernelFormFrame.setArg(3, _clgaps );
+
+      kernelEqNoise.setArg(0, (int) _osh(1) );
+      kernelEqNoise.setArg(1, (int) _osh(0) );
+      kernelEqNoise.setArg(2, clwA );
+      kernelEqNoise.setArg(3, clwB );
+      kernelEqNoise.setArg(4, _clgaps );
+
+      kernelFill.setArg(0, (int) _osh(1) );
+      kernelFill.setArg(1, (int) _osh(0) );
+      kernelFill.setArg(2, clwB);
+    }
   } ;
   unordered_map<pthread_t,PerThread> perThread;
   unordered_map<pthread_t, FlatFieldProc> ffproc0;
@@ -266,18 +282,6 @@ private:
 
 
   ~FrameFormInThread() {
-    clReleaseMemObject(clgaps0);
-    clReleaseMemObject(clgaps1);
-    clReleaseMemObject(clgapsF);
-    for (auto& it: perThread) {
-      clReleaseKernel(it.second.kernelFormFrame);
-      clReleaseKernel(it.second.kernelEqNoise);
-      clReleaseKernel(it.second.kernelFill);
-      clReleaseMemObject(it.second.clim0);
-      clReleaseMemObject(it.second.clim1);
-      clReleaseMemObject(it.second.clwA);
-      clReleaseMemObject(it.second.clwB);
-    }
     if (imsv)
       delete imsv;
     if (imrd0)
@@ -297,35 +301,7 @@ private:
     pthread_t me(pthread_self());
     lock();
     if ( ! perThread.count(me) ) { // first run
-      unlock();
-
-      cl_mem _clim0 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
-      cl_mem _clim1 = clAllocArray<float>(area(osh),CL_MEM_READ_ONLY);
-      cl_mem _clwA = clAllocArray<float>(area(osh));
-      cl_mem _clwB = clAllocArray<float>(area(osh));
-
-      cl_kernel kernelFormFrame = createKernel(formframeProgram , "formframe");
-      setArg(kernelFormFrame, 0, _clwA );
-      setArg(kernelFormFrame, 1, _clim0 );
-      setArg(kernelFormFrame, 2, _clim1 );
-      setArg(kernelFormFrame, 3, clgaps0 );
-
-      cl_kernel kernelEqNoise = createKernel(formframeProgram , "eqnoise");
-      setArg( kernelEqNoise, 0, (int) osh(1) );
-      setArg( kernelEqNoise, 1, (int) osh(0) );
-      setArg( kernelEqNoise, 2, _clwA );
-      setArg( kernelEqNoise, 3, _clwB );
-      setArg( kernelEqNoise, 4, clgaps0 );
-
-      cl_kernel kernelFill = createKernel(formframeProgram , "gapfill");
-      setArg( kernelFill, 0, (int) osh(1) );
-      setArg( kernelFill, 1, (int) osh(0) );
-      setArg( kernelFill, 2, _clwB);
-
-      lock();
-      perThread.emplace(me,
-        PerThread( kernelFormFrame, kernelEqNoise, kernelFill
-                 , _clim0, _clim1, _clwA, _clwB));
+      perThread[me];
       ffproc0.emplace(me,canon0);
       ffproc1.emplace(me,canon1);
     }
@@ -333,6 +309,7 @@ private:
     FlatFieldProc & myff0 = ffproc0.at(me);
     FlatFieldProc & myff1 = ffproc1.at(me);
     unlock();
+    my.prepareme(osh, clgaps0);
 
     int id1 = idx;
     bool flp = false;
@@ -362,16 +339,16 @@ private:
     getSlice(1,id1,true,flp);
     #undef getSlice
 
-    cl_mem & gaps1 = flp ? clgapsF : clgaps1;
-    setArg( my.kernelFormFrame, 4, gaps1 );
-    setArg( my.kernelEqNoise, 5, gaps1 );
+    cl_mem & gaps1 = flp ? clgapsF() : clgaps1();
+    my.kernelFormFrame.setArg(4, gaps1);
+    my.kernelEqNoise.setArg(5, gaps1);
 
-    execKernel(my.kernelFormFrame, area(osh));
-    execKernel(my.kernelEqNoise, osh);
-    execKernel(my.kernelFill, osh);
-    execKernel(my.kernelFill, osh); // second call to make sure no 0-crosses were in the image
+    my.kernelFormFrame.exec(area(osh));
+    my.kernelEqNoise.exec(osh);
+    my.kernelFill.exec(osh);
+    my.kernelFill.exec(osh); // second call to make sure no 0-crosses were in the image
 
-    cl2blitz(my.clwB, my.tim);
+    cl2blitz(my.clwB(), my.tim);
     crop(my.tim, my.crim, args.cropF);
     if (args.testme >= 0) {
       SaveImage(args.outmask.dtitle() + ".tif", my.tim);
@@ -485,14 +462,14 @@ public:
       test_map.resize(gapst.shape());
       test_map = gapst;
     }
-    clgaps0 = blitz2cl(gapst, CL_MEM_READ_ONLY);
+    clgaps0(blitz2cl(gapst, CL_MEM_READ_ONLY));
     procImg(gaps, gapst, true, false);
     prepareGaps(gapst);
     if (args.testme >= 0) {
       SaveImage(test_file + "_mask_sft.tif", gapst);
       test_map += gapst;
     }
-    clgaps1 = blitz2cl(gapst, CL_MEM_READ_ONLY);
+    clgaps1(blitz2cl(gapst, CL_MEM_READ_ONLY));
     procImg(gaps, gapst, true, true);
     prepareGaps(gapst);
     if (args.testme >= 0) {
@@ -500,7 +477,7 @@ public:
       test_map += gapst;
       SaveImage(test_file + "_mask_all.tif", test_map);
     }
-    clgapsF = blitz2cl(gapst, CL_MEM_READ_ONLY);
+    clgapsF(blitz2cl(gapst, CL_MEM_READ_ONLY));
 
 
     ish = gaps.shape();
@@ -617,8 +594,9 @@ private:
     unlock();
 
     Map sino(frames(all, idx, all));
-    result(idx, all, all)
-        = rec.reconstruct(sino , 0, pixelSize); // centre is 0 after frames formation
+    Map slice;
+    rec.reconstruct(sino, slice, 0, pixelSize); // centre is 0 after frames formation
+    result(idx, all, all) = slice;
     bar.update();
     return true;
 

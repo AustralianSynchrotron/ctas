@@ -11,54 +11,14 @@ target_link_libraries(ct
   kernel
 )
 
-add_executable(ct-vol ct-vol.cpp)
-target_link_libraries(ct-vol
-  common
-  poptmx
-  kernel
-  experiment
-)
+#add_executable(ct-vol ct-vol.cpp)
+#target_link_libraries(ct-vol
+#  common
+#  poptmx
+#  kernel
+#  experiment
+#)
 
-
-add_executable(sino sino.cpp)
-target_link_libraries(sino
-  common
-  poptmx
-  experiment
-)
-
-
-
-add_executable(sino-abs sino-abs.cpp)
-target_link_libraries(sino-abs
-  common
-  poptmx
-  experiment
-)
-
-add_executable(sino-dei sino-dei.cpp)
-target_link_libraries(sino-dei
-  common
-  poptmx
-  experiment
-  ldei
-)
-
-add_executable(sino-edei sino-edei.cpp)
-target_link_libraries(sino-edei
-  common
-  poptmx
-  experiment
-  ledei
-)
-
-add_executable(sino-ipc sino-ipc.cpp)
-target_link_libraries(sino-ipc
-  common
-  poptmx
-  experiment
-  lipc
-)
 
 
 add_executable(rc2fd rc2fd.cpp)
@@ -103,40 +63,40 @@ target_link_libraries(ts
   kernel
 )
 
-add_executable(ct-abs ct-abs.cpp)
-target_link_libraries(ct-abs
-  common
-  poptmx
-  experiment
-  kernel
-)
-
-add_executable(ct-dei ct-dei.cpp)
-target_link_libraries(ct-dei
-  common
-  poptmx
-  experiment
-  kernel
-  ldei
-)
-
-add_executable(ct-edei ct-edei.cpp)
-target_link_libraries(ct-edei
-  common
-  poptmx
-  experiment
-  kernel
-  ledei
-)
-
-add_executable(ct-ipc ct-ipc.cpp)
-target_link_libraries(ct-ipc
-  common
-  poptmx
-  experiment
-  kernel
-  lipc
-)
+#add_executable(ct-abs ct-abs.cpp)
+#target_link_libraries(ct-abs
+#  common
+#  poptmx
+#  experiment
+#  kernel
+#)
+#
+#add_executable(ct-dei ct-dei.cpp)
+#target_link_libraries(ct-dei
+#  common
+#  poptmx
+#  experiment
+#  kernel
+#  ldei
+#)
+#
+#add_executable(ct-edei ct-edei.cpp)
+#target_link_libraries(ct-edei
+#  common
+#  poptmx
+#  experiment
+#  kernel
+#  ledei
+#)
+#
+#add_executable(ct-ipc ct-ipc.cpp)
+#target_link_libraries(ct-ipc
+#  common
+#  poptmx
+#  experiment
+#  kernel
+#  lipc
+#)
 
 
 add_executable(simulate-ipc simulate-ipc.cpp)
@@ -182,13 +142,6 @@ target_link_libraries(bctppl
 
 
 
-add_executable(test test.cpp)
-target_link_libraries(test
-  common
-  poptmx
-)
-
-
 
 
 
@@ -201,9 +154,8 @@ target_link_libraries(test
 
 set( all_targets
   multipc ipc dei edei norm
-  sino sino-abs sino-dei sino-edei sino-ipc
-  ct ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ts rc2fd proj v2v test
+  ct #ct-vol ct-abs ct-dei ct-edei ct-ipc
+  ts rc2fd proj v2v
   bctppl
 )
 

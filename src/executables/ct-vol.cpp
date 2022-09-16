@@ -36,7 +36,7 @@
 #include <queue>
 #include "../common/common.h"
 #include "../common/kernel.h"
-#include "../common/experiment.h"
+////#include "../common/experiment.h"
 #include "../common/abs.h"
 #include "../common/poptmx.h"
 
@@ -55,7 +55,7 @@ struct clargs {
   float angle;           ///< Angle of the sino slicing.
   float arc;
   Crop crp; ///< Crop input projection image
-  Dcenter center;               ///< Rotation center.
+////  Dcenter center;               ///< Rotation center.
   bool beverbose;       ///< Be verbose flag
   bool SaveInt;         ///< Save image as 16-bit integer.
 

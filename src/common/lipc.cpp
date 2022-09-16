@@ -92,10 +92,13 @@ static int closest_factorable(int n, const vector<int> & primes) {
 #endif // OPENCL_FOUND
 
 
-IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
-  sh(_sh),
-  clmid(0),
-  clfftTmpBuff(0)
+IPCprocess::IPCprocess( const Shape & _sh, float d2b)
+  : sh(_sh)
+  , kernelApplyAbsFilter(oclProgram, "applyAbsFilter")
+  , kernelApplyPhsFilter(oclProgram, "applyPhsFilter")
+  , kernelApply00(oclProgram, "apply00")
+  , clmid(0)
+  , clfftTmpBuff(0)
 {
 
   if (sh(0) < 3 || sh(1) < 3)
@@ -112,21 +115,19 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
                          (size_t) closest_factorable(2*sh(0)-1, {2,3,5,7})};
   mid.resize(msh[1], msh[0]);
 
-  clmid = clAllocArray<float>(2*mid.size());
-  kernelApplyAbsFilter = createKernel(oclProgram, "applyAbsFilter");
-  setArg(kernelApplyAbsFilter, 0, clmid);
-  setArg(kernelApplyAbsFilter, 1, (cl_int) msh[0]);
-  setArg(kernelApplyAbsFilter, 2, (cl_int) msh[1]);
-  setArg(kernelApplyAbsFilter, 3, (cl_float) d2b );
+  clmid(clAllocArray<float>(2*mid.size()));
 
-  kernelApplyPhsFilter = createKernel(oclProgram, "applyPhsFilter");
-  setArg(kernelApplyPhsFilter, 0, clmid);
-  setArg(kernelApplyPhsFilter, 1, (cl_int) msh[0]);
-  setArg(kernelApplyPhsFilter, 2, (cl_int) msh[1]);
-  setArg(kernelApplyPhsFilter, 3, (cl_float) d2b );
+  kernelApplyAbsFilter.setArg(0, clmid());
+  kernelApplyAbsFilter.setArg(1, (cl_int) msh[0]);
+  kernelApplyAbsFilter.setArg(2, (cl_int) msh[1]);
+  kernelApplyAbsFilter.setArg(3, (cl_float) d2b );
 
-  kernelApply00 = createKernel(oclProgram, "apply00");
-  setArg(kernelApply00, 0, clmid);
+  kernelApplyPhsFilter.setArg(0, clmid());
+  kernelApplyPhsFilter.setArg(1, (cl_int) msh[0]);
+  kernelApplyPhsFilter.setArg(2, (cl_int) msh[1]);
+  kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
+
+  kernelApply00.setArg(0, clmid);
 
   cl_int err;
   size_t clfftTmpBufSize = 0;
@@ -138,7 +139,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
        CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
     throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
   if (clfftTmpBufSize)
-    clfftTmpBuff = clAllocArray<float>(clfftTmpBufSize);
+    clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize));
 
 
   #else // OPENCL_FOUND
@@ -177,10 +178,6 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b) :
 
 IPCprocess::~IPCprocess() {
     #ifdef OPENCL_FOUND
-    if (clmid)
-      clReleaseMemObject(clmid);
-    if (clfftTmpBuff)
-      clReleaseMemObject(clfftTmpBuff);
     clfftDestroyPlan(&clfft_plan);
     clfftTeardown( );
     #else // OPENCL_FOUND
@@ -193,7 +190,7 @@ IPCprocess::~IPCprocess() {
 #ifdef OPENCL_FOUND
 cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   cl_int err;
-  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid, NULL, clfftTmpBuff);
+  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid(), NULL, clfftTmpBuff());
   if ( CL_SUCCESS != err )
     throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");
   err = clFinish(CL_queue);
@@ -218,13 +215,13 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
 
   #ifdef OPENCL_FOUND
 
-  blitz2cl(mid, clmid);
+  blitz2cl(mid, clmid());
   clfftExec(CLFFT_FORWARD);
   // -1 in the next string is here to exclude 0,0 which is done in apply00
-  execKernel( comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter, mid.size() - 1);
-  execKernel( kernelApply00, 1);
+  (comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter).exec(mid.size() - 1);
+  kernelApply00.exec(1);
   clfftExec(CLFFT_BACKWARD);
-  cl2blitz(clmid, mid);
+  cl2blitz(clmid(), mid);
   out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));
 
   #else // OPENCL_FOUND
@@ -233,7 +230,6 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
   out = real(mid)/mid.size();
-
 
   #endif // OPENCL_FOUND
 

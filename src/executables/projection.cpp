@@ -268,7 +268,7 @@ class ProcProj {
   deque<Map> allIn, o1Stitch, o2Stitch;
 
   bool doGapsFill;
-  cl_kernel gaussCL;
+  CLkernel gaussCL;
   CLmem iomCL;
   CLmem maskCL_R;
   CLmem & maskCL;
@@ -389,12 +389,12 @@ class ProcProj {
     iomCL(clAllocArray<float>(mskF.size()));
     if (!maskCL())
       maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
-    gaussCL = createKernel(proj_oCLprog, "gauss");
-    setArg(gaussCL, 0, int(mskF.shape()(1)));
-    setArg(gaussCL, 1, int(mskF.shape()(0)));
-    setArg(gaussCL, 2, iomCL());
-    setArg(gaussCL, 3, maskCL());
-    setArg(gaussCL, 4, float(st.sigma) );
+    gaussCL(proj_oCLprog, "gauss");
+    gaussCL.setArg(0, int(mskF.shape()(1)));
+    gaussCL.setArg(1, int(mskF.shape()(0)));
+    gaussCL.setArg(2, iomCL());
+    gaussCL.setArg(3, maskCL());
+    gaussCL.setArg(4, float(st.sigma) );
   }
 
 
@@ -408,7 +408,6 @@ public:
     , o1Stitch(st.nofIn/st.origin1size)
     , o2Stitch(st.flipUsed ? 2 : 1)
     , doGapsFill(false)
-    , gaussCL(0)
     , maskCL_R(0)
     , maskCL(maskCL_R)
   {
@@ -517,10 +516,6 @@ public:
       final.reference(stitched);
   }
 
-  ~ProcProj() {
-    if (gaussCL)
-      clReleaseKernel(gaussCL);
-  }
 
 
   void sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks
@@ -615,7 +610,7 @@ public:
       if (stitched.shape() != mskF.shape()) // should never happen
         throw_bug(modname);
       blitz2cl(stitched, iomCL());
-      execKernel(gaussCL, stitched.shape());
+      gaussCL.exec(stitched.shape());
       cl2blitz(iomCL(), stitched);
     }
 

@@ -38,16 +38,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <gsl/gsl_sf_bessel.h> // for Bessel functions
-
-
-
-
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#else
 #include <unistd.h>
-#endif
 
 
 using namespace std;
@@ -324,407 +315,99 @@ filter_line(Line &ln, const Line &f_win,
     ln = _ln;
 }
 
-/// \brief Projects one line onto the plane.
-///
-/// @param sino Line to be projected.
-/// @param result Plane to project to.
-/// @param Theta Rotation angle.
-/// @param center Deviation of the rotation center.
-///
-static void
-project_line(const Line &sino, Map &result, float Theta, float center) {
-
-  int pixels = sino.size();
-  float abcenter = abs(center);
-  int nPp = pixels/2;
-  float radius =  nPp - abcenter;
-
-  Map _result(safe(result));
-  float *resultp = _result.data();
-  Line _sino(safe(sino));
-  const float *sinop = _sino.data();
-
-  int ncos_theta = (int) (TR_conf * cos(Theta));
-  int nsin_theta = (int) (TR_conf * sin(Theta));
-  int t_axis_cp  = (int) (TR_conf *
-                          ( center + ( 1 - cos(Theta) - sin(Theta) ) * pixels / 2.0 ));
-
-  int t_axis, delta;
-  float *tresultp;
-  for ( int xpix = (int)(abcenter) ; xpix < (int)(pixels-abcenter) ; xpix++) {
-    delta = (nPp - xpix);
-    delta = (int) (sqrt(radius*radius - delta*delta ) - 1) ;
-    t_axis = t_axis_cp + xpix * ncos_theta;
-    tresultp = resultp + pixels*xpix;
-    for ( int ypix = nPp - delta; ypix < nPp+delta ; ypix++)
-      *(tresultp + ypix) +=
-        *( sinop + ( t_axis + ypix * nsin_theta ) / TR_conf );
-  }
-
-  if (result.data() != _result.data())
-    result = _result;
-}
-
-
-/// \brief Projects the sinogram.
-///
-/// @param sinogram Sinogram to be projected
-/// @param result The result to store the final projection.
-/// @param center Rotation center.
-///
-static inline void
-project_sino(const Map &sinogram, Map &result, float center) {
-  //int pixels = sinogram.columns();
-  int thetas = sinogram.rows();
-  for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-    Line sinoline = sinogram(iTheta, all);
-    project_line(sinoline, result, (M_PI * iTheta)/thetas, center);
-  }
-}
-
-
-
-
-
-
-
-/// \brief Thread distributor for the line-per-thread approach.
-///
-/// This class collects all the information and data needed for the
-/// multithreaded backprojection and then can be used by
-/// independent threads to give them next portion of work: one line
-/// with the rotation angle of this line. I.e. it distributes the work
-/// over any number of threads.
-///
-class line_distributor {
-
-private:
-
-  int iTheta;					///< Current projection index.
-  int thetas;					///< Total number of projections.
-  const Map & sinogram;        ///< (Filtered!) sinogram.
-  Map & _result;				///< Result array.
-  float _center;				///< Deviation of the rotation axis.
-
-  pthread_mutex_t lock;         ///< Thread mutex used in the data distribution.
-
-public:
-
-  /// \brief Constructor.
-  ///
-  /// @param _sinogram  (Filtered!) input sinogram.
-  /// @param _res Output result.
-  /// @param _cent Deviation of the rotation axis.
-  ///
-  line_distributor(const Map & _sinogram, Map & _res, float _cent) :
-    sinogram(_sinogram),
-    _result(_res),
-    _center(_cent)
- {
-    iTheta = 0;
-    thetas = sinogram.rows();
-    if ( pthread_mutex_init(&lock, NULL) != 0 )
-      throw_error("line_distributor", "Failed to initialize the mutex.");
-  }
-
-  /// \brief Destructor.
-  inline ~line_distributor() {
-    pthread_mutex_destroy(&lock);
-  }
-
-  /// \brief Resulting array.
-  ///
-  /// @return Array where the result is strored.
-  ///
-  inline Map & result() const {return _result;}
-
-  /// \brief Rotation center.
-  ///
-  /// @return Deviation of the rotation axis from the center of the sinogram.
-  ///
-  inline float center() const {return _center;}
-
-  /// \brief Destributor.
-  ///
-  /// @param Theta Rotation angle of the line.
-  /// @param sinoline Line to be projected.
-  ///
-  /// @return \c true if the thread should process the job, \c false if the
-  /// global work is finished and the thread should exit.
-  ///
-  inline bool distribute(float *Theta, Line &sinoline) {
-    pthread_mutex_lock(&lock);
-    bool returned = iTheta < thetas;
-    if ( returned ) {
-      sinoline.reference( sinogram(iTheta, all) );
-      *Theta = (M_PI * iTheta)/thetas;
-      iTheta++;
-    }
-    pthread_mutex_unlock(&lock);
-    return returned;
-  }
-
-};
-
-/// \brief Work for thread in the line-per-thread approach.
-///
-/// @param _args Arguments: distributor.
-///
-/// @return No return.
-///
-static inline void *
-project_line_thr ( void * _args) {
-  line_distributor * args = (line_distributor *) _args;
-  Map & result = args->result();
-  float center = args->center();
-
-  Line sinoline;
-  float Theta;
-  while ( args->distribute( &Theta, sinoline )  )
-    project_line ( sinoline, result, Theta, center);
-  return 0;
-}
-
-/// \brief Projects the sinogram using multithreaded approach.
-///
-/// @param sinogram Sinogram to be projected
-/// @param result The result to store the final projection.
-/// @param center Rotation center.
-/// @param threads Number of threads.
-///
-static inline void
-project_sino( const Map &sinogram, Map &result, float center, int threads ) {
-
-  if (threads == 1) {
-    project_sino (sinogram, result, center);
-    return;
-  }
-
-  // Here I will assume that all threads can write to the same result array
-  // without the interference. However, it is not absolutely correct, but
-  // even if a small number of threads are interfering, the influence
-  // can be hardly noticed.
-  //
-  // If you want to avoid the interference effect, you should create
-  // line_distributor for each thread with it's own result array and then
-  // sum all these results after the threads had finished.
-
-  line_distributor args(sinogram, result, center);
-  vector<pthread_t> ntid(threads);
-
-  for (int ith = 0 ; ith < threads ; ith++)
-    if ( pthread_create( & ntid[ith], NULL, project_line_thr, &args ) )
-      throw_error("project sino in thread", "Can't create thread.");
-
-  for (int ith = 0 ; ith < threads ; ith++)
-    pthread_join( ntid[ith], 0);
-
-}
-
-
-
-
 
 
 const string CTrec::modname = "reconstruction";
 pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
 #ifdef OPENCL_FOUND
 cl_program CTrec::program = 0;
-cl_int CTrec::err = CL_SUCCESS;
 #endif // OPENCL_FOUND
 
 
-CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft) :
-  _width(sinoshape(1)),
-  _projections(sinoshape(0)),
-  _zidth(pow(2, ceil(log2(2*_width-1)))),
-  projection_counter(0),
-  nextAddLineResets(true),
-  _result(_width,_width),
-#ifdef OPENCL_FOUND
-  kernelSino(0),
-  kernelLine(0),
-  clSlice(0),
-  clSinoImage(0),
-  clAngles(0),
-#endif // OPENCL_FOUND
-  _contrast(cn),
-  _filter(ft)
+CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
+  : ish(sinoshape)
+  , osh(ish(1),ish(1))
+  , zidth(pow(2, ceil(log2(2*ish(1)-1))))
+  , contrast(cn)
+  , filter(ft)
 {
 
-  filter(_filter);
+  if (ish(1) < 2)
+    throw_error (modname, "Number of pixels in the CT reconstruction less than 2.");
+  if (!ish(0))
+    throw_error (modname, "Zero projections in sinogram.");
 
-#ifdef OPENCL_FOUND
   pthread_mutex_lock(&ctrec_lock);
-#endif // OPENCL_FOUND
-
-  try {
-
-    if (_width <= 1)
-      throw_error (modname, "Number of pixels in the CT reconstruction "
-                   + toString(_width) + ": less or equal to 1.");
-    planF = safe_fftwf_plan_r2r_1d (_zidth, 0, FFTW_R2HC);
-    planB = safe_fftwf_plan_r2r_1d (_zidth, 0, FFTW_HC2R);
-
-
-#ifdef OPENCL_FOUND
-
-    if (!program) {
-      char ctsrc[] = {
-        #include "ct.cl.includeme"
-      };
-      program = initProgram( ctsrc, sizeof(ctsrc), CTrec::modname );
-    }
-
-    if (program) {
-
-      try {
-
-        kernelSino = createKernel (program, "ct_sino");
-        kernelLine = createKernel (program, "ct_line");
-        clSlice =  blitz2cl(_result, CL_MEM_WRITE_ONLY);
-        setArg(kernelSino, 0, clSlice);
-        setArg(kernelLine, 0, clSlice);
-        cl_image_format format = {CL_INTENSITY, CL_FLOAT};
-        clSinoImage = clCreateImage2D( CL_context, CL_MEM_READ_ONLY, &format, _width, _projections, 0, 0, &err);
-#warning: Yes, I know it is depricated. But. The new function clCreateImage segfaults.
-//        cl_image_desc image_desc = {CL_MEM_OBJECT_IMAGE2D, _width, _projections, 0, 1, 0, 0, 0, 0, NULL};
-//        clSinoImage = clCreateImage( CL_context, CL_MEM_READ_ONLY, &format, &image_desc, 0, &err);
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not create OpenCL 2D image for sinogram: "
-                      + toString(err) );
-        setArg(kernelSino, 1, clSinoImage);
-        setArg(kernelLine, 1, clSinoImage);
-
-        setArg(kernelSino, 2, (cl_int) _width);
-        setArg(kernelLine, 2, (cl_int) _width);
-
-        setArg(kernelSino, 3, (cl_int) _projections);
-
-        blitz::Array<cl_float2, 1> angles(_projections);
-        for (size_t i = 0; i < _projections; i++) {
-          float th = arc * M_PI * i / ( _projections * 180.0 );
-          angles(i).s[0] = sinf(th);
-          angles(i).s[1] = cosf(th);
-        }
-        clAngles = blitz2cl(angles, CL_MEM_READ_ONLY);
-        setArg(kernelSino, 5, clAngles);
-
-        clSinoSampler = clCreateSampler ( CL_context, false, CL_ADDRESS_CLAMP_TO_EDGE, CL_FILTER_LINEAR, &err) ;
-//        const cl_sampler_properties sam_prop[] = {CL_SAMPLER_NORMALIZED_COORDS, CL_FALSE,
-//                                                  CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP_TO_EDGE,
-//                                                  CL_SAMPLER_FILTER_MODE, CL_FILTER_LINEAR,
-//                                                  0 };
-//        clSinoSampler = clCreateSamplerWithProperties(CL_context, sam_prop, &err) ;
-        if (err != CL_SUCCESS)
-          throw_error(modname, "Could not create OpenCL sampler for sinogram: "
-                      + toString(err) );
-        setArg(kernelSino, 6, clSinoSampler);
-        setArg(kernelLine, 5, clSinoSampler);
-
-      } catch (CtasErr errh) {
-        warn(modname,
-             "Could not create OpenCL infrastructure (see above)."
-             " Will perform CPU-based reconstruction.");
-      }
-
-    }
-#endif // OPENCL_FOUND
-
-    reset();
-
-  } catch (...) {
-#ifdef OPENCL_FOUND
-    pthread_mutex_unlock(&ctrec_lock);
-#endif // OPENCL_FOUND
-    throw;
+  if (!program) {
+    char ctsrc[] = {
+      #include "ct.cl.includeme"
+    };
+    program = initProgram( ctsrc, sizeof(ctsrc), modname);
   }
-
-#ifdef OPENCL_FOUND
   pthread_mutex_unlock(&ctrec_lock);
-#endif // OPENCL_FOUND
+  if (!program)
+    throw_error(modname, "Failed to compile CT CL program.");
+
+  filt_window.resize(zidth);
+  filter.fill(filt_window);
+  filt_window *= zidth / (float) ish(1);
+  if ( contrast == Contrast::REF )
+    filt_window(0)=0.0;
+  planF = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_R2HC);
+  planB = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_HC2R);
+
+  clSlice(clAllocArray<float>(area(ish), CL_MEM_WRITE_ONLY));
+  clSino(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
+  blitz::Array<cl_float2, 1> angles(ish(0));
+  for (size_t i = 0; i < ish(0); i++) {
+    float th = arc * M_PI * i / ( ish(0) * 180.0 );
+    angles(i).s[0] = sinf(th);
+    angles(i).s[1] = cosf(th);
+  }
+  clAngles(blitz2cl(angles, CL_MEM_READ_ONLY));
+
+  kernelSino(program, "fbp");
+  kernelSino.setArg(0, clSlice);
+  kernelSino.setArg(1, clSino);
+  kernelSino.setArg(2, (cl_int) ish(1));
+  kernelSino.setArg(3, (cl_int) ish(0));
+  kernelSino.setArg(5, clAngles);
 
 }
 
 
 /// \brief Destructor
 CTrec::~CTrec(){
-#ifdef OPENCL_FOUND
-  pthread_mutex_lock(&ctrec_lock);
-  clReleaseSampler(clSinoSampler);
-  clReleaseMemObject(clSinoImage);
-  clReleaseMemObject(clSlice);
-  clReleaseMemObject(clAngles);
-  clReleaseKernel(kernelLine);
-  clReleaseKernel(kernelSino);
-  pthread_mutex_unlock(&ctrec_lock);
-#endif // OPENCL_FOUND
   safe_fftw_destroy_plan(planF);
   safe_fftw_destroy_plan(planB);
 }
 
 
-#include <time.h>
-
-Map
-CTrec::reconstruct(Map &sinogram, Contrast cn, float arc, const Filter &ft,
-                   const float center, float pixelSize) {
-
-  CTrec rec( sinogram.shape(), cn, arc, ft );
-
-
-  if ( nof_threads() == 1
-#ifdef OPENCL_FOUND
-       || rec.kernelSino
-#endif // OPENCL_FOUND
-     ) {
-    rec.reconstruct(sinogram, center);
-  } else {
-
-    // Implementing many threads per single sino approach
-
-    if ( abs(center) >= rec._width/2 )
-      throw_error(modname, "In static reconstruction."
-                  " The rotation center is outside the image."
-                  " Image width: " + toString(rec._width) + ", the deviation"
-                  " of the rotation axis from the center of the image: "
-                  + toString(center) + ".");
-
-    rec.prepare_sino(sinogram);
-    project_sino(sinogram, rec._result, center, nof_threads());
-
-  }
-
-  return rec.result(pixelSize);
-
-}
-
 void CTrec::prepare_sino(Map &sinogram) {
 
+  if (sinogram.shape() != ish )
+
   sinogram.reference(safe(sinogram));
-  if (_contrast == Contrast::ABS) {
+  if (contrast == Contrast::ABS) {
     unzero(sinogram);
     sinogram = -log(sinogram);
   }
 
-  const int zShift = ( _zidth - _width ) / 2;
+  const int zShift = ( zidth - ish(1) ) / 2;
   const int thetas = sinogram.rows();
-  Line zsinoline(_zidth); // zero-padded sinoline.
+  Line zsinoline(zidth); // zero-padded sinoline.
 
-  if ( _contrast != Contrast::FLT ) {
+  if ( contrast != Contrast::FLT ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-
       Line sinoline = sinogram(iTheta, all);
-
       zsinoline = 0.0;
-      zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
+      zsinoline(blitz::Range(zShift, zShift+ish(1))) = sinoline;
       filter_line(zsinoline, filt_window, &planF, &planB);
-      sinoline = zsinoline(blitz::Range(zShift, zShift+_width));
-
+      sinoline = zsinoline(blitz::Range(zShift, zShift+ish(1)));
     }
   }
 
-  if ( _contrast == Contrast::REF ) {
+  if ( contrast == Contrast::REF ) {
     for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
       Line sinoline = sinogram(iTheta, all);
       partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
@@ -742,254 +425,32 @@ void CTrec::prepare_sino(Map &sinogram) {
 /// represents filtered sinogram.
 /// @param center Rotation center.
 ///
-const Map &
-CTrec::reconstruct(Map &sinogram, float center, float pixelSize) {
-
-  if ( sinogram.columns() != _width )
-    throw_error ( modname, "The width of the input sinogram"
-                  " (" + toString(sinogram.columns()) + ") does not match the"
-                  " requested reconstruction width "
-                  " (" + toString(_width) + ")." );
-  if ( _projections != 1  &&  _projections != sinogram.rows() )
-    throw_error ( modname, "The height of the input array"
-                  " (" + toString(sinogram.rows()) + ") does not match the"
-                  " one used in construction of this instance of CTrec"
-                  " (" + toString(_projections) + ")." );
-  if ( abs(center) >= _width/2 )
-    throw_error(modname, "The rotation center is outside the image:"
-                " Image width: " + toString(_width) + ", the deviation"
-                " of the rotation axis from the center of the image: "
-                + toString(center) + ".");
-
-  prepare_sino(sinogram);
-
-  reset();
-
-#ifdef OPENCL_FOUND
-  if (kernelSino) {
-    const size_t origin[3] = {0, 0, 0};
-    const size_t region[3] = { (size_t) _width, (size_t) _projections, 1};
-    // using data is safe here: was made safe in prepare_sino
-    err = clEnqueueWriteImage( CL_queue, clSinoImage, CL_FALSE,
-                               origin, region, 0, 0, sinogram.data(), 0, 0, 0);
-    if (err != CL_SUCCESS)
-      throw_error(modname, "Could not write OpenCL 2D image of sinogram: " + toString(err) );
-
-    setArg(kernelSino, 4, (cl_float) center);
-    execKernel(kernelSino, _width*_width);
-
-  } else {
-#endif // OPENCL_FOUND
-
-    project_sino(sinogram, _result, center);
-
-#ifdef OPENCL_FOUND
-  }
-#endif // OPENCL_FOUND
-
-  projection_counter += _projections;
-  return result(pixelSize);
-
-}
-
-
-/// \brief Core function to add a projection line into the reconstruction.
-///
-/// @param Theta Projection angle.
-/// @param sinoline Projection data.
-/// @param center Deviation of the rotation center.
-///
 void
-CTrec::addLine(Line &sinoline, const float Theta, const float center) {
+CTrec::reconstruct(Map &sinogram, Map & slice, float center, float pixelSize) {
 
-  if ( sinoline.size() != _width )
-    throw_error ( modname, "The width of the input sinogram line"
-                  " (" + toString(sinoline.size()) + ") does not match the"
-                  " requested reconstruction width "
-                  " (" + toString(_width) + ")." );
-  if ( abs(center) >= _width/2 )
-    throw_error(modname, "The rotation center is outside the image:"
-                " Image width: " + toString(_width) + ", the deviation"
-                " of the rotation axis from the center of the image: "
-                + toString(center) + ".");
-
-  if (nextAddLineResets)
-    reset();
-
-  sinoline.reference(safe(sinoline));
-  if (_contrast == Contrast::ABS) {
-    unzero(sinoline);
-    sinoline = -log(sinoline);
-  }
-
-  if ( _contrast != Contrast::FLT ) {
-
-    const int zShift = ( _zidth - _width ) / 2;
-    Line zsinoline(_zidth); // zero-padded sinoline.
-
-    zsinoline = 0;
-    zsinoline(blitz::Range(zShift, zShift+_width)) = sinoline;
-    filter_line(zsinoline, filt_window, &planF, &planB);
-    sinoline = zsinoline(blitz::Range(zShift, zShift+_width));
-
-  }
-
-  if ( _contrast == Contrast::REF )
-    partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
-
-
-#ifdef OPENCL_FOUND
-  if (kernelLine) {
-
-    const size_t origin[3] = {0, 0, 0};
-    const size_t region[3] = { (size_t) _width, 1, 1};
-
-    err = clEnqueueWriteImage( CL_queue, clSinoImage, CL_FALSE,
-                               origin, region, 0, 0, sinoline.data(), 0, 0, 0);
-    if (err != CL_SUCCESS)
-      throw_error(modname, "Could not write OpenCL 2D image of sinoline: "
-                  + toString(err) );
-
-    setArg(kernelLine, 3, (cl_float) center);
-
-    cl_float2 cossin;
-    cossin.s[0] = sinf(Theta);
-    cossin.s[1] = cosf(Theta);
-    setArg(kernelLine, 4, cossin);
-    execKernel(kernelLine, _width*_width);
-    projection_counter++;
-    return;
-
-  }
-#endif // OPENCL_FOUND
-
-  project_line(sinoline, _result, Theta, center);
-  projection_counter++;
-
-}
-
-
-/// The result of the reconstruction procedure is not normalized to represent
-/// the real physical values because the CT algorithm, for the simplicity does not know
-/// all parameters needed. This function will do the normalization of the result array.
-/// If the array was reconstructed using the CTrec::reconstruct() or CTrec::addLine() methods,
-/// with the correct physical values on input, after the normalization it will represent
-/// correct values of:
-/// \f$\mu\f$ - for the Contrast::ABS
-/// \f$\delta\f$ - for the Contrast::PHS and Contrast::REF.
-const Map &
-CTrec::result(float pixelSize) {
-
-  if ( ! projection_counter ) // _result was already finilized (or nothing was reconstructed).
-    return _result;
-
-  if ( _projections != 1  &&  _projections != projection_counter )
-    warn(modname, "Projection counter of the reconstructed algorithm"
-         " (" + toString(projection_counter) + ")"
-         " is not equal to the requested number of projections"
-         " (" + toString(_projections) + ")."
-         " Possibly forgot to CTrec::reset() between two reconstructions."
-         " Developper's error.");
-
+  if ( sinogram.shape() != ish )
+    throw_error ( modname, "Shape of input sinogram (" + toString(sinogram.shape()) + ")"
+                           " does not match initial (" + toString(ish) + ").");
+  if ( abs(center) >= ish(1)/2 )
+    throw_error(modname, "The rotation center "+toString(center)+
+                         " is outside the image width " + toString(ish(1)) + ".");
   if ( pixelSize <= 0 ) {
     warn(modname, "Impossible pixel size (" + toString(pixelSize) + ")."
     " Using 1.0 instead.");
     pixelSize=1.0;
   }
 
-#ifdef OPENCL_FOUND
-  if (kernelLine)
-    cl2blitz(clSlice, _result);
-#endif // OPENCL_FOUND
-
+  prepare_sino(sinogram);
+  blitz2cl(sinogram, clSino());
+  kernelSino.setArg(4, (cl_float) center);
+  kernelSino.exec(osh);
+  slice.resize(osh);
+  cl2blitz(clSlice(), slice);
   // \Delta\Theta = \pi/thetas comes from the integration over \Theta.
   // The pixelSize is missing inside the CT algorithm in the filtering function Filter::fill().
-  _result *= M_PI / ( pixelSize * projection_counter );
-
-  projection_counter=0;
-  nextAddLineResets=true;
-  return _result;
+  slice *= M_PI / (pixelSize * ish(0));
 
 }
-
-
-void CTrec::reset() {
-
-  nextAddLineResets=false;
-  projection_counter=0;
-
-  _result=0.0;
-
-#ifdef OPENCL_FOUND
-  if (kernelLine)
-    blitz2cl(_result, clSlice);
-
-#endif // OPENCL_FOUND
-
-
-}
-
-
-
-
-
-
-
-/// \brief Width of the reconstructed image.
-///
-/// @return Width of the reconstructed image.
-///
-int
-CTrec::width() const {
-  return _width;
-}
-
-/// \brief Type of the contrast.
-///
-/// @return Type of the contrast.
-///
-Contrast
-CTrec::contrast() const {
-  return _contrast;
-}
-
-/// \brief Type of the filter function.
-///
-/// @return Type of the filter function.
-///
-Filter
-CTrec::filter() const {
-  return _filter;
-}
-
-
-/// \brief Changes type of the contrast.
-///
-/// @param cn New contrast type.
-///
-void
-CTrec::contrast(Contrast cn){
-  _contrast=cn;
-}
-
-/// \brief Changes type of the filter function.
-///
-/// @param ft New type of the filter function.
-///
-void
-CTrec::filter(const Filter & ft) {
-  filt_window.resize(_zidth);
-  _filter = ft;
-  _filter.fill(filt_window);
-  filt_window *= _zidth / (float) _width;
-  if ( _contrast == Contrast::REF )
-    filt_window(0)=0.0;
-}
-
-
-
-
-
 
 
 

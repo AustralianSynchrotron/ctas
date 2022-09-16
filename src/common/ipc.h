@@ -131,12 +131,12 @@ private:
   static const char oclSource[]; ///< OpenCl source
   static const cl_program oclProgram;
 
-  mutable cl_mem clmid;                 ///< Internally used array for the zero-padded data.
-  cl_kernel kernelApplyAbsFilter;
-  cl_kernel kernelApplyPhsFilter;
-  cl_kernel kernelApply00;
-  clfftPlanHandle clfft_plan;
-  cl_mem clfftTmpBuff;
+  mutable CLmem clmid;                 ///< Internally used array for the zero-padded data.
+   CLkernel kernelApplyAbsFilter;
+   CLkernel kernelApplyPhsFilter;
+   CLkernel kernelApply00;
+   clfftPlanHandle clfft_plan;
+  CLmem clfftTmpBuff;
   cl_int clfftExec(clfftDirection dir) const;
 
   #else // OPENCL_FOUND

@@ -74,7 +74,6 @@ public:
 
 
 
-
 #ifdef OPENCL_FOUND
 
 #define __CL_ENABLE_EXCEPTIONS
@@ -88,39 +87,42 @@ class CLmem {
     cl_mem clR;
     cl_mem & cl;
 public:
-    inline CLmem(cl_mem _cl=0) : clR(_cl) , cl(clR) {}
+    inline explicit CLmem(cl_mem _cl=0) : clR(_cl) , cl(clR) {}
     inline CLmem(const CLmem & other) : clR(0) , cl(other.cl) {}
     inline ~CLmem() { free(); }
     inline cl_mem & operator()() const { return cl; }
     inline CLmem & operator()(cl_mem _cl) { free(); clR=_cl; cl=clR;  return *this; }
     inline CLmem & operator()(const CLmem & other) { free(); cl=other.cl; return *this; }
+    inline operator bool() const { return cl; }
     inline void free() { if (clR) clReleaseMemObject(clR); clR=0; }
 };
 
+class CLkernel {
+  cl_kernel kern;
+public:
+  inline CLkernel(cl_program program=0, const std::string & _name = std::string()) {
+    this->operator()(program, _name);
+  }
+  inline ~CLkernel() { if (kern) clReleaseKernel(kern) ; }
+  CLkernel & operator()(cl_program program=0, const std::string & name = std::string());
+  inline operator bool() const { return kern; }
+  std::string name() const;
+  cl_int exec(size_t size=1) const;
+  cl_int exec(const Shape & sh) const;
+  cl_int exec(const Shape3 & sh) const ;
+  template <class T> cl_int setArg (cl_uint arg_idx, const T & val) const {
+    cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
+    if (clerr != CL_SUCCESS)
+      throw_error("setArg", "Could not set argument " + toString(arg_idx) +
+                           " for OpenCL kernel \"" + name() + "\": " + toString(clerr));
+    return clerr;
+  }
+};
 
-const cl_image_format clfimage_format({CL_R, CL_FLOAT});
+
+//const cl_image_format clfimage_format({CL_R, CL_FLOAT});
 
 cl_program initProgram(const char csrc[], size_t length, const std::string & modname);
-
-cl_kernel createKernel(cl_program program, const std::string & name);
-
-std::string kernelName(cl_kernel kern);
-
-cl_int execKernel(cl_kernel kern, size_t size=1);
-
-cl_int execKernel(cl_kernel kern, const Shape & sh);
-
-cl_int execKernel(cl_kernel kern, const Shape3 & sh);
-
-
-template <class T> void
-setArg (cl_kernel kern, cl_uint arg_idx, const T & val) {
-  cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
-  if (clerr != CL_SUCCESS)
-    throw_error("setArg", "Could not set argument " + toString(arg_idx) +
-                         " for OpenCL kernel \"" + kernelName(kern) + "\": " + toString(clerr));
-}
-
 
 template <class T>
 cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {

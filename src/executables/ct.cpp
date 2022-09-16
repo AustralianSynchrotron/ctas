@@ -134,8 +134,8 @@ int main(int argc, char *argv[]) {
   Map sino;
   ReadImage( args.sinogram_name, sino);
   const float arc = args.arc > 1.0 ? args.arc : args.arc * sino.shape()(0);
-  const Map rec =
-    CTrec::reconstruct(sino, args.contrast, arc, args.filter_type, args.center, args.dd);
+  Map rec;
+  CTrec::reconstruct(sino, rec, args.contrast, arc, args.filter_type, args.center, args.dd);
   SaveImage(args.result_name, rec, args.SaveInt);
 
   exit(0);

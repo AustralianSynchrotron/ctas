@@ -110,7 +110,6 @@ add_executable(norm norm.cpp)
 target_link_libraries(norm
   common
   poptmx
-  experiment
 )
 
 add_executable(proj projection.cpp)

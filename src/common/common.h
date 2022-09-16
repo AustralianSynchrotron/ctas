@@ -816,21 +816,18 @@ crop(Volume & io_arr, const Crop & crp) {
 
 
 struct Binn {
-  unsigned int x;      ///< X binning
-  unsigned int y;       ///< Y binning
-  inline Binn(unsigned int _x=1, unsigned int _y=1)
+  uint x;      ///< X binning
+  uint y;       ///< Y binning
+  inline Binn(uint _x=1, uint _y=1)
     : x(_x), y(_y)
-  {
-    if (x<0) exit_on_error("Binn", "Binning factor less than 0." );
-  }
+  {}
   explicit operator bool() const {
     return x != 1 || y != 1;
   }
+  explicit operator std::string() const {
+    return x == y ? toString(x) : toString ("%ux%u", x, y);
+  }
 };
-
-inline std::string toString (const Binn & bnn) {
-  return bnn.x == bnn.y ? toString(bnn.x) : toString ("%ux%u", bnn.x, bnn.y);
-}
 
 /// \brief Compare binnings.
 ///
@@ -877,7 +874,8 @@ public:
   void operator() (const Map & imap, Map & omap);
 };
 
-inline int binn(int sz, unsigned bn) {
+inline uint binn(uint sz, uint bn) {
+  //return bn ? (sz + bn - 1) / bn : 1;
   return bn ? sz/bn : 1 ;
 }
 

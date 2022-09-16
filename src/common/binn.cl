@@ -12,7 +12,7 @@ kernel void  binn2(
   const int y = get_global_id(1);
   float sum = 0;
   for (int cy = 0 ; cy < by ; cy++) {
-    int offy = (y*by + cy)*iszx;
+    const int offy = (y*by + cy)*iszx;
     for (int cx = 0 ; cx < bx ; cx++)
       sum += in[x*bx + cx + offy];
   }

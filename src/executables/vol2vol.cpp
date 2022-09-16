@@ -121,7 +121,7 @@ class SliceInThread : public InThread {
   Crop crp;
   Binn bnn;
 
-
+  // Class to accumulate slices in binning Z axis.
   struct CLacc {
 
     const Shape mish;
@@ -141,6 +141,8 @@ class SliceInThread : public InThread {
       , odx(-1)
       , cnt(0)
       , locker(PTHREAD_MUTEX_INITIALIZER)
+      , addKernel(0)
+      , divKernel(0)
     {
       if (!bn)
         throw_bug("CLacc: zero binning. Here must be size.");
@@ -155,10 +157,8 @@ class SliceInThread : public InThread {
         if (!binnProgram)
           throw_error("Summ on CL", "Could not initiate summing program");
       }
-      if (bn>1) {
-        resmem(clAllocArray<float>(area(mish)));
-        addmem(clAllocArray<float>(area(mish), CL_MEM_READ_ONLY) );
-      }
+      resmem(clAllocArray<float>(area(mish)));
+      addmem(clAllocArray<float>(area(mish), CL_MEM_READ_ONLY) );
       addKernel = createKernel(binnProgram, "addToSecond");
       setArg(addKernel, 0, addmem());
       setArg(addKernel, 1, resmem());
@@ -166,6 +166,13 @@ class SliceInThread : public InThread {
       divKernel = createKernel(binnProgram, "multiplyArray");
       setArg(divKernel, 0, resmem());
       setArg(divKernel, 1, (float)1.0/bn);
+    }
+
+    ~CLacc() {
+      if (addKernel)
+        clReleaseKernel(addKernel);
+      if (divKernel)
+        clReleaseKernel(divKernel);
     }
 
     bool addme (Map & nmap) {
@@ -290,8 +297,6 @@ public:
 
 
 };
-
-
 cl_program SliceInThread::CLacc::binnProgram = 0;
 
 

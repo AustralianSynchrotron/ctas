@@ -881,23 +881,6 @@ struct _ReadVolBySlice  {
       add(*curI);
   }
 
-/*
-  void sliceTraining(const Map & in, Map & rslice, Map & cslice, Map & out) {
-    if (ang!=0)
-      rotate(in, rslice, ang, 0.0);
-    else if (rslice.data()!=in.data())
-      rslice.reference(in);
-    if (crp != Crop())
-      crop(rslice, cslice, crp);
-    else if (cslice.data()!=rslice.data())
-      cslice.reference(rslice);
-    if (bnn != Binn())
-      binn(cslice, out, bnn);
-    else if (out.data()!=cslice.data())
-      out.reference(cslice);
-  }
-*/
-
   bool read (long int idx, Map & out, const Crop & crp = Crop()) {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
@@ -908,14 +891,12 @@ struct _ReadVolBySlice  {
         HDFread & hdf = hdfs.at(key);
         if (idx < cfirst + hdf.slices()) {
           hdf.read(idx-cfirst, out, crp);
-          //sliceTraining(rd, rslice, cslice, out);
           return true;
         }
         cfirst += hdf.slices();
       } else {
         if (idx==cfirst){
           ReadImage(flnm, out, crp);
-          //sliceTraining(rd, rslice, cslice, out);
           return true;
         }
         cfirst++;

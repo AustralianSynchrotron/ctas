@@ -841,7 +841,7 @@ public:
       throw_error(modname, "Zero input size.");
     if (!area(osh))
       throw_error(modname, "Zero result of binning"
-                           " ("+toString(ish)+") by ("+toString(bnn)+").");
+                           " ("+toString(ish)+") by (" + string(bnn) + ").");
 
     pthread_mutex_lock(&protectProgramCompilation);
     if ( ! binnProgram ) {
@@ -880,7 +880,7 @@ public:
     if ( bnn.x == 1 && bnn.y == 1 ) {
       if (!omap.size())
         omap.reference(imap);
-      else if (omap.data() != imap.data()){
+      else if (!areSame(omap, imap)){
         omap.resize(ish);
         omap = imap;
       }

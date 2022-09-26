@@ -100,9 +100,8 @@ public:
 class CLkernel {
   cl_kernel kern;
 public:
-  inline CLkernel(cl_program program=0, const std::string & _name = std::string()) {
-    this->operator()(program, _name);
-  }
+  inline CLkernel(cl_program program=0, const std::string & _name = std::string())
+    : kern(0) { this->operator()(program, _name); }
   inline ~CLkernel() { if (kern) clReleaseKernel(kern) ; }
   CLkernel & operator()(cl_program program=0, const std::string & name = std::string());
   inline operator bool() const { return kern; }

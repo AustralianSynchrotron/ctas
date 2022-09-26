@@ -122,31 +122,25 @@ public:
 private:
 
   static const std::string modname;	///< Module name.
-
-  Shape sh;                     ///< Shape of the input contrasts.
   mutable CMap mid;             ///< Internally used array for the zero-padded data.
+                                // Also used as the indicator of the need to process.
 
-  #ifdef OPENCL_FOUND
-
-  static const char oclSource[]; ///< OpenCl source
-  static const cl_program oclProgram;
-
+  static cl_program oclProgram;
+  static pthread_mutex_t protectProgramCompilation;
   mutable CLmem clmid;                 ///< Internally used array for the zero-padded data.
-   CLkernel kernelApplyAbsFilter;
-   CLkernel kernelApplyPhsFilter;
-   CLkernel kernelApply00;
-   clfftPlanHandle clfft_plan;
+  CLkernel kernelApplyAbsFilter;
+  CLkernel kernelApplyPhsFilter;
+  CLkernel kernelApply00;
+  clfftPlanHandle clfft_plan;
   CLmem clfftTmpBuff;
   cl_int clfftExec(clfftDirection dir) const;
 
-  #else // OPENCL_FOUND
-
+  /* no OPENCL_FOUND
   Map phsFilter;                ///< FFT filter used for the extraction of the PHS component.
   Map absFilter;                ///< FFT filter used for the extraction of the ABS component.
   fftwf_plan fft_f;             ///< Forward 2D FFT plan.
   fftwf_plan fft_b;             ///< Backward 2D FFT plan
-
-  #endif // OPENCL_FOUND
+  */
 
 public:
 
@@ -155,11 +149,13 @@ public:
   /// @param _sh Shape of the input contrasts.
   /// @param d2b Ratio of the (\f$\delta/\beta\f$). Must be supplied multiplied by
   ///            M_PI * dist * lambda / dd^2
-
-  IPCprocess(const Shape & _sh, float d2b);
+  IPCprocess(const Shape & _sh, float _d2b);
 
   /// Destructor.
   ~IPCprocess();
+
+  const Shape sh;                     ///< Shape of the input contrasts.
+  const float d2b;
 
   /// The component extraction.
   ///
@@ -179,11 +175,14 @@ public:
     extract(io, io, comp, param);
   }
 
-  /// Desired shape of the input arrays.
-  ///
-  /// @return Predefined shape of the processing algorithm.
-  ///
-  inline const Shape & shape() const {return sh;}
+  static float coeff (float _d2b, float _dd, float _dist, float _lambda) {
+    if ( _d2b < 0.0 || _dist <= 0.0 || _lambda <= 0.0 )
+      return 1.0;
+    float ipccoef = _dd * _dd / (4*M_PI*M_PI * _dist);
+    if ( _d2b != 0.0 )
+      ipccoef *= 4 * M_PI / (_lambda * _d2b);
+    return ipccoef;
+  }
 
 };
 
@@ -220,114 +219,6 @@ toString(IPCprocess::Component comp) {
 const std::string
 d2bOptionDesc = "delta/beta ratio (0 for no absorption).";
 
-
-
-/// \cond
-#ifdef _H_EXPERIMENT_H_
-/// \endcond
-
-/// \ingroup experiment
-/// \brief Class which extracts IPC-processed projections from the input data.
-class IPC_API IPCexp : public Experiment {
-private:
-
-  static const std::string modname;  ///< Name of the module.
-  AqSeries list0;               ///< Data acquired in the contact print plane.
-  AqSeries listD;               ///< Data acquired at the distance.
-  const IPCprocess & proc;             ///<  IPC processing.
-  IPCprocess::Component comp; ///< Component to be extracted by the ::projection.
-
-  float dd;                     ///< Pixel size.
-  float dist;                   ///< Object-to-detector distance.
-  float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC
-
-  mutable Map pr0;         ///< Some internal array used for the extraction.
-  mutable Map prD;         ///< Some internal array used for the extraction.
-
-public:
-
-  /// Contructor.
-  ///
-  /// @param _listD Data acquired at the distance.
-  /// @param _list0 Data acquired in the contact print plane. Can be left empty.
-  /// @param _proc The IPC processor.
-  /// @param _comp Component to be extracted.
-  ///
-
-  IPCexp(const AqSeries & _listD, const AqSeries & _list0,
-                const IPCprocess & _proc, IPCprocess::Component _comp)   :
-    Experiment(_listD.shape(), _listD.thetas()),
-    list0(_list0),
-    listD(_listD),
-    proc(_proc),
-    dd(1.0),
-    dist(1.0),
-    dgamma(0.0),
-    pr0(sh),
-    prD(sh)
-  {
-    if (list0.size()) {
-      if ( list0.thetas() != thts )
-        throw_error(modname, "Different sizes of the data aquired in different positions.");
-      if ( list0.shape() != sh )
-        throw_error(modname, "Different shapes of the data aquired in different positions.");
-    }
-    if ( sh != proc.shape() )
-      throw_error(modname, "Different shape of the data and the processing algorithm.");
-    component(_comp);
-  }
-
-
-  void projection(  int itheta, Map & proj,
-                           const std::vector<int> & sliceV,
-                           float angle=0, const Crop &crp = Crop() ) const {
-    listD.projection(itheta, prD);
-    if (list0.size()) {
-      list0.projection(itheta, pr0);
-      prD /= unzero(pr0);
-    }
-    proc.extract(prD, pr0, comp, dgamma);
-    rotate(pr0, prD, angle);
-    crop(prD,crp);
-    proj.resize( Shape( sliceV.size() ? sliceV.size() : sh(0) , sh(1) ) );
-    if (sliceV.size()) {
-      for(int icur = 0 ; icur<sliceV.size() ; icur++)
-        proj (icur, all) =
-          prD (sliceV[icur], all);
-    } else {
-      proj = prD;
-    }
-  }
-
-
-  /// Sets the component to be extracted and the corresponding contrast type.
-  ///
-  /// @param _comp Component to be extracted.
-  ///
-  inline void component(IPCprocess::Component _comp) {
-    comp = _comp;
-    cntr = ( comp==IPCprocess::ABS ) ? Contrast::ABS : Contrast::PHS ;
-  }
-
-  /// Sets the \f$\gamma\f$.
-  ///
-  /// @param _dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
-  ///
-  inline void gamma(float _dgamma) {
-    if ( std::abs(_dgamma)>1.0 ) // should set even smaller limit
-      throw_error(modname, "Absolute value of gamma is greater than 1.0.");
-    dgamma = _dgamma;
-  }
-
-
-};
-
-const std::string
-IPCexp::modname="IPC experiment";
-
-/// \cond
-#endif // _H_EXPERIMENT_H_
-/// \endcond
 
 
 

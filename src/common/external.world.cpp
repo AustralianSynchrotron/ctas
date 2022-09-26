@@ -110,16 +110,29 @@ struct HDFdesc {
   }
 
   string id() const {
-    //return name + ":" + data + ":" + (sliceDim == 0 ? "z" : (sliceDim == 1 ? "y" : "x")) ;
     return name.repr();
   }
 
   inline bool isValid() const { return name.length() ; }
-  inline bool isValidHDF() const { return isValid() && ( H5Fis_hdf5(name.c_str()) > 0 ); }
+  inline bool isValidHDF() const {
+    return    isValid() && ( H5Fis_hdf5(name.c_str()) > 0 ) && ! data.empty()  ;
+  }
   static bool isValid(const ImagePath & filedesc) { return HDFdesc(filedesc).isValid(); }
   static bool isValidHDF(const ImagePath & filedesc) { return HDFdesc(filedesc).isValidHDF(); }
 
 };
+
+
+
+
+bool ImagePath::isValidHDF() const {
+  return HDFdesc::isValidHDF(*this);
+}
+
+static bool isValidHDF(const string & nm) {
+  return HDFdesc::isValidHDF(nm);
+}
+
 
 
 struct HDFrw : public HDFdesc {

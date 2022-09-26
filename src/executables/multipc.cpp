@@ -80,7 +80,7 @@ clargs::clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &phs_name, 'p', "phase", "Image prefix to output the phase component", "", "<NONE>")
   .add(poptmx::OPTION, &abs_name, 'a', "absorption", "Image prefix to output the absorption component", "", "<NONE>")
   .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
-         "More correctly the distance from the contact print plane and the detector plane where the image"
+         "More correct, the distance from the contact print plane and the detector plane where the image"
          " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
   .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
          NeedForQuant, toString(dd))

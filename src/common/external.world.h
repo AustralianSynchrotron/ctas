@@ -45,6 +45,9 @@ public:
   inline const std::string & desc() const {return _desc;}
   inline ImagePath & desc(const std::string & __desc) { _desc=__desc ; return *this;}
 
+  bool isValidHDF() const ;
+  static bool isValidHDF(const std::string & nm);
+
 };
 
 inline int COMMON_API

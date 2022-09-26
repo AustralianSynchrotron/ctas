@@ -309,8 +309,8 @@ bool clIsInited() {
   }
 
 
-  //CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, NULL, &err);
-  CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
+  CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, NULL, &err);
+  //CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
     return false;

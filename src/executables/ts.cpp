@@ -45,7 +45,7 @@ struct clargs {
   int plane;                    ///< Plane of the reconstruction.
   float center;                   ///< Rotation center.
   Path data_name;             ///< Name of the input data file.
-  Path result_name;           ///< Name of the file to save the result to.
+  Path outmask;           ///< Name of the file to save the result to.
   bool beverbose;				///< Be verbose flag
   bool SaveInt;					///< Save image as 16-bit integer.
 
@@ -66,7 +66,7 @@ const string TSconfigDesc =
 
 clargs::
 clargs(int argc, char *argv[]) : 
-  result_name("ts-<data file>-<plane>.tif"),
+  outmask("ts-<data file>-<plane>.tif"),
   plane(0),
   center(0),
   beverbose(false),
@@ -84,8 +84,8 @@ clargs(int argc, char *argv[]) :
 	.add(poptmx::ARGUMENT, &data_name, "data file",
 		 "Input file describing the projection images.",
 		 TSconfigDesc)
-	.add(poptmx::ARGUMENT, &result_name, "result",
-		 "Output reconstructed image.", "", result_name)
+	.add(poptmx::ARGUMENT, &outmask, "result",
+		 "Output reconstructed image.", "", outmask)
 
 	.add(poptmx::NOTE, "OPTIONS:")
 	.add(poptmx::OPTION, &contrast, 'C', "contrast",
@@ -117,8 +117,8 @@ clargs(int argc, char *argv[]) :
   if ( ! table.count(&data_name) )
 	exit_on_error(command, string () +
 				  "Missing required argument: "+table.desc(&data_name)+".");
-  if ( ! table.count(&result_name) )
-    result_name = upgrade(data_name, "ts-") + "-" +  toString(plane) + ".tif";
+  if ( ! table.count(&outmask) )
+    outmask = upgrade(data_name, "ts-") + "-" +  toString(plane) + ".tif";
 
 
 
@@ -217,7 +217,7 @@ int main( int argc, char *argv[] ) {
   }
   bar.done();
 
-  SaveImage(args.result_name, result, args.SaveInt);
+  SaveImage(args.outmask, result, args.SaveInt);
 
   exit (0);
 	

@@ -63,41 +63,6 @@ target_link_libraries(ts
   kernel
 )
 
-#add_executable(ct-abs ct-abs.cpp)
-#target_link_libraries(ct-abs
-#  common
-#  poptmx
-#  experiment
-#  kernel
-#)
-#
-#add_executable(ct-dei ct-dei.cpp)
-#target_link_libraries(ct-dei
-#  common
-#  poptmx
-#  experiment
-#  kernel
-#  ldei
-#)
-#
-#add_executable(ct-edei ct-edei.cpp)
-#target_link_libraries(ct-edei
-#  common
-#  poptmx
-#  experiment
-#  kernel
-#  ledei
-#)
-#
-#add_executable(ct-ipc ct-ipc.cpp)
-#target_link_libraries(ct-ipc
-#  common
-#  poptmx
-#  experiment
-#  kernel
-#  lipc
-#)
-
 
 add_executable(simulate-ipc simulate-ipc.cpp)
 target_link_libraries(simulate-ipc
@@ -119,6 +84,18 @@ target_link_libraries(proj
   poptmx
   flatfield
 )
+
+
+add_executable(prct prct.cpp)
+target_clsrc(prct projection.cl)
+target_link_libraries(prct
+  common
+  poptmx
+  flatfield
+  lipc
+  kernel
+)
+
 
 
 add_executable(v2v vol2vol.cpp)
@@ -153,8 +130,7 @@ target_link_libraries(bctppl
 
 set( all_targets
   multipc ipc dei edei norm
-  ct #ct-vol ct-abs ct-dei ct-edei ct-ipc
-  ts rc2fd proj v2v
+  ct ts rc2fd proj v2v
   bctppl
 )
 

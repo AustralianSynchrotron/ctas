@@ -41,14 +41,9 @@ const string IPCprocess::componentDesc =
   "P, PHS, PHASE      - for the phase contrast";
 
 
-#ifdef OPENCL_FOUND
 
-const char IPCprocess::oclSource[] = {
-  #include "ipc.cl.includeme"
-};
-
-const cl_program IPCprocess::oclProgram =
-  initProgram( IPCprocess::oclSource, sizeof(IPCprocess::oclSource), "IPC on OCL" );
+cl_program IPCprocess::oclProgram = 0;
+pthread_mutex_t IPCprocess::protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
 
 static int ipow(int base, int exp) {
   int result = 1;
@@ -89,32 +84,38 @@ static int closest_factorable(int n, const vector<int> & primes) {
   return fnl;
 }
 
-#endif // OPENCL_FOUND
 
-
-IPCprocess::IPCprocess( const Shape & _sh, float d2b)
+IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   : sh(_sh)
-  , kernelApplyAbsFilter(oclProgram, "applyAbsFilter")
-  , kernelApplyPhsFilter(oclProgram, "applyPhsFilter")
-  , kernelApply00(oclProgram, "apply00")
+  , d2b(_d2b)
   , clmid(0)
   , clfftTmpBuff(0)
 {
-
+  if (d2b < 0.0) // no IPC processing
+    return;
   if (sh(0) < 3 || sh(1) < 3)
     throw_error(modname, "Insufficient size requested: (" + toString(sh) + ")."
                 " Must be at least (" + toString(Shape(3,3)) + ").");
-  if (d2b < 0.0)
-    throw_error(modname, "Delata to Beta ratio is less than 0." );
+    //throw_error(modname, "Delata to Beta ratio is less than 0." );
 
+  pthread_mutex_lock(&protectProgramCompilation);
+  if (!oclProgram) {
+    const char oclSource[] = {
+      #include "ipc.cl.includeme"
+    };
+    oclProgram = initProgram( oclSource, sizeof(oclSource), "IPC on OCL" );
+  }
+  pthread_mutex_unlock(&protectProgramCompilation);
+  if (!oclProgram)
+    throw_error(modname, "Failed to compile OCL program for IPC processing.");
 
-  #ifdef OPENCL_FOUND
-
+  kernelApplyAbsFilter(oclProgram, "applyAbsFilter");
+  kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
+  kernelApply00(oclProgram, "apply00");
 
   const size_t msh[2] = {(size_t) closest_factorable(2*sh(1)-1, {2,3,5,7}),
                          (size_t) closest_factorable(2*sh(0)-1, {2,3,5,7})};
   mid.resize(msh[1], msh[0]);
-
   clmid(clAllocArray<float>(2*mid.size()));
 
   kernelApplyAbsFilter.setArg(0, clmid());
@@ -142,8 +143,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b)
     clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize));
 
 
-  #else // OPENCL_FOUND
-
+  /* no OPENCL_FOUND
 
   mid.resize(sh);
   phsFilter.resize(sh);
@@ -171,24 +171,27 @@ IPCprocess::IPCprocess( const Shape & _sh, float d2b)
     absFilter *= phsFilter;
   }
 
-  #endif // OPENCL_FOUND
+  */
 
 }
+
 
 
 IPCprocess::~IPCprocess() {
-    #ifdef OPENCL_FOUND
+  if (clmid) {
     clfftDestroyPlan(&clfft_plan);
     clfftTeardown( );
-    #else // OPENCL_FOUND
+  }
+    /* no OPENCL_FOUND
     fftwf_destroy_plan(fft_f);
     fftwf_destroy_plan(fft_b);
-    #endif // OPENCL_FOUND
+    */
 }
 
 
-#ifdef OPENCL_FOUND
 cl_int IPCprocess::clfftExec(clfftDirection dir) const {
+  if (d2b<0)
+    return CL_SUCCESS;
   cl_int err;
   err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid(), NULL, clfftTmpBuff());
   if ( CL_SUCCESS != err )
@@ -198,17 +201,23 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
     throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
   return err;
 }
-#endif // OPENCL_FOUND
 
 
 void
 IPCprocess::extract(const Map & in, Map & out, Component comp, const float param) const {
-
+  if (d2b<0) {
+    if (!out.size())
+      out.reference(in);
+    if (!areSame(in,out)) {
+      out.resize(sh);
+      out=in;
+    }
+    return;
+  }
   if ( in.shape() != sh )
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
-  if ( sh != out.shape() )
-    out.resize(sh);
+  out.resize(sh);
 
   mid = 0.0;
   mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;

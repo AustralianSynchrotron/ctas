@@ -45,12 +45,14 @@ struct clargs {
   Contrast contrast;            ///< Type of the contrast.
   Filter filter_type;           ///< Type of the filtering function.
   float center;                   ///< Rotation center.
-  Path sinogram_name;         ///< Name of the sinogram file.
-  Path result_name;           ///< Name of the file to save the result to.
+  deque<ImagePath> sinograms;         ///< Name of the sinogram file.
+  ImagePath outmask;           ///< Name of the file to save the result to.
   float arc;
   float dd;             ///< Pixel size.
   bool beverbose;				///< Be verbose flag
-  bool SaveInt;					///< Save image as 16-bit integer.
+  float mincon;         ///< Black intensity.
+  float maxcon;         ///< White intensity.
+
 
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -58,13 +60,14 @@ struct clargs {
 
 
 clargs::
-clargs(int argc, char *argv[]) :
-  center(0),
-  beverbose(false),
-  SaveInt(false),
-  result_name("reconstructed-<sinogram>"),
-  arc(180),
-  dd(1.0)
+clargs(int argc, char *argv[])
+  : center(0)
+  , beverbose(false)
+  , mincon(0)
+  , maxcon(0)
+  , outmask("reconstructed-<sinogram>")
+  , arc(180)
+  , dd(1.0)
 {
 
   poptmx::OptionTable table
@@ -73,10 +76,10 @@ clargs(int argc, char *argv[]) :
 
   table
   .add(poptmx::NOTE, "ARGUMENTS:")
-  .add(poptmx::ARGUMENT, &sinogram_name, "sinogram",
+  .add(poptmx::ARGUMENT, &sinograms, "sinogram",
        "Input image containing the sinogram.", "")
-  .add(poptmx::ARGUMENT, &result_name, "result",
-       "Output reconstructed image.", "", result_name)
+  .add(poptmx::ARGUMENT, &outmask, "result",
+       "Output reconstructed image.", "", outmask)
 
   .add(poptmx::NOTE, "OPTIONS:")
   .add(poptmx::OPTION, &contrast, 'k', "contrast",
@@ -95,8 +98,10 @@ clargs(int argc, char *argv[]) :
        "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
   //  .add(poptmx::OPTION, &lambda, 'w', "wavelength",
   //  "Wave length (Angstrom).", "Wavelength.")
-  .add(poptmx::OPTION, &SaveInt,'i', "int",
-       "Output image(s) as integer.", IntOptionDesc)
+  .add(poptmx::OPTION, &mincon, 'm', "min", "Pixel value corresponding to black.",
+       " All values below this will turn black.", "<minimum>")
+  .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
+       " All values above this will turn white.", "<maximum>")
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -108,11 +113,11 @@ clargs(int argc, char *argv[]) :
   }
   command = table.name();
 
-  if ( ! table.count(&sinogram_name) )
+  if ( ! table.count(&sinograms) )
     exit_on_error(command, string () +
-                  "Missing required argument: "+table.desc(&sinogram_name)+".");
-  if ( ! table.count(&result_name) )
-    result_name = upgrade(sinogram_name, "reconstructed-");
+                  "Missing required argument: "+table.desc(&sinograms)+".");
+  if ( ! table.count(&outmask) )
+    outmask = upgrade(sinograms[0], "reconstructed-");
   if ( table.count(&dd) ) {
     if ( dd <= 0.0 )
       exit_on_error(command, "Negative pixel size (given by "+table.desc(&dd)+").");
@@ -125,19 +130,67 @@ clargs(int argc, char *argv[]) :
 }
 
 
+class RecInThread : public InThread {
+
+  const clargs & ctrl;
+  ReadVolumeBySlice ivolRd;
+  const Shape ish;
+  const Shape osh;
+  SaveVolumeBySlice ovolSv;
+
+  unordered_map<pthread_t, CTrec> recs;
+  unordered_map<pthread_t, Map> imaps;
+  unordered_map<pthread_t, Map> omaps;
+
+  bool inThread(long int idx) {
+    if (idx >= ivolRd.slices())
+      return false;
+
+    const pthread_t me = pthread_self();
+    lock();
+    if ( ! recs.count(me) ) {
+      recs.emplace(piecewise_construct,
+                   forward_as_tuple(me),
+                   forward_as_tuple(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type));
+      imaps.emplace(me, ish);
+      omaps.emplace(me, osh);
+    }
+    CTrec & myRec = recs.at(me);
+    Map & myImap = imaps.at(me);
+    Map & myOmap = omaps.at(me);
+    unlock();
+
+    ivolRd.read(idx, myImap);
+    myRec.reconstruct(myImap, myOmap, ctrl.center, ctrl.dd);
+    ovolSv.save(idx, myOmap);
+    bar.update();
+    return true;
+
+  }
+
+public:
+
+  RecInThread(const clargs & _args)
+    : InThread(_args.beverbose, "CT'ing")
+    , ctrl(_args)
+    , ivolRd(ctrl.sinograms)
+    , ish(ivolRd.face())
+    , osh(ish(1),ish(1))
+    , ovolSv(ctrl.outmask, osh, ivolRd.slices(), ctrl.mincon, ctrl.maxcon)
+  {
+    bar.setSteps(ivolRd.slices());
+  }
+
+
+
+};
+
+
 
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
-
   const clargs args(argc, argv) ;
-
-  Map sino;
-  ReadImage( args.sinogram_name, sino);
-  const float arc = args.arc > 1.0 ? args.arc : args.arc * sino.shape()(0);
-  Map rec;
-  CTrec::reconstruct(sino, rec, args.contrast, arc, args.filter_type, args.center, args.dd);
-  SaveImage(args.result_name, rec, args.SaveInt);
-
+  RecInThread factory(args);
+  factory.execute();
   exit(0);
-
 }

@@ -41,7 +41,7 @@ initImageIO(){
   using namespace MagickCore;
 #endif
 
-  //InitializeMagick(0);
+  Magick::InitializeMagick(nullptr);
   //MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
   //SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
   //SetMagickResourceLimit ( FileResource , 1024 * 1024);

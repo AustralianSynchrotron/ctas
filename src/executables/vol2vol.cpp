@@ -237,7 +237,7 @@ class SliceInThread : public InThread {
 
     unlock();
 
-    myrdproc.read(*ivolRd, indices[idx], myrdmap);
+    myrdproc.read(*ivolRd, idx, myrdmap);
     if ( ! myacc.addme(myrdmap) )
       ovolSv->save(sodx, myrdmap);
 

@@ -1045,10 +1045,7 @@ ImageProc::ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Sha
   , ang(_ang)
   , crp(_crp)
   , bnnprc(crop(rotate(ish,ang), crp),_bnn)
-{
-  if (ang == 0.0)
-    crpmap.reference(inmap);
-}
+{}
 
 void ImageProc::proc(Map & storage) {
   if (ang != 0.0) {

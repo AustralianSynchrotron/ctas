@@ -24,9 +24,12 @@ kernel void  gauss (
     for (int dx = -mrad ; dx <= mrad ; dx++) {
       int idxx = idx+dx;
       int idii = idiy + idxx;
-      if (idyy<0 || idyy>=Ys || mask[idii]==0.0)
+      if (idxx<0 || idxx>=Xs || mask[idii]==0.0)
         continue;
-      float wght = exp(-(dx*dx + dy*dy)/sig22);
+      int dr2 = dx*dx + dy*dy;
+      if (dr2 > mrad*mrad)
+        continue;
+      float wght = exp(-dr2/sig22);
       mass += wght;
       gsumd += wght*iom[idii];
     }

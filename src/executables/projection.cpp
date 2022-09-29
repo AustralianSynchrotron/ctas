@@ -447,9 +447,6 @@ public:
                           , msas.size() ? msas[0] : zmap );
     }
 
-    if (!st.fcrp)
-      final.reference(stitched);
-
     const int mssz = msas.size();
     if ( ! mssz )
       return;
@@ -512,8 +509,6 @@ public:
   {
     if (doGapsFill)
       initCL();
-    if (!st.fcrp)
-      final.reference(stitched);
   }
 
 
@@ -619,6 +614,8 @@ public:
       crop(stitched, final, st.fcrp);
       if ( ! interim_name.empty() )
         SaveDenan( interim_name.dtitle() + "_Y.tif", stitched );
+    } else {
+      final.reference(stitched);
     }
 
     // splits
@@ -789,8 +786,8 @@ int main(int argc, char *argv[]) {
     exit_on_error(args.command, "Requested test is beyond number of projections.");
 
   // Process one slice
-  Map zmap(ish);
-  zmap=0.0;
+  //Map zmap(ish);
+  //zmap=0.0;
   deque<Map> allOut, allIn;
   for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
     allIn.emplace_back(ish);
@@ -799,7 +796,7 @@ int main(int argc, char *argv[]) {
     else if (nofOuts == 1)
       allInRd[curI].read(projes[0], allIn[curI]);
     else
-      allIn.back().reference(zmap);
+      allIn.back()=0.0;
   }
   string testFormat;
   if (args.testMe >= 0) {

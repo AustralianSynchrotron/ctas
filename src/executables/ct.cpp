@@ -61,7 +61,8 @@ struct clargs {
 
 clargs::
 clargs(int argc, char *argv[])
-  : center(0)
+  : contrast(Contrast::ABS)
+  , center(0)
   , beverbose(false)
   , mincon(0)
   , maxcon(0)

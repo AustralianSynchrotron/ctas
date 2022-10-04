@@ -260,20 +260,20 @@ private:
       clim1(clAllocArray<float>(area(_osh),CL_MEM_READ_ONLY));
       clim0(clAllocArray<float>(area(_osh),CL_MEM_READ_ONLY));
 
-      kernelFormFrame.setArg(0, clwA );
-      kernelFormFrame.setArg(1, clim0 );
-      kernelFormFrame.setArg(2, clim1 );
-      kernelFormFrame.setArg(3, _clgaps );
+      kernelFormFrame.setArg(0, clwA() );
+      kernelFormFrame.setArg(1, clim0() );
+      kernelFormFrame.setArg(2, clim1() );
+      kernelFormFrame.setArg(3, _clgaps() );
 
       kernelEqNoise.setArg(0, (int) _osh(1) );
       kernelEqNoise.setArg(1, (int) _osh(0) );
-      kernelEqNoise.setArg(2, clwA );
-      kernelEqNoise.setArg(3, clwB );
-      kernelEqNoise.setArg(4, _clgaps );
+      kernelEqNoise.setArg(2, clwA() );
+      kernelEqNoise.setArg(3, clwB() );
+      kernelEqNoise.setArg(4, _clgaps() );
 
       kernelFill.setArg(0, (int) _osh(1) );
       kernelFill.setArg(1, (int) _osh(0) );
-      kernelFill.setArg(2, clwB);
+      kernelFill.setArg(2, clwB());
     }
   } ;
   unordered_map<pthread_t,PerThread> perThread;

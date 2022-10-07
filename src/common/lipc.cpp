@@ -128,7 +128,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   kernelApplyPhsFilter.setArg(2, (cl_int) msh[1]);
   kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
 
-  kernelApply00.setArg(0, clmid);
+  kernelApply00.setArg(0, clmid());
 
   cl_int err;
   size_t clfftTmpBufSize = 0;

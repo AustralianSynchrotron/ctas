@@ -205,7 +205,8 @@ class ProcInThread : public InThread {
 public:
 
   ProcInThread(const clargs & _args)
-    : args(_args)
+    : InThread(_args.beverbose, "IPC processing")
+    , args(_args)
     , allIn(args.images)
     , allOutAbs(0)
     , allOutPhs(0)
@@ -214,6 +215,7 @@ public:
     , d2bIPC(M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ))
     , cofIPC(initCofIPC(args))
   {
+    bar.setSteps(sz);
     if (!args.phs_name.empty())
       allOutPhs = new SaveVolumeBySlice(args.phs_name,sh,sz);
     if (!args.abs_name.empty())

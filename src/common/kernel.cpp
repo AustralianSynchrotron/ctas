@@ -356,7 +356,7 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   planF = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_R2HC);
   planB = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_HC2R);
 
-  clSlice(clAllocArray<float>(area(ish), CL_MEM_WRITE_ONLY));
+  clSlice(clAllocArray<float>(area(osh), CL_MEM_WRITE_ONLY));
   clSino(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
   blitz::Array<cl_float2, 1> angles(ish(0));
   for (size_t i = 0; i < ish(0); i++) {
@@ -367,11 +367,11 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   clAngles(blitz2cl(angles, CL_MEM_READ_ONLY));
 
   kernelSino(program, "fbp");
-  kernelSino.setArg(0, clSlice);
-  kernelSino.setArg(1, clSino);
+  kernelSino.setArg(0, clSino());
+  kernelSino.setArg(1, clSlice());
   kernelSino.setArg(2, (cl_int) ish(1));
   kernelSino.setArg(3, (cl_int) ish(0));
-  kernelSino.setArg(5, clAngles);
+  kernelSino.setArg(5, clAngles());
 
 }
 

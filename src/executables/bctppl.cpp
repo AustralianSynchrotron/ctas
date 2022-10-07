@@ -331,7 +331,7 @@ private:
         throw_error("Frame formation", "Unexpected shape of source " #inp " at index " + toString(tidx) + "." ); \
       myff##inp.process(my.rdim); \
       procImg(my.rdim, my.tim, dosft, doflp); \
-      blitz2cl(my.tim, my.clim##inp); \
+      blitz2cl(my.tim, my.clim##inp()); \
       if (args.testme >= 0) \
         SaveImage(args.outmask.dtitle() + "_src_" + string(inp?"sft":"org") + ".tif", my.tim);
 

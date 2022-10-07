@@ -178,7 +178,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
 
 
 IPCprocess::~IPCprocess() {
-  if (clmid) {
+  if (clmid()) {
     clfftDestroyPlan(&clfft_plan);
     clfftTeardown( );
   }

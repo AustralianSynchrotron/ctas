@@ -42,10 +42,9 @@ using namespace std;
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  Path z0_name;                 ///< contrasts in the contact print plane.
-  Path zD_name;                 ///< contrasts at the distance.
-  Path phs_name;                ///< Output name of the phase contrast.
-  Path abs_name;                ///< Output name of the absorption contrast.
+  deque<ImagePath> images;                 ///< contrasts at the distance.
+  ImagePath phs_name;                ///< Output name of the phase contrast.
+  ImagePath abs_name;                ///< Output name of the absorption contrast.
   float phs_norm;               ///< Variants of phs output
   float dd;                     ///< Pixel size.
   float d2b;                  ///< \f$\d2b\f$ parameter of the MBA.
@@ -61,7 +60,6 @@ struct clargs {
 
 
 clargs::clargs(int argc, char *argv[]) :
-  z0_name(""),
   phs_norm(0.0),
   dd(1.0),
   d2b(0.0),
@@ -80,44 +78,39 @@ clargs::clargs(int argc, char *argv[]) :
 
   table
   .add(poptmx::NOTE, "ARGUMENTS:")
-  .add(poptmx::ARGUMENT, &zD_name, "far-intensity", "Contrast taken at the distance.", "")
-  .add(poptmx::ARGUMENT, &z0_name, "0-intensity", "Contrast taken in the contact print plane"
-         " (clean absorption contrast).", "", "<NONE>")
+  .add(poptmx::ARGUMENT, &images, "input", "Raw images to be processed.", "")
 
   .add(poptmx::NOTE, "OPTIONS:")
   .add(poptmx::OPTION, &abs_name, 'a', "absorption",
-         "Image name to output the absorption component", "", "<NONE>")
+       "Image name to output the absorption component", "", "<NONE>")
   .add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
   .add(poptmx::OPTION, &phs_norm, 'P', "phaseout", "Variants of phase component output.",
-         "If 0 (default) - outputs real physical value, "
-         "if >0 - the value is multiplied by P*4*pi/(w*d) and "
-         "if <0 - exponent of the negated value obtained as P>0.")
-  .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
-         "More correctly the distance from the contact print plane and the detector plane where the image"
-         " given by the argument " + table.desc(&zD_name) + " was taken. " + NeedForQuant)
+       "If 0 (default) - outputs real physical value, "
+       "if >0 - the value is multiplied by P*4*pi/(w*d) and "
+       "if <0 - exponent of the negated value obtained as P>0.")
+  .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)", NeedForQuant)
   .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
-         NeedForQuant, toString(dd))
+       NeedForQuant, toString(dd))
   .add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
   .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
-         "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
+       "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
   .add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
-         "Must be a value around 1.0 (theoretical).", toString(dgamma))
+       "Must be a value around 1.0 (theoretical).", toString(dgamma))
   .add(poptmx::OPTION, &SaveInt,'i', "int",
-         "Output image(s) as integer.", IntOptionDesc)
+       "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-  exit(0);
+    exit(0);
   if ( ! table.count() ) {
-  table.usage();
-  exit(0);
+    table.usage();
+    exit(0);
   }
   command = table.name();
 
-
-  if ( ! table.count(&zD_name) )
-    exit_on_error(command, "Missing required argument: "+table.desc(&zD_name)+".");
+  if ( ! table.count(&images) )
+    exit_on_error(command, "Missing required argument: "+table.desc(&images)+".");
 
   if ( ! table.count(&phs_name) && ! table.count(&abs_name) )
     exit_on_error(command, "At least one of the two following arguments is required: "
@@ -153,44 +146,97 @@ clargs::clargs(int argc, char *argv[]) :
 }
 
 
+class ProcInThread : public InThread {
+
+  const clargs & args;
+  ReadVolumeBySlice allIn;
+  SaveVolumeBySlice * allOutAbs;
+  SaveVolumeBySlice * allOutPhs;
+  const Shape sh;
+  const uint sz;
+  const float d2bIPC;
+  const float cofIPC;
+
+  unordered_map<pthread_t, IPCprocess > procs;
+  unordered_map<pthread_t, Map > imaps;
+  unordered_map<pthread_t, Map > omaps;
+
+  bool inThread(long int idx) {
+    if (idx >= allIn.slices())
+      return false;
+
+    const pthread_t me = pthread_self();
+    lock();
+    if ( ! procs.count(me) ) { // first call
+      procs.emplace(piecewise_construct,
+                    forward_as_tuple(me),
+                    forward_as_tuple(sh, d2bIPC));
+      imaps.emplace(me, sh);
+      omaps.emplace(me, sh);
+    }
+    IPCprocess & myProc = procs.at(me);
+    Map & myImap = imaps.at(me);
+    Map & myOmap = omaps.at(me);
+    unlock();
+
+    allIn.read(idx, myImap);
+    if( allOutPhs ) { // MBA
+      myProc.extract(myImap, myOmap, IPCprocess::PHS, cofIPC);
+      allOutPhs->save(idx, myOmap);
+    }
+    if( allOutAbs ) { // MBA
+      myProc.extract(myImap, myOmap, IPCprocess::ABS, args.dgamma);
+      allOutAbs->save(idx, myOmap);
+    }
+
+    bar.update();
+    return true;
+  }
+
+  static float initCofIPC(const clargs & _args) {
+    if (_args.phs_name.empty())
+      return 1;
+    float ret = _args.dd * _args.dd / (4*M_PI*M_PI * _args.dist);
+    if ( _args.phs_norm != 0.0  &&  _args.d2b != 0.0 )
+      ret *= 4 * M_PI * _args.phs_norm / (_args.lambda * _args.d2b);
+    return ret;
+  }
+
+public:
+
+  ProcInThread(const clargs & _args)
+    : args(_args)
+    , allIn(args.images)
+    , allOutAbs(0)
+    , allOutPhs(0)
+    , sh(allIn.face())
+    , sz(allIn.slices())
+    , d2bIPC(M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ))
+    , cofIPC(initCofIPC(args))
+  {
+    if (!args.phs_name.empty())
+      allOutPhs = new SaveVolumeBySlice(args.phs_name,sh,sz);
+    if (!args.abs_name.empty())
+      allOutAbs = new SaveVolumeBySlice(args.abs_name,sh,sz);
+  }
+
+  ~ProcInThread() {
+    if (allOutAbs)
+      delete allOutAbs;
+    if (allOutPhs)
+      delete allOutPhs;
+  }
+
+};
+
 
 
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
-
   const clargs args(argc, argv) ;
-
-  Map id;
-  ReadImage(args.zD_name, id);
-  const Shape sh=id.shape();
-  Map out(sh);
-  IPCprocess proc(sh, M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ) );
-
-  if ( ! args.z0_name.empty() ) {
-    if (args.d2b != 0.0)
-      warn (args.command, "Both the contrast in the contact print plane (pure absorption) and"
-            " \\d2b parameter of the MBA are given: two overlapping methods to correct the"
-            " absorption.");
-    Map i0;
-    ReadImage(args.z0_name, i0);
-    id /= unzero(i0);
-  }
-
-  if( ! args.phs_name.empty() ) { // MBA
-    float coeff = args.dd * args.dd / (4*M_PI*M_PI * args.dist);
-    //float coeff = args.dd * args.dd / (M_PI * args.dist * args.lambda);
-    if ( args.phs_norm != 0.0  &&  args.d2b != 0.0 )
-      coeff *= 4 * M_PI * args.phs_norm / (args.lambda * args.d2b);
-    proc.extract(id, out, IPCprocess::PHS, coeff);
-    SaveImage(args.phs_name, out, args.SaveInt);
-  }
-  if( ! args.abs_name.empty() ) { // BAC
-    proc.extract (id, out, IPCprocess::ABS, args.dgamma);
-    SaveImage (args.abs_name, out, args.SaveInt);
-  }
-  proc.~IPCprocess(); // why it does not happen automatically?
+  ProcInThread procall(args);
+  procall.execute();
   exit(0);
-
 }
 
 

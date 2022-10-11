@@ -35,7 +35,8 @@
 #include <complex>
 #include <fftw3.h>
 
-#ifdef OPENCL_FOUND
+//#define ONGPU
+#ifdef ONGPU
 #include <clFFT.h>
 #endif
 
@@ -124,23 +125,28 @@ private:
   static const std::string modname;	///< Module name.
   mutable CMap mid;             ///< Internally used array for the zero-padded data.
                                 // Also used as the indicator of the need to process.
+  const Shape msh;
+
+  #ifdef ONGPU
 
   static cl_program oclProgram;
   static pthread_mutex_t protectProgramCompilation;
   mutable CLmem clmid;                 ///< Internally used array for the zero-padded data.
   CLkernel kernelApplyAbsFilter;
   CLkernel kernelApplyPhsFilter;
-  CLkernel kernelApply00;
   clfftPlanHandle clfft_plan;
   CLmem clfftTmpBuff;
+
   cl_int clfftExec(clfftDirection dir) const;
 
-  /* no OPENCL_FOUND
+  #else // ONGPU
+
   Map phsFilter;                ///< FFT filter used for the extraction of the PHS component.
   Map absFilter;                ///< FFT filter used for the extraction of the ABS component.
   fftwf_plan fft_f;             ///< Forward 2D FFT plan.
   fftwf_plan fft_b;             ///< Backward 2D FFT plan
-  */
+
+  #endif // ONGPU
 
 public:
 
@@ -151,7 +157,6 @@ public:
   ///            M_PI * dist * lambda / dd^2
   IPCprocess(const Shape & _sh, float _d2b);
 
-  /// Destructor.
   ~IPCprocess();
 
   const Shape sh;                     ///< Shape of the input contrasts.
@@ -166,7 +171,7 @@ public:
   /// @param out Resulting array.
   /// @param comp Component to be extracted.
   /// @param param ABS: dgamma \f$\gamma\f$ parameter of the BAC method (theoretically must be 1.0).
-  ///              PHS: multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ).
+  ///              PHS:  multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ).
   ///
   /// @note the arrays ::in and ::out must not be the same.
   void extract(const Map & in, Map & out, Component comp, const float param=1.0) const ;
@@ -175,13 +180,10 @@ public:
     extract(io, io, comp, param);
   }
 
-  static float coeff (float _d2b, float _dd, float _dist, float _lambda) {
-    if ( _d2b < 0.0 || _dist <= 0.0 || _lambda <= 0.0 )
-      return 1.0;
-    float ipccoef = _dd * _dd / (4*M_PI*M_PI * _dist);
-    if ( _d2b != 0.0 )
-      ipccoef *= 4 * M_PI / (_lambda * _d2b);
-    return ipccoef;
+  static float d2bNorm (float _d2b, float _dd, float _dist, float _lambda);
+
+  static float cofIRL (float _d2b, float _dd, float _dist, float _lambda) {
+    return _lambda * _d2b / (4*M_PI*d2bNorm(_d2b, _dd, _dist, _lambda));
   }
 
 };

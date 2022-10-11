@@ -487,7 +487,7 @@ public:
     , maskCL_R(0)
     , maskCL(maskCL_R)
     , ipcproc(oshape(st), phsrules.d2b)
-    , ipccoef(IPCprocess::coeff(phsrules.d2b, dd, phsrules.dist, phsrules.lambda))
+    , ipccoef(IPCprocess::d2bNorm(phsrules.d2b, dd, phsrules.dist, phsrules.lambda))
   {
 
     if ( ! area(st.ish) )
@@ -662,7 +662,7 @@ public:
       crop(stitched, final, st.fcrp);
 
     // IPC processing
-    ipcproc.extract(final, IPCprocess::PHS, ipccoef);
+    ipcproc.extract(final, IPCprocess::PHS, 1.0/ipccoef);
 
     if (!res.size())
       res.reference(final);

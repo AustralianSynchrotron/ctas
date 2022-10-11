@@ -48,8 +48,10 @@ checkcom() {
 execom() {
     export LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
     export LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
-    ## string below used to filter annoying warning from OpenCL in some configurations
-    exec ${exec_prefix}/$@ 2> >(egrep -a -v 'libOpenCL.+: no version information available'  >&2)
+    ## egreps below used to filter annoying warning messages in some configurations
+    exec ${exec_prefix}/$@ 2> >( egrep -a -v 'libOpenCL.+: no version information available' |
+                                 egrep -a -v 'Warning:  Program terminating, but clFFT resources not freed.' |
+                                 egrep -a -v 'Please consider explicitly calling clfftTeardown' >&2)
 }
 
 showusage() {

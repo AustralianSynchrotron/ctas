@@ -41,7 +41,7 @@ const string IPCprocess::componentDesc =
   "P, PHS, PHASE      - for the phase contrast";
 
 
-
+#ifdef ONGPU
 cl_program IPCprocess::oclProgram = 0;
 pthread_mutex_t IPCprocess::protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
 
@@ -83,21 +83,24 @@ static int closest_factorable(int n, const vector<int> & primes) {
     fnl *= ipow(primes[cprm],r[cprm]);
   return fnl;
 }
-
+#endif // ONGPU
 
 IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   : sh(_sh)
   , d2b(_d2b)
+  #ifdef ONGPU
   , clmid(0)
   , clfftTmpBuff(0)
+  #endif // ONGPU
 {
-  if (d2b < 0.0) // no IPC processing
+  if (d2b <= 0.0) // no IPC processing
     return;
   if (sh(0) < 3 || sh(1) < 3)
     throw_error(modname, "Insufficient size requested: (" + toString(sh) + ")."
                 " Must be at least (" + toString(Shape(3,3)) + ").");
     //throw_error(modname, "Delata to Beta ratio is less than 0." );
 
+  #ifdef ONGPU
   pthread_mutex_lock(&protectProgramCompilation);
   if (!oclProgram) {
     const char oclSource[] = {
@@ -111,10 +114,11 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
 
   kernelApplyAbsFilter(oclProgram, "applyAbsFilter");
   kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
-  kernelApply00(oclProgram, "apply00");
 
   const size_t msh[2] = {(size_t) closest_factorable(2*sh(1)-1, {2,3,5,7}),
                          (size_t) closest_factorable(2*sh(0)-1, {2,3,5,7})};
+  //const size_t msh[2] = {(size_t) pow(2, ceil(log2(2*sh(1)-1))),
+  //                       (size_t) pow(2, ceil(log2(2*sh(0)-1)))};
   mid.resize(msh[1], msh[0]);
   clmid(clAllocArray<float>(2*mid.size()));
 
@@ -128,8 +132,6 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   kernelApplyPhsFilter.setArg(2, (cl_int) msh[1]);
   kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
 
-  kernelApply00.setArg(0, clmid());
-
   cl_int err;
   size_t clfftTmpBufSize = 0;
   clfftSetupData fftSetup;
@@ -142,18 +144,17 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   if (clfftTmpBufSize)
     clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize));
 
-
-  /* no OPENCL_FOUND
+  #else // ONGPU
 
   mid.resize(sh);
   phsFilter.resize(sh);
   absFilter.resize(sh);
 
-  fftwf_complex* midd = (fftwf_complex*) (void*) mid.data(); // Bad trick!
-  fft_f = fftwf_plan_dft_2d ( sh(1), sh(0), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  fft_b = fftwf_plan_dft_2d ( sh(1), sh(0), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
+  fft_f = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  fft_b = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
 
-  // prepare the filters
+  // prepare filters
   for (long i = 0; i < sh(0); i++)
     for (long j = 0; j < sh(1); j++) {
       float ei, ej;
@@ -164,31 +165,31 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
       absFilter(i,j) = ei*ei + ej*ej;
     }
   if ( d2b == 0.0 ) {
-    phsFilter = 1/absFilter;
+    absFilter(0l,0l)=1.0;
+    phsFilter = 1.0/absFilter;
+    phsFilter(0l,0l)=0.0;
     absFilter = 0.0;
   } else {
     phsFilter = d2b/(d2b*absFilter+1);
     absFilter *= phsFilter;
   }
 
-  */
+  #endif // ONGPU
 
 }
 
 
 
 IPCprocess::~IPCprocess() {
-  if (clmid()) {
-    clfftDestroyPlan(&clfft_plan);
-    clfftTeardown( );
-  }
-    /* no OPENCL_FOUND
-    fftwf_destroy_plan(fft_f);
-    fftwf_destroy_plan(fft_b);
-    */
+  #ifdef  ONGPU
+  clfftDestroyPlan(&clfft_plan);
+  #else // ONGPU
+  fftwf_destroy_plan(fft_f);
+  fftwf_destroy_plan(fft_b);
+  #endif // ONGPU
 }
 
-
+#ifdef  ONGPU
 cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   if (d2b<0)
     return CL_SUCCESS;
@@ -201,56 +202,80 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
     throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
   return err;
 }
+#endif // ONGPU
 
 
 void
 IPCprocess::extract(const Map & in, Map & out, Component comp, const float param) const {
-  if (d2b<0) {
-    if (!out.size())
-      out.reference(in);
-    if (!areSame(in,out)) {
-      out.resize(sh);
-      out=in;
-    }
-    return;
-  }
   if ( in.shape() != sh )
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
+  if (d2b<=0) {
+    if (comp==Component::ABS) {
+      if (!out.size())
+        out.reference(in);
+      if (!areSame(in,out)) {
+        out.resize(sh);
+        out=in;
+      }
+    } else {
+      out.resize(sh);
+      out = 0.0;
+    }
+    return;
+  }
   out.resize(sh);
 
   mid = 0.0;
-  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
+  out = in;
+  unzero(out);
+  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = -log(out);
+  //mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
 
-  #ifdef OPENCL_FOUND
+  #ifdef ONGPU
 
   blitz2cl(mid, clmid());
   clfftExec(CLFFT_FORWARD);
-  // -1 in the next string is here to exclude 0,0 which is done in apply00
-  (comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter).exec(mid.size() - 1);
-  kernelApply00.exec(1);
+  (comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter)
+      .exec(mid.size());
   clfftExec(CLFFT_BACKWARD);
   cl2blitz(clmid(), mid);
-  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));
 
-  #else // OPENCL_FOUND
+  #else // ONGPU
 
   fftwf_execute(fft_f);
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
-  out = real(mid)/mid.size();
 
-  #endif // OPENCL_FOUND
+  #endif // ONGPU
 
-
-  //const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1))
-  //                  + mean(out(0, all)) + mean(out(sh(0)-1, all));
-  //out -= bmean/4.0;
-  if (param != 1.0)
-    out *= param;
+  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1))) * (param/mid.size());
   if (comp == ABS)   out = in / (1 - out);
-  else if (param<0)  out = exp(out) ;
 }
+
+
+float IPCprocess::d2bNorm (float _d2b, float _dd, float _dist, float _lambda) {
+  if (_dd == 0.0) {
+    warn(modname, "Impossible zero pixel size. Will use 1mum instead.");
+    _dd = 1.0;
+  }
+  if (_lambda == 0.0) {
+    warn(modname, "Impossible zero wawelength. Will use 1A instead.");
+    _lambda = 1.0;
+  }
+  if (_dist == 0.0) {
+    warn(modname, "Trivial case of contact plane with 0 distance.");
+    return 1.0;
+  }
+  if (_d2b == 0.0) {
+    warn(modname, "Trivial case of no phase with 0 delta/beta.");
+    return 1.0;
+  }
+  return M_PI * _d2b * _dist * _lambda / ( _dd * _dd );
+}
+
+
+
 
 
 

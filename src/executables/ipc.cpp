@@ -45,12 +45,13 @@ struct clargs {
   deque<ImagePath> images;                 ///< contrasts at the distance.
   ImagePath phs_name;                ///< Output name of the phase contrast.
   ImagePath abs_name;                ///< Output name of the absorption contrast.
-  float phs_norm;               ///< Variants of phs output
   float dd;                     ///< Pixel size.
   float d2b;                  ///< \f$\d2b\f$ parameter of the MBA.
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC method
+  bool phsNorm;
+  bool phsExp;
   bool SaveInt;				///< Be verbose flag
   bool beverbose;             ///< Save image as 16-bit integer.
 
@@ -60,12 +61,13 @@ struct clargs {
 
 
 clargs::clargs(int argc, char *argv[]) :
-  phs_norm(0.0),
   dd(1.0),
   d2b(0.0),
   lambda(1.0),
   dist(1.0),
   dgamma(1.0),
+  phsNorm(false),
+  phsExp(false),
   SaveInt(false),
   beverbose(false)
 {
@@ -84,10 +86,6 @@ clargs::clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &abs_name, 'a', "absorption",
        "Image name to output the absorption component", "", "<NONE>")
   .add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
-  .add(poptmx::OPTION, &phs_norm, 'P', "phaseout", "Variants of phase component output.",
-       "If 0 (default) - outputs real physical value, "
-       "if >0 - the value is multiplied by P*4*pi/(w*d) and "
-       "if <0 - exponent of the negated value obtained as P>0.")
   .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)", NeedForQuant)
   .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
        NeedForQuant, toString(dd))
@@ -96,6 +94,10 @@ clargs::clargs(int argc, char *argv[]) :
        "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
   .add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
        "Must be a value around 1.0 (theoretical).", toString(dgamma))
+  .add(poptmx::OPTION, &phsNorm,'n', "norm", "Normalize phase contrast.",
+       "If set, outputs phase contrast normalized. Otherwise (default) outputs real physical value in CI.")
+  .add(poptmx::OPTION, &phsExp,'e', "exp", "Outputs exponent of phase contrast.",
+       "Useful for further CT processing of output as absorption contrast.")
   .add(poptmx::OPTION, &SaveInt,'i', "int",
        "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
@@ -115,6 +117,16 @@ clargs::clargs(int argc, char *argv[]) :
   if ( ! table.count(&phs_name) && ! table.count(&abs_name) )
     exit_on_error(command, "At least one of the two following arguments is required: "
                   +table.desc(&phs_name)+ ", " +table.desc(&phs_name)+ ".");
+
+  if ( ! table.count(&phs_name) && table.count(&phsExp) )
+    warn(command, "Use of option "+table.desc(&phsExp)+" makes sense only with"
+                  " phase output ("+table.desc(&phs_name)+").");
+  if ( ! table.count(&phs_name) && table.count(&phsNorm) )
+    warn(command, "Use of option "+table.desc(&phsNorm)+" makes sense only with"
+                  " phase output ("+table.desc(&phs_name)+").");
+  if ( table.count(&phsNorm) && table.count(&phsExp) )
+    exit_on_error(command, "Mutually exclusive options "+table.desc(&phsExp)+
+                           " and "+table.desc(&phsNorm)+").");
 
   if ( ! table.count(&dist) )
     exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
@@ -154,7 +166,7 @@ class ProcInThread : public InThread {
   SaveVolumeBySlice * allOutPhs;
   const Shape sh;
   const uint sz;
-  const float d2bIPC;
+  const float d2bN;
   const float cofIPC;
 
   unordered_map<pthread_t, IPCprocess > procs;
@@ -170,7 +182,7 @@ class ProcInThread : public InThread {
     if ( ! procs.count(me) ) { // first call
       procs.emplace(piecewise_construct,
                     forward_as_tuple(me),
-                    forward_as_tuple(sh, d2bIPC));
+                    forward_as_tuple(sh, d2bN));
       imaps.emplace(me, sh);
       omaps.emplace(me, sh);
     }
@@ -180,26 +192,19 @@ class ProcInThread : public InThread {
     unlock();
 
     allIn.read(idx, myImap);
-    if( allOutPhs ) { // MBA
+    if( allOutPhs ) {
       myProc.extract(myImap, myOmap, IPCprocess::PHS, cofIPC);
+      if (args.phsExp)
+        myOmap = exp(-myOmap);
       allOutPhs->save(idx, myOmap);
     }
-    if( allOutAbs ) { // MBA
+    if( allOutAbs ) {
       myProc.extract(myImap, myOmap, IPCprocess::ABS, args.dgamma);
       allOutAbs->save(idx, myOmap);
     }
 
     bar.update();
     return true;
-  }
-
-  static float initCofIPC(const clargs & _args) {
-    if (_args.phs_name.empty())
-      return 1;
-    float ret = _args.dd * _args.dd / (4*M_PI*M_PI * _args.dist);
-    if ( _args.phs_norm != 0.0  &&  _args.d2b != 0.0 )
-      ret *= 4 * M_PI * _args.phs_norm / (_args.lambda * _args.d2b);
-    return ret;
   }
 
 public:
@@ -212,8 +217,8 @@ public:
     , allOutPhs(0)
     , sh(allIn.face())
     , sz(allIn.slices())
-    , d2bIPC(M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd ))
-    , cofIPC(initCofIPC(args))
+    , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
+    , cofIPC( ( args.phsNorm || args.phsExp ? 1.0 : args.d2b * args.lambda / (4*M_PI) ) / d2bN)
   {
     bar.setSteps(sz);
     if (!args.phs_name.empty())
@@ -238,7 +243,7 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
   ProcInThread procall(args);
   procall.execute();
-  exit(0);
+  // exit(0);  // commented to run destructors
 }
 
 

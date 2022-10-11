@@ -11,15 +11,6 @@ target_link_libraries(ct
   kernel
 )
 
-#add_executable(ct-vol ct-vol.cpp)
-#target_link_libraries(ct-vol
-#  common
-#  poptmx
-#  kernel
-#  experiment
-#)
-
-
 
 add_executable(rc2fd rc2fd.cpp)
 target_link_libraries(rc2fd
@@ -30,13 +21,6 @@ target_link_libraries(rc2fd
 
 add_executable(ipc ipc.cpp)
 target_link_libraries(ipc
-  common
-  poptmx
-  lipc
-)
-
-add_executable(multipc multipc.cpp)
-target_link_libraries(multipc
   common
   poptmx
   lipc
@@ -129,9 +113,7 @@ target_link_libraries(bctppl
 
 
 set( all_targets
-  multipc ipc dei edei norm
-  ct ts rc2fd proj v2v
-  bctppl
+  ipc dei edei norm ct ts rc2fd proj v2v bctppl
 )
 
 

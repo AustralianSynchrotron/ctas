@@ -91,16 +91,21 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   #ifdef ONGPU
   , clmid(0)
   , clfftTmpBuff(0)
+  , msh(closest_factorable(sh(0), {2,3,5,7}),
+        closest_factorable(sh(1), {2,3,5,7}))
+  # else
+  , msh(sh)
   #endif // ONGPU
 {
+
   if (d2b <= 0.0) // no IPC processing
     return;
   if (sh(0) < 3 || sh(1) < 3)
     throw_error(modname, "Insufficient size requested: (" + toString(sh) + ")."
                 " Must be at least (" + toString(Shape(3,3)) + ").");
-    //throw_error(modname, "Delata to Beta ratio is less than 0." );
 
   #ifdef ONGPU
+
   pthread_mutex_lock(&protectProgramCompilation);
   if (!oclProgram) {
     const char oclSource[] = {
@@ -112,72 +117,58 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   if (!oclProgram)
     throw_error(modname, "Failed to compile OCL program for IPC processing.");
 
-  kernelApplyAbsFilter(oclProgram, "applyAbsFilter");
-  kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
-
-  const size_t msh[2] = {(size_t) closest_factorable(2*sh(1)-1, {2,3,5,7}),
-                         (size_t) closest_factorable(2*sh(0)-1, {2,3,5,7})};
-  //const size_t msh[2] = {(size_t) pow(2, ceil(log2(2*sh(1)-1))),
-  //                       (size_t) pow(2, ceil(log2(2*sh(0)-1)))};
-  mid.resize(msh[1], msh[0]);
-  clmid(clAllocArray<float>(2*mid.size()));
-
-  kernelApplyAbsFilter.setArg(0, clmid());
-  kernelApplyAbsFilter.setArg(1, (cl_int) msh[0]);
-  kernelApplyAbsFilter.setArg(2, (cl_int) msh[1]);
-  kernelApplyAbsFilter.setArg(3, (cl_float) d2b );
-
-  kernelApplyPhsFilter.setArg(0, clmid());
-  kernelApplyPhsFilter.setArg(1, (cl_int) msh[0]);
-  kernelApplyPhsFilter.setArg(2, (cl_int) msh[1]);
-  kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
-
-  cl_int err;
-  size_t clfftTmpBufSize = 0;
-  clfftSetupData fftSetup;
-  if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
-       CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
-       CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, msh)) ||
-       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) ||
-       CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
-    throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
-  if (clfftTmpBufSize)
-    clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize));
+  mid.resize(msh);
+  initCL();
 
   #else // ONGPU
 
-  mid.resize(sh);
-  phsFilter.resize(sh);
-  absFilter.resize(sh);
+  mid.resize(msh);
+  phsFilter.resize(msh);
+  absFilter.resize(msh);
 
   fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
-  fft_f = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  fft_b = fftwf_plan_dft_2d ( sh(0), sh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
 
   // prepare filters
-  for (long i = 0; i < sh(0); i++)
-    for (long j = 0; j < sh(1); j++) {
+  for (long i = 0; i < msh(0); i++)
+    for (long j = 0; j < msh(1); j++) {
       float ei, ej;
-      ei = i/float(sh(0));
-      ej = j/float(sh(1));
+      ei = i/float(msh(0));
+      ej = j/float(msh(1));
       if (ei>0.5) ei = 1.0 - ei;
       if (ej>0.5) ej = 1.0 - ej;
       absFilter(i,j) = ei*ei + ej*ej;
     }
-  if ( d2b == 0.0 ) {
-    absFilter(0l,0l)=1.0;
-    phsFilter = 1.0/absFilter;
-    phsFilter(0l,0l)=0.0;
-    absFilter = 0.0;
-  } else {
-    phsFilter = d2b/(d2b*absFilter+1);
-    absFilter *= phsFilter;
-  }
+  phsFilter = d2b/(d2b*absFilter+1);
+  absFilter *= phsFilter;
 
   #endif // ONGPU
 
 }
 
+
+IPCprocess::IPCprocess( const IPCprocess & other)
+  : sh(other.sh)
+  , d2b(other.d2b)
+  #ifdef ONGPU
+  , clmid(0)
+  , clfftTmpBuff(0)
+  #else // ONGPU
+  , phsFilter(other.phsFilter)
+  , absFilter(other.absFilter)
+  #endif // ONGPU
+  , msh(other.msh)
+  , mid(other.mid.shape())
+{
+  #ifdef ONGPU
+  initCL();
+  #else // ONGPU
+  fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
+  fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  #endif // ONGPU
+}
 
 
 IPCprocess::~IPCprocess() {
@@ -189,7 +180,41 @@ IPCprocess::~IPCprocess() {
   #endif // ONGPU
 }
 
-#ifdef  ONGPU
+
+
+#ifdef ONGPU
+
+void IPCprocess::initCL() {
+
+  clmid(clAllocArray<float>(2*mid.size()));
+  kernelApplyAbsFilter(oclProgram, "applyAbsFilter");
+  kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
+
+  kernelApplyAbsFilter.setArg(0, clmid());
+  kernelApplyAbsFilter.setArg(1, (cl_int) msh(1));
+  kernelApplyAbsFilter.setArg(2, (cl_int) msh(0));
+  kernelApplyAbsFilter.setArg(3, (cl_float) d2b );
+
+  kernelApplyPhsFilter.setArg(0, clmid());
+  kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
+  kernelApplyPhsFilter.setArg(2, (cl_int) msh(0));
+  kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
+
+  cl_int err;
+  size_t clfftTmpBufSize = 0;
+  clfftSetupData fftSetup;
+  const size_t mshs[2] = {(size_t) msh(1), (size_t) msh(0)};
+  if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
+       CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
+       CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, mshs)) ||
+       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) ||
+       CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
+    throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
+  if (clfftTmpBufSize)
+    clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize));
+
+}
+
 cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   if (d2b<0)
     return CL_SUCCESS;
@@ -202,7 +227,10 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
     throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
   return err;
 }
+
 #endif // ONGPU
+
+
 
 
 void
@@ -246,10 +274,11 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   fftwf_execute(fft_f);
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
+  mid /= mid.size();
 
   #endif // ONGPU
 
-  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1))) * (param/mid.size());
+  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1))) * (param/d2b);
   if (comp == ABS)   out = in / (1 - out);
 }
 

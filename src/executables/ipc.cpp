@@ -50,7 +50,6 @@ struct clargs {
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC method
-  bool phsNorm;
   bool phsExp;
   bool SaveInt;				///< Be verbose flag
   bool beverbose;             ///< Save image as 16-bit integer.
@@ -66,7 +65,6 @@ clargs::clargs(int argc, char *argv[]) :
   lambda(1.0),
   dist(1.0),
   dgamma(1.0),
-  phsNorm(false),
   phsExp(false),
   SaveInt(false),
   beverbose(false)
@@ -94,8 +92,6 @@ clargs::clargs(int argc, char *argv[]) :
        "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
   .add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
        "Must be a value around 1.0 (theoretical).", toString(dgamma))
-  .add(poptmx::OPTION, &phsNorm,'n', "norm", "Normalize phase contrast.",
-       "If set, outputs phase contrast normalized. Otherwise (default) outputs real physical value in CI.")
   .add(poptmx::OPTION, &phsExp,'e', "exp", "Outputs exponent of phase contrast.",
        "Useful for further CT processing of output as absorption contrast.")
   .add(poptmx::OPTION, &SaveInt,'i', "int",
@@ -117,16 +113,9 @@ clargs::clargs(int argc, char *argv[]) :
   if ( ! table.count(&phs_name) && ! table.count(&abs_name) )
     exit_on_error(command, "At least one of the two following arguments is required: "
                   +table.desc(&phs_name)+ ", " +table.desc(&phs_name)+ ".");
-
   if ( ! table.count(&phs_name) && table.count(&phsExp) )
     warn(command, "Use of option "+table.desc(&phsExp)+" makes sense only with"
                   " phase output ("+table.desc(&phs_name)+").");
-  if ( ! table.count(&phs_name) && table.count(&phsNorm) )
-    warn(command, "Use of option "+table.desc(&phsNorm)+" makes sense only with"
-                  " phase output ("+table.desc(&phs_name)+").");
-  if ( table.count(&phsNorm) && table.count(&phsExp) )
-    exit_on_error(command, "Mutually exclusive options "+table.desc(&phsExp)+
-                           " and "+table.desc(&phsNorm)+").");
 
   if ( ! table.count(&dist) )
     exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
@@ -167,7 +156,6 @@ class ProcInThread : public InThread {
   const Shape sh;
   const uint sz;
   const float d2bN;
-  const float cofIPC;
 
   unordered_map<pthread_t, IPCprocess > procs;
   unordered_map<pthread_t, Map > imaps;
@@ -193,7 +181,7 @@ class ProcInThread : public InThread {
 
     allIn.read(idx, myImap);
     if( allOutPhs ) {
-      myProc.extract(myImap, myOmap, IPCprocess::PHS, cofIPC);
+      myProc.extract(myImap, myOmap, IPCprocess::PHS);
       if (args.phsExp)
         myOmap = exp(-myOmap);
       allOutPhs->save(idx, myOmap);
@@ -218,7 +206,6 @@ public:
     , sh(allIn.face())
     , sz(allIn.slices())
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
-    , cofIPC( ( args.phsNorm || args.phsExp ? 1.0 : args.d2b * args.lambda / (4*M_PI) ) / d2bN)
   {
     bar.setSteps(sz);
     if (!args.phs_name.empty())

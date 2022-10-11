@@ -117,8 +117,10 @@ public:
     ABS,                        ///< Absorption.
     PHS                         ///< Phase shift
   }  Component ;
-
   static const std::string componentDesc;  ///< Description of the ::Component.
+
+  const Shape sh;                     ///< Shape of the input contrasts.
+  const float d2b;
 
 private:
 
@@ -136,6 +138,8 @@ private:
   CLkernel kernelApplyPhsFilter;
   clfftPlanHandle clfft_plan;
   CLmem clfftTmpBuff;
+
+  void initCL();
 
   cl_int clfftExec(clfftDirection dir) const;
 
@@ -157,10 +161,9 @@ public:
   ///            M_PI * dist * lambda / dd^2
   IPCprocess(const Shape & _sh, float _d2b);
 
-  ~IPCprocess();
+  IPCprocess(const IPCprocess & other);
 
-  const Shape sh;                     ///< Shape of the input contrasts.
-  const float d2b;
+  ~IPCprocess();
 
   /// The component extraction.
   ///
@@ -182,8 +185,8 @@ public:
 
   static float d2bNorm (float _d2b, float _dd, float _dist, float _lambda);
 
-  static float cofIRL (float _d2b, float _dd, float _dist, float _lambda) {
-    return _lambda * _d2b / (4*M_PI*d2bNorm(_d2b, _dd, _dist, _lambda));
+  static float cofIRL (float _d2b, float _lambda) {
+    return _lambda * _d2b / ( 4 * M_PI ) ;
   }
 
 };

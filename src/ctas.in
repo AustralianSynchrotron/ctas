@@ -49,9 +49,11 @@ execom() {
     export LD_LIBRARY_PATH="${lib_prefix}:${LD_LIBRARY_PATH}" \
     export LIBRARY_PATH="${lib_prefix}:${LIBRARY_PATH}" \
     ## egreps below used to filter annoying warning messages in some configurations
-    exec ${exec_prefix}/$@ 2> >( egrep -a -v 'libOpenCL.+: no version information available' |
-                                 egrep -a -v 'Warning:  Program terminating, but clFFT resources not freed.' |
-                                 egrep -a -v 'Please consider explicitly calling clfftTeardown' >&2)
+    exec ${exec_prefix}/$@ 2> >( \
+      egrep --line-buffered -a -v 'libOpenCL.+: no version information available' |
+      egrep --line-buffered -a -v 'Warning:  Program terminating, but clFFT resources not freed.' |
+      egrep --line-buffered -a -v 'Please consider explicitly calling clfftTeardown' \
+      >&2)
 }
 
 showusage() {

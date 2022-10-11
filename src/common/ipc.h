@@ -125,8 +125,11 @@ public:
 private:
 
   static const std::string modname;	///< Module name.
+  #ifdef ONGPU
   mutable CMap mid;             ///< Internally used array for the zero-padded data.
-                                // Also used as the indicator of the need to process.
+  #else // ONGPU
+  mutable Map mid;
+  #endif // ONGPU
   const Shape msh;
 
   #ifdef ONGPU

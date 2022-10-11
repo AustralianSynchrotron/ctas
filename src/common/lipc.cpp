@@ -44,6 +44,7 @@ const string IPCprocess::componentDesc =
 #ifdef ONGPU
 cl_program IPCprocess::oclProgram = 0;
 pthread_mutex_t IPCprocess::protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
+#endif // ONGPU
 
 static int ipow(int base, int exp) {
   int result = 1;
@@ -69,6 +70,7 @@ static vector<int> factor(int n, const vector<int> & primes) {
   return f;
 }
 
+
 static int closest_factorable(int n, const vector<int> & primes) {
   int d = 0;
   vector<int> r;
@@ -83,7 +85,6 @@ static int closest_factorable(int n, const vector<int> & primes) {
     fnl *= ipow(primes[cprm],r[cprm]);
   return fnl;
 }
-#endif // ONGPU
 
 IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   : sh(_sh)
@@ -91,11 +92,9 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   #ifdef ONGPU
   , clmid(0)
   , clfftTmpBuff(0)
+  #endif // ONGPU
   , msh(closest_factorable(sh(0), {2,3,5,7}),
         closest_factorable(sh(1), {2,3,5,7}))
-  # else
-  , msh(sh)
-  #endif // ONGPU
 {
 
   if (d2b <= 0.0) // no IPC processing
@@ -126,20 +125,29 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   phsFilter.resize(msh);
   absFilter.resize(msh);
 
-  fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
-  fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  //fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
+  //fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  //fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  float* midd = mid.data();
+  fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
+  fft_b = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_HC2R, FFTW_HC2R, FFTW_ESTIMATE);
+
 
   // prepare filters
-  for (long i = 0; i < msh(0); i++)
+  for (long i = 0; i < msh(0); i++) {
+    float ei = i/float(msh(0));
+    if (ei>0.5)
+      ei = 1.0 - ei;
+    ei *= ei;
     for (long j = 0; j < msh(1); j++) {
-      float ei, ej;
-      ei = i/float(msh(0));
+      float ej;
       ej = j/float(msh(1));
-      if (ei>0.5) ei = 1.0 - ei;
-      if (ej>0.5) ej = 1.0 - ej;
-      absFilter(i,j) = ei*ei + ej*ej;
+      if (ej>0.5)
+        ej = 1.0 - ej;
+      ej *= ej;
+      absFilter(i,j) = ei + ej;
     }
+  }
   phsFilter = d2b/(d2b*absFilter+1);
   absFilter *= phsFilter;
 
@@ -164,9 +172,12 @@ IPCprocess::IPCprocess( const IPCprocess & other)
   #ifdef ONGPU
   initCL();
   #else // ONGPU
-  fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
-  fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  //fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
+  //fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  //fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  float* midd = mid.data();
+  fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
+  fft_b = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_HC2R, FFTW_HC2R, FFTW_ESTIMATE);
   #endif // ONGPU
 }
 
@@ -278,7 +289,8 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
 
   #endif // ONGPU
 
-  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1))) * (param/d2b);
+  //out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1))) * (param/d2b);
+  out = mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) * (param/d2b);
   if (comp == ABS)   out = in / (1 - out);
 }
 

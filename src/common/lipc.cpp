@@ -279,6 +279,7 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
       .exec(mid.size());
   clfftExec(CLFFT_BACKWARD);
   cl2blitz(clmid(), mid);
+  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)))
 
   #else // ONGPU
 
@@ -286,12 +287,17 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
   mid /= mid.size();
+  out = mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1));
 
   #endif // ONGPU
 
-  //out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1))) * (param/d2b);
-  out = mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) * (param/d2b);
-  if (comp == ABS)   out = in / (1 - out);
+  out *= param/d2b;
+  if (comp == ABS)  {
+    out = in / (1 - out);
+  } else {
+    const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1));
+    out -= bmean/2.0;
+  }
 }
 
 

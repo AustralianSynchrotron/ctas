@@ -168,9 +168,12 @@ class ProcInThread : public InThread {
     const pthread_t me = pthread_self();
     lock();
     if ( ! procs.count(me) ) { // first call
-      procs.emplace(piecewise_construct,
-                    forward_as_tuple(me),
-                    forward_as_tuple(sh, d2bN));
+      if (procs.empty())
+        procs.emplace(piecewise_construct,
+                      forward_as_tuple(me),
+                      forward_as_tuple(sh, d2bN));
+      else
+        procs.emplace(me, procs.begin()->second);
       imaps.emplace(me, sh);
       omaps.emplace(me, sh);
     }

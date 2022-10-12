@@ -120,6 +120,7 @@ public:
   static const std::string componentDesc;  ///< Description of the ::Component.
 
   const Shape sh;                     ///< Shape of the input contrasts.
+  const Shape msh;
   const float d2b;
 
 private:
@@ -130,7 +131,6 @@ private:
   #else // ONGPU
   mutable Map mid;
   #endif // ONGPU
-  const Shape msh;
 
   #ifdef ONGPU
 

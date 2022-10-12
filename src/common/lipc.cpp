@@ -88,13 +88,17 @@ static int closest_factorable(int n, const vector<int> & primes) {
 
 IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   : sh(_sh)
+  , msh(closest_factorable(sh(0), {2,3,5,7}),
+        closest_factorable(sh(1), {2,3,5,7}))
   , d2b(_d2b)
   #ifdef ONGPU
   , clmid(0)
   , clfftTmpBuff(0)
+  #else // ONGPU
+  , phsFilter(msh)
+  , absFilter(msh)
   #endif // ONGPU
-  , msh(closest_factorable(sh(0), {2,3,5,7}),
-        closest_factorable(sh(1), {2,3,5,7}))
+  , mid(msh)
 {
 
   if (d2b <= 0.0) // no IPC processing
@@ -116,22 +120,13 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   if (!oclProgram)
     throw_error(modname, "Failed to compile OCL program for IPC processing.");
 
-  mid.resize(msh);
   initCL();
 
   #else // ONGPU
 
-  mid.resize(msh);
-  phsFilter.resize(msh);
-  absFilter.resize(msh);
-
-  //fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
-  //fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  //fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
   float* midd = mid.data();
   fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
   fft_b = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_HC2R, FFTW_HC2R, FFTW_ESTIMATE);
-
 
   // prepare filters
   for (long i = 0; i < msh(0); i++) {
@@ -158,6 +153,7 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
 
 IPCprocess::IPCprocess( const IPCprocess & other)
   : sh(other.sh)
+  , msh(other.msh)
   , d2b(other.d2b)
   #ifdef ONGPU
   , clmid(0)
@@ -166,15 +162,11 @@ IPCprocess::IPCprocess( const IPCprocess & other)
   , phsFilter(other.phsFilter)
   , absFilter(other.absFilter)
   #endif // ONGPU
-  , msh(other.msh)
   , mid(other.mid.shape())
 {
   #ifdef ONGPU
   initCL();
   #else // ONGPU
-  //fftwf_complex* midd = (fftwf_complex*) (void*) mid.data();
-  //fft_f = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
-  //fft_b = fftwf_plan_dft_2d ( msh(0), msh(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
   float* midd = mid.data();
   fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
   fft_b = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_HC2R, FFTW_HC2R, FFTW_ESTIMATE);
@@ -263,13 +255,36 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
     }
     return;
   }
+
   out.resize(sh);
+  out = in;
+  out = -log(unzero(out));
+  //out = 1 - in;
+
+  //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );
+  //const Shape cpnt( opnt(0)+sh(0) , opnt(1)+sh(1) );
+  //const blitz::Range r0_0(0, opnt(0)-1);
+  //const blitz::Range r0_1(opnt(0), cpnt(0)-1);
+  //const blitz::Range r0_2(cpnt(0), msh(0)-1);
+  //const blitz::Range r1_0(0, opnt(1)-1);
+  //const blitz::Range r1_1(opnt(1), cpnt(1)-1);
+  //const blitz::Range r1_2(cpnt(1), msh(1)-1);
+  //mid(r0_1, r1_1) = -log(out);
+  //for (int cur0=0 ; cur0 < opnt(0) ; cur0++ )
+  //  mid(cur0, r1_1) = mid(opnt(0), r1_1);
+  //for (int cur0=cpnt(0) ; cur0 < msh(0) ; cur0++ )
+  //  mid(cur0, r1_1) = mid(cpnt(0)-1, r1_1);
+  //for (int cur1=0 ; cur1 < opnt(1) ; cur1++ )
+  //  mid(r0_1, cur1) = mid(r0_1, opnt(1));
+  //for (int cur1=cpnt(1) ; cur1 < msh(1) ; cur1++ )
+  //  mid(r0_1, cur1) = mid(r0_1, cpnt(1)-1);
+  //mid(r0_0, r1_0) = mid(opnt(0), opnt(1));
+  //mid(r0_0, r1_2) = mid(opnt(0), cpnt(1)-1);
+  //mid(r0_2, r1_0) = mid(cpnt(0)-1, opnt(1));
+  //mid(r0_2, r1_2) = mid(cpnt(0)-1, cpnt(1)-1);
 
   mid = 0.0;
-  out = in;
-  unzero(out);
   mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = -log(out);
-  //mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = 1 - in;
 
   #ifdef ONGPU
 
@@ -287,17 +302,15 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   mid *= (comp == PHS) ? phsFilter : absFilter ;
   fftwf_execute(fft_b);
   mid /= mid.size();
+  //out = mid(r0_1, r1_1);
   out = mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1));
 
   #endif // ONGPU
 
   out *= param/d2b;
-  if (comp == ABS)  {
+  if (comp == ABS)
     out = in / (1 - out);
-  } else {
-    const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1));
-    out -= bmean/2.0;
-  }
+
 }
 
 

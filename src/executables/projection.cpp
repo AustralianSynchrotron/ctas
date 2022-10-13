@@ -563,7 +563,6 @@ public:
         ffprocs[0].process(allInR[curproj]);
       else if (ffprocs.size() == st.nofIn)
         ffprocs[curproj].process(allInR[curproj]);
-      allIn[curproj].resize(1,1); // to make sure it does not re-reference.
       iproc.proc(allInR[curproj], allIn[curproj]);
       if ( ! interim_name.empty() ) {
         const string sfI = st.nofIn > 1 ? toString(mask2format("@", st.nofIn), curproj) : "";

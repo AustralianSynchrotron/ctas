@@ -330,7 +330,7 @@ public:
   }
 
   void prepare(PointF2D _origin, Shape _ish, int _isz, const Map & msks) {
-    deque<Map> msksdq(1,msks);
+    deque<Map> msksdq(msks.size() ? 1 : 0, msks);
     prepare(_origin, _ish, _isz, msksdq);
   }
 
@@ -570,9 +570,9 @@ public:
     , sterF(other.sterF)
     , iproc(other.iproc)
     , ffprocs(other.ffprocs)
-    , allIn(strl.nofIn)
-    , o1Stitch(strl.nofIn/strl.origin1size)
-    , o2Stitch(strl.flipUsed ? 2 : 1)
+    , allIn(other.allIn.size())
+    , o1Stitch(other.o1Stitch.size())
+    , o2Stitch(other.o2Stitch.size())
     , mskF(other.mskF)
     , doGapsFill(other.doGapsFill)
     , maskCL(other.maskCL)
@@ -654,7 +654,7 @@ public:
     }
 
     // first stitch
-    sub_proc(ster1, allIn, o1Stitch, interim_name, "_U");
+    sub_proc(ster1, allIn   , o1Stitch, interim_name, "_U");
     // second stitch
     sub_proc(ster2, o1Stitch, o2Stitch, interim_name, "_V");
     // flip stitch

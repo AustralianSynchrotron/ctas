@@ -291,6 +291,9 @@ public:
       throw_error(modname, "Nothing to stitch.");
     if (msks.size() && msks.size() != 1 && msks.size() != isz)
       throw_error(modname, "Inconsistent sizes of mask and image arrays.");
+    for (int mcur = 0 ; mcur < msks.size() ; mcur++ )
+      if (msks[mcur].shape() != ish)
+        throw_error(modname, "Non matching mask shapes in input.");
 
     int maxx(0), maxy(0);
     for (int acur = 0 ; acur < isz ; acur++ ) {
@@ -320,7 +323,7 @@ public:
       const blitz::Range r1(acur*origin.x-minx, acur*origin.x-minx + ish(1)-1);
       if (msks.size()==1)
         swght(r0,r1) += wght * msks[0];
-      else if (msks.size() == isz)
+      else if (msks.size())
         swght(r0,r1) += wght * msks[acur];
       else
         swght(r0,r1) += wght;
@@ -352,7 +355,7 @@ public:
     }
     for (int acur = 0 ; acur < isz ; acur++ )
       if (iarr[acur].shape() != ish)
-        throw_error(modname, "Non matching image sizes in input.");
+        throw_error(modname, "Non matching image shapes in input.");
 
     oarr.resize(osh);
     oarr=0.0;

@@ -1068,14 +1068,15 @@ void ImageProc::proc(const Map & imap, Map & omap) {
       omap = imap;
     }
     return;
-  } else {
-    omap.resize(1,1); // to make sure it does not re-reference.
-  }
+  } else
+    omap.resize(osh());
+
   inmap.resize(ish);
   inmap = imap;
   if (ang==0.0)
     crop(imap, crpmap, crp);
   proc(omap);
+
 }
 
 void ImageProc::read(const ImagePath & filename, Map & storage) {

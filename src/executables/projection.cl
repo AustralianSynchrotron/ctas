@@ -38,3 +38,6 @@ kernel void  gauss (
     iom[idi] = gsumd / mass;
 
 }
+
+
+

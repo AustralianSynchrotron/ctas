@@ -239,8 +239,13 @@ clargs(int argc, char *argv[])
 
 
 namespace blitz {
+
 static inline float denan(float x){ return isnormal(x) ? x : 0.0 ;}
 BZ_DECLARE_FUNCTION(denan);
+
+static inline float invert(float x){ return x==0.0 ? 0.0 : 1.0/x ;}
+BZ_DECLARE_FUNCTION(invert);
+
 }
 
 void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
@@ -252,16 +257,137 @@ void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=fal
 
 
 
-class ProcProj {
 
+
+
+
+class Stitcher {
+
+  static const string modname;
+
+  Map wght;
+  Map swght;
+  int minx;
+  int miny;
+
+public:
+
+  PointF2D origin;
+  int isz;
+  Shape ish;
+  Shape osh;
+
+  Stitcher()
+    : isz(0), minx(0), miny(0)
+  {}
+
+  void prepare(PointF2D _origin, Shape _ish, int _isz, const deque<Map> & msks) {
+
+    origin = _origin;
+    ish = _ish;
+    isz = _isz;
+
+    if ( isz == 0 )
+      throw_error(modname, "Nothing to stitch.");
+    if (msks.size() && msks.size() != 1 && msks.size() != isz)
+      throw_error(modname, "Inconsistent sizes of mask and image arrays.");
+
+    int maxx(0), maxy(0);
+    for (int acur = 0 ; acur < isz ; acur++ ) {
+      const float
+        orgx = acur*origin.x,
+        orgy = acur*origin.y,
+        tilx = orgx + ish(1)-1,
+        tily = orgy + ish(0)-1;
+      if (orgx < minx) minx = orgx;
+      if (tilx > maxx) maxx = tilx;
+      if (orgy < miny) miny = orgy;
+      if (tily > maxy) maxy = tily;
+    }
+
+    wght.resize(ish);
+    for (ArrIndex ycur = 0 ; ycur < ish(0) ; ycur++ )
+      for (ArrIndex xcur = 0 ; xcur < ish(1) ; xcur++ )
+        wght(ycur, xcur) = 1 + ( ish(0) - abs( 2*ycur - ish(0) + 1l ) )
+                             * ( ish(1) - abs( 2*xcur - ish(1) + 1l ) );
+
+    osh = Shape(maxy-miny+1, maxx-minx+1);
+    swght.resize(osh);
+    swght=0.0;
+    for (int acur = 0 ; acur < isz ; acur++ ) {
+      //const Map & curar = iarr[acur];
+      const blitz::Range r0(acur*origin.y-miny, acur*origin.y-miny + ish(0)-1);
+      const blitz::Range r1(acur*origin.x-minx, acur*origin.x-minx + ish(1)-1);
+      if (msks.size()==1)
+        swght(r0,r1) += wght * msks[0];
+      else if (msks.size() == isz)
+        swght(r0,r1) += wght * msks[acur];
+      else
+        swght(r0,r1) += wght;
+    }
+    swght = invert(swght);
+
+  }
+
+  void prepare(PointF2D _origin, Shape _ish, int _isz, const Map & msks) {
+    deque<Map> msksdq(1,msks);
+    prepare(_origin, _ish, _isz, msksdq);
+  }
+
+  void stitch(const deque<Map> & iarr, Map & oarr) const {
+
+    if (!isz)
+      throw_error(modname, "Was never prepared (zero input size).");
+
+    if ( iarr.size() != isz || iarr[0].shape() != ish )
+      throw_error(modname, "Non maching input data.");
+    if (isz == 1) {
+      if (!oarr.size())
+        oarr.reference(iarr[0]);
+      else if (!areSame(oarr, iarr[0])) {
+        oarr.resize(ish);
+        oarr = iarr[0];
+      }
+      return;
+    }
+    for (int acur = 0 ; acur < isz ; acur++ )
+      if (iarr[acur].shape() != ish)
+        throw_error(modname, "Non matching image sizes in input.");
+
+    oarr.resize(osh);
+    oarr=0.0;
+    for (int acur = 0 ; acur < isz ; acur++ )
+      oarr( blitz::Range(acur*origin.y-miny, acur*origin.y-miny + ish(0)-1)
+          , blitz::Range(acur*origin.x-minx, acur*origin.x-minx + ish(1)-1) )
+        += wght * iarr[acur];
+    oarr *= swght;
+
+  }
+
+  Map resMask() const {
+    Map ret(osh);
+    ret = swght;
+    invert(ret);
+    return ret;
+  }
+
+};
+const string Stitcher::modname = "stitcher";
+
+
+
+
+
+class ProcProj {
 
   static const string modname;
   static const char proj_oCLsrc[];
   static const cl_program proj_oCLprog;
-  StitchRules st;
   deque<FlatFieldProc> ffprocs;
+  StitchRules strl;
 
-  deque<Map> msksI, msks1, msks2; // shared
+  Stitcher   ster1_R, ster2_R, sterF_R;
+  Stitcher & ster1,   ster2,   sterF;
   Map mskF; // shared
   ImageProc iproc; // own
   Map stitched, final; // own
@@ -272,77 +398,6 @@ class ProcProj {
   CLmem iomCL;
   CLmem maskCL_R;
   CLmem & maskCL;
-
-
-  static void stitch(PointF2D origin,  const deque<Map> & iarr, Map & oarr
-                    ,  const deque<Map> & gprr = deque<Map>() ) {
-
-    const int isz = iarr.size();
-    if ( isz == 0 )
-      throw_error(modname, "Nothing to stitch.");
-    if ( isz == 1 ) {
-      oarr.reference(iarr[0]);
-      return;
-    }
-
-    if (gprr.size() == 1) {
-      const Shape csz = gprr[0].shape();
-      for (int acur = 0 ; acur < isz ; acur++ )
-        if (iarr[acur].shape()!=csz)
-          throw_error(modname, "Different image sizes in mask and inputs.");
-    } else if (gprr.size() == iarr.size()) {
-      for (int acur = 0 ; acur < isz ; acur++ )
-        if (iarr[acur].shape()!=gprr[acur].shape())
-          throw_error(modname, "Non matching image sizes in mask and input arrays.");
-    } else if (gprr.size()) {
-      throw_error(modname, "Inconsistent sizes of mask and image arrays.");
-    }
-
-    int minx=0, maxx=0, miny=0, maxy=0;
-    for (int acur = 0 ; acur < isz ; acur++ ) {
-      const float
-        orgx = acur*origin.x,
-        orgy = acur*origin.y,
-        tilx = orgx + iarr[acur].shape()(1)-1,
-        tily = orgy + iarr[acur].shape()(0)-1;
-      if (orgx < minx) minx = orgx;
-      if (tilx > maxx) maxx = tilx;
-      if (orgy < miny) miny = orgy;
-      if (tily > maxy) maxy = tily;
-    }
-
-    const Shape osh(maxy-miny+1, maxx-minx+1);
-    oarr.resize(osh);
-    for (ArrIndex ycur = 0 ; ycur < osh(0) ; ycur++ ) {
-      for (ArrIndex xcur = 0 ; xcur < osh(1) ; xcur++ ) {
-        float sweight=0.0;
-        float svals=0.0;
-        for (int acur = 0 ; acur < isz ; acur++ ) {
-          const Map & curar = iarr[acur];
-          const Shape cursh = curar.shape();
-          const Shape coo = Shape(miny+ycur-acur*origin.y, minx+xcur-acur*origin.x);
-          if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
-            const float varcur = curar(coo);
-            if ( fisok(varcur) ) {
-              float weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
-                               * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
-              if ( gprr.size() == 1 )
-                weight *= gprr[0](coo);
-              else if ( gprr.size() == iarr.size() )
-                weight *= gprr[acur](coo);
-              sweight += weight;
-              svals += varcur * weight;
-            }
-          }
-        }
-
-        oarr(ycur,xcur) = sweight == 0.0 ? 0.0 : svals / sweight ;
-
-      }
-    }
-
-  }
-
 
   void prepareMask(Map & _gaps, bool bepicky) {
     const float mm = min(_gaps);
@@ -360,11 +415,11 @@ class ProcProj {
           _gaps(i,j)=1.0 ;
 
     const Shape ish = _gaps.shape();
-    const float step = 1.0 / (st.edge +1);
+    const float step = 1.0 / (strl.edge +1);
     Map tmp(_gaps.shape());
     tmp = _gaps;
 
-    for ( int stp = 1 ; stp <= st.edge ; stp++ ) {
+    for ( int stp = 1 ; stp <= strl.edge ; stp++ ) {
       const float fill = step*stp;
 
       for (ArrIndex i = 0 ; i<ish(0) ; i++)
@@ -394,7 +449,7 @@ class ProcProj {
     gaussCL.setArg(1, int(mskF.shape()(0)));
     gaussCL.setArg(2, iomCL());
     gaussCL.setArg(3, maskCL());
-    gaussCL.setArg(4, float(st.sigma) );
+    gaussCL.setArg(4, float(strl.sigma) );
   }
 
 
@@ -402,27 +457,30 @@ public:
 
   ProcProj( const StitchRules & _st, const deque<Map> & bgas, const deque<Map> & dfas
           , const deque<Map> & dgas, const deque<Map> & msas, const Path & saveMasks = Path())
-    : st(_st)
-    , iproc(st.angle, st.crp, st.bnn, st.ish)
-    , allIn(st.nofIn)
-    , o1Stitch(st.nofIn/st.origin1size)
-    , o2Stitch(st.flipUsed ? 2 : 1)
+    : strl(_st)
+    , ster1(ster1_R)
+    , ster2(ster2_R)
+    , sterF(sterF_R)
+    , iproc(strl.angle, strl.crp, strl.bnn, strl.ish)
+    , allIn(strl.nofIn)
+    , o1Stitch(strl.nofIn/strl.origin1size)
+    , o2Stitch(strl.flipUsed ? 2 : 1)
     , doGapsFill(false)
     , maskCL_R(0)
     , maskCL(maskCL_R)
   {
 
-    if ( ! area(st.ish) )
+    if ( ! area(strl.ish) )
       throw_error(modname, "Zerro area to process.");
-    if ( ! st.nofIn )
+    if ( ! strl.nofIn )
       throw_error(modname, "Zerro images for input.");
 
     #define chkAuxImgs(imas, lbl) \
-      if (imas.size() && imas.size() != 1 && imas.size() != st.nofIn) \
+      if (imas.size() && imas.size() != 1 && imas.size() != strl.nofIn) \
         throw_error(modname, "Number of " lbl " images is neither 0, 1 nor the number of inputs" \
-                             " (" + toString(st.nofIn) + ")."); \
+                             " (" + toString(strl.nofIn) + ")."); \
       for (int curI = 0; curI < imas.size() ; curI++) \
-        if ( imas.at(curI).size() && imas.at(curI).shape() != st.ish ) \
+        if ( imas.at(curI).size() && imas.at(curI).shape() != strl.ish ) \
           throw_error(modname, "Unexpected shape of " lbl " image.");
 
     chkAuxImgs(bgas, "background");
@@ -433,7 +491,7 @@ public:
 
     const Map zmap;
     if (bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1) {
-      for (int curI = 0; curI < st.nofIn ; curI++) {
+      for (int curI = 0; curI < strl.nofIn ; curI++) {
         const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : zmap;
         const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : zmap;
         const Map & dgpl = dgas.size() ?  dgas[ dgas.size() == 1 ? 0 : curI ] : zmap;
@@ -447,62 +505,74 @@ public:
                           , msas.size() ? msas[0] : zmap );
     }
 
-    const int mssz = msas.size();
-    if ( ! mssz )
-      return;
-
     #define SaveMask(vol, suf) \
       if (saveMasks.length()) \
         SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
 
+    const int mssz = msas.size();
+    deque<Map> pmsas;
     for (int curI = 0; curI < msas.size() ; curI++) {
-      if (msas[curI].shape() != st.ish)
+      if (msas[curI].shape() != strl.ish)
         throw_error(modname, "Unexpected mask shape.");
       Map msT;
       iproc.proc(msas[curI], msT);
       prepareMask(msT, true);
-      msksI.emplace_back(msT.shape());
-      msksI.back() = msT;
+      pmsas.emplace_back(msT.shape());
+      pmsas.back() = msT;
       SaveMask(msT, "_I" + (mssz>1 ? toString(curI) : string()) );
     }
-    while (msksI.size() != st.nofIn)
-      msksI.emplace_back(msksI[0]);
+    ster1.prepare(strl.origin1, iproc.osh(), strl.origin1size, pmsas);
+    Map msks1;
+    if (mssz) {
+      msks1.reference(ster1.resMask());
+      prepareMask(msks1, false);
+      SaveMask(msks1, "_U");
+    }
 
-    msks1.resize(o1Stitch.size());
-    sub_proc(st.origin1size, st.origin1, msksI, deque<Map>(), msks1, "_U", saveMasks.dtitle());
+    ster2.prepare(strl.origin2, ster1.osh, strl.origin2size, msks1);
+    Map msks2;
+    if (mssz) {
+      if (strl.origin2size>1) {
+        msks2.reference(ster2.resMask());
+        prepareMask(msks2, false);
+        SaveMask(msks2, "_V");
+      } else
+        msks2.reference(msks1[0]);
+    }
 
-    msks2.resize(o2Stitch.size());
-    sub_proc(st.origin2size, st.origin2, msks1, deque<Map>(), msks2, "_V", saveMasks.dtitle());
-
-    if ( st.flipUsed ) {
-      msks2[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, msks2, mskF, deque<Map>());
-      SaveMask(mskF, "_W");
-    } else
+    if ( strl.flipUsed ) {
+      deque<Map> msksF;
+      if (mssz) {
+        msksF.emplace_back(msks2);
+        msksF.emplace_back(msks2.reverse(blitz::secondDim));
+      }
+      sterF.prepare(strl.originF, ster2.osh, 2, msks2);
+      if (mssz) {
+        mskF.reference(sterF.resMask());
+        prepareMask(mskF, false);
+        SaveMask(mskF, "_W");
+      }
+    } else if (mssz)
       mskF.reference(msks2[0]);
 
     #undef SaveMask
 
-    for (int curM=0 ; curM < msks1.size() ; curM++)
-      prepareMask(msks1[curM], false);
-    for (int curM=0 ; curM < msks2.size() ; curM++)
-      prepareMask(msks2[curM], false);
-    prepareMask(mskF, false);
-    doGapsFill = st.sigma > 0.0  &&  any(mskF==0.0);
+    doGapsFill = strl.sigma > 0.0  &&  any(mskF==0.0);
     initCL();
 
   }
 
 
   ProcProj(const ProcProj & other)
-    : st(other.st)
+    : strl(other.strl)
+    , ster1(other.ster1)
+    , ster2(other.ster2)
+    , sterF(other.sterF)
     , iproc(other.iproc)
     , ffprocs(other.ffprocs)
-    , allIn(st.nofIn)
-    , o1Stitch(st.nofIn/st.origin1size)
-    , o2Stitch(st.flipUsed ? 2 : 1)
-    , msks1(other.msks1)
-    , msks2(other.msks2)
+    , allIn(strl.nofIn)
+    , o1Stitch(strl.nofIn/strl.origin1size)
+    , o2Stitch(strl.flipUsed ? 2 : 1)
     , mskF(other.mskF)
     , doGapsFill(other.doGapsFill)
     , maskCL(other.maskCL)
@@ -513,35 +583,35 @@ public:
 
 
 
-  void sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks
-                 , deque<Map> & oar, const string & format, const ImagePath & interim_name) {
+  void sub_proc(  const Stitcher & ster, const deque<Map> & hiar, deque<Map> & oar
+                , const ImagePath & interim_name, const string & suffix) {
 
-    if ( orgsize == 1 ) {
+    if (!ster.isz)
+      throw_error(modname, "Bad stitcher.");
+    if ( ster.isz == 1 ) {
       for(int curM = 0 ; curM < oar.size() ; curM++)
         oar[curM].reference(hiar[curM]);
       return;
     }
 
     const int nofin = hiar.size();
-    for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
-      int cidx=inidx/orgsize;
-      deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + orgsize) ;
-      deque<Map> supplyMs( msks.size() ? msks.begin() + inidx           : msks.begin(),
-                           msks.size() ? msks.begin() + inidx + orgsize : msks.begin() );
-      stitch(origin, supplyIm, oar[cidx], supplyMs);
+    for ( int inidx=0 ; inidx<nofin ; inidx += ster.isz ) {
+      int cidx=inidx/ster.isz;
+      deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + ster.isz) ;
+      ster.stitch(supplyIm, oar[cidx]);
       if ( ! interim_name.empty() ) {
         Map cres;
-        if ( origin.x * origin.y == 0.0 ) {
+        if ( ster.origin.x * ster.origin.y == 0.0 ) {
           cres.reference(oar[cidx]);
-        } else if ( abs(origin.x) < abs(origin.y)  ) {
-          int crppx = abs(origin.x * (supplyIm.size()-1));
+        } else if ( abs(ster.origin.x) < abs(ster.origin.y)  ) {
+          int crppx = abs(ster.origin.x * (supplyIm.size()-1));
           crop(oar[cidx], cres, Crop(0, crppx, 0, crppx));
         } else {
-          int crppx = abs(st.origin1.y * (supplyIm.size()-1));
+          int crppx = abs(strl.origin1.y * (supplyIm.size()-1));
           crop(oar[cidx], cres, Crop(crppx, 0, crppx, 0));
         }
-        string svName = interim_name.dtitle() + format;
-        if (orgsize<nofin) // more than one result
+        string svName = interim_name.dtitle() + suffix;
+        if (ster.isz<nofin) // more than one result
           svName += toString(mask2format("@", oar.size()),cidx);
         SaveDenan(svName + ".tif", cres);
       }
@@ -553,29 +623,29 @@ public:
 
   bool process(deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
 
-    if (allInR.size() != st.nofIn)
+    if (allInR.size() != strl.nofIn)
       return false;
 
     // prepare input images
     int curF=0, cur2=0, cur1=0;
-    for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
+    for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
       if (ffprocs.size() == 1)
         ffprocs[0].process(allInR[curproj]);
-      else if (ffprocs.size() == st.nofIn)
+      else if (ffprocs.size() == strl.nofIn)
         ffprocs[curproj].process(allInR[curproj]);
       iproc.proc(allInR[curproj], allIn[curproj]);
       if ( ! interim_name.empty() ) {
-        const string sfI = st.nofIn > 1 ? toString(mask2format("@", st.nofIn), curproj) : "";
-        const string sfF = st.flipUsed ? (curF ? "_F" : "_D") : "";
-        const string sf2 = st.origin2size > 1 ? toString(mask2format(".@", st.origin2size), cur2) : "";
-        const string sf1 = st.origin1size > 1 ? toString(mask2format(".@", st.origin1size), cur1) : "";
+        const string sfI = strl.nofIn > 1 ? toString(mask2format("@", strl.nofIn), curproj) : "";
+        const string sfF = strl.flipUsed ? (curF ? "_F" : "_D") : "";
+        const string sf2 = strl.origin2size > 1 ? toString(mask2format(".@", strl.origin2size), cur2) : "";
+        const string sf1 = strl.origin1size > 1 ? toString(mask2format(".@", strl.origin1size), cur1) : "";
         const string svName = interim_name.dtitle() + "_I" + sfI + sfF + sf2 + sf1 + string(".tif");
         SaveDenan(svName, allIn[curproj]);
         cur1++;
-        if (cur1==st.origin1size) {
+        if (cur1==strl.origin1size) {
           cur1=0;
           cur2++;
-          if (cur2==st.origin2size) {
+          if (cur2==strl.origin2size) {
             cur2=0;
             curF++;
           }
@@ -584,17 +654,17 @@ public:
     }
 
     // first stitch
-    sub_proc(st.origin1size, st.origin1, allIn, msksI, o1Stitch, "_U", interim_name);
+    sub_proc(ster1, allIn, o1Stitch, interim_name, "_U");
     // second stitch
-    sub_proc(st.origin2size, st.origin2, o1Stitch, msks1, o2Stitch, "_V", interim_name);
+    sub_proc(ster2, o1Stitch, o2Stitch, interim_name, "_V");
     // flip stitch
-    if ( st.flipUsed ) {
+    if ( strl.flipUsed ) {
       o2Stitch[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, o2Stitch, stitched, msks2);
+      sterF.stitch(o2Stitch, stitched);
       if ( ! interim_name.empty() )  {
         SaveDenan(interim_name.dtitle() + "_WD.tif" , o2Stitch[0]);
         SaveDenan(interim_name.dtitle() + "_WF.tif" , o2Stitch[1]);
-        SaveDenan(interim_name.dtitle() + "_W.tif" , stitched);
+        SaveDenan(interim_name.dtitle() + "_WW.tif" , stitched);
       }
     } else {
       stitched.reference(o2Stitch[0]);
@@ -610,8 +680,8 @@ public:
     }
 
     // final crop
-    if (st.fcrp) {
-      crop(stitched, final, st.fcrp);
+    if (strl.fcrp) {
+      crop(stitched, final, strl.fcrp);
       if ( ! interim_name.empty() )
         SaveDenan( interim_name.dtitle() + "_Y.tif", stitched );
     } else {
@@ -619,19 +689,19 @@ public:
     }
 
     // splits
-    if ( st.splits.empty() ) {
+    if ( strl.splits.empty() ) {
       res.resize(1);
       res[0].resize(final.shape());
       res[0]=final;
     } else {
-      const string svformat = mask2format("_Z@", st.splits.size() );
+      const string svformat = mask2format("_Z@", strl.splits.size() );
       int fLine=0, lLine=0;
-      const int vsplit = st.splits.at(0) ? 0 : 1;
+      const int vsplit = strl.splits.at(0) ? 0 : 1;
       const int mLine = final.shape()(vsplit);
-      for (int curS = vsplit ;  curS<=st.splits.size()  ;  curS++) {
+      for (int curS = vsplit ;  curS<=strl.splits.size()  ;  curS++) {
         int curI = curS - vsplit;
-        lLine = ( curS == st.splits.size()  ||  mLine < st.splits.at(curS) )
-          ?  mLine :  st.splits.at(curS) ;
+        lLine = ( curS == strl.splits.size()  ||  mLine < strl.splits.at(curS) )
+          ?  mLine :  strl.splits.at(curS) ;
         lLine--;
         if ( lLine > fLine ) {
           Map resp = vsplit

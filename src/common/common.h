@@ -342,115 +342,6 @@ cdpath(const Path & dir, const Path & file);
 
 
 
-/// \brief Type of the input contrast.
-///
-/// Affects the behaviour of the reconstruction algorithm. See the CTRec class for
-/// more details.
-///
-/// When you need to include your own type of contrast follow these steps:
-/// -# Add your contrast to the Contrast::Cntype enumeration.
-/// -# Add your contrast to the Contrast::Contrast(const std::string &) constructor
-/// -# Add your contrast to the Contrast::name() method.
-/// -# Update the ContrastOptionDesc string as appropriate.
-class COMMON_API Contrast {
-
-public:
-  /// Known contrast types.
-  typedef enum {
-    ABS,						///< Absorption
-    REF,						///< Refraction
-    PHS,                        ///< Phase
-    FLT                         ///< Pre-filtered: ready for backprojection, no filtering needed.
-  } Cntype ;
-
-private:
-  static const std::string modname;	///< Module name.
-  Cntype _contrast;				///< Type of the contrast.
-
-public:
-
-  Contrast(Cntype _cn=FLT);		  ///< Constructor from contrast type.
-  Contrast(const std::string & _name); ///< Constructor from name.
-
-  Cntype contrast() const;		///< Contrast type.
-  std::string name() const;			///< Name of the contrast type.
-
-  static const std::string Desc; ///< Description of the option giving the contrast type.
-
-};
-
-/// \brief Compare contrasts.
-///
-/// @param a first contrast.
-/// @param b second contrast.
-///
-/// @return \c true if the contrasts are equal, \c false otherwise.
-///
-bool COMMON_API
-operator==(const Contrast & a, const Contrast & b);
-
-/// \brief Compare contrasts.
-///
-/// @param a first contrast.
-/// @param b second contrast.
-///
-/// @return \c false if the contrasts are equal, \c true otherwise.
-///
-bool COMMON_API
-operator!=(const Contrast & a, const Contrast & b);
-
-/// \brief Prints type name.
-/// To be used in the CLI parsing via "poptmx" library
-/// @return type name.
-std::string COMMON_API
-type_desc (Contrast*);
-
-/// \brief Converts the string "in" into the Contrast _val.
-/// To be used in the CLI parsing via "poptmx" library
-/// @param _val value to be updated.
-/// @param in string to be parsed.
-///
-/// @return \c 1 if success, \c -1 otherwise.
-int COMMON_API
-_conversion (Contrast* _val, const std::string & in);
-
-
-
-
-struct PointF2D {
-  float x;      ///< X coordinate
-  float y;       ///< Y coordinate
-  inline PointF2D(float _x=0, float _y=0)
-  : x(_x), y(_y) {}
-};
-
-inline bool operator==( const PointF2D & p1, const PointF2D & p2){
-  return p1.x == p2.x && p1.y == p2.y;
-}
-
-inline bool operator!=( const PointF2D & p1, const PointF2D & p2){
-  return p1.x != p2.x || p1.y != p2.y;
-}
-
-
-std::string
-inline type_desc (PointF2D*) {
-  return "FLOAT:FLOAT";
-}
-
-int
-inline _conversion (PointF2D* _val, const std::string & in) {
-  float x, y;
-  if ( sscanf( in.c_str(), "%f:%f", &x, &y) != 2  &&
-       sscanf( in.c_str(), "%f,%f", &x, &y) != 2 )
-    return -1;
-  *_val = PointF2D(x, y);
-  return 1;
-}
-
-
-
-
 /// \brief 1D line with data.
 ///
 /// One dimensional array of the ::float elements.
@@ -580,6 +471,122 @@ operator!=( const Shape3 & sh1, const Shape3 & sh2){
 
 inline Shape faceShape(const Shape3 & sh) {
   return Shape(sh(1), sh(2));
+}
+
+
+
+
+
+
+
+/// \brief Type of the input contrast.
+///
+/// Affects the behaviour of the reconstruction algorithm. See the CTRec class for
+/// more details.
+///
+/// When you need to include your own type of contrast follow these steps:
+/// -# Add your contrast to the Contrast::Cntype enumeration.
+/// -# Add your contrast to the Contrast::Contrast(const std::string &) constructor
+/// -# Add your contrast to the Contrast::name() method.
+/// -# Update the ContrastOptionDesc string as appropriate.
+class COMMON_API Contrast {
+
+public:
+  /// Known contrast types.
+  typedef enum {
+    ABS,						///< Absorption
+    REF,						///< Refraction
+    PHS,                        ///< Phase
+    FLT                         ///< Pre-filtered: ready for backprojection, no filtering needed.
+  } Cntype ;
+
+private:
+  static const std::string modname;	///< Module name.
+  Cntype _contrast;				///< Type of the contrast.
+
+public:
+
+  Contrast(Cntype _cn=FLT);		  ///< Constructor from contrast type.
+  Contrast(const std::string & _name); ///< Constructor from name.
+
+  Cntype contrast() const;		///< Contrast type.
+  std::string name() const;			///< Name of the contrast type.
+
+  static const std::string Desc; ///< Description of the option giving the contrast type.
+
+};
+
+/// \brief Compare contrasts.
+///
+/// @param a first contrast.
+/// @param b second contrast.
+///
+/// @return \c true if the contrasts are equal, \c false otherwise.
+///
+bool COMMON_API
+operator==(const Contrast & a, const Contrast & b);
+
+/// \brief Compare contrasts.
+///
+/// @param a first contrast.
+/// @param b second contrast.
+///
+/// @return \c false if the contrasts are equal, \c true otherwise.
+///
+bool COMMON_API
+operator!=(const Contrast & a, const Contrast & b);
+
+/// \brief Prints type name.
+/// To be used in the CLI parsing via "poptmx" library
+/// @return type name.
+std::string COMMON_API
+type_desc (Contrast*);
+
+/// \brief Converts the string "in" into the Contrast _val.
+/// To be used in the CLI parsing via "poptmx" library
+/// @param _val value to be updated.
+/// @param in string to be parsed.
+///
+/// @return \c 1 if success, \c -1 otherwise.
+int COMMON_API
+_conversion (Contrast* _val, const std::string & in);
+
+/// converts absorption contrast into the integrated attentuation
+/// -log(I/I_0). Checks for zero and sub-zero values.
+void deAbs(Map & arr);
+
+
+
+
+struct PointF2D {
+  float x;      ///< X coordinate
+  float y;       ///< Y coordinate
+  inline PointF2D(float _x=0, float _y=0)
+  : x(_x), y(_y) {}
+};
+
+inline bool operator==( const PointF2D & p1, const PointF2D & p2){
+  return p1.x == p2.x && p1.y == p2.y;
+}
+
+inline bool operator!=( const PointF2D & p1, const PointF2D & p2){
+  return p1.x != p2.x || p1.y != p2.y;
+}
+
+
+std::string
+inline type_desc (PointF2D*) {
+  return "FLOAT:FLOAT";
+}
+
+int
+inline _conversion (PointF2D* _val, const std::string & in) {
+  float x, y;
+  if ( sscanf( in.c_str(), "%f:%f", &x, &y) != 2  &&
+       sscanf( in.c_str(), "%f,%f", &x, &y) != 2 )
+    return -1;
+  *_val = PointF2D(x, y);
+  return 1;
 }
 
 
@@ -1068,41 +1075,6 @@ public:
   bool isShown() const {return showme;}
 
 };
-
-
-/// Removes all (sub-)zeros from the array.
-///
-/// @param arr the array to be processed.
-///
-/// @return processed input array.
-///
-template<int N> blitz::Array<float,N> &
-unzero(blitz::Array<float,N> & arr){
-  if ( (blitz::min)(arr) <= 0.0 ) {
-    warn("unzero", "Minimum in the array is sub-zero."
-         " This should never happen with the absorption data.");
-    const float mina = (blitz::max)(arr)/1000000.0;
-    if ( mina <= 0.0 )
-      throw_error ("unzero", "Bad absorption data (maximum is sub-zero).");
-    for (typename blitz::Array<float,N>::iterator icur = arr.begin() ; icur != arr.end() ; icur++ )
-      if ( *icur <= mina ) *icur = mina;
-  }
-  return arr;
-}
-
-/// Removes all (sub-)zeros from the array.
-///
-/// @param arr the array to be processed.
-///
-/// @return processed array.
-///
-template<int N> inline blitz::Array<float,N>
-unzero(const blitz::Array<float,N> & arr){
-  blitz::Array<float,N> out(arr);
-  return unzero(out);
-}
-
-
 
 
 extern const std::string SliceOptionDesc;

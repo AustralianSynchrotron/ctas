@@ -388,10 +388,8 @@ void CTrec::prepare_sino(Map &sinogram) {
   if (sinogram.shape() != ish )
 
   sinogram.reference(safe(sinogram));
-  if (contrast == Contrast::ABS) {
-    unzero(sinogram);
-    sinogram = -log(sinogram);
-  }
+  if (contrast == Contrast::ABS)
+    deAbs(sinogram);
 
   const int zShift = ( zidth - ish(1) ) / 2;
   const int thetas = sinogram.rows();

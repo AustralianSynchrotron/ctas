@@ -256,9 +256,11 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
     return;
   }
 
-  out.resize(sh);
-  out = in;
-  out = -log(unzero(out));
+  if (!areSame(in, out)) {
+    out.resize(sh);
+    out = in;
+  }
+  deAbs(out);
   //out = 1 - in;
 
   //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );

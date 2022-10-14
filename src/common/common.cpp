@@ -456,6 +456,19 @@ _conversion (Contrast* _val, const string & in) {
 }
 
 
+void deAbs(Map & arr) {
+  if ( blitz::min(arr) <= 0.0 ) {
+    warn("unzero", "Minimum in the array is sub-zero."
+         " This should never happen with the absorption data.");
+    const float mina = blitz::max(arr)/1000000.0;
+    if ( mina <= 0.0 )
+      throw_error ("unzero", "Bad absorption data (maximum is sub-zero).");
+    for (auto icur = arr.begin() ; icur != arr.end() ; icur++ )
+      if ( *icur <= mina )
+        *icur = mina;
+  }
+  arr = -log(arr);
+}
 
 
 

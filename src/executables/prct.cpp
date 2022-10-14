@@ -318,7 +318,7 @@ class ProcProj {
   static const string modname;
   static cl_program proj_oCLprog;
   static pthread_mutex_t protectProgramCompilation;
-  StitchRules st;
+  StitchRules strl;
   deque<FlatFieldProc> ffprocs;
 
   deque<Map> msksI, msks1, msks2; // shared
@@ -424,11 +424,11 @@ class ProcProj {
           _gaps(i,j)=1.0 ;
 
     const Shape ish = _gaps.shape();
-    const float step = 1.0 / (st.edge +1);
+    const float step = 1.0 / (strl.edge +1);
     Map tmp(_gaps.shape());
     tmp = _gaps;
 
-    for ( int stp = 1 ; stp <= st.edge ; stp++ ) {
+    for ( int stp = 1 ; stp <= strl.edge ; stp++ ) {
       const float fill = step*stp;
 
       for (ArrIndex i = 0 ; i<ish(0) ; i++)
@@ -470,7 +470,7 @@ class ProcProj {
     gaussCL.setArg(1, int(mskF.shape()(0)));
     gaussCL.setArg(2, iomCL());
     gaussCL.setArg(3, maskCL());
-    gaussCL.setArg(4, float(st.sigma) );
+    gaussCL.setArg(4, float(strl.sigma) );
   }
 
 public:
@@ -478,29 +478,29 @@ public:
   ProcProj( const StitchRules & _st, const PhaseRules & phsrules, float dd
           , const deque<Map> & bgas, const deque<Map> & dfas
           , const deque<Map> & dgas, const deque<Map> & msas)
-    : st(_st)
-    , iproc(st.angle, st.crp, st.bnn, _st.ish)
-    , allIn(st.nofIn)
-    , o1Stitch(st.nofIn/st.origin1size)
-    , o2Stitch(st.flipUsed ? 2 : 1)
+    : strl(_st)
+    , iproc(strl.angle, strl.crp, strl.bnn, _st.ish)
+    , allIn(strl.nofIn)
+    , o1Stitch(strl.nofIn/strl.origin1size)
+    , o2Stitch(strl.flipUsed ? 2 : 1)
     , doGapsFill(false)
     , maskCL_R(0)
     , maskCL(maskCL_R)
-    , ipcproc(oshape(st), phsrules.d2b)
+    , ipcproc(oshape(strl), phsrules.d2b)
     , ipccoef(IPCprocess::d2bNorm(phsrules.d2b, dd, phsrules.dist, phsrules.lambda))
   {
 
-    if ( ! area(st.ish) )
+    if ( ! area(strl.ish) )
       throw_error(modname, "Zerro area to process.");
-    if ( ! st.nofIn )
+    if ( ! strl.nofIn )
       throw_error(modname, "Zerro images for input.");
 
     #define chkAuxImgs(imas, lbl) \
-      if (imas.size() && imas.size() != 1 && imas.size() != st.nofIn) \
+      if (imas.size() && imas.size() != 1 && imas.size() != strl.nofIn) \
         throw_error(modname, "Number of " lbl " images is neither 0, 1 nor the number of inputs" \
-                             " (" + toString(st.nofIn) + ")."); \
+                             " (" + toString(strl.nofIn) + ")."); \
       for (int curI = 0; curI < imas.size() ; curI++) \
-        if ( imas.at(curI).size() && imas.at(curI).shape() != st.ish ) \
+        if ( imas.at(curI).size() && imas.at(curI).shape() != strl.ish ) \
           throw_error(modname, "Unexpected shape of " lbl " image.");
 
     chkAuxImgs(bgas, "background");
@@ -511,7 +511,7 @@ public:
 
     const Map zmap;
     if (bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1) {
-      for (int curI = 0; curI < st.nofIn ; curI++) {
+      for (int curI = 0; curI < strl.nofIn ; curI++) {
         const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : zmap;
         const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : zmap;
         const Map & dgpl = dgas.size() ?  dgas[ dgas.size() == 1 ? 0 : curI ] : zmap;
@@ -525,7 +525,7 @@ public:
                           , msas.size() ? msas[0] : zmap );
     }
 
-    if (!st.fcrp)
+    if (!strl.fcrp)
       final.reference(stitched);
 
     const int mssz = msas.size();
@@ -533,7 +533,7 @@ public:
       return;
 
     for (int curI = 0; curI < msas.size() ; curI++) {
-      if (msas[curI].shape() != st.ish)
+      if (msas[curI].shape() != strl.ish)
         throw_error(modname, "Unexpected mask shape.");
       Map msT;
       iproc.proc(msas[curI], msT);
@@ -541,18 +541,18 @@ public:
       msksI.emplace_back(msT.shape());
       msksI.back() = msT;
     }
-    while (msksI.size() != st.nofIn)
+    while (msksI.size() != strl.nofIn)
       msksI.emplace_back(msksI[0]);
 
     msks1.resize(o1Stitch.size());
-    sub_proc(st.origin1size, st.origin1, msksI, deque<Map>(), msks1);
+    sub_proc(strl.origin1size, strl.origin1, msksI, deque<Map>(), msks1);
 
     msks2.resize(o2Stitch.size());
-    sub_proc(st.origin2size, st.origin2, msks1, deque<Map>(), msks2);
+    sub_proc(strl.origin2size, strl.origin2, msks1, deque<Map>(), msks2);
 
-    if ( st.flipUsed ) {
+    if ( strl.flipUsed ) {
       msks2[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, msks2, mskF, deque<Map>());
+      stitch(strl.originF, msks2, mskF, deque<Map>());
     } else
       mskF.reference(msks2[0]);
 
@@ -561,19 +561,19 @@ public:
     for (int curM=0 ; curM < msks2.size() ; curM++)
       prepareMask(msks2[curM], false);
     prepareMask(mskF, false);
-    doGapsFill = st.sigma > 0.0  &&  any(mskF==0.0);
+    doGapsFill = strl.sigma > 0.0  &&  any(mskF==0.0);
     initCL();
 
   }
 
 
   ProcProj(const ProcProj & other)
-    : st(other.st)
+    : strl(other.strl)
     , iproc(other.iproc)
     , ffprocs(other.ffprocs)
-    , allIn(st.nofIn)
-    , o1Stitch(st.nofIn/st.origin1size)
-    , o2Stitch(st.flipUsed ? 2 : 1)
+    , allIn(strl.nofIn)
+    , o1Stitch(strl.nofIn/strl.origin1size)
+    , o2Stitch(strl.flipUsed ? 2 : 1)
     , msks1(other.msks1)
     , msks2(other.msks2)
     , mskF(other.mskF)
@@ -584,7 +584,7 @@ public:
   {
     if (doGapsFill)
       initCL();
-    if (!st.fcrp)
+    if (!strl.fcrp)
       final.reference(stitched);
   }
 
@@ -623,27 +623,27 @@ public:
 
   bool process(deque<Map> & allInR, Map & res) {
 
-    if (allInR.size() != st.nofIn)
+    if (allInR.size() != strl.nofIn)
       return false;
 
     // prepare input images
     int curF=0, cur2=0, cur1=0;
-    for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
+    for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
       if (ffprocs.size() == 1)
         ffprocs[0].process(allInR[curproj]);
-      else if (ffprocs.size() == st.nofIn)
+      else if (ffprocs.size() == strl.nofIn)
         ffprocs[curproj].process(allInR[curproj]);
       iproc.proc(allInR[curproj], allIn[curproj]);
     }
 
     // first stitch
-    sub_proc(st.origin1size, st.origin1, allIn, msksI, o1Stitch);
+    sub_proc(strl.origin1size, strl.origin1, allIn, msksI, o1Stitch);
     // second stitch
-    sub_proc(st.origin2size, st.origin2, o1Stitch, msks1, o2Stitch);
+    sub_proc(strl.origin2size, strl.origin2, o1Stitch, msks1, o2Stitch);
     // flip stitch
-    if ( st.flipUsed ) {
+    if ( strl.flipUsed ) {
       o2Stitch[1].reverseSelf(blitz::secondDim);
-      stitch(st.originF, o2Stitch, stitched, msks2);
+      stitch(strl.originF, o2Stitch, stitched, msks2);
     } else {
       stitched.reference(o2Stitch[0]);
     }
@@ -658,8 +658,8 @@ public:
     }
 
     // final crop
-    if (st.fcrp)
-      crop(stitched, final, st.fcrp);
+    if (strl.fcrp)
+      crop(stitched, final, strl.fcrp);
 
     // IPC processing
     ipcproc.extract(final, IPCprocess::PHS, 1.0/ipccoef);

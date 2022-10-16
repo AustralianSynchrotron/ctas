@@ -384,8 +384,7 @@ const string Stitcher::modname = "stitcher";
 class ProcProj {
 
   static const string modname;
-  static const char proj_oCLsrc[];
-  static const cl_program proj_oCLprog;
+  static cl_program oclProgram;
   deque<FlatFieldProc> ffprocs;
   StitchRules strl;
 
@@ -442,17 +441,27 @@ class ProcProj {
 
 
   void initCL() {
+
     if (!doGapsFill)
       return;
+
+    static const string oclsrc = {
+      #include "projection.cl.includeme"
+    };
+    oclProgram = initProgram(oclsrc, oclProgram, "Projection in OCL");
+    if (!oclProgram)
+      throw_error(modname, "Failed to compile CL program.");
+
     iomCL(clAllocArray<float>(mskF.size()));
     if (!maskCL())
       maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
-    gaussCL(proj_oCLprog, "gauss");
+    gaussCL(oclProgram, "gauss");
     gaussCL.setArg(0, int(mskF.shape()(1)));
     gaussCL.setArg(1, int(mskF.shape()(0)));
     gaussCL.setArg(2, iomCL());
     gaussCL.setArg(3, maskCL());
     gaussCL.setArg(4, float(strl.sigma) );
+
   }
 
 
@@ -727,13 +736,9 @@ public:
 
 
 };
-
 const string ProcProj::modname="ProcProj";
-const char ProcProj::proj_oCLsrc[] = {
-  #include "projection.cl.includeme"
-};
-const cl_program ProcProj::proj_oCLprog =
-    initProgram(proj_oCLsrc, sizeof(proj_oCLsrc), "Projection in OCL");
+cl_program ProcProj::oclProgram = 0;
+
 
 
 

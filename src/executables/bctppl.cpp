@@ -216,8 +216,8 @@ class FrameFormInThread : public InThread {
 
 private:
 
-  static char formframe_src[];
-  static const cl_program formframeProgram;
+  static const string modname;
+  static cl_program formframeProgram;
 
   Volume & res;
   ReadVolumeBySlice * imrd0;
@@ -251,6 +251,14 @@ private:
     Map crim;
 
     void prepareme(const Shape & _osh, CLmem & _clgaps) {
+
+      static const string oclsrc = {
+        #include "formframe.cl.includeme"
+      };
+      formframeProgram = initProgram(oclsrc, formframeProgram, modname);
+      if (!formframeProgram)
+        throw_error(modname, "Failed to compile CL program.");
+
       kernelFormFrame(formframeProgram , "formframe");
       kernelEqNoise(formframeProgram , "eqnoise");
       kernelFill(formframeProgram , "gapfill");
@@ -507,13 +515,8 @@ public:
   }
 
 };
-
-char FrameFormInThread::formframe_src[] = {
-  #include "formframe.cl.includeme"
-};
-
-const cl_program
-FrameFormInThread::formframeProgram = initProgram( formframe_src, sizeof(formframe_src), "Frame formation on OCL" );
+const string FrameFormInThread::modname = "form frame";
+cl_program FrameFormInThread::formframeProgram = 0;
 
 
 

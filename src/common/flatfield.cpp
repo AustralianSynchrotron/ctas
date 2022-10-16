@@ -16,28 +16,24 @@ Shape shapeMe(std::vector<Shape> shs) {
 }
 
 
-cl_program FlatFieldProc::ffProgram() {
-  const static char ffSource[] = {
-    #include "ff.cl.includeme"
-  };
-  const static cl_program retme
-      = initProgram( ffSource, sizeof(ffSource), "Flat field on OCL" );
-  return retme;
-}
-
+cl_program FlatFieldProc::ffProgram = 0;
 
 FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
                             , const Map & _dg, const Map & _ms)
   : sh( shapeMe( {_bg.shape(), _df.shape(), _dg.shape(), _ms.shape()} ) )
-  , kernel( area(sh) ? ffProgram() : 0, "ffm" )
   , io( area(sh) ? clAllocArray<float>(area(sh)) : 0)
   , bg( _bg.size() ? blitz2cl(_bg, CL_MEM_READ_ONLY) : 0)
   , df( _df.size() ? blitz2cl(_df, CL_MEM_READ_ONLY) : 0)
   , dg( _dg.size() ? blitz2cl(_dg, CL_MEM_READ_ONLY) : 0)
   , ms( _ms.size() ? blitz2cl(_ms, CL_MEM_READ_ONLY) : 0)
 {
-  if (!kernel)
+  if (!area(sh))
     return;
+  static const std::string oclsrc = {
+    #include "ff.cl.includeme"
+  };
+  ffProgram = initProgram(oclsrc, ffProgram, "Flat field on OCL");
+  kernel(ffProgram, "ffm");
   kernel.setArg(0, io());
   kernel.setArg(1, bg());
   kernel.setArg(2, df());
@@ -48,15 +44,15 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
 
 FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
   : sh(other.sh)
-  , kernel( area(sh) ? ffProgram() : 0, "ffm")
   , io( area(sh) ? clAllocArray<float>(area(sh)) : 0)
   , bg(other.bg)
   , df(other.df)
   , dg(other.dg)
   , ms(other.ms)
 {
-  if (!kernel)
+  if (!area(sh))
     return;
+  kernel(ffProgram, "ffm");
   kernel.setArg(0, io());
   kernel.setArg(1, bg());
   kernel.setArg(2, df());

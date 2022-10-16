@@ -76,11 +76,19 @@ target_link_libraries(lipc
   ${CLFFT_LL}
 )
 
+
+add_library(projection SHARED projection.cpp)
+target_clsrc(projection projection.cl)
+target_link_libraries(projection
+  flatfield
+)
+
+
 add_library(ldei SHARED ldei.cpp)
 add_library(ledei SHARED ledei.cpp)
 
 install(TARGETS
-  poptmx common kernel lipc ldei ledei flatfield
+  poptmx common kernel lipc ldei ledei projection flatfield
   LIBRARY DESTINATION ${LIB_DESTINATION}
 )
 

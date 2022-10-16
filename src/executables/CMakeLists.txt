@@ -61,8 +61,8 @@ target_link_libraries(norm
   poptmx
 )
 
-add_executable(proj projection.cpp)
-target_clsrc(proj projection.cl)
+add_executable(proj proj.cpp)
+target_clsrc(proj proj.cl)
 target_link_libraries(proj
   common
   poptmx
@@ -71,7 +71,7 @@ target_link_libraries(proj
 
 
 add_executable(prct prct.cpp)
-target_clsrc(prct projection.cl)
+target_clsrc(prct proj.cl)
 target_link_libraries(prct
   common
   poptmx

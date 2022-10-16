@@ -323,18 +323,16 @@ bool clIsInited() {
 
 
 
-
-cl_program initProgram(const char csrc[], size_t length, const string & modname) {
+cl_program initProgram(const string & src, const string & modname) {
 
   if ( ! clIsInited() )
     return 0;
 
-  const char * src = csrc;
+  cl_int err = CL_SUCCESS;
+  const size_t length = src.size();
+  const char * csrc = src.data();
 
-  cl_int err;
-
-  cl_program program =
-    clCreateProgramWithSource( CL_context, 1, &src, &length, &err);
+  cl_program program = clCreateProgramWithSource(CL_context, 1, &csrc, &length, &err);
   if (err != CL_SUCCESS) {
     warn(modname, "Could not load OpenCL program: " + toString(err) );
     return 0;
@@ -390,6 +388,17 @@ cl_program initProgram(const char csrc[], size_t length, const string & modname)
   return program;
 
 }
+
+
+cl_program & initProgram(const string & src, cl_program & program, const string & modname) {
+  static pthread_mutex_t protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_lock(&protectProgramCompilation);
+  if (!program)
+    program = initProgram(src, modname);
+  pthread_mutex_unlock(&protectProgramCompilation);
+  return program;
+}
+
 
 
 

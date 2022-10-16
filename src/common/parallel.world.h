@@ -119,9 +119,11 @@ public:
 };
 
 
-//const cl_image_format clfimage_format({CL_R, CL_FLOAT});
+// this version protects with pthread mutex lock
+cl_program & initProgram(const std::string & src, cl_program & program, const std::string & modname);
 
-cl_program initProgram(const char csrc[], size_t length, const std::string & modname);
+cl_program initProgram(const std::string & src, const std::string & modname);
+
 
 template <class T>
 cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {

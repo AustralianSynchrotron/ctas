@@ -42,7 +42,7 @@ class FlatFieldProc {
 public:
   const Shape sh; // must be first
 private:
-  static cl_program ffProgram();
+  static cl_program ffProgram;
   CLkernel kernel;
   CLmem   io;
   const CLmem bg;

@@ -29,8 +29,6 @@
 
 #include "../common/flatfield.h"
 #include "../common/poptmx.h"
-#include "../common/ipc.h"
-#include "../common/kernel.h"
 #include <algorithm>
 #include <string.h>
 #include <unordered_map>
@@ -53,38 +51,17 @@ struct StitchRules {
   uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
   PointF2D originF;            ///< Origin of the flipped portion
   bool flipUsed;               ///< indicates if originF was given in options.
+  deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
   float sigma;             ///< sigma used in gaussian gap closure.
   StitchRules()
-    : nofIn(0)
-    , angle(0)
-    , origin1size(1)
-    , origin2size(1)
-    , flipUsed(false)
-    , edge(0)
-    , sigma(0)
-  {}
-};
-
-struct PhaseRules {
-  float d2b;                    ///< \f$\d2b\f$ parameter of the MBA.
-  float lambda;                 ///< Wavelength.
-  float dist;                   ///< Object-to-detector distance.
-  PhaseRules()
-    : d2b(-1)
-    , lambda(1)
-    , dist(0)
-  {}
-};
-
-struct CTrules {
-  float center;                   ///< Rotation center.
-  Contrast contrast;            ///< Type of the contrast.
-  Filter filter_type;           ///< Type of the filtering function.
-  float arc;
-  CTrules()
-    : center(0)
-    , arc(180)
+  : nofIn(0)
+  , angle(0)
+  , origin1size(1)
+  , origin2size(1)
+  , flipUsed(false)
+  , edge(0)
+  , sigma(0)
   {}
 };
 
@@ -97,14 +74,10 @@ struct clargs {
   deque<ImagePath> dfs;        ///< Array of the dark field images.
   deque<ImagePath> dgs;        ///< Array of the dark field images for backgrounds.
   deque<ImagePath> mss;        ///< Mask Array.
-  ImagePath out_name;          ///< Name of the output image.
-  ImagePath out_proj;          ///< Name of the output projections.
-  float dd;                     ///< Pixel size.
-  float mincon;         ///< Black intensity.
-  float maxcon;
+  ImagePath out_name;              ///< Name of the output image.
+  string out_range;
   StitchRules st;
-  PhaseRules  phs;
-  CTrules ctrl;
+  int testMe;          ///< Prefix to save interim results
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -118,9 +91,7 @@ clargs(int argc, char *argv[])
           "Transforms and stitches portions of the projection from the complex CT experiment"
           " which may include 2D tiling and 180-deg flip."
           " Transformations are applied in the following order: rotate, crop, binning." )
-  , dd(1)
-  , mincon(0)
-  , maxcon(0)
+  , testMe(-1)
   , beverbose(false)
 {
 
@@ -133,28 +104,26 @@ clargs(int argc, char *argv[])
          "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc)
 
     .add(poptmx::NOTE, "OPTIONS:")
-    .add(poptmx::OPTION, &out_name, 'o', "output", "Output reconstructed image mask.", "", out_name)
-    .add(poptmx::OPTION, &out_proj, 'O', "out-projections", "Output projection image mask.", "", out_proj)
-    .add(poptmx::OPTION, &mincon, 0, "min", "Pixel value corresponding to black.",
-         " All values below this will turn black.", "<minimum>")
-    .add(poptmx::OPTION, &maxcon, 0, "max", "Pixel value corresponding to white.",
-         " All values above this will turn white.", "<maximum>")
-
+    .add(poptmx::OPTION, &out_name, 'o', "output", "Output image.", "", out_name)
+    .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process.",
+         SliceOptionDesc + ". Only makes sense in multiple projections.", "all")
     .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.bnn, 'b', "binn", BinnOptionDesc, "")
     .add(poptmx::OPTION, &st.angle,'r', "rotate", "Rotation angle.", "")
-
     .add(poptmx::OPTION, &st.origin1, 'g', "origin", "Origin of the image in the first stitch.",
-         "Position of the next image origin (top left corner) on the current image.")
+      "Position of the next image origin (top left corner) on the current image.")
     .add(poptmx::OPTION, &st.origin2, 'G', "second-origin", "Origin of the image in the second stitch.",
-         "Position of the next image origin (top left corner) on the current image in the second order stitch.")
+      "Position of the next image origin (top left corner) on the current image in the second order stitch.")
     .add(poptmx::OPTION, &st.origin2size, 'S', "second-size", "Number of imasges in the second stitch.",
-         "Required if and only if the second stitch is requested.")
+      "Required if and only if the second stitch is requested.")
     .add(poptmx::OPTION, &st.originF, 'f', "flip-origin", "Origin of the flipped portion of the image.",
-         "If used, makes second half of the input images to be assigned to the flipped portion."
-         " Requires even number of input images.")
-
+      "If used, makes second half of the input images to be assigned to the flipped portion."
+      " Requires even number of input images.")
+    .add(poptmx::OPTION, &st.splits, 's', "split", "Split point(s)",
+         "Final image can be split into sub-images to put different portions of it apart as independent"
+         " files, for example to separate samples. By default splitting happens horizontally,"
+         " but if the vertical split is needed, just add a 0 split point.")
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
     .add(poptmx::OPTION, &dgs, 'F', "dg", "Dark field image(s) for backgrounds", "")
@@ -162,31 +131,14 @@ clargs(int argc, char *argv[])
          "Image where values are weights of corresponding pixels in superimposition operations."
          " F.e. 0 values exclude corresponding or affected pixels from further use.")
     .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of edge transition.",
-         "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
-         " to produce seamless image stitching." )
+           "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
+           " to produce seamless image stitching." )
     .add(poptmx::OPTION, &st.sigma, 0, "sigma", "Sigma used in gaussian gap closure.",
-         "The gaps left by the mask superimpositions can be closed with the gaussian blur with the given sigma."
-         "If no mask is provided, the closure will be applied to pixels with values <= 0 or NAN." )
-
-    .add(poptmx::OPTION, &phs.dist, 'z', "dist", "Object to detector distance (mm).",
-         "Needed only for the inline phase contrast processing." )
-    .add(poptmx::OPTION, &dd, 'p', "pixel", "Pixel size (mum).",
-         NeedForQuant, toString(dd) )
-    .add(poptmx::OPTION, &phs.d2b, 0, "d2b", "delta/beta ratio.",
-         "Needed only for the inline phase contrast processing negative for no IPC.", toString(phs.d2b))
-    .add(poptmx::OPTION, &phs.lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
-           "Only needed together with " + table.desc(&phs.d2b) + ".", toString(phs.lambda))
-
-    .add(poptmx::OPTION, &ctrl.contrast, 'k', "contrast", "Input component.",
-         "Type of the contrast presented in the sinogram. " + Contrast::Desc)
-    .add(poptmx::OPTION, &ctrl.center, 't', "center", "Rotation center.",
-         CenterOptionDesc, toString(ctrl.center))
-    .add(poptmx::OPTION, &ctrl.arc, 'a', "arcan", "CT scan range (if > 1 deg), or step size (if < 1deg).",
-         "If value is greater than 1deg then it represents the arc of the CT scan."
-         " Otherwise the value is the step size.", toString(ctrl.arc))
-    .add(poptmx::OPTION, &ctrl.filter_type, 0, "filter", "Filtering window used in the CT.",
-         FilterOptionDesc, ctrl.filter_type.name())
-
+           "The gaps left by the mask superimpositions can be closed with the gaussian blur with the given sigma."
+           "If no mask is provided, the closure will be applied to pixels with values <= 0 or NAN." )
+    .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
+         "Uses output name with suffixes to store results. In case of multiple projections provides"
+         " slice index to test; ignored for single image mode.")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -246,6 +198,9 @@ clargs(int argc, char *argv[])
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
+  if (table.count(&testMe) && testMe<0)
+    exit_on_error(command, "Negative test projection given with " + table.desc(&testMe) + " option.");
+
   if ( table.count(&st.originF) ) {
     if ( tiledImages % 2 )
       exit_on_error(command, string () +
@@ -255,13 +210,14 @@ clargs(int argc, char *argv[])
   }
   if ( table.count(&st.origin2) > table.count(&st.origin1) )
     exit_on_error(command, string () +
-      "Options " + table.desc(&st.origin2) + " require also " + table.desc(&st.origin1) + " option.");
+      "Options " + table.desc(&st.origin2) + " requires also " + table.desc(&st.origin1) + " option.");
   if ( table.count(&st.origin2) > table.count(&st.origin2size) )
     exit_on_error(command, string () +
-      "Options " + table.desc(&st.origin2) + " require also " + table.desc(&st.origin2size) + " option.");
-  if ( table.count(&st.origin2size) && ! table.count(&st.origin2) )
+      "Options " + table.desc(&st.origin2) + " requires also " + table.desc(&st.origin2size) + " option.");
+  if ( table.count(&st.origin2size) && ! table.count(&st.origin2) && ! table.count(&testMe) )
     exit_on_error(command, string () +
-      "Options " + table.desc(&st.origin2size) + " require also " + table.desc(&st.origin2) + " option.");
+      "Options " + table.desc(&st.origin2size) + " must be used with either "
+      + table.desc(&st.origin2) + " or " + table.desc(&testMe) + " options.");
   if ( table.count(&st.origin2size)  &&  st.origin2size  < 2 )
     exit_on_error(command, string () +
       "Requested second stitch size (" + toString(st.origin2size) + ") is less than 2.");
@@ -270,27 +226,11 @@ clargs(int argc, char *argv[])
       "Total number of tiled images (" + toString(tiledImages) + ") is not a multiple of the requested second stitch size"
       " (" + toString(st.origin2size) + ") given by " + table.desc(&st.origin2size) + " option.");
 
-  if (phs.d2b >= 0.0) { // inline phase contrast
-    if (phs.dist <= 0.0)
-      exit_on_error(command, "Zero or negative distance (given by "+table.desc(&phs.dist)+").");
-    phs.dist /= 1.0E3; // convert mm -> m
-    if (phs.lambda <= 0.0)
-      exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&phs.lambda)+").");
-    phs.lambda /= 1.0E10; // convert A -> m
-    if ( table.count(&phs.lambda) && ! table.count(&phs.d2b) )
-      warn(command, "The wavelength (given by "+table.desc(&phs.lambda)+") has influence only together"
-           " with the alpha parameter (given by "+table.desc(&phs.d2b)+").");
-    if ( ! table.count(&phs.lambda) && table.count(&phs.d2b) )
-      warn(command, "The wavelength (given by "+table.desc(&phs.lambda)+") needed together with"
-           " the alpha parameter (given by "+table.desc(&phs.d2b)+") for the correct results.");
-  }
+  sort(st.splits.begin(), st.splits.end());
+  unique(st.splits.begin(), st.splits.end());
+  if ( st.splits.size() == 1 && st.splits.at(0) == 0 )
+    exit_on_error(command, "The list of splits contains only 0 (marking vertical splits).");
 
-  if (ctrl.arc <= 0.0)
-    exit_on_error(command, "CT arc (given by "+table.desc(&ctrl.arc)+") must be strictly positive.");
-  if (dd <= 0.0)
-    exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
-
-  dd /= 1.0E6; // convert micron -> m
   st.angle *= M_PI/180;
   st.flipUsed=table.count(&st.originF);
   st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / st.origin2size ;
@@ -299,8 +239,13 @@ clargs(int argc, char *argv[])
 
 
 namespace blitz {
+
 static inline float denan(float x){ return isnormal(x) ? x : 0.0 ;}
 BZ_DECLARE_FUNCTION(denan);
+
+static inline float invert(float x){ return x==0.0 ? 0.0 : 1.0/x ;}
+BZ_DECLARE_FUNCTION(invert);
+
 }
 
 void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
@@ -312,15 +257,139 @@ void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=fal
 
 
 
-class ProcProj {
 
+
+
+
+class Stitcher {
+
+  static const string modname;
+
+  Map wght;
+  Map swght;
+  int minx;
+  int miny;
+
+public:
+
+  PointF2D origin;
+  int isz;
+  Shape ish;
+  Shape osh;
+
+  Stitcher()
+    : isz(0), minx(0), miny(0)
+  {}
+
+  void prepare(PointF2D _origin, Shape _ish, int _isz, const deque<Map> & msks) {
+
+    origin = _origin;
+    ish = _ish;
+    isz = _isz;
+
+    if ( isz == 0 )
+      throw_error(modname, "Nothing to stitch.");
+    if (msks.size() && msks.size() != 1 && msks.size() != isz)
+      throw_error(modname, "Inconsistent sizes of mask and image arrays.");
+    for (int mcur = 0 ; mcur < msks.size() ; mcur++ )
+      if (msks[mcur].shape() != ish)
+        throw_error(modname, "Non matching mask shapes in input.");
+
+    int maxx(0), maxy(0);
+    for (int acur = 0 ; acur < isz ; acur++ ) {
+      const float
+        orgx = acur*origin.x,
+        orgy = acur*origin.y,
+        tilx = orgx + ish(1)-1,
+        tily = orgy + ish(0)-1;
+      if (orgx < minx) minx = orgx;
+      if (tilx > maxx) maxx = tilx;
+      if (orgy < miny) miny = orgy;
+      if (tily > maxy) maxy = tily;
+    }
+
+    wght.resize(ish);
+    for (ArrIndex ycur = 0 ; ycur < ish(0) ; ycur++ )
+      for (ArrIndex xcur = 0 ; xcur < ish(1) ; xcur++ )
+        wght(ycur, xcur) = 1 + ( ish(0) - abs( 2*ycur - ish(0) + 1l ) )
+                             * ( ish(1) - abs( 2*xcur - ish(1) + 1l ) );
+
+    osh = Shape(maxy-miny+1, maxx-minx+1);
+    swght.resize(osh);
+    swght=0.0;
+    for (int acur = 0 ; acur < isz ; acur++ ) {
+      //const Map & curar = iarr[acur];
+      const blitz::Range r0(acur*origin.y-miny, acur*origin.y-miny + ish(0)-1);
+      const blitz::Range r1(acur*origin.x-minx, acur*origin.x-minx + ish(1)-1);
+      if (msks.size()==1)
+        swght(r0,r1) += wght * msks[0];
+      else if (msks.size())
+        swght(r0,r1) += wght * msks[acur];
+      else
+        swght(r0,r1) += wght;
+    }
+    swght = invert(swght);
+
+  }
+
+  void prepare(PointF2D _origin, Shape _ish, int _isz, const Map & msks) {
+    deque<Map> msksdq(msks.size() ? 1 : 0, msks);
+    prepare(_origin, _ish, _isz, msksdq);
+  }
+
+  void stitch(const deque<Map> & iarr, Map & oarr) const {
+
+    if (!isz)
+      throw_error(modname, "Was never prepared (zero input size).");
+
+    if ( iarr.size() != isz || iarr[0].shape() != ish )
+      throw_error(modname, "Non maching input data.");
+    if (isz == 1) {
+      if (!oarr.size())
+        oarr.reference(iarr[0]);
+      else if (!areSame(oarr, iarr[0])) {
+        oarr.resize(ish);
+        oarr = iarr[0];
+      }
+      return;
+    }
+    for (int acur = 0 ; acur < isz ; acur++ )
+      if (iarr[acur].shape() != ish)
+        throw_error(modname, "Non matching image shapes in input.");
+
+    oarr.resize(osh);
+    oarr=0.0;
+    for (int acur = 0 ; acur < isz ; acur++ )
+      oarr( blitz::Range(acur*origin.y-miny, acur*origin.y-miny + ish(0)-1)
+          , blitz::Range(acur*origin.x-minx, acur*origin.x-minx + ish(1)-1) )
+        += wght * iarr[acur];
+    oarr *= swght;
+
+  }
+
+  Map resMask() const {
+    Map ret(osh);
+    ret = swght;
+    invert(ret);
+    return ret;
+  }
+
+};
+const string Stitcher::modname = "stitcher";
+
+
+
+
+
+class ProcProj {
 
   static const string modname;
   static cl_program oclProgram;
-  StitchRules strl;
   deque<FlatFieldProc> ffprocs;
+  StitchRules strl;
 
-  deque<Map> msksI, msks1, msks2; // shared
+  Stitcher   ster1_R, ster2_R, sterF_R;
+  Stitcher & ster1,   ster2,   sterF;
   Map mskF; // shared
   ImageProc iproc; // own
   Map stitched, final; // own
@@ -331,81 +400,6 @@ class ProcProj {
   CLmem iomCL;
   CLmem maskCL_R;
   CLmem & maskCL;
-
-  //const PhaseRules & phsrl;
-  IPCprocess ipcproc;
-  float ipccoef;
-
-
-  static void stitch(PointF2D origin,  const deque<Map> & iarr, Map & oarr
-                    ,  const deque<Map> & gprr = deque<Map>() ) {
-
-    const int isz = iarr.size();
-    if ( isz == 0 )
-      throw_error(modname, "Nothing to stitch.");
-    if ( isz == 1 ) {
-      oarr.reference(iarr[0]);
-      return;
-    }
-
-    if (gprr.size() == 1) {
-      const Shape csz = gprr[0].shape();
-      for (int acur = 0 ; acur < isz ; acur++ )
-        if (iarr[acur].shape()!=csz)
-          throw_error(modname, "Different image sizes in mask and inputs.");
-    } else if (gprr.size() == iarr.size()) {
-      for (int acur = 0 ; acur < isz ; acur++ )
-        if (iarr[acur].shape()!=gprr[acur].shape())
-          throw_error(modname, "Non matching image sizes in mask and input arrays.");
-    } else if (gprr.size()) {
-      throw_error(modname, "Inconsistent sizes of mask and image arrays.");
-    }
-
-    int minx=0, maxx=0, miny=0, maxy=0;
-    for (int acur = 0 ; acur < isz ; acur++ ) {
-      const float
-        orgx = acur*origin.x,
-        orgy = acur*origin.y,
-        tilx = orgx + iarr[acur].shape()(1)-1,
-        tily = orgy + iarr[acur].shape()(0)-1;
-      if (orgx < minx) minx = orgx;
-      if (tilx > maxx) maxx = tilx;
-      if (orgy < miny) miny = orgy;
-      if (tily > maxy) maxy = tily;
-    }
-
-    const Shape osh(maxy-miny+1, maxx-minx+1);
-    oarr.resize(osh);
-    for (ArrIndex ycur = 0 ; ycur < osh(0) ; ycur++ ) {
-      for (ArrIndex xcur = 0 ; xcur < osh(1) ; xcur++ ) {
-        float sweight=0.0;
-        float svals=0.0;
-        for (int acur = 0 ; acur < isz ; acur++ ) {
-          const Map & curar = iarr[acur];
-          const Shape cursh = curar.shape();
-          const Shape coo = Shape(miny+ycur-acur*origin.y, minx+xcur-acur*origin.x);
-          if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
-            const float varcur = curar(coo);
-            if ( fisok(varcur) ) {
-              float weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
-                               * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
-              if ( gprr.size() == 1 )
-                weight *= gprr[0](coo);
-              else if ( gprr.size() == iarr.size() )
-                weight *= gprr[acur](coo);
-              sweight += weight;
-              svals += varcur * weight;
-            }
-          }
-        }
-
-        oarr(ycur,xcur) = sweight == 0.0 ? 0.0 : svals / sweight ;
-
-      }
-    }
-
-  }
-
 
   void prepareMask(Map & _gaps, bool bepicky) {
     const float mm = min(_gaps);
@@ -447,14 +441,17 @@ class ProcProj {
 
 
   void initCL() {
+
     if (!doGapsFill)
       return;
+
     static const string oclsrc = {
       #include "proj.cl.includeme"
     };
-    oclProgram = initProgram( oclsrc, oclProgram, modname);
+    oclProgram = initProgram(oclsrc, oclProgram, "Projection in OCL");
     if (!oclProgram)
-      throw_error(modname, "Failed to build OCP program for projection formation");
+      throw_error(modname, "Failed to compile CL program.");
+
     iomCL(clAllocArray<float>(mskF.size()));
     if (!maskCL())
       maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
@@ -464,23 +461,25 @@ class ProcProj {
     gaussCL.setArg(2, iomCL());
     gaussCL.setArg(3, maskCL());
     gaussCL.setArg(4, float(strl.sigma) );
+
   }
+
 
 public:
 
-  ProcProj( const StitchRules & _st, const PhaseRules & phsrules, float dd
-          , const deque<Map> & bgas, const deque<Map> & dfas
-          , const deque<Map> & dgas, const deque<Map> & msas)
+  ProcProj( const StitchRules & _st, const deque<Map> & bgas, const deque<Map> & dfas
+          , const deque<Map> & dgas, const deque<Map> & msas, const Path & saveMasks = Path())
     : strl(_st)
-    , iproc(strl.angle, strl.crp, strl.bnn, _st.ish)
+    , ster1(ster1_R)
+    , ster2(ster2_R)
+    , sterF(sterF_R)
+    , iproc(strl.angle, strl.crp, strl.bnn, strl.ish)
     , allIn(strl.nofIn)
     , o1Stitch(strl.nofIn/strl.origin1size)
     , o2Stitch(strl.flipUsed ? 2 : 1)
     , doGapsFill(false)
     , maskCL_R(0)
     , maskCL(maskCL_R)
-    , ipcproc(oshape(strl), phsrules.d2b)
-    , ipccoef(IPCprocess::d2bNorm(phsrules.d2b, dd, phsrules.dist, phsrules.lambda))
   {
 
     if ( ! area(strl.ish) )
@@ -518,42 +517,58 @@ public:
                           , msas.size() ? msas[0] : zmap );
     }
 
-    if (!strl.fcrp)
-      final.reference(stitched);
+    #define SaveMask(vol, suf) \
+      if (saveMasks.length()) \
+        SaveDenan(saveMasks.dtitle() + suf + ".tif", vol);
 
     const int mssz = msas.size();
-    if ( ! mssz )
-      return;
-
+    deque<Map> pmsas;
     for (int curI = 0; curI < msas.size() ; curI++) {
       if (msas[curI].shape() != strl.ish)
         throw_error(modname, "Unexpected mask shape.");
       Map msT;
       iproc.proc(msas[curI], msT);
       prepareMask(msT, true);
-      msksI.emplace_back(msT.shape());
-      msksI.back() = msT;
+      pmsas.emplace_back(msT.shape());
+      pmsas.back() = msT;
+      SaveMask(msT, "_I" + (mssz>1 ? toString(curI) : string()) );
     }
-    while (msksI.size() != strl.nofIn)
-      msksI.emplace_back(msksI[0]);
+    ster1.prepare(strl.origin1, iproc.osh(), strl.origin1size, pmsas);
+    Map msks1;
+    if (mssz) {
+      msks1.reference(ster1.resMask());
+      prepareMask(msks1, false);
+      SaveMask(msks1, "_U");
+    }
 
-    msks1.resize(o1Stitch.size());
-    sub_proc(strl.origin1size, strl.origin1, msksI, deque<Map>(), msks1);
-
-    msks2.resize(o2Stitch.size());
-    sub_proc(strl.origin2size, strl.origin2, msks1, deque<Map>(), msks2);
+    ster2.prepare(strl.origin2, ster1.osh, strl.origin2size, msks1);
+    Map msks2;
+    if (mssz) {
+      if (strl.origin2size>1) {
+        msks2.reference(ster2.resMask());
+        prepareMask(msks2, false);
+        SaveMask(msks2, "_V");
+      } else
+        msks2.reference(msks1[0]);
+    }
 
     if ( strl.flipUsed ) {
-      msks2[1].reverseSelf(blitz::secondDim);
-      stitch(strl.originF, msks2, mskF, deque<Map>());
-    } else
+      deque<Map> msksF;
+      if (mssz) {
+        msksF.emplace_back(msks2);
+        msksF.emplace_back(msks2.reverse(blitz::secondDim));
+      }
+      sterF.prepare(strl.originF, ster2.osh, 2, msks2);
+      if (mssz) {
+        mskF.reference(sterF.resMask());
+        prepareMask(mskF, false);
+        SaveMask(mskF, "_W");
+      }
+    } else if (mssz)
       mskF.reference(msks2[0]);
 
-    for (int curM=0 ; curM < msks1.size() ; curM++)
-      prepareMask(msks1[curM], false);
-    for (int curM=0 ; curM < msks2.size() ; curM++)
-      prepareMask(msks2[curM], false);
-    prepareMask(mskF, false);
+    #undef SaveMask
+
     doGapsFill = strl.sigma > 0.0  &&  any(mskF==0.0);
     initCL();
 
@@ -562,59 +577,63 @@ public:
 
   ProcProj(const ProcProj & other)
     : strl(other.strl)
+    , ster1(other.ster1)
+    , ster2(other.ster2)
+    , sterF(other.sterF)
     , iproc(other.iproc)
     , ffprocs(other.ffprocs)
-    , allIn(strl.nofIn)
-    , o1Stitch(strl.nofIn/strl.origin1size)
-    , o2Stitch(strl.flipUsed ? 2 : 1)
-    , msks1(other.msks1)
-    , msks2(other.msks2)
+    , allIn(other.allIn.size())
+    , o1Stitch(other.o1Stitch.size())
+    , o2Stitch(other.o2Stitch.size())
     , mskF(other.mskF)
     , doGapsFill(other.doGapsFill)
     , maskCL(other.maskCL)
-    , ipcproc(other.ipcproc.sh, other.ipcproc.d2b)
-    , ipccoef(other.ipccoef)
   {
     if (doGapsFill)
       initCL();
-    if (!strl.fcrp)
-      final.reference(stitched);
-  }
-
-  static Shape oshape(const StitchRules & _st) {
-    Shape frsh = binn(crop(rotate(_st.ish, _st.angle), _st.crp), _st.bnn);
-    Shape stsh1 = Shape( _st.ish(0) + abs(_st.origin1.y)*_st.origin1size,
-                         _st.ish(1) + abs(_st.origin1.x)*_st.origin1size );
-    Shape stsh2 = Shape( stsh1(0) + abs(_st.origin2.y)*_st.origin2size,
-                         stsh1(1) + abs(_st.origin2.x)*_st.origin2size );
-    Shape fsh = _st.flipUsed ? stsh2 : Shape(stsh2(0)+abs(_st.originF.y), stsh2(1)+abs(_st.originF.x));
-    Shape rsh = crop(fsh, _st.fcrp);
-    return rsh;
   }
 
 
-  void sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks, deque<Map> & oar) {
 
-    if ( orgsize == 1 ) {
+  void sub_proc(  const Stitcher & ster, const deque<Map> & hiar, deque<Map> & oar
+                , const ImagePath & interim_name, const string & suffix) {
+
+    if (!ster.isz)
+      throw_error(modname, "Bad stitcher.");
+    if ( ster.isz == 1 ) {
       for(int curM = 0 ; curM < oar.size() ; curM++)
         oar[curM].reference(hiar[curM]);
       return;
     }
 
     const int nofin = hiar.size();
-    for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
-      int cidx=inidx/orgsize;
-      deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + orgsize) ;
-      deque<Map> supplyMs( msks.size() ? msks.begin() + inidx           : msks.begin(),
-                           msks.size() ? msks.begin() + inidx + orgsize : msks.begin() );
-      stitch(origin, supplyIm, oar[cidx], supplyMs);
+    for ( int inidx=0 ; inidx<nofin ; inidx += ster.isz ) {
+      int cidx=inidx/ster.isz;
+      deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + ster.isz) ;
+      ster.stitch(supplyIm, oar[cidx]);
+      if ( ! interim_name.empty() ) {
+        Map cres;
+        if ( ster.origin.x * ster.origin.y == 0.0 ) {
+          cres.reference(oar[cidx]);
+        } else if ( abs(ster.origin.x) < abs(ster.origin.y)  ) {
+          int crppx = abs(ster.origin.x * (supplyIm.size()-1));
+          crop(oar[cidx], cres, Crop(0, crppx, 0, crppx));
+        } else {
+          int crppx = abs(strl.origin1.y * (supplyIm.size()-1));
+          crop(oar[cidx], cres, Crop(crppx, 0, crppx, 0));
+        }
+        string svName = interim_name.dtitle() + suffix;
+        if (ster.isz<nofin) // more than one result
+          svName += toString(mask2format("@", oar.size()),cidx);
+        SaveDenan(svName + ".tif", cres);
+      }
     }
     return;
 
   }
 
 
-  bool process(deque<Map> & allInR, Map & res) {
+  bool process(deque<Map> & allInR, deque<Map> & res, const ImagePath & interim_name = ImagePath()) {
 
     if (allInR.size() != strl.nofIn)
       return false;
@@ -627,16 +646,38 @@ public:
       else if (ffprocs.size() == strl.nofIn)
         ffprocs[curproj].process(allInR[curproj]);
       iproc.proc(allInR[curproj], allIn[curproj]);
+      if ( ! interim_name.empty() ) {
+        const string sfI = strl.nofIn > 1 ? toString(mask2format("@", strl.nofIn), curproj) : "";
+        const string sfF = strl.flipUsed ? (curF ? "_F" : "_D") : "";
+        const string sf2 = strl.origin2size > 1 ? toString(mask2format(".@", strl.origin2size), cur2) : "";
+        const string sf1 = strl.origin1size > 1 ? toString(mask2format(".@", strl.origin1size), cur1) : "";
+        const string svName = interim_name.dtitle() + "_I" + sfI + sfF + sf2 + sf1 + string(".tif");
+        SaveDenan(svName, allIn[curproj]);
+        cur1++;
+        if (cur1==strl.origin1size) {
+          cur1=0;
+          cur2++;
+          if (cur2==strl.origin2size) {
+            cur2=0;
+            curF++;
+          }
+        }
+      }
     }
 
     // first stitch
-    sub_proc(strl.origin1size, strl.origin1, allIn, msksI, o1Stitch);
+    sub_proc(ster1, allIn   , o1Stitch, interim_name, "_U");
     // second stitch
-    sub_proc(strl.origin2size, strl.origin2, o1Stitch, msks1, o2Stitch);
+    sub_proc(ster2, o1Stitch, o2Stitch, interim_name, "_V");
     // flip stitch
     if ( strl.flipUsed ) {
       o2Stitch[1].reverseSelf(blitz::secondDim);
-      stitch(strl.originF, o2Stitch, stitched, msks2);
+      sterF.stitch(o2Stitch, stitched);
+      if ( ! interim_name.empty() )  {
+        SaveDenan(interim_name.dtitle() + "_WD.tif" , o2Stitch[0]);
+        SaveDenan(interim_name.dtitle() + "_WF.tif" , o2Stitch[1]);
+        SaveDenan(interim_name.dtitle() + "_WW.tif" , stitched);
+      }
     } else {
       stitched.reference(o2Stitch[0]);
     }
@@ -651,18 +692,44 @@ public:
     }
 
     // final crop
-    if (strl.fcrp)
+    if (strl.fcrp) {
       crop(stitched, final, strl.fcrp);
-
-    // IPC processing
-    ipcproc.extract(final, IPCprocess::PHS, 1.0/ipccoef);
-
-    if (!res.size())
-      res.reference(final);
-    else if (!areSame(final, res)) {
-      res.resize(final.shape());
-      res=final;
+      if ( ! interim_name.empty() )
+        SaveDenan( interim_name.dtitle() + "_Y.tif", stitched );
+    } else {
+      final.reference(stitched);
     }
+
+    // splits
+    if ( strl.splits.empty() ) {
+      res.resize(1);
+      res[0].resize(final.shape());
+      res[0]=final;
+    } else {
+      const string svformat = mask2format("_Z@", strl.splits.size() );
+      int fLine=0, lLine=0;
+      const int vsplit = strl.splits.at(0) ? 0 : 1;
+      const int mLine = final.shape()(vsplit);
+      for (int curS = vsplit ;  curS<=strl.splits.size()  ;  curS++) {
+        int curI = curS - vsplit;
+        lLine = ( curS == strl.splits.size()  ||  mLine < strl.splits.at(curS) )
+          ?  mLine :  strl.splits.at(curS) ;
+        lLine--;
+        if ( lLine > fLine ) {
+          Map resp = vsplit
+            ? final( all, blitz::Range(fLine, lLine) )
+            : final( blitz::Range(fLine, lLine), all ) ;
+          if (res.size() < curI+1)
+            res.emplace_back();
+          res[curI].resize(resp.shape());
+          res[curI]=resp;
+          if ( ! interim_name.empty() )
+            SaveDenan( interim_name.dtitle() + toString(svformat, curI) + ".tif", res[curI] );
+        }
+        fLine=lLine+1;
+      }
+    }
+
     return true;
 
   }
@@ -673,109 +740,22 @@ const string ProcProj::modname="ProcProj";
 cl_program ProcProj::oclProgram = 0;
 
 
-struct InterimStorage {
-  SaveVolumeBySlice * wvol;
-  SaveVolumeBySlice * tvol;
-  ReadVolumeBySlice * rvol;
-  Volume vol;
-  const Shape psh;
-  const Shape ssh;
-  const uint projs;
-  const uint sinos;
-  static const string modname;
-
-  InterimStorage(Shape3 sh, const ImagePath & saveMe, const Path & tmpDir)
-    : wvol(0)
-    , tvol(0)
-    , rvol(0)
-    , psh(faceShape(sh))
-    , ssh(Shape(sh(0),sh(2)))
-    , projs(sh(0))
-    , sinos(sh(1))
-  {
-    try {
-      vol.resize(sh);
-    } catch (bad_alloc err) {
-      vol.free();
-    }
-    if (!saveMe.empty()) {
-      wvol = new SaveVolumeBySlice(saveMe, psh, projs);
-      if (!wvol)
-        throw_error(modname, "Could not prepare for saving volume " + saveMe.repr() + ".");
-    }
-    if (vol.size())
-      return;
-
-    const deque<string> sldsc = split(saveMe.desc(), ":");
-    if ( wvol && saveMe.isValidHDF() && (sldsc.size()<2 || sldsc[1].empty()) ) {
-      // use wvol as storage
-      tvol = wvol;
-      rvol = new ReadVolumeBySlice(saveMe + (sldsc.size()==2 ? "Y" : ":Y"));
-    } else {
-      // use dedicated temprorary HDF
-      ImagePath tempMe = ( tmpDir.empty() ? "." : tmpDir ) + "/.SAMPLE.hdf:/data";
-      tvol = new SaveVolumeBySlice(tempMe, psh, projs);
-      rvol = new ReadVolumeBySlice(tempMe+":Y");
-      if ( unlink(tempMe.c_str()) < 0 )
-        warn(modname, "Could not unlink temporary file \"" + tempMe + "\"."
-                          " Don't forget to delete it after the program has finished.");
-   }
-
-  }
-
-  ~InterimStorage() {
-    if (wvol) delete wvol;
-    if (tvol && tvol != wvol) delete tvol;
-    if (rvol) delete rvol;
-  }
-
-  void putProjection(const Map & proj, uint idx) {
-    if (proj.shape() != psh)
-      throw_error(modname, "Input map shape "+toString(proj.shape())+
-                           " does not match constructed "+toString(psh)+".");
-    if (idx >= projs)
-      throw_error(modname, "Input index " + toString(idx) + " is beyond constructed size "
-                           + toString(projs) + ".");
-    if (vol.size())
-      vol(idx, all, all) = proj;
-    if (wvol)
-      wvol->save(idx, proj);
-    if (tvol && tvol != wvol)
-      tvol->save(idx, proj);
-  }
-
-  void getSinogram(Map & sino, uint idx) const {
-    if (idx>=sinos)
-      throw_error(modname, "Requested sinogram"+toString(idx)+" is beyond constructed size "
-                           + toString(sinos) + ".");
-    if (vol.size()) {
-      sino.resize(ssh);
-      sino = vol(all,idx,all);
-    } else if (!rvol) {
-      throw_error(modname, "No storage in either volume of file.");
-    } else {
-      rvol->read(idx, sino);
-    }
-  }
-
-};
-const string InterimStorage::modname = "Projections storage";
-
 
 
 class ProjInThread : public InThread {
 
   deque<ReadVolumeBySlice> & allInRd;
-  InterimStorage & allProjes;
+  deque<SaveVolumeBySlice> & allOutSv;
   const ProcProj & proc;
+  const vector<int> & projes;
 
   unordered_map<pthread_t, ProcProj> procs;
   unordered_map<pthread_t, deque<Map> > allInMaps;
-  unordered_map<pthread_t, Map > results;
+  unordered_map<pthread_t, deque<Map> > results;
 
   bool inThread(long int idx) {
 
-    if (idx >= allProjes.projs)
+    if (idx >= projes.size() || projes[idx] >= allOutSv[0].slices())
       return false;
 
     const pthread_t me = pthread_self();
@@ -783,20 +763,21 @@ class ProjInThread : public InThread {
     if ( ! procs.count(me) ) { // first call
       procs.emplace(me, proc);
       allInMaps.emplace(me, deque<Map>(allInRd.size()));
-      results[me];
+      results.emplace(me,deque<Map>());
     }
     ProcProj & myProc = procs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
-    Map & myRes = results.at(me);
+    deque<Map> & myRes = results.at(me);
     unlock();
 
     try {
       for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
-        allInRd[curI].read(idx, myAllIn[curI]);
+        allInRd[curI].read(projes[idx], myAllIn[curI]);
       myProc.process(myAllIn, myRes);
-      allProjes.putProjection(myRes, idx);
+      for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
+        allOutSv[curO].save(projes[idx], myRes[curO]);
     } catch (...) {
-      warn("form projection", toString("Failed on slice %i.", idx));
+      warn("form projection", toString("Failed on index %i, slice %i.", idx, projes[idx]));
     }
 
     bar.update();
@@ -806,78 +787,17 @@ class ProjInThread : public InThread {
 
 public:
 
-  ProjInThread(deque<ReadVolumeBySlice> & _allInRd, InterimStorage & _allProjes
-              , const ProcProj & _proc, bool verbose=false)
-    : InThread(verbose, "processing projections", _allProjes.projs)
+  ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
+              , const ProcProj & _proc, const vector<int> & _projes, bool verbose=false)
+    : InThread(verbose, "processing projections", _projes.size())
     , proc(_proc)
+    , projes(_projes)
     , allInRd(_allInRd)
-    , allProjes(_allProjes)
+    , allOutSv(_outSave)
   {}
 
 
 };
-
-
-
-class RecInThread : public InThread {
-
-  const CTrules & ctrl;
-  const float dd;
-  const InterimStorage & allSinos;
-  const Shape ish;
-  const Shape osh;
-  SaveVolumeBySlice ovolSv;
-
-  unordered_map<pthread_t, CTrec> recs;
-  unordered_map<pthread_t, Map> imaps;
-  unordered_map<pthread_t, Map> omaps;
-
-  bool inThread(long int idx) {
-    if (idx >= allSinos.sinos)
-      return false;
-
-    const pthread_t me = pthread_self();
-    lock();
-    if ( ! recs.count(me) ) {
-      recs.emplace(piecewise_construct,
-                   forward_as_tuple(me),
-                   forward_as_tuple(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type));
-      imaps.emplace(me, ish);
-      omaps.emplace(me, osh);
-    }
-    CTrec & myRec = recs.at(me);
-    Map & myImap = imaps.at(me);
-    Map & myOmap = omaps.at(me);
-    unlock();
-
-    allSinos.getSinogram(myImap, idx);
-    myRec.reconstruct(myImap, myOmap, ctrl.center, dd);
-    ovolSv.save(idx, myOmap);
-
-    bar.update();
-    return true;
-
-  }
-
-public:
-
-  RecInThread( const InterimStorage & snstor, const CTrules & _ctrl, float _dd
-             , const ImagePath & out_mask, float mincon, float maxcon, bool beverbose)
-    : InThread(beverbose, "CT'ing", snstor.sinos)
-    , ctrl(_ctrl)
-    , dd(_dd)
-    , allSinos(snstor)
-    , ish(snstor.ssh)
-    , osh(ish(1),ish(1))
-    , ovolSv(out_mask, osh, snstor.sinos, mincon, maxcon)
-  {
-  }
-
-
-
-};
-
-
 
 
 
@@ -935,19 +855,60 @@ int main(int argc, char *argv[]) {
       exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
   }
   const int nofProj = allInRd.at(0).slices();
-  const Shape projSh = ProcProj::oshape(args.st);
+  const vector<int> projes = slice_str2vec(args.out_range, nofProj);
+  const int nofOuts = projes.size();
+  if (!nofOuts)
+    exit_on_error(args.command, "Given range \"" + args.out_range + "\""
+                                " is beyond input slices"+toString(nofProj)+".");
+  if ( args.testMe >= nofProj )
+    exit_on_error(args.command, "Requested test is beyond number of projections.");
 
-  InterimStorage prstor(Shape3(nofProj, projSh(0), projSh(1)), args.out_proj, args.out_name.dir() );
-  // form projections
-  { // to deconstruct objects
-    ProcProj canonPP(st, args.phs, args.dd, bgas, dfas, dgas, msas);
-    ProjInThread(allInRd, prstor, canonPP, args.beverbose)
-        .execute();
-    allInRd.clear();
+  // Process one slice
+  //Map zmap(ish);
+  //zmap=0.0;
+  deque<Map> allOut, allIn;
+  for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
+    allIn.emplace_back(ish);
+    if (args.testMe >= 0)
+      allInRd[curI].read(args.testMe, allIn[curI]);
+    else if (nofOuts == 1)
+      allInRd[curI].read(projes[0], allIn[curI]);
+    else
+      allIn.back()=0.0;
   }
-  // CT reconstruct
-  RecInThread(prstor, args.ctrl, args.dd, args.out_name, args.mincon, args.maxcon, args.beverbose)
-      .execute();
+  string testFormat;
+  if (args.testMe >= 0) {
+    testFormat = args.out_name.dtitle();
+    if (testFormat.find('@') != string::npos)
+      testFormat = toString(mask2format(testFormat, nofProj), args.testMe);
+    testFormat += "%s";
+  }
+  ProcProj canonPP(st, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
+  canonPP.process(allIn, allOut, toString(testFormat, ".tif"));
+
+  // Prepare saving factories
+  const size_t nofSplts = allOut.size();
+  const string spformat = mask2format("_split@", nofSplts);
+  deque<SaveVolumeBySlice> allOutSv;
+  for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
+    ImagePath filedescind = args.out_name;
+    if (args.testMe >= 0)
+      filedescind = args.out_name.dtitle() + ".tif";
+    if (nofSplts > 1)
+      filedescind =   filedescind.dtitle() + toString(spformat, curSplt)
+                    + filedescind.ext() + filedescind.desc();
+    allOutSv.emplace_back(filedescind, allOut[curSplt].shape(), nofProj);
+  }
+
+  // save or process
+  if ( args.testMe >= 0 )
+    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
+      allOutSv[curSplt].save(args.testMe, allOut[curSplt]);
+  else if ( nofOuts == 1 )
+    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
+      allOutSv[curSplt].save(projes[0], allOut[curSplt]);
+  else // finally process
+    ProjInThread(allInRd, allOutSv, canonPP, projes, args.beverbose).execute();
 
   exit(0);
 

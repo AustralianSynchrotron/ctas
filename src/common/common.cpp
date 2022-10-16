@@ -676,15 +676,12 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
 #ifdef OPENCL_FOUND
 
-  if ( ! binnProgram ) {
-    const char binnSource[] = {
-      #include "binn.cl.includeme"
-    };
-    binnProgram =
-      initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
-    if (!binnProgram)
+  static const string oclsrc = {
+    #include "binn.cl.includeme"
+  };
+  binnProgram = initProgram(oclsrc, binnProgram, "Binn on OCL");
+  if (!binnProgram)
       throw 1;
-  }
 
   try {
 
@@ -838,7 +835,6 @@ private:
 
   static const string modname;
   static cl_program binnProgram;
-  static pthread_mutex_t protectProgramCompilation;
 
 public:
 
@@ -856,18 +852,12 @@ public:
       throw_error(modname, "Zero result of binning"
                            " ("+toString(ish)+") by (" + string(bnn) + ").");
 
-    pthread_mutex_lock(&protectProgramCompilation);
-    if ( ! binnProgram ) {
-      const char binnSource[] = {
-        #include "binn.cl.includeme"
-      };
-      binnProgram =
-        initProgram( binnSource, sizeof(binnSource), modname );
-    }
-    pthread_mutex_unlock(&protectProgramCompilation);
+    static const string oclsrc = {
+      #include "binn.cl.includeme"
+    };
+    binnProgram = initProgram( oclsrc, binnProgram, modname);
     if (!binnProgram)
       throw_error(modname, "Could not initiate binning program.");
-
     clinarr(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
     cloutarr(clAllocArray<float>(area(osh), CL_MEM_WRITE_ONLY));
     kernelBinn(binnProgram, "binn2");
@@ -906,7 +896,6 @@ public:
 
 const string _BinnProc::modname = "BinnOCL";
 cl_program _BinnProc::binnProgram = 0;
-pthread_mutex_t _BinnProc::protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
 
 
 BinnProc::BinnProc(const Shape & ish, const Binn & bnn)

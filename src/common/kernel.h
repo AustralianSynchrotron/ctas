@@ -211,7 +211,6 @@ private:
 
   static const std::string modname; ///< Module name.
   static cl_program program;
-  static pthread_mutex_t ctrec_lock;
 
   const Shape ish;
   const Shape osh;

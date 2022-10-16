@@ -318,10 +318,7 @@ filter_line(Line &ln, const Line &f_win,
 
 
 const string CTrec::modname = "reconstruction";
-pthread_mutex_t CTrec::ctrec_lock = PTHREAD_MUTEX_INITIALIZER;
-#ifdef OPENCL_FOUND
 cl_program CTrec::program = 0;
-#endif // OPENCL_FOUND
 
 
 CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
@@ -336,17 +333,6 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
     throw_error (modname, "Number of pixels in the CT reconstruction less than 2.");
   if (!ish(0))
     throw_error (modname, "Zero projections in sinogram.");
-
-  pthread_mutex_lock(&ctrec_lock);
-  if (!program) {
-    char ctsrc[] = {
-      #include "ct.cl.includeme"
-    };
-    program = initProgram( ctsrc, sizeof(ctsrc), modname);
-  }
-  pthread_mutex_unlock(&ctrec_lock);
-  if (!program)
-    throw_error(modname, "Failed to compile CT CL program.");
 
   filt_window.resize(zidth);
   filter.fill(filt_window);
@@ -366,6 +352,12 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   }
   clAngles(blitz2cl(angles, CL_MEM_READ_ONLY));
 
+  static const string oclsrc = {
+    #include "ct.cl.includeme"
+  };
+  program = initProgram( oclsrc, program, modname);
+  if (!program)
+    throw_error(modname, "Failed to compile CT CL program.");
   kernelSino(program, "fbp");
   kernelSino.setArg(0, clSino());
   kernelSino.setArg(1, clSlice());

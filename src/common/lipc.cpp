@@ -262,6 +262,8 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   }
   deAbs(out);
   //out = 1 - in;
+  mid = 0.0;
+  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = out;
 
   //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );
   //const Shape cpnt( opnt(0)+sh(0) , opnt(1)+sh(1) );
@@ -271,7 +273,7 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   //const blitz::Range r1_0(0, opnt(1)-1);
   //const blitz::Range r1_1(opnt(1), cpnt(1)-1);
   //const blitz::Range r1_2(cpnt(1), msh(1)-1);
-  //mid(r0_1, r1_1) = -log(out);
+  //mid(r0_1, r1_1) = out;
   //for (int cur0=0 ; cur0 < opnt(0) ; cur0++ )
   //  mid(cur0, r1_1) = mid(opnt(0), r1_1);
   //for (int cur0=cpnt(0) ; cur0 < msh(0) ; cur0++ )
@@ -285,8 +287,6 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
   //mid(r0_2, r1_0) = mid(cpnt(0)-1, opnt(1));
   //mid(r0_2, r1_2) = mid(cpnt(0)-1, cpnt(1)-1);
 
-  mid = 0.0;
-  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = -log(out);
 
   #ifdef ONGPU
 

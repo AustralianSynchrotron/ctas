@@ -146,15 +146,13 @@ class SliceInThread : public InThread {
         throw_bug("CLacc: zero binning. Here must be size.");
       if (bn==1)
         return;
-      if (!binnProgram)  {
-        const char binnSource[] = {
-          #include "../common/binn.cl.includeme"
-        };
-        binnProgram =
-          initProgram( binnSource, sizeof(binnSource), "Binn on OCL" );
-        if (!binnProgram)
-          throw_error("Summ on CL", "Could not initiate summing program");
-      }
+
+      static const string oclsrc = {
+        #include "../common/binn.cl.includeme"
+      };
+      binnProgram = initProgram( oclsrc, binnProgram, "Binn on OCL");
+      if (!binnProgram)
+        throw_error("Summ on CL", "Could not initiate summing program");
       resmem(clAllocArray<float>(area(mish)));
       addmem(clAllocArray<float>(area(mish), CL_MEM_READ_ONLY) );
       addKernel(binnProgram, "addToSecond");

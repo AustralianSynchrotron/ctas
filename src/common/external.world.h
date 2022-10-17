@@ -282,8 +282,12 @@ public:
   void read(ReadVolumeBySlice & volRd, uint sl, Map & storage);
   void proc(const Map & imap, Map & omap);
 
-  Shape osh() const {
-    return binn(crop(rotate(ish,ang),crp),bnn);
+  Shape outShape() const {
+    return outShape(ang, crp, bnn, ish);
+  }
+
+  static Shape outShape(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish) {
+    return binn( crop( rotate(_ish, _ang), _crp), _bnn);
   }
 
   static void read(const ImagePath & filename, Map & storage

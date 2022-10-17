@@ -1069,7 +1069,7 @@ void ImageProc::proc(const Map & imap, Map & omap) {
     }
     return;
   } else
-    omap.resize(osh());
+    omap.resize(outShape());
 
   inmap.resize(ish);
   inmap = imap;

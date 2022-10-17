@@ -28,6 +28,7 @@
 
 
 #include "../common/flatfield.h"
+#include "../common/projection.h"
 #include "../common/poptmx.h"
 #include "../common/ipc.h"
 #include "../common/kernel.h"
@@ -39,32 +40,6 @@
 
 
 using namespace std;
-
-struct StitchRules {
-  uint nofIn;
-  Shape ish;
-  Crop crp;                  ///< Crop input projection image
-  Crop fcrp;                  ///< Crop final projection image
-  Binn bnn;                  ///< binning factor
-  float angle;                ///< Rotation angle.
-  PointF2D origin1;            ///< Origin of the next image in the first stitch
-  PointF2D origin2;            ///< Origin of the next image in the second stitch
-  uint origin1size;
-  uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
-  PointF2D originF;            ///< Origin of the flipped portion
-  bool flipUsed;               ///< indicates if originF was given in options.
-  uint edge;               ///< blur of mask and image edges.
-  float sigma;             ///< sigma used in gaussian gap closure.
-  StitchRules()
-    : nofIn(0)
-    , angle(0)
-    , origin1size(1)
-    , origin2size(1)
-    , flipUsed(false)
-    , edge(0)
-    , sigma(0)
-  {}
-};
 
 struct PhaseRules {
   float d2b;                    ///< \f$\d2b\f$ parameter of the MBA.
@@ -298,379 +273,6 @@ clargs(int argc, char *argv[])
 }
 
 
-namespace blitz {
-static inline float denan(float x){ return isnormal(x) ? x : 0.0 ;}
-BZ_DECLARE_FUNCTION(denan);
-}
-
-void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
-  Map outm(storage.shape());
-  outm=denan(storage);
-  SaveImage(filename, outm, saveint);
-}
-
-
-
-
-class ProcProj {
-
-
-  static const string modname;
-  static cl_program oclProgram;
-  StitchRules strl;
-  deque<FlatFieldProc> ffprocs;
-
-  deque<Map> msksI, msks1, msks2; // shared
-  Map mskF; // shared
-  ImageProc iproc; // own
-  Map stitched, final; // own
-  deque<Map> allIn, o1Stitch, o2Stitch;
-
-  bool doGapsFill;
-  CLkernel gaussCL;
-  CLmem iomCL;
-  CLmem maskCL_R;
-  CLmem & maskCL;
-
-  //const PhaseRules & phsrl;
-  IPCprocess ipcproc;
-  float ipccoef;
-
-
-  static void stitch(PointF2D origin,  const deque<Map> & iarr, Map & oarr
-                    ,  const deque<Map> & gprr = deque<Map>() ) {
-
-    const int isz = iarr.size();
-    if ( isz == 0 )
-      throw_error(modname, "Nothing to stitch.");
-    if ( isz == 1 ) {
-      oarr.reference(iarr[0]);
-      return;
-    }
-
-    if (gprr.size() == 1) {
-      const Shape csz = gprr[0].shape();
-      for (int acur = 0 ; acur < isz ; acur++ )
-        if (iarr[acur].shape()!=csz)
-          throw_error(modname, "Different image sizes in mask and inputs.");
-    } else if (gprr.size() == iarr.size()) {
-      for (int acur = 0 ; acur < isz ; acur++ )
-        if (iarr[acur].shape()!=gprr[acur].shape())
-          throw_error(modname, "Non matching image sizes in mask and input arrays.");
-    } else if (gprr.size()) {
-      throw_error(modname, "Inconsistent sizes of mask and image arrays.");
-    }
-
-    int minx=0, maxx=0, miny=0, maxy=0;
-    for (int acur = 0 ; acur < isz ; acur++ ) {
-      const float
-        orgx = acur*origin.x,
-        orgy = acur*origin.y,
-        tilx = orgx + iarr[acur].shape()(1)-1,
-        tily = orgy + iarr[acur].shape()(0)-1;
-      if (orgx < minx) minx = orgx;
-      if (tilx > maxx) maxx = tilx;
-      if (orgy < miny) miny = orgy;
-      if (tily > maxy) maxy = tily;
-    }
-
-    const Shape osh(maxy-miny+1, maxx-minx+1);
-    oarr.resize(osh);
-    for (ArrIndex ycur = 0 ; ycur < osh(0) ; ycur++ ) {
-      for (ArrIndex xcur = 0 ; xcur < osh(1) ; xcur++ ) {
-        float sweight=0.0;
-        float svals=0.0;
-        for (int acur = 0 ; acur < isz ; acur++ ) {
-          const Map & curar = iarr[acur];
-          const Shape cursh = curar.shape();
-          const Shape coo = Shape(miny+ycur-acur*origin.y, minx+xcur-acur*origin.x);
-          if ( coo(0) >= 0 && coo(0) < cursh(0) && coo(1) >= 0 && coo(1) < cursh(1) ) {
-            const float varcur = curar(coo);
-            if ( fisok(varcur) ) {
-              float weight = 1 + ( cursh(0) - abs( 2*coo(0) - cursh(0) + 1l ) )
-                               * ( cursh(1) - abs( 2*coo(1) - cursh(1) + 1l ) );
-              if ( gprr.size() == 1 )
-                weight *= gprr[0](coo);
-              else if ( gprr.size() == iarr.size() )
-                weight *= gprr[acur](coo);
-              sweight += weight;
-              svals += varcur * weight;
-            }
-          }
-        }
-
-        oarr(ycur,xcur) = sweight == 0.0 ? 0.0 : svals / sweight ;
-
-      }
-    }
-
-  }
-
-
-  void prepareMask(Map & _gaps, bool bepicky) {
-    const float mm = min(_gaps);
-    const float MM = max(_gaps);
-    if (MM <= 0)
-      throw_error("GapsMask", "Mask covers whole image.");
-    if (mm==MM) // no _gaps
-      return;
-    _gaps = mm + _gaps / (MM-mm);
-    for (ArrIndex i = 0 ; i<_gaps.shape()(0) ; i++)
-      for (ArrIndex j = 0 ; j<_gaps.shape()(1) ; j++)
-        if (bepicky && _gaps(i,j)<1.0 )
-          _gaps(i,j)=0.0 ;
-        else if (! bepicky && _gaps(i,j)>0.0 )
-          _gaps(i,j)=1.0 ;
-
-    const Shape ish = _gaps.shape();
-    const float step = 1.0 / (strl.edge +1);
-    Map tmp(_gaps.shape());
-    tmp = _gaps;
-
-    for ( int stp = 1 ; stp <= strl.edge ; stp++ ) {
-      const float fill = step*stp;
-
-      for (ArrIndex i = 0 ; i<ish(0) ; i++)
-        for (ArrIndex j = 0 ; j<ish(1) ; j++)
-
-          if ( _gaps(i,j) != 1.0 )
-            for (ArrIndex ii = i-1 ; ii <= i+1 ; ii++)
-              for (ArrIndex jj = j-1 ; jj <= j+1 ; jj++)
-
-                if (     ii >= 0 && ii < ish(0) && jj >= 0 && jj < ish(1)
-                  &&  _gaps(ii,jj) == 1.0 )
-                  tmp(ii,jj) = fill;
-      _gaps = tmp;
-    }
-
-  }
-
-
-  void initCL() {
-    if (!doGapsFill)
-      return;
-    static const string oclsrc = {
-      #include "proj.cl.includeme"
-    };
-    oclProgram = initProgram( oclsrc, oclProgram, modname);
-    if (!oclProgram)
-      throw_error(modname, "Failed to build OCP program for projection formation");
-    iomCL(clAllocArray<float>(mskF.size()));
-    if (!maskCL())
-      maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
-    gaussCL(oclProgram, "gauss");
-    gaussCL.setArg(0, int(mskF.shape()(1)));
-    gaussCL.setArg(1, int(mskF.shape()(0)));
-    gaussCL.setArg(2, iomCL());
-    gaussCL.setArg(3, maskCL());
-    gaussCL.setArg(4, float(strl.sigma) );
-  }
-
-public:
-
-  ProcProj( const StitchRules & _st, const PhaseRules & phsrules, float dd
-          , const deque<Map> & bgas, const deque<Map> & dfas
-          , const deque<Map> & dgas, const deque<Map> & msas)
-    : strl(_st)
-    , iproc(strl.angle, strl.crp, strl.bnn, _st.ish)
-    , allIn(strl.nofIn)
-    , o1Stitch(strl.nofIn/strl.origin1size)
-    , o2Stitch(strl.flipUsed ? 2 : 1)
-    , doGapsFill(false)
-    , maskCL_R(0)
-    , maskCL(maskCL_R)
-    , ipcproc(oshape(strl), phsrules.d2b)
-    , ipccoef(IPCprocess::d2bNorm(phsrules.d2b, dd, phsrules.dist, phsrules.lambda))
-  {
-
-    if ( ! area(strl.ish) )
-      throw_error(modname, "Zerro area to process.");
-    if ( ! strl.nofIn )
-      throw_error(modname, "Zerro images for input.");
-
-    #define chkAuxImgs(imas, lbl) \
-      if (imas.size() && imas.size() != 1 && imas.size() != strl.nofIn) \
-        throw_error(modname, "Number of " lbl " images is neither 0, 1 nor the number of inputs" \
-                             " (" + toString(strl.nofIn) + ")."); \
-      for (int curI = 0; curI < imas.size() ; curI++) \
-        if ( imas.at(curI).size() && imas.at(curI).shape() != strl.ish ) \
-          throw_error(modname, "Unexpected shape of " lbl " image.");
-
-    chkAuxImgs(bgas, "background");
-    chkAuxImgs(dfas, "darkfield");
-    chkAuxImgs(dgas, "darkground");
-    chkAuxImgs(msas, "mask");
-    #undef chkAuxImgs
-
-    const Map zmap;
-    if (bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1) {
-      for (int curI = 0; curI < strl.nofIn ; curI++) {
-        const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : zmap;
-        const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : zmap;
-        const Map & dgpl = dgas.size() ?  dgas[ dgas.size() == 1 ? 0 : curI ] : zmap;
-        const Map & mspl = msas.size() ?  msas[ msas.size() == 1 ? 0 : curI ] : zmap;
-        ffprocs.emplace_back(bgpl, dfpl, dgpl, mspl);
-      }
-    } else {
-      ffprocs.emplace_back( bgas.size() ? bgas[0] : zmap
-                          , dfas.size() ? dfas[0] : zmap
-                          , dgas.size() ? dgas[0] : zmap
-                          , msas.size() ? msas[0] : zmap );
-    }
-
-    if (!strl.fcrp)
-      final.reference(stitched);
-
-    const int mssz = msas.size();
-    if ( ! mssz )
-      return;
-
-    for (int curI = 0; curI < msas.size() ; curI++) {
-      if (msas[curI].shape() != strl.ish)
-        throw_error(modname, "Unexpected mask shape.");
-      Map msT;
-      iproc.proc(msas[curI], msT);
-      prepareMask(msT, true);
-      msksI.emplace_back(msT.shape());
-      msksI.back() = msT;
-    }
-    while (msksI.size() != strl.nofIn)
-      msksI.emplace_back(msksI[0]);
-
-    msks1.resize(o1Stitch.size());
-    sub_proc(strl.origin1size, strl.origin1, msksI, deque<Map>(), msks1);
-
-    msks2.resize(o2Stitch.size());
-    sub_proc(strl.origin2size, strl.origin2, msks1, deque<Map>(), msks2);
-
-    if ( strl.flipUsed ) {
-      msks2[1].reverseSelf(blitz::secondDim);
-      stitch(strl.originF, msks2, mskF, deque<Map>());
-    } else
-      mskF.reference(msks2[0]);
-
-    for (int curM=0 ; curM < msks1.size() ; curM++)
-      prepareMask(msks1[curM], false);
-    for (int curM=0 ; curM < msks2.size() ; curM++)
-      prepareMask(msks2[curM], false);
-    prepareMask(mskF, false);
-    doGapsFill = strl.sigma > 0.0  &&  any(mskF==0.0);
-    initCL();
-
-  }
-
-
-  ProcProj(const ProcProj & other)
-    : strl(other.strl)
-    , iproc(other.iproc)
-    , ffprocs(other.ffprocs)
-    , allIn(strl.nofIn)
-    , o1Stitch(strl.nofIn/strl.origin1size)
-    , o2Stitch(strl.flipUsed ? 2 : 1)
-    , msks1(other.msks1)
-    , msks2(other.msks2)
-    , mskF(other.mskF)
-    , doGapsFill(other.doGapsFill)
-    , maskCL(other.maskCL)
-    , ipcproc(other.ipcproc.sh, other.ipcproc.d2b)
-    , ipccoef(other.ipccoef)
-  {
-    if (doGapsFill)
-      initCL();
-    if (!strl.fcrp)
-      final.reference(stitched);
-  }
-
-  static Shape oshape(const StitchRules & _st) {
-    Shape frsh = binn(crop(rotate(_st.ish, _st.angle), _st.crp), _st.bnn);
-    Shape stsh1 = Shape( _st.ish(0) + abs(_st.origin1.y)*_st.origin1size,
-                         _st.ish(1) + abs(_st.origin1.x)*_st.origin1size );
-    Shape stsh2 = Shape( stsh1(0) + abs(_st.origin2.y)*_st.origin2size,
-                         stsh1(1) + abs(_st.origin2.x)*_st.origin2size );
-    Shape fsh = _st.flipUsed ? stsh2 : Shape(stsh2(0)+abs(_st.originF.y), stsh2(1)+abs(_st.originF.x));
-    Shape rsh = crop(fsh, _st.fcrp);
-    return rsh;
-  }
-
-
-  void sub_proc(uint orgsize, PointF2D origin, const deque<Map> & hiar, const deque<Map> & msks, deque<Map> & oar) {
-
-    if ( orgsize == 1 ) {
-      for(int curM = 0 ; curM < oar.size() ; curM++)
-        oar[curM].reference(hiar[curM]);
-      return;
-    }
-
-    const int nofin = hiar.size();
-    for ( int inidx=0 ; inidx<nofin ; inidx += orgsize ) {
-      int cidx=inidx/orgsize;
-      deque<Map> supplyIm( hiar.begin() + inidx, hiar.begin() + inidx + orgsize) ;
-      deque<Map> supplyMs( msks.size() ? msks.begin() + inidx           : msks.begin(),
-                           msks.size() ? msks.begin() + inidx + orgsize : msks.begin() );
-      stitch(origin, supplyIm, oar[cidx], supplyMs);
-    }
-    return;
-
-  }
-
-
-  bool process(deque<Map> & allInR, Map & res) {
-
-    if (allInR.size() != strl.nofIn)
-      return false;
-
-    // prepare input images
-    int curF=0, cur2=0, cur1=0;
-    for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
-      if (ffprocs.size() == 1)
-        ffprocs[0].process(allInR[curproj]);
-      else if (ffprocs.size() == strl.nofIn)
-        ffprocs[curproj].process(allInR[curproj]);
-      iproc.proc(allInR[curproj], allIn[curproj]);
-    }
-
-    // first stitch
-    sub_proc(strl.origin1size, strl.origin1, allIn, msksI, o1Stitch);
-    // second stitch
-    sub_proc(strl.origin2size, strl.origin2, o1Stitch, msks1, o2Stitch);
-    // flip stitch
-    if ( strl.flipUsed ) {
-      o2Stitch[1].reverseSelf(blitz::secondDim);
-      stitch(strl.originF, o2Stitch, stitched, msks2);
-    } else {
-      stitched.reference(o2Stitch[0]);
-    }
-
-    // closing gaps left after superimposition
-    if (doGapsFill) {
-      if (stitched.shape() != mskF.shape()) // should never happen
-        throw_bug(modname);
-      blitz2cl(stitched, iomCL());
-      gaussCL.exec(stitched.shape());
-      cl2blitz(iomCL(), stitched);
-    }
-
-    // final crop
-    if (strl.fcrp)
-      crop(stitched, final, strl.fcrp);
-
-    // IPC processing
-    ipcproc.extract(final, IPCprocess::PHS, 1.0/ipccoef);
-
-    if (!res.size())
-      res.reference(final);
-    else if (!areSame(final, res)) {
-      res.resize(final.shape());
-      res=final;
-    }
-    return true;
-
-  }
-
-
-};
-const string ProcProj::modname="ProcProj";
-cl_program ProcProj::oclProgram = 0;
 
 
 struct InterimStorage {
@@ -767,11 +369,13 @@ class ProjInThread : public InThread {
 
   deque<ReadVolumeBySlice> & allInRd;
   InterimStorage & allProjes;
-  const ProcProj & proc;
+  const ProcProj & canonPP;
+  const IPCprocess & canonPHS;
 
-  unordered_map<pthread_t, ProcProj> procs;
+  unordered_map<pthread_t, ProcProj> PPprocs;
+  unordered_map<pthread_t, IPCprocess> PHSprocs;
   unordered_map<pthread_t, deque<Map> > allInMaps;
-  unordered_map<pthread_t, Map > results;
+  unordered_map<pthread_t, Map> results;
 
   bool inThread(long int idx) {
 
@@ -780,21 +384,25 @@ class ProjInThread : public InThread {
 
     const pthread_t me = pthread_self();
     lock();
-    if ( ! procs.count(me) ) { // first call
-      procs.emplace(me, proc);
+    if ( ! PPprocs.count(me) ) { // first call
+      PPprocs.emplace(me, canonPP);
+      PHSprocs.emplace(me, canonPHS);
       allInMaps.emplace(me, deque<Map>(allInRd.size()));
       results[me];
     }
-    ProcProj & myProc = procs.at(me);
+    ProcProj & myPP = PPprocs.at(me);
+    IPCprocess & myPHS = PHSprocs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
-    Map & myRes = results.at(me);
+    Map & myProj = results.at(me);
     unlock();
 
     try {
       for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
         allInRd[curI].read(idx, myAllIn[curI]);
-      myProc.process(myAllIn, myRes);
-      allProjes.putProjection(myRes, idx);
+      deque<Map> forproc(1, myProj);
+      myPP.process(myAllIn, forproc);
+      myPHS.extract(myProj);
+      allProjes.putProjection(myProj, idx);
     } catch (...) {
       warn("form projection", toString("Failed on slice %i.", idx));
     }
@@ -807,9 +415,11 @@ class ProjInThread : public InThread {
 public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, InterimStorage & _allProjes
-              , const ProcProj & _proc, bool verbose=false)
+              , const ProcProj & _canonPP,  const IPCprocess & _canonPHS
+              , bool verbose=false)
     : InThread(verbose, "processing projections", _allProjes.projs)
-    , proc(_proc)
+    , canonPP(_canonPP)
+    , canonPHS(_canonPHS)
     , allInRd(_allInRd)
     , allProjes(_allProjes)
   {}
@@ -935,13 +545,15 @@ int main(int argc, char *argv[]) {
       exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
   }
   const int nofProj = allInRd.at(0).slices();
-  const Shape projSh = ProcProj::oshape(args.st);
+  const Shape projSh = st.outShape();
 
   InterimStorage prstor(Shape3(nofProj, projSh(0), projSh(1)), args.out_proj, args.out_name.dir() );
   // form projections
   { // to deconstruct objects
-    ProcProj canonPP(st, args.phs, args.dd, bgas, dfas, dgas, msas);
-    ProjInThread(allInRd, prstor, canonPP, args.beverbose)
+    ProcProj canonPP(st, bgas, dfas, dgas, msas);
+    IPCprocess canonPHS(canonPP.outShape(),
+                         IPCprocess::d2bNorm(args.phs.d2b, args.dd, args.phs.dist, args.phs.lambda));
+    ProjInThread(allInRd, prstor, canonPP, canonPHS, args.beverbose)
         .execute();
     allInRd.clear();
   }

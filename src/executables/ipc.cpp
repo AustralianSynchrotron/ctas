@@ -43,13 +43,11 @@ using namespace std;
 struct clargs {
   Path command;               ///< Command name as it was invoked.
   deque<ImagePath> images;                 ///< contrasts at the distance.
-  ImagePath phs_name;                ///< Output name of the phase contrast.
-  ImagePath abs_name;                ///< Output name of the absorption contrast.
+  ImagePath oname;                ///< Output name of the phase contrast.
   float dd;                     ///< Pixel size.
   float d2b;                  ///< \f$\d2b\f$ parameter of the MBA.
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
-  float dgamma;                 ///< \f$\gamma\f$ parameter of the BAC method
   bool phsExp;
   bool SaveInt;				///< Be verbose flag
   bool beverbose;             ///< Save image as 16-bit integer.
@@ -64,7 +62,6 @@ clargs::clargs(int argc, char *argv[]) :
   d2b(0.0),
   lambda(1.0),
   dist(1.0),
-  dgamma(1.0),
   phsExp(false),
   SaveInt(false),
   beverbose(false)
@@ -81,17 +78,13 @@ clargs::clargs(int argc, char *argv[]) :
   .add(poptmx::ARGUMENT, &images, "input", "Raw images to be processed.", "")
 
   .add(poptmx::NOTE, "OPTIONS:")
-  .add(poptmx::OPTION, &abs_name, 'a', "absorption",
-       "Image name to output the absorption component", "", "<NONE>")
-  .add(poptmx::OPTION, &phs_name, 'p', "phase", "Image name to output the phase component", "", "<NONE>")
+  .add(poptmx::OPTION, &oname, 'o', "out", "Image name to output the phase component", "", "<NONE>")
   .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)", NeedForQuant)
   .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
        NeedForQuant, toString(dd))
   .add(poptmx::OPTION, &d2b, 'd', "d2b", d2bOptionDesc, "", toString(d2b))
   .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
        "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
-  .add(poptmx::OPTION, &dgamma, 'g', "gamma", "Gamma coefficient of the BAC.",
-       "Must be a value around 1.0 (theoretical).", toString(dgamma))
   .add(poptmx::OPTION, &phsExp,'e', "exp", "Outputs exponent of phase contrast.",
        "Useful for further CT processing of output as absorption contrast.")
   .add(poptmx::OPTION, &SaveInt,'i', "int",
@@ -109,16 +102,11 @@ clargs::clargs(int argc, char *argv[]) :
 
   if ( ! table.count(&images) )
     exit_on_error(command, "Missing required argument: "+table.desc(&images)+".");
-
-  if ( ! table.count(&phs_name) && ! table.count(&abs_name) )
-    exit_on_error(command, "At least one of the two following arguments is required: "
-                  +table.desc(&phs_name)+ ", " +table.desc(&phs_name)+ ".");
-  if ( ! table.count(&phs_name) && table.count(&phsExp) )
-    warn(command, "Use of option "+table.desc(&phsExp)+" makes sense only with"
-                  " phase output ("+table.desc(&phs_name)+").");
-
+  if ( ! table.count(&oname) )
+    exit_on_error(command, "Missing required option: " +table.desc(&oname)+ ".");
   if ( ! table.count(&dist) )
-    exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
+    exit_on_error(command, "Missing required option: " +table.desc(&dist)+ ".");
+
   if (dist <= 0.0)
     exit_on_error(command, "Zero or negative distance (given by "+table.desc(&dist)+").");
   dist /= 1.0E3; // convert mm -> m
@@ -127,15 +115,8 @@ clargs::clargs(int argc, char *argv[]) :
     exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
   dd /= 1.0E6; // convert micron -> m
 
-  if ( abs(dgamma)>1.0 ) // should set even smaller limit
-    exit_on_error(command, "Absolute value of gamma (given by "+table.desc(&dgamma)+")"
-                           " is greater than 1.0.");
-
   if (lambda <= 0.0)
     exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
-  if ( table.count(&lambda) && ! table.count(&d2b) )
-    warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
-         " with the d2b parameter (given by "+table.desc(&d2b)+").");
   if ( ! table.count(&lambda) && table.count(&d2b) )
     warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
          " the d2b parameter (given by "+table.desc(&d2b)+") for the correct results.");
@@ -151,15 +132,13 @@ class ProcInThread : public InThread {
 
   const clargs & args;
   ReadVolumeBySlice allIn;
-  SaveVolumeBySlice * allOutAbs;
-  SaveVolumeBySlice * allOutPhs;
   const Shape sh;
   const uint sz;
   const float d2bN;
+  SaveVolumeBySlice allOut;
 
   unordered_map<pthread_t, IPCprocess > procs;
-  unordered_map<pthread_t, Map > imaps;
-  unordered_map<pthread_t, Map > omaps;
+  unordered_map<pthread_t, Map > iomaps;
 
   bool inThread(long int idx) {
     if (idx >= allIn.slices())
@@ -174,25 +153,17 @@ class ProcInThread : public InThread {
                       forward_as_tuple(sh, d2bN));
       else
         procs.emplace(me, procs.begin()->second);
-      imaps.emplace(me, sh);
-      omaps.emplace(me, sh);
+      iomaps.emplace(me, sh);
     }
     IPCprocess & myProc = procs.at(me);
-    Map & myImap = imaps.at(me);
-    Map & myOmap = omaps.at(me);
+    Map & myIOmap = iomaps.at(me);
     unlock();
 
-    allIn.read(idx, myImap);
-    if( allOutPhs ) {
-      myProc.extract(myImap, myOmap, IPCprocess::PHS);
-      if (args.phsExp)
-        myOmap = exp(-myOmap);
-      allOutPhs->save(idx, myOmap);
-    }
-    if( allOutAbs ) {
-      myProc.extract(myImap, myOmap, IPCprocess::ABS, args.dgamma);
-      allOutAbs->save(idx, myOmap);
-    }
+    allIn.read(idx, myIOmap);
+    myProc.extract(myIOmap);
+    if (args.phsExp)
+      myIOmap = exp(-myIOmap);
+    allOut.save(idx, myIOmap);
 
     bar.update();
     return true;
@@ -204,24 +175,12 @@ public:
     : InThread(_args.beverbose, "IPC processing")
     , args(_args)
     , allIn(args.images)
-    , allOutAbs(0)
-    , allOutPhs(0)
     , sh(allIn.face())
     , sz(allIn.slices())
+    , allOut(args.oname, sh, sz)
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
   {
     bar.setSteps(sz);
-    if (!args.phs_name.empty())
-      allOutPhs = new SaveVolumeBySlice(args.phs_name,sh,sz);
-    if (!args.abs_name.empty())
-      allOutAbs = new SaveVolumeBySlice(args.abs_name,sh,sz);
-  }
-
-  ~ProcInThread() {
-    if (allOutAbs)
-      delete allOutAbs;
-    if (allOutPhs)
-      delete allOutPhs;
   }
 
 };

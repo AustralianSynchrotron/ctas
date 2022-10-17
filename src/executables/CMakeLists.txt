@@ -62,22 +62,21 @@ target_link_libraries(norm
 )
 
 add_executable(proj proj.cpp)
-target_clsrc(proj proj.cl)
 target_link_libraries(proj
   common
   poptmx
-  flatfield
+  projection
 )
 
 
 add_executable(prct prct.cpp)
-target_clsrc(prct proj.cl)
 target_link_libraries(prct
   common
   poptmx
   flatfield
   lipc
   kernel
+  projection
 )
 
 

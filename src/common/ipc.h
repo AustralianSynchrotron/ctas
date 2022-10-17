@@ -112,13 +112,6 @@ class IPC_API IPCprocess{
 
 public:
 
-  /// Two contrast components available in the IPC experiment.
-  typedef enum {
-    ABS,                        ///< Absorption.
-    PHS                         ///< Phase shift
-  }  Component ;
-  static const std::string componentDesc;  ///< Description of the ::Component.
-
   const Shape sh;                     ///< Shape of the input contrasts.
   const Shape msh;
   const float d2b;
@@ -135,9 +128,7 @@ private:
   #ifdef ONGPU
 
   static cl_program oclProgram;
-  static pthread_mutex_t protectProgramCompilation;
   mutable CLmem clmid;                 ///< Internally used array for the zero-padded data.
-  CLkernel kernelApplyAbsFilter;
   CLkernel kernelApplyPhsFilter;
   clfftPlanHandle clfft_plan;
   CLmem clfftTmpBuff;
@@ -148,8 +139,7 @@ private:
 
   #else // ONGPU
 
-  Map phsFilter;                ///< FFT filter used for the extraction of the PHS component.
-  Map absFilter;                ///< FFT filter used for the extraction of the ABS component.
+  Map phsFilter;                ///< FFT filter.
   fftwf_plan fft_f;             ///< Forward 2D FFT plan.
   fftwf_plan fft_b;             ///< Backward 2D FFT plan
 
@@ -180,10 +170,10 @@ public:
   ///              PHS:  multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ).
   ///
   /// @note the arrays ::in and ::out must not be the same.
-  void extract(const Map & in, Map & out, Component comp, const float param=1.0) const ;
+  void extract(const Map & in, Map & out) const ;
 
-  void extract(Map & io, Component comp, const float param=1.0) const {
-    extract(io, io, comp, param);
+  void extract(Map & io) const {
+    extract(io, io);
   }
 
   static float d2bNorm (float _d2b, float _dd, float _dist, float _lambda);
@@ -193,34 +183,6 @@ public:
   }
 
 };
-
-
-
-/// \brief Prints type name.
-/// To be used in the CLI parsing via "poptmx" library
-/// @return type name.
-inline std::string
-type_desc (IPCprocess::Component*){
-  return "STRING";
-}
-
-/// \brief Converts the string "in" into the IPCprocess::Component _val.
-/// To be used in the CLI parsing via "poptmx" library
-/// @param _val value to be updated.
-/// @param in string to be parsed.
-///
-/// @return \c true if success, \c false otherwise.
-bool IPC_API
-_conversion (IPCprocess::Component* _val, const std::string & in);
-
-inline std::string
-toString(IPCprocess::Component comp) {
-  switch (comp) {
-  case IPCprocess::ABS : return "absorption";
-  case IPCprocess::PHS : return "phase";
-  default : throw_error("IPC component name", "Unknown component."); return "";
-  }
-}
 
 
 

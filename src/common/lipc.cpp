@@ -19,31 +19,12 @@
 using namespace std;
 
 
-bool
-_conversion (IPCprocess::Component* _val, const std::string & in) {
-  std::string _in = upper(in);
-  if (_in == "A" || _in == "ABS" || _in == "ABSORPTION" )
-    *_val= IPCprocess::ABS;
-  else if (_in == "P" || _in == "PHS" || _in == "PHASE" )
-    *_val= IPCprocess::PHS;
-  else
-    throw_error("IPC component", "Unrecognized component\"" + _in + "\".");
-  return true;
-}
-
 
 
 const string IPCprocess::modname = "IPC process";	///< Module name.
 
-const string IPCprocess::componentDesc =
-  "Must be one of the following strings (case insensitive):\n"
-  "A, ABS, ABSORPTION - for the absorption contrast\n"
-  "P, PHS, PHASE      - for the phase contrast";
-
-
 #ifdef ONGPU
 cl_program IPCprocess::oclProgram = 0;
-pthread_mutex_t IPCprocess::protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
 #endif // ONGPU
 
 static int ipow(int base, int exp) {
@@ -96,7 +77,6 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
   , clfftTmpBuff(0)
   #else // ONGPU
   , phsFilter(msh)
-  , absFilter(msh)
   #endif // ONGPU
   , mid(msh)
 {
@@ -108,20 +88,13 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
                 " Must be at least (" + toString(Shape(3,3)) + ").");
 
   #ifdef ONGPU
-
-  pthread_mutex_lock(&protectProgramCompilation);
-  if (!oclProgram) {
-    const char oclSource[] = {
-      #include "ipc.cl.includeme"
-    };
-    oclProgram = initProgram( oclSource, sizeof(oclSource), "IPC on OCL" );
-  }
-  pthread_mutex_unlock(&protectProgramCompilation);
+  const string oclSource = {
+    #include "ipc.cl.includeme"
+  };
+  oclProgram = initProgram(oclSource, oclProgram, "IPC on OCL" );
   if (!oclProgram)
     throw_error(modname, "Failed to compile OCL program for IPC processing.");
-
   initCL();
-
   #else // ONGPU
 
   float* midd = mid.data();
@@ -140,11 +113,10 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
       if (ej>0.5)
         ej = 1.0 - ej;
       ej *= ej;
-      absFilter(i,j) = ei + ej;
+      phsFilter(i,j) = ei + ej;
     }
   }
-  phsFilter = d2b/(d2b*absFilter+1);
-  absFilter *= phsFilter;
+  phsFilter = d2b/(d2b*phsFilter+1);
 
   #endif // ONGPU
 
@@ -160,7 +132,6 @@ IPCprocess::IPCprocess( const IPCprocess & other)
   , clfftTmpBuff(0)
   #else // ONGPU
   , phsFilter(other.phsFilter)
-  , absFilter(other.absFilter)
   #endif // ONGPU
   , mid(other.mid.shape())
 {
@@ -190,13 +161,7 @@ IPCprocess::~IPCprocess() {
 void IPCprocess::initCL() {
 
   clmid(clAllocArray<float>(2*mid.size()));
-  kernelApplyAbsFilter(oclProgram, "applyAbsFilter");
   kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
-
-  kernelApplyAbsFilter.setArg(0, clmid());
-  kernelApplyAbsFilter.setArg(1, (cl_int) msh(1));
-  kernelApplyAbsFilter.setArg(2, (cl_int) msh(0));
-  kernelApplyAbsFilter.setArg(3, (cl_float) d2b );
 
   kernelApplyPhsFilter.setArg(0, clmid());
   kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
@@ -234,36 +199,37 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
 #endif // ONGPU
 
 
+namespace blitz {
+static inline std::complex<float> f2c(float x){ return std::complex<float>(x);}
+BZ_DECLARE_FUNCTION_RET(f2c, std::complex<float>);
+}
 
 
 void
-IPCprocess::extract(const Map & in, Map & out, Component comp, const float param) const {
+IPCprocess::extract(const Map & in, Map & out) const {
   if ( in.shape() != sh )
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
-  if (d2b<=0) {
-    if (comp==Component::ABS) {
-      if (!out.size())
-        out.reference(in);
-      if (!areSame(in,out)) {
-        out.resize(sh);
-        out=in;
-      }
-    } else {
-      out.resize(sh);
-      out = 0.0;
-    }
+
+  if (d2b<=0 && !out.size()) {
+    out.reference(in);
     return;
   }
-
   if (!areSame(in, out)) {
     out.resize(sh);
     out = in;
   }
+  if (d2b<=0)
+    return;
+
   deAbs(out);
-  //out = 1 - in;
   mid = 0.0;
-  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) = out;
+  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) =
+    #ifdef ONGPU
+      f2c(out);
+    #else
+      out;
+    #endif
 
   //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );
   //const Shape cpnt( opnt(0)+sh(0) , opnt(1)+sh(1) );
@@ -289,29 +255,22 @@ IPCprocess::extract(const Map & in, Map & out, Component comp, const float param
 
 
   #ifdef ONGPU
-
   blitz2cl(mid, clmid());
   clfftExec(CLFFT_FORWARD);
-  (comp == PHS ? kernelApplyPhsFilter : kernelApplyAbsFilter)
-      .exec(mid.size());
+  kernelApplyPhsFilter.exec(mid.size());
   clfftExec(CLFFT_BACKWARD);
   cl2blitz(clmid(), mid);
-  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)))
-
+  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));
   #else // ONGPU
-
   fftwf_execute(fft_f);
-  mid *= (comp == PHS) ? phsFilter : absFilter ;
+  mid *= phsFilter;
   fftwf_execute(fft_b);
   mid /= mid.size();
   //out = mid(r0_1, r1_1);
   out = mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1));
-
   #endif // ONGPU
 
-  out *= param/d2b;
-  if (comp == ABS)
-    out = in / (1 - out);
+  out *= 1.0/d2b;
 
 }
 

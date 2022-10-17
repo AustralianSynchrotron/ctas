@@ -541,7 +541,7 @@ private:
     unlock();
 
     Map io(frames(idx,all,all));
-    myProc.extract(io, IPCprocess::PHS);
+    myProc.extract(io);
     bar.update();
     return true;
 

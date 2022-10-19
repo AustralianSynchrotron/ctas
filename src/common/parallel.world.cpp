@@ -171,9 +171,16 @@ void InThread::execute( bool (*_thread_routine)(), int nThreads) {
 //#include<libconfig.h++>
 //using namespace libconfig;
 
-cl_device_id CL_device = 0;
-cl_context CL_context = 0;
-cl_command_queue CL_queue = 0;
+cl_device_id _CL_device = 0;
+cl_context _CL_context = 0;
+cl_command_queue _CL_queue = 0;
+
+cl_device_id CL_device() { return clIsInited() ? _CL_device : 0; }
+cl_context CL_context() { return clIsInited() ? _CL_context : 0; }
+cl_command_queue CL_queue() { return clIsInited() ? _CL_queue : 0; }
+
+
+
 
 static bool clInited = false;
 
@@ -284,7 +291,7 @@ bool clIsInited() {
     }
 
     if (idx >= 0)
-      CL_device = devices[idx];
+      _CL_device = devices[idx];
 
     /* TODO:
      * complete this part to read device name from the config
@@ -295,22 +302,22 @@ bool clIsInited() {
   }
 
   cl_platform_id platform;
-  err = clGetDeviceInfo(CL_device, CL_DEVICE_PLATFORM, sizeof(cl_platform_id),  &platform, 0);
+  err = clGetDeviceInfo(_CL_device, CL_DEVICE_PLATFORM, sizeof(cl_platform_id),  &platform, 0);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_PLATFORM\": "
          + toString(err) );
     return false;
   }
 
-  CL_context = clCreateContext(0, 1, &CL_device, 0, 0, &err);
+  _CL_context = clCreateContext(0, 1, &_CL_device, 0, 0, &err);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not create OpenCL context: " + toString(err) );
     return false;
   }
 
 
-  CL_queue = clCreateCommandQueueWithProperties(CL_context, CL_device, NULL, &err);
-  //CL_queue = clCreateCommandQueue(CL_context, CL_device, 0, &err);
+  _CL_queue = clCreateCommandQueueWithProperties(_CL_context, _CL_device, NULL, &err);
+  //_CL_queue = clCreateCommandQueue(_CL_context, _CL_device, 0, &err);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
     return false;
@@ -332,7 +339,7 @@ cl_program initProgram(const string & src, const string & modname) {
   const size_t length = src.size();
   const char * csrc = src.data();
 
-  cl_program program = clCreateProgramWithSource(CL_context, 1, &csrc, &length, &err);
+  cl_program program = clCreateProgramWithSource(CL_context(), 1, &csrc, &length, &err);
   if (err != CL_SUCCESS) {
     warn(modname, "Could not load OpenCL program: " + toString(err) );
     return 0;
@@ -345,7 +352,7 @@ cl_program initProgram(const string & src, const string & modname) {
     ". More detailsd below:" );
 
     cl_build_status stat;
-    err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_STATUS,
+    err = clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_STATUS,
                                 sizeof(cl_build_status), &stat, 0);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build status: " + toString(err) );
@@ -353,11 +360,11 @@ cl_program initProgram(const string & src, const string & modname) {
       warn(modname, "   Build status: " + toString(stat));
 
     size_t len=0;
-    err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
+    err=clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_OPTIONS,
                               0, 0, &len);
     char * buildOptions = (char*) calloc(len, sizeof(char));
     if (buildOptions)
-      err=clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_OPTIONS,
+      err=clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_OPTIONS,
                                 len, buildOptions, 0);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build options: " + toString(err) );
@@ -366,11 +373,11 @@ cl_program initProgram(const string & src, const string & modname) {
     if (buildOptions)
       free(buildOptions);
 
-    err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
+    err = clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_LOG,
                                 0, 0, &len);
     char * buildLog = (char*) calloc(len, sizeof(char));
     if (buildLog)
-      err = clGetProgramBuildInfo(program, CL_device, CL_PROGRAM_BUILD_LOG,
+      err = clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_LOG,
                                   len, buildLog, 0);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build log: " + toString(err) );
@@ -442,10 +449,10 @@ std::string CLkernel::name() const {
 cl_int CLkernel::exec(size_t size) const {
   if (!kern)
     return CL_SUCCESS;
-  cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 1, 0,  & size, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( CL_queue(), kern, 1, 0,  & size, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel " + toString("%p", kern) + "\"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(CL_queue);
+  clerr = clFinish(CL_queue());
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
@@ -455,10 +462,10 @@ cl_int CLkernel::exec(const Shape & sh) const {
   if (!kern)
     return CL_SUCCESS;
   size_t sizes[2] = {size_t(sh(1)), size_t(sh(0))};
-  cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 2, 0, sizes, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( CL_queue(), kern, 2, 0, sizes, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(CL_queue);
+  clerr = clFinish(CL_queue());
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
@@ -468,10 +475,10 @@ cl_int CLkernel::exec(const Shape3 & sh) const {
   if (!kern)
     return CL_SUCCESS;
   size_t sizes[3] = {size_t(sh(2)), size_t(sh(1)), size_t(sh(0))};
-  cl_int clerr = clEnqueueNDRangeKernel( CL_queue, kern, 3, 0, sizes, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( CL_queue(), kern, 3, 0, sizes, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(CL_queue);
+  clerr = clFinish(CL_queue());
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;

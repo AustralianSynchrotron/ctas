@@ -79,9 +79,10 @@ public:
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.h>
 
-extern cl_device_id CL_device;
-extern cl_context CL_context;
-extern cl_command_queue CL_queue;
+bool clIsInited();
+cl_device_id CL_device();
+cl_context CL_context();
+cl_command_queue CL_queue();
 
 class CLmem {
     cl_mem clR;
@@ -128,7 +129,7 @@ cl_program initProgram(const std::string & src, const std::string & modname);
 template <class T>
 cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {
   cl_int clerr;
-  cl_mem clStorage = clCreateBuffer ( CL_context, flag, sizeof(T), 0, &clerr);
+  cl_mem clStorage = clCreateBuffer ( CL_context(), flag, sizeof(T), 0, &clerr);
   if (clerr != CL_SUCCESS)
     throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(clerr) );
   return clStorage;
@@ -138,7 +139,7 @@ cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {
 template <class T>
 T cl2var(const cl_mem & buff) {
   T var;
-  cl_int clerr = clEnqueueReadBuffer(CL_queue, buff, CL_TRUE, 0, sizeof(T), &var, 0, 0, 0 );
+  cl_int clerr = clEnqueueReadBuffer(CL_queue(), buff, CL_TRUE, 0, sizeof(T), &var, 0, 0, 0 );
   if (clerr != CL_SUCCESS)
     throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(clerr) );
   return var;
@@ -149,7 +150,7 @@ template <typename T>
 cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
   cl_int err;
   const size_t iStorageSize = sizeof(T) * arrSize ;
-  cl_mem clStorage = clCreateBuffer ( CL_context, flag, iStorageSize, 0, &err);
+  cl_mem clStorage = clCreateBuffer ( CL_context(), flag, iStorageSize, 0, &err);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
   return clStorage;
@@ -159,7 +160,7 @@ cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
 template <typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
   blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueWriteBuffer(  CL_queue, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(),
+  cl_int err = clEnqueueWriteBuffer(  CL_queue(), clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(),
                                       _storage.data(), 0, 0, 0);
   if (err != CL_SUCCESS) {
   //  prdn(_storage.size());
@@ -182,7 +183,7 @@ template <typename T, int N>
 blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
 
   blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueReadBuffer(CL_queue, clbuffer, CL_TRUE, 0,
+  cl_int err = clEnqueueReadBuffer(CL_queue(), clbuffer, CL_TRUE, 0,
                                    sizeof(T) * _storage.size(),
                                    _storage.data(), 0, 0, 0 );
   if (err != CL_SUCCESS)
@@ -195,7 +196,7 @@ blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
 
 template <typename T>
 cl_int fillClArray(cl_mem clStorage, size_t size, T val) {
-  cl_int clerr = clEnqueueFillBuffer(CL_queue, clStorage, &val, sizeof(T), 0, sizeof(T) * size, 0,0,0);
+  cl_int clerr = clEnqueueFillBuffer(CL_queue(), clStorage, &val, sizeof(T), 0, sizeof(T) * size, 0,0,0);
   if (clerr != CL_SUCCESS)
     throw_error("Fill CL buffer", "Failed to fill the buffer: " + toString(clerr));
   return clerr;

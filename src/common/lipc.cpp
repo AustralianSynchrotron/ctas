@@ -271,6 +271,8 @@ IPCprocess::extract(const Map & in, Map & out) const {
   #endif // ONGPU
 
   out *= 1.0/d2b;
+  //const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1));
+  //out -= bmean/2.0;
 
 }
 

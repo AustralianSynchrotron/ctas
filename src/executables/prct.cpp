@@ -547,19 +547,20 @@ int main(int argc, char *argv[]) {
   const int nofProj = allInRd.at(0).slices();
   const Shape projSh = st.outShape();
 
-  InterimStorage prstor(Shape3(nofProj, projSh(0), projSh(1)), args.out_proj, args.out_name.dir() );
-  // form projections
+  InterimStorage prstor( Shape3(nofProj, projSh(0), projSh(1))
+                       , args.out_proj, args.out_name.dir() );
+  // Form projections
   { // to deconstruct objects
     ProcProj canonPP(st, bgas, dfas, dgas, msas);
-    IPCprocess canonPHS(canonPP.outShape(),
-                         IPCprocess::d2bNorm(args.phs.d2b, args.dd, args.phs.dist, args.phs.lambda));
+    float d2bN = IPCprocess::d2bNorm(args.phs.d2b, args.dd, args.phs.dist, args.phs.lambda);
+    IPCprocess canonPHS(canonPP.outShape(), d2bN);
     ProjInThread(allInRd, prstor, canonPP, canonPHS, args.beverbose)
         .execute();
     allInRd.clear();
   }
   // CT reconstruct
-  RecInThread(prstor, args.ctrl, args.dd, args.out_name, args.mincon, args.maxcon, args.beverbose)
-      .execute();
+  //RecInThread(prstor, args.ctrl, args.dd, args.out_name, args.mincon, args.maxcon, args.beverbose)
+  //    .execute();
 
   exit(0);
 

@@ -42,6 +42,8 @@ struct clargs {
   deque<ImagePath> dfs;        ///< Array of the dark field images.
   deque<ImagePath> dgs;        ///< Array of the dark field images for backgrounds.
   deque<ImagePath> mss;        ///< Mask Array.
+  uint denoiseRad;
+  float denoiseThr;
   ImagePath out_name;              ///< Name of the output image.
   string out_range;
   StitchRules st;
@@ -59,6 +61,8 @@ clargs(int argc, char *argv[])
           "Transforms and stitches portions of the projection from the complex CT experiment"
           " which may include 2D tiling and 180-deg flip."
           " Transformations are applied in the following order: rotate, crop, binning." )
+  , denoiseRad(0)
+  , denoiseThr(0.0)
   , testMe(-1)
   , beverbose(false)
 {
@@ -80,14 +84,14 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &st.bnn, 'b', "binn", BinnOptionDesc, "")
     .add(poptmx::OPTION, &st.angle,'r', "rotate", "Rotation angle.", "")
     .add(poptmx::OPTION, &st.origin1, 'g', "origin", "Origin of the image in the first stitch.",
-      "Position of the next image origin (top left corner) on the current image.")
+         "Position of the next image origin (top left corner) on the current image.")
     .add(poptmx::OPTION, &st.origin2, 'G', "second-origin", "Origin of the image in the second stitch.",
-      "Position of the next image origin (top left corner) on the current image in the second order stitch.")
+         "Position of the next image origin (top left corner) on the current image in the second order stitch.")
     .add(poptmx::OPTION, &st.origin2size, 'S', "second-size", "Number of imasges in the second stitch.",
-      "Required if and only if the second stitch is requested.")
+         "Required if and only if the second stitch is requested.")
     .add(poptmx::OPTION, &st.originF, 'f', "flip-origin", "Origin of the flipped portion of the image.",
-      "If used, makes second half of the input images to be assigned to the flipped portion."
-      " Requires even number of input images.")
+         "If used, makes second half of the input images to be assigned to the flipped portion."
+         " Requires even number of input images.")
     .add(poptmx::OPTION, &st.splits, 's', "split", "Split point(s)",
          "Final image can be split into sub-images to put different portions of it apart as independent"
          " files, for example to separate samples. By default splitting happens horizontally,"
@@ -99,11 +103,16 @@ clargs(int argc, char *argv[])
          "Image where values are weights of corresponding pixels in superimposition operations."
          " F.e. 0 values exclude corresponding or affected pixels from further use.")
     .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of edge transition.",
-           "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
-           " to produce seamless image stitching." )
+         "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
+         " to produce seamless image stitching." )
     .add(poptmx::OPTION, &st.sigma, 0, "sigma", "Sigma used in gaussian gap closure.",
-           "The gaps left by the mask superimpositions can be closed with the gaussian blur with the given sigma."
-           "If no mask is provided, the closure will be applied to pixels with values <= 0 or NAN." )
+         "The gaps left by the mask superimpositions can be closed with the gaussian blur with the given sigma."
+         "If no mask is provided, the closure will be applied to pixels with values <= 0 or NAN." )
+    .add(poptmx::OPTION, &denoiseRad, 'n', "noise-rad", "Radius for noise reducing algorithm.",
+         "Radius of the local region used to calculate average to replace the pixel value." )
+    .add(poptmx::OPTION, &denoiseThr, 'N', "noise-thr", "Noise threshold.",
+         "If positive, then gives maximum relative deviation from the average;"
+         " if negative, then negated value is maximum absolute deviation.")
     .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
          "Uses output name with suffixes to store results. In case of multiple projections provides"
          " slice index to test; ignored for single image mode.")
@@ -194,6 +203,10 @@ clargs(int argc, char *argv[])
       "Total number of tiled images (" + toString(tiledImages) + ") is not a multiple of the requested second stitch size"
       " (" + toString(st.origin2size) + ") given by " + table.desc(&st.origin2size) + " option.");
 
+  if ( table.count(&denoiseThr) && ! table.count(&denoiseRad) )
+    warn(command, "Setting noise threshold via " + table.desc(&denoiseThr) + " option "
+         " without noise rad (option " + table.desc(&denoiseRad) + ") makes no sense.");
+
   sort(st.splits.begin(), st.splits.end());
   unique(st.splits.begin(), st.splits.end());
   if ( st.splits.size() == 1 && st.splits.at(0) == 0 )
@@ -225,9 +238,12 @@ class ProjInThread : public InThread {
 
   deque<ReadVolumeBySlice> & allInRd;
   deque<SaveVolumeBySlice> & allOutSv;
+  const deque<Map> & msks;
+  const Denoiser & dnsr;
   const ProcProj & proc;
   const vector<int> & projes;
 
+  unordered_map<pthread_t, Denoiser> dnsrs;
   unordered_map<pthread_t, ProcProj> procs;
   unordered_map<pthread_t, deque<Map> > allInMaps;
   unordered_map<pthread_t, deque<Map> > results;
@@ -240,18 +256,27 @@ class ProjInThread : public InThread {
     const pthread_t me = pthread_self();
     lock();
     if ( ! procs.count(me) ) { // first call
+      dnsrs.emplace(me, dnsr);
       procs.emplace(me, proc);
       allInMaps.emplace(me, deque<Map>(allInRd.size()));
       results.emplace(me,deque<Map>());
     }
+    Denoiser & myDnsr = dnsrs.at(me);
     ProcProj & myProc = procs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
     deque<Map> & myRes = results.at(me);
     unlock();
 
     try {
-      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
+      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
         allInRd[curI].read(projes[idx], myAllIn[curI]);
+        Map msk;
+        if (msks.size()==1)
+          msk.reference(msks[0]);
+        else if (msks.size() > curI)
+          msk.reference(msks[curI]);
+        myDnsr.proc(myAllIn[curI], msk);
+      }
       myProc.process(myAllIn, myRes);
       for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
         allOutSv[curO].save(projes[idx], myRes[curO]);
@@ -267,8 +292,11 @@ class ProjInThread : public InThread {
 public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
-              , const ProcProj & _proc, const vector<int> & _projes, bool verbose=false)
+              , const deque<Map> & _msks, const Denoiser & _dnsr, const ProcProj & _proc
+              , const vector<int> & _projes, bool verbose=false)
     : InThread(verbose, "processing projections", _projes.size())
+    , msks(_msks)
+    , dnsr(_dnsr)
     , proc(_proc)
     , projes(_projes)
     , allInRd(_allInRd)
@@ -319,6 +347,24 @@ int main(int argc, char *argv[]) {
           mscur(ycur,xcur) = ( val <= 0.0 || ! fisok(val) ) ? 0 : 1.0;
         }
       }
+    }
+  }
+
+  // denoise bg and dg
+  Denoiser canonDZ(ish, args.denoiseRad, args.denoiseThr);
+  if (args.denoiseRad) {
+    Map msk;
+    if (msas.size())
+      msk.reference(msas[0]);
+    for (int curg=0 ; curg<bgas.size() ; curg++) {
+      if (msas.size()>1 && curg < msas.size())
+        msk.reference(msas[curg]);
+      canonDZ.proc(bgas[curg], msk);
+    }
+    for (int curg=0 ; curg<dgas.size() ; curg++) {
+      if (msas.size()>1 && curg < msas.size())
+        msk.reference(msas[curg]);
+      canonDZ.proc(dgas[curg], msk);
     }
   }
 
@@ -387,7 +433,8 @@ int main(int argc, char *argv[]) {
     for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
       allOutSv[curSplt].save(projes[0], allOut[curSplt]);
   else // finally process
-    ProjInThread(allInRd, allOutSv, canonPP, projes, args.beverbose).execute();
+    ProjInThread(allInRd, allOutSv, msas, canonDZ, canonPP, projes, args.beverbose)
+        .execute();
 
   exit(0);
 

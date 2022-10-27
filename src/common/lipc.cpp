@@ -222,9 +222,10 @@ IPCprocess::extract(const Map & in, Map & out) const {
   if (d2b<=0)
     return;
 
+  const blitz::Range r0_1(0, sh(0)-1), r1_1(0, sh(1)-1);
   deAbs(out);
   mid = 0.0;
-  mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)) =
+  mid(r0_1, r1_1) =
     #ifdef ONGPU
       f2c(out);
     #else
@@ -260,14 +261,13 @@ IPCprocess::extract(const Map & in, Map & out) const {
   kernelApplyPhsFilter.exec(mid.size());
   clfftExec(CLFFT_BACKWARD);
   cl2blitz(clmid(), mid);
-  out = real(mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1)));
+  out = real(mid(r0_1, r1_1));
   #else // ONGPU
   fftwf_execute(fft_f);
   mid *= phsFilter;
   fftwf_execute(fft_b);
   mid /= mid.size();
-  //out = mid(r0_1, r1_1);
-  out = mid(blitz::Range(0,sh[0]-1), blitz::Range(0,sh[1]-1));
+  out = mid(r0_1, r1_1);
   #endif // ONGPU
 
   out *= 1.0/d2b;

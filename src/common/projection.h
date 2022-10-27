@@ -133,3 +133,38 @@ public:
   }
 
 };
+
+
+
+class Denoiser {
+
+private:
+  const Shape sh;
+  const uint rad;
+  const float thr;
+  Map tarr;
+
+public:
+
+  Denoiser(const Shape & _sh, uint _rad, float _threshold)
+    : sh(_sh)
+    , tarr(sh)
+    , rad(_rad)
+    , thr(_threshold) {
+    if (!area(sh))
+      warn("denoiser", "empty input shape.");
+  }
+
+  Denoiser(const Denoiser & other)
+    : sh(other.sh)
+    , tarr(sh)
+    , rad(other.rad)
+    , thr(other.thr) {
+    if (!area(sh))
+      warn("denoiser", "empty input shape.");
+  }
+
+  void proc(Map & iom, const Map & mask = Map());
+
+};
+

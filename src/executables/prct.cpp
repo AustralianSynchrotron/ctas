@@ -77,6 +77,8 @@ struct clargs {
   float dd;                     ///< Pixel size.
   float mincon;         ///< Black intensity.
   float maxcon;
+  uint denoiseRad;
+  float denoiseThr;
   StitchRules st;
   PhaseRules  phs;
   CTrules ctrl;
@@ -96,6 +98,8 @@ clargs(int argc, char *argv[])
   , dd(1)
   , mincon(0)
   , maxcon(0)
+  , denoiseRad(0)
+  , denoiseThr(0.0)
   , beverbose(false)
 {
 
@@ -130,6 +134,11 @@ clargs(int argc, char *argv[])
          "If used, makes second half of the input images to be assigned to the flipped portion."
          " Requires even number of input images.")
 
+    .add(poptmx::OPTION, &denoiseRad, 'n', "noise-rad", "Radius for noise reducing algorithm.",
+         "Radius of the local region used to calculate average to replace the pixel value." )
+    .add(poptmx::OPTION, &denoiseThr, 'N', "noise-thr", "Noise threshold.",
+         "If positive, then gives maximum relative deviation from the average;"
+         " if negative, then negated value is maximum absolute deviation.")
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image(s)", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image(s)", "")
     .add(poptmx::OPTION, &dgs, 'F', "dg", "Dark field image(s) for backgrounds", "")
@@ -259,6 +268,10 @@ clargs(int argc, char *argv[])
       warn(command, "The wavelength (given by "+table.desc(&phs.lambda)+") needed together with"
            " the alpha parameter (given by "+table.desc(&phs.d2b)+") for the correct results.");
   }
+  if ( table.count(&denoiseThr) && ! table.count(&denoiseRad) )
+    warn(command, "Setting noise threshold via " + table.desc(&denoiseThr) + " option "
+                  " without noise rad (option " + table.desc(&denoiseRad) + ") makes no sense.");
+
 
   if (ctrl.arc <= 0.0)
     exit_on_error(command, "CT arc (given by "+table.desc(&ctrl.arc)+") must be strictly positive.");
@@ -369,9 +382,12 @@ class ProjInThread : public InThread {
 
   deque<ReadVolumeBySlice> & allInRd;
   InterimStorage & allProjes;
+  const deque<Map> & msks;
+  const Denoiser & canonDZ;
   const ProcProj & canonPP;
   const IPCprocess & canonPHS;
 
+  unordered_map<pthread_t, Denoiser> DZprocs;
   unordered_map<pthread_t, ProcProj> PPprocs;
   unordered_map<pthread_t, IPCprocess> PHSprocs;
   unordered_map<pthread_t, deque<Map> > allInMaps;
@@ -385,11 +401,13 @@ class ProjInThread : public InThread {
     const pthread_t me = pthread_self();
     lock();
     if ( ! PPprocs.count(me) ) { // first call
+      DZprocs.emplace(me, canonDZ);
       PPprocs.emplace(me, canonPP);
       PHSprocs.emplace(me, canonPHS);
       allInMaps.emplace(me, deque<Map>(allInRd.size()));
       results[me];
     }
+    Denoiser & myDZ = DZprocs.at(me);
     ProcProj & myPP = PPprocs.at(me);
     IPCprocess & myPHS = PHSprocs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
@@ -397,8 +415,15 @@ class ProjInThread : public InThread {
     unlock();
 
     try {
-      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ )
+      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
         allInRd[curI].read(idx, myAllIn[curI]);
+        Map msk;
+        if (msks.size()==1)
+          msk.reference(msks[0]);
+        else if (msks.size() > curI)
+          msk.reference(msks[curI]);
+        myDZ.proc(myAllIn[curI], msk);
+      }
       deque<Map> forproc(1, myProj);
       myPP.process(myAllIn, forproc);
       myPHS.extract(myProj);
@@ -415,9 +440,12 @@ class ProjInThread : public InThread {
 public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, InterimStorage & _allProjes
+              , const deque<Map> & _msks, const Denoiser & _canonDZ
               , const ProcProj & _canonPP,  const IPCprocess & _canonPHS
               , bool verbose=false)
     : InThread(verbose, "processing projections", _allProjes.projs)
+    , msks(_msks)
+    , canonDZ(_canonDZ)
     , canonPP(_canonPP)
     , canonPHS(_canonPHS)
     , allInRd(_allInRd)
@@ -533,6 +561,25 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // denoise bg and dg
+  Denoiser canonDZ(ish, args.denoiseRad, args.denoiseThr);
+  if (args.denoiseRad) {
+    Map msk;
+    if (msas.size())
+      msk.reference(msas[0]);
+    for (int curg=0 ; curg<bgas.size() ; curg++) {
+      if (msas.size()>1 && curg < msas.size())
+        msk.reference(msas[curg]);
+      canonDZ.proc(bgas[curg], msk);
+    }
+    for (int curg=0 ; curg<dgas.size() ; curg++) {
+      if (msas.size()>1 && curg < msas.size())
+        msk.reference(msas[curg]);
+      canonDZ.proc(dgas[curg], msk);
+    }
+  }
+
+
   // Prepare read factories
   const int nofIn = args.images.size();
   deque<ReadVolumeBySlice> allInRd(nofIn);
@@ -554,7 +601,7 @@ int main(int argc, char *argv[]) {
     ProcProj canonPP(st, bgas, dfas, dgas, msas);
     float d2bN = IPCprocess::d2bNorm(args.phs.d2b, args.dd, args.phs.dist, args.phs.lambda);
     IPCprocess canonPHS(canonPP.outShape(), d2bN);
-    ProjInThread(allInRd, prstor, canonPP, canonPHS, args.beverbose)
+    ProjInThread(allInRd, prstor, msas, canonDZ, canonPP, canonPHS, args.beverbose)
         .execute();
     allInRd.clear();
   }

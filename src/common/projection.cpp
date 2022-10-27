@@ -28,6 +28,7 @@ void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=fal
 }
 
 
+const string Stitcher::modname = "stitcher";
 
 
 void Stitcher::prepare(PointF2D _origin, Shape _ish, int _isz, const deque<Map> & msks) {
@@ -118,8 +119,10 @@ Map Stitcher::resMask() const {
   return ret;
 }
 
-const string Stitcher::modname = "stitcher";
 
+
+const string ProcProj::modname="ProcProj";
+cl_program ProcProj::oclProgram = 0;
 
 
 void ProcProj::prepareMask(Map & _gaps, bool bepicky) {
@@ -297,6 +300,8 @@ ProcProj::ProcProj( const StitchRules & _st
 }
 
 
+
+
 ProcProj::ProcProj(const ProcProj & other)
   : strl(other.strl)
   , ster1(other.ster1)
@@ -458,7 +463,130 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
 
 
 
-const string ProcProj::modname="ProcProj";
-cl_program ProcProj::oclProgram = 0;
+void Denoiser::proc(Map & iom, const Map & mask) {
+  if ( !area(sh) || rad == 0)
+    return;
+  if ( iom.shape() != sh )
+    throw_error("denoiser", "Non matching shape of input array.");
+  if ( mask.size() &&  mask.shape() != sh )
+    throw_error("denoiser", "Non matching shape of the mask.");
+
+  static const uint rad2 = rad*rad;
+  tarr = iom;
+  for (ArrIndex icur=0; icur<sh(0); icur++) {
+    const uint iiF = min(0l, icur-rad), iiT = max(sh(0), icur+rad+1);
+    for (ArrIndex jcur=0; jcur<sh(1); jcur++) {
+      const uint jjF = min(0l, jcur-rad), jjT = max(sh(1), jcur+rad+1);
+
+      uint cnt = 0;
+      float sum = 0.0;
+      for (ArrIndex ii = iiF ; ii < iiT ; ii++) {
+        uint ii2 = ii-icur;
+        ii2 *= ii2;
+        for (ArrIndex jj = jjF ; jj < jjT ; jj++) {
+          uint jj2 = jj-jcur;
+          jj2 *= jj2;
+          uint rr2 = ii2 + jj2;
+          if ( rr2 <= rad2  &&  rr2  &&  ( ! mask.size() || mask(ii,jj) != 0.0 ) ) {
+            sum += tarr(ii, jj);
+            cnt++;
+          }
+        }
+      }
+
+      if (cnt) {
+        if (thr == 0.0) // averaging
+          iom(icur,jcur) = (sum + tarr(icur,jcur)) / (cnt + 1);
+        else {
+          sum /= cnt;
+          const float dv =  sum - tarr(icur,jcur);
+          if (    ( thr < 0.0  &&  -thr < abs(dv) )
+               || ( thr > 0.0  &&  (sum == 0.0 || thr < abs(dv/sum)) ) )
+            iom(icur,jcur) = sum;
+        }
+      }
+
+    }
+  }
+
+}
 
 
+
+
+
+//! Applies a zingers filter of a specified size (must be odd, by default 9) and threshold (by default 1.2)
+//  Processing is carried out for each individual detector row (if bTransposed == false) or column (if bTransposed == true)
+//  To filter sinograms, apply exp(-) before calling this function, and -log() after
+Map ZingersFilt(size_t nFiltSize, double dblThreshold, Map arr)
+{
+  const Shape sh(arr.shape());
+  const size_t sz(arr.size());
+  ArrIndex nAngles, nPixels;
+  ArrIndex nCurAngle, nCurPixel;
+  long box, i, pixel;
+
+  if(nFiltSize%2 != 0) nFiltSize++; //FiltSize must be odd (so it can be centred on a pixel)
+  box = (long) (nFiltSize--)/2;
+  nAngles = sh(0);
+  nPixels = sh(1);
+
+  // allocate the temp arrays
+  Line arrAvg(nPixels + 4);
+  Line arrFilter(nPixels + 4);
+
+  // sequentially process individual rows/columns in arrAvg
+  for(nCurAngle = 0; nCurAngle < nAngles; nCurAngle++)
+  {
+    // select one row/column
+    for(nCurPixel = 0; nCurPixel < nPixels; nCurPixel++)
+      arrAvg(nCurPixel + 2) = arr(nCurAngle,nCurPixel);
+
+    arrAvg(0) = arrAvg(3);
+    arrAvg(1) = arrAvg(2);
+    arrAvg(nPixels + 2) = arrAvg(nPixels + 1);
+    arrAvg(nPixels + 3) = arrAvg(nPixels);
+
+    // smooth the row/column
+    for(nCurPixel = 0; nCurPixel < nPixels; nCurPixel++)
+    {
+      double sum = 0;
+      ArrIndex count = 0;
+      for(i = -box; i <= box; i++)
+      {
+        pixel = long(nCurPixel) + i;
+        if(pixel >= 0 && pixel < nPixels) { sum += arrAvg(pixel + 2); count++; }
+      }
+      arrFilter(nCurPixel + 2) = (sum / count);
+    }
+
+    // divide original row/column by the smoothed row/column and save in arrFilter
+    for(nCurPixel = 2; nCurPixel < nPixels + 2; nCurPixel++)
+      arrFilter(nCurPixel) = arrAvg(nCurPixel) / arrFilter(nCurPixel);
+
+    arrFilter(0) = arrFilter(3);
+    arrFilter(1) = arrFilter(2);
+    arrFilter(nPixels + 2) = arrFilter(nPixels + 1);
+    arrFilter(nPixels + 3) = arrFilter(nPixels);
+
+    // threshold the arrFilter values
+    for(nCurPixel = 0; nCurPixel < nPixels; nCurPixel++)
+    {
+      if (arrFilter(nCurPixel + 2) >= dblThreshold)
+      {
+        double sum = 0;
+        ArrIndex count = 0;
+        if (arrFilter(nCurPixel) < dblThreshold) { sum += arrAvg(nCurPixel); count++; }
+        if (arrFilter(nCurPixel + 1) < dblThreshold) { sum += arrAvg(nCurPixel + 1); count++; }
+        if (arrFilter(nCurPixel + 3) < dblThreshold) { sum += arrAvg(nCurPixel + 3); count++; }
+        if (arrFilter(nCurPixel + 4) < dblThreshold) { sum += arrAvg(nCurPixel + 4); count++; }
+        if (count > 0) arrAvg(nCurPixel + 2) = (sum / count);
+      }
+    }
+
+    // overwrite the original row/column with the filtered one
+    for(nCurPixel = 0; nCurPixel < nPixels; nCurPixel++)
+      arr(nCurAngle,nCurPixel) = arrAvg(nCurPixel + 2);
+  }
+  return arr;
+}

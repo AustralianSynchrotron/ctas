@@ -112,7 +112,7 @@ target_link_libraries(bctppl
 
 
 set( all_targets
-  ipc dei edei norm ct ts rc2fd proj v2v bctppl
+  ipc dei edei norm ct ts rc2fd proj prct v2v bctppl
 )
 
 

@@ -232,6 +232,14 @@ BZ_DECLARE_FUNCTION(invert);
 
 
 
+static const Map mask(const deque<Map> & masks, uint cur) {
+  Map ret;
+  if (masks.size()==1)
+    ret.reference(masks[0]);
+  else if (masks.size() > cur)
+    ret.reference(masks[cur]);
+  return ret;
+}
 
 
 class ProjInThread : public InThread {
@@ -270,12 +278,7 @@ class ProjInThread : public InThread {
     try {
       for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
         allInRd[curI].read(projes[idx], myAllIn[curI]);
-        Map msk;
-        if (msks.size()==1)
-          msk.reference(msks[0]);
-        else if (msks.size() > curI)
-          msk.reference(msks[curI]);
-        myDnsr.proc(myAllIn[curI], msk);
+        myDnsr.proc(myAllIn[curI], mask(msks, curI));
       }
       myProc.process(myAllIn, myRes);
       for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
@@ -352,21 +355,10 @@ int main(int argc, char *argv[]) {
 
   // denoise bg and dg
   Denoiser canonDZ(ish, args.denoiseRad, args.denoiseThr);
-  if (args.denoiseRad) {
-    Map msk;
-    if (msas.size())
-      msk.reference(msas[0]);
-    for (int curg=0 ; curg<bgas.size() ; curg++) {
-      if (msas.size()>1 && curg < msas.size())
-        msk.reference(msas[curg]);
-      canonDZ.proc(bgas[curg], msk);
-    }
-    for (int curg=0 ; curg<dgas.size() ; curg++) {
-      if (msas.size()>1 && curg < msas.size())
-        msk.reference(msas[curg]);
-      canonDZ.proc(dgas[curg], msk);
-    }
-  }
+  for (int curg=0 ; curg<bgas.size() ; curg++)
+    canonDZ.proc(bgas[curg], mask(msas, curg));
+  for (int curg=0 ; curg<dgas.size() ; curg++)
+    canonDZ.proc(dgas[curg], mask(msas, curg));
 
   // Prepare read factories
   const int nofIn = args.images.size();
@@ -394,11 +386,13 @@ int main(int argc, char *argv[]) {
   deque<Map> allOut, allIn;
   for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
     allIn.emplace_back(ish);
-    if (args.testMe >= 0)
+    if (args.testMe >= 0) {
       allInRd[curI].read(args.testMe, allIn[curI]);
-    else if (nofOuts == 1)
+      canonDZ.proc(allIn.back(), mask(msas, curI));
+    } else if (nofOuts == 1) {
       allInRd[curI].read(projes[0], allIn[curI]);
-    else
+      canonDZ.proc(allIn.back(), mask(msas, curI));
+    } else
       allIn.back()=0.0;
   }
   string testFormat;

@@ -474,9 +474,9 @@ void Denoiser::proc(Map & iom, const Map & mask) {
   static const uint rad2 = rad*rad;
   tarr = iom;
   for (ArrIndex icur=0; icur<sh(0); icur++) {
-    const uint iiF = min(0l, icur-rad), iiT = max(sh(0), icur+rad+1);
+    const uint iiF = max(0l, icur-rad), iiT = min(sh(0), icur+rad+1);
     for (ArrIndex jcur=0; jcur<sh(1); jcur++) {
-      const uint jjF = min(0l, jcur-rad), jjT = max(sh(1), jcur+rad+1);
+      const uint jjF = max(0l, jcur-rad), jjT = min(sh(1), jcur+rad+1);
 
       uint cnt = 0;
       float sum = 0.0;

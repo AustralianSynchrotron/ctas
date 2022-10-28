@@ -48,10 +48,10 @@ __kernel void ff(__global float* fg,
 
 __kernel void ffm(
     global float * io,
-    read_only global float * bg,
-    read_only global float * df,
-    read_only global float * dg,
-    read_only global float * mask )
+    constant const float * bg,
+    constant const float * df,
+    constant const float * dg,
+    constant const float * mask )
 {
 
   int idx = get_global_id(0);

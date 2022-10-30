@@ -33,15 +33,19 @@
 #include "../common/common.h"
 
 
-#ifdef OPENCL_FOUND
 
 
+//#define ONGPU
+#ifdef ONGPU
+#include <clFFT.h>
+#endif
 
 
 class FlatFieldProc {
 public:
   const Shape sh; // must be first
 private:
+  #ifdef ONGPU
   static cl_program ffProgram;
   CLkernel kernel;
   CLmem   io;
@@ -49,20 +53,31 @@ private:
   const CLmem df;
   const CLmem dg;
   const CLmem ms;
+  #else // ONGPU
+  const Map & df;
+  const Map & ms;
+  const Map & bga;
+  Map bga_R;
+  #endif // ONGPU
 public:
   FlatFieldProc( const Map & _bg, const Map & _df
                , const Map & _dg, const Map & _ms);
+
   FlatFieldProc(const FlatFieldProc & other);
+
+  #ifdef ONGPU
   bool execute(const Map & _io);
   inline Map & process(Map & _io) {
     if (execute(_io))
       cl2blitz(io(), _io);
     return _io;
   }
+  #else //ONGPU
+  Map & process(Map & _io) const;
+  #endif //ONGPU
+
 };
 
-
-#endif // OPENCL_FOUND
 
 
 

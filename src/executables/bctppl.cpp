@@ -456,7 +456,8 @@ public:
     if (nofProj<2)
       throw_error("InputSets", "Less than 2 images in the input volume(s).");
     if (imrd0->slices() != imrd1->slices())
-      throw_error("InputSets", "Input volumes are of different sizes.");
+      throw_error("InputSets", "Input volumes are of different sizes: "
+                  + toString(imrd0->slices()) + " and " + toString(imrd1->slices()) + ".");
     bar.setSteps(nofProj);
     bar.start();
 

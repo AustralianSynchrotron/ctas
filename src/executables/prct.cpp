@@ -280,8 +280,8 @@ clargs(int argc, char *argv[])
 
   dd /= 1.0E6; // convert micron -> m
   st.angle *= M_PI/180;
-  st.flipUsed=table.count(&st.originF);
-  st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / st.origin2size ;
+  st.flip=table.count(&st.originF);
+  st.origin1size = st.nofIn / (st.flip ? 2 : 1) / st.origin2size ;
 
 }
 
@@ -422,7 +422,7 @@ class ProjInThread : public InThread {
           msk.reference(msks[0]);
         else if (msks.size() > curI)
           msk.reference(msks[curI]);
-        myDZ.proc(myAllIn[curI], msk);
+        //myDZ.proc(myAllIn[curI], msk);
       }
       deque<Map> forproc(1, myProj);
       myPP.process(myAllIn, forproc);
@@ -570,12 +570,12 @@ int main(int argc, char *argv[]) {
     for (int curg=0 ; curg<bgas.size() ; curg++) {
       if (msas.size()>1 && curg < msas.size())
         msk.reference(msas[curg]);
-      canonDZ.proc(bgas[curg], msk);
+      //canonDZ.proc(bgas[curg], msk);
     }
     for (int curg=0 ; curg<dgas.size() ; curg++) {
       if (msas.size()>1 && curg < msas.size())
         msk.reference(msas[curg]);
-      canonDZ.proc(dgas[curg], msk);
+      //canonDZ.proc(dgas[curg], msk);
     }
   }
 

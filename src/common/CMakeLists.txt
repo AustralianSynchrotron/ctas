@@ -43,9 +43,9 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/common/config.h.in ${CMAKE_SOURCE_DIR}/sr
 add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED
-  common.cpp
-  parallel.world.cpp
-  external.world.cpp )
+  common.h common.cpp
+  parallel.world.h parallel.world.cpp
+  external.world.h external.world.cpp )
 target_clsrc(common binn.cl)
 target_link_libraries(common
   tiff
@@ -55,11 +55,11 @@ target_link_libraries(common
 )
 
 
-add_library(flatfield SHARED flatfield.cpp)
+add_library(flatfield SHARED flatfield.h flatfield.cpp)
 target_clsrc(flatfield ff.cl)
 
 
-add_library(kernel SHARED kernel.cpp)
+add_library(kernel SHARED kernel.h kernel.cpp)
 target_clsrc(kernel ct.cl)
 target_link_libraries(kernel
   fftw3f
@@ -69,7 +69,7 @@ target_link_libraries(kernel
 )
 
 
-add_library(lipc SHARED lipc.cpp)
+add_library(lipc SHARED ipc.h lipc.cpp)
 target_clsrc(lipc ipc.cl)
 target_link_libraries(lipc
   fftw3f
@@ -77,14 +77,14 @@ target_link_libraries(lipc
 )
 
 
-add_library(projection SHARED projection.cpp)
+add_library(projection SHARED  projection.h projection.cpp)
 target_clsrc(projection projection.cl)
 target_link_libraries(projection
   flatfield
 )
 
 
-add_library(ldei SHARED ldei.cpp)
+add_library(ldei SHARED dei.h ldei.cpp)
 add_library(ledei SHARED ledei.cpp)
 
 install(TARGETS

@@ -111,8 +111,8 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &denoiseRad, 'n', "noise-rad", "Radius for noise reducing algorithm.",
          "Radius of the local region used to calculate average to replace the pixel value." )
     .add(poptmx::OPTION, &denoiseThr, 'N', "noise-thr", "Noise threshold.",
-         "If positive, then gives maximum relative deviation from the average;"
-         " if negative, then negated value is maximum absolute deviation.")
+         "If positive, then gives maximum absolute deviation from the average;"
+         " if negative, then negated value is maximum relative deviation.")
     .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
          "Uses output name with suffixes to store results. In case of multiple projections provides"
          " slice index to test; ignored for single image mode.")
@@ -191,17 +191,20 @@ clargs(int argc, char *argv[])
   if ( table.count(&st.origin2) > table.count(&st.origin2size) )
     exit_on_error(command, string () +
       "Options " + table.desc(&st.origin2) + " requires also " + table.desc(&st.origin2size) + " option.");
-  if ( table.count(&st.origin2size) && ! table.count(&st.origin2) && ! table.count(&testMe) )
-    exit_on_error(command, string () +
-      "Options " + table.desc(&st.origin2size) + " must be used with either "
-      + table.desc(&st.origin2) + " or " + table.desc(&testMe) + " options.");
-  if ( table.count(&st.origin2size)  &&  st.origin2size  < 2 )
-    exit_on_error(command, string () +
-      "Requested second stitch size (" + toString(st.origin2size) + ") is less than 2.");
-  if ( table.count(&st.origin2size)  &&  tiledImages % st.origin2size )
-    exit_on_error(command, string () +
-      "Total number of tiled images (" + toString(tiledImages) + ") is not a multiple of the requested second stitch size"
-      " (" + toString(st.origin2size) + ") given by " + table.desc(&st.origin2size) + " option.");
+  if ( table.count(&st.origin2size) ) {
+    if ( ! table.count(&st.origin2) && ! table.count(&testMe) )
+      exit_on_error(command, string () +
+        "Options " + table.desc(&st.origin2size) + " must be used with either "
+        + table.desc(&st.origin2) + " or " + table.desc(&testMe) + " options.");
+    if ( st.origin2size  < 2 )
+      exit_on_error(command, string () +
+        "Requested second stitch size (" + toString(st.origin2size) + ") is less than 2.");
+    if ( tiledImages % st.origin2size )
+      exit_on_error(command, string () +
+        "Total number of tiled images (" + toString(tiledImages) + ")"
+        " is not a multiple of the second stitch size (" + toString(st.origin2size) + ")"
+        " given by " + table.desc(&st.origin2size) + " option.");
+  }
 
   if ( table.count(&denoiseThr) && ! table.count(&denoiseRad) )
     warn(command, "Setting noise threshold via " + table.desc(&denoiseThr) + " option "
@@ -213,8 +216,13 @@ clargs(int argc, char *argv[])
     exit_on_error(command, "The list of splits contains only 0 (marking vertical splits).");
 
   st.angle *= M_PI/180;
-  st.flipUsed=table.count(&st.originF);
-  st.origin1size = st.nofIn / (st.flipUsed ? 2 : 1) / st.origin2size ;
+  st.flip=table.count(&st.originF);
+  st.origin1size = st.nofIn / st.origin2size / (st.flip ? 2 : 1) ;
+  if (st.origin1size<1)
+    exit_on_error(command, string () +
+      "Number of input images (" + toString(st.nofIn) + ") is not sufficient for given "
+      + table.desc(&st.origin2size) + "(" + toString(st.origin2size) + ")" +
+      (st.flip ? " and/or " + table.desc(&st.flip) : "") + "." );
 
 }
 
@@ -232,13 +240,12 @@ BZ_DECLARE_FUNCTION(invert);
 
 
 
-static const Map mask(const deque<Map> & masks, uint cur) {
-  Map ret;
-  if (masks.size()==1)
-    ret.reference(masks[0]);
-  else if (masks.size() > cur)
-    ret.reference(masks[cur]);
-  return ret;
+static const Denoiser & curDnz(const deque<Denoiser> & dnzs, uint cur) {
+  if (dnzs.size()==1)
+    return dnzs[0];
+  else if (dnzs.size() > cur)
+    return dnzs[cur];
+  throw_error("select denoiser", "Empty or incomplete list of denoisers.");
 }
 
 
@@ -246,12 +253,11 @@ class ProjInThread : public InThread {
 
   deque<ReadVolumeBySlice> & allInRd;
   deque<SaveVolumeBySlice> & allOutSv;
-  const deque<Map> & msks;
-  const Denoiser & dnsr;
+  const deque<Denoiser> & dnsr;
   const ProcProj & proc;
   const vector<int> & projes;
 
-  unordered_map<pthread_t, Denoiser> dnsrs;
+  unordered_map<pthread_t, deque<Denoiser> > dnsrs;
   unordered_map<pthread_t, ProcProj> procs;
   unordered_map<pthread_t, deque<Map> > allInMaps;
   unordered_map<pthread_t, deque<Map> > results;
@@ -269,7 +275,7 @@ class ProjInThread : public InThread {
       allInMaps.emplace(me, deque<Map>(allInRd.size()));
       results.emplace(me,deque<Map>());
     }
-    Denoiser & myDnsr = dnsrs.at(me);
+    deque<Denoiser> & myDnsr = dnsrs.at(me);
     ProcProj & myProc = procs.at(me);
     deque<Map> & myAllIn = allInMaps.at(me);
     deque<Map> & myRes = results.at(me);
@@ -278,7 +284,7 @@ class ProjInThread : public InThread {
     try {
       for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
         allInRd[curI].read(projes[idx], myAllIn[curI]);
-        myDnsr.proc(myAllIn[curI], mask(msks, curI));
+        curDnz(myDnsr, curI).proc(myAllIn[curI]);
       }
       myProc.process(myAllIn, myRes);
       for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
@@ -295,10 +301,9 @@ class ProjInThread : public InThread {
 public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
-              , const deque<Map> & _msks, const Denoiser & _dnsr, const ProcProj & _proc
+              , const deque<Denoiser> & _dnsr, const ProcProj & _proc
               , const vector<int> & _projes, bool verbose=false)
     : InThread(verbose, "processing projections", _projes.size())
-    , msks(_msks)
     , dnsr(_dnsr)
     , proc(_proc)
     , projes(_projes)
@@ -319,12 +324,13 @@ int main(int argc, char *argv[]) {
   const Shape ish(ImageSizes(args.images.at(0).at(0).repr()));
   StitchRules st = args.st;
   st.ish = ish;
+  const int nofIn = args.images.size();
 
   // Read flat-fielding images
   #define rdAux(pfx) \
-  deque<Map> pfx##as(args. pfx##s.size()); \
+  deque<Map> pfx##as(args.pfx##s.size()); \
   for ( int curf = 0 ; curf < args. pfx##s.size() ; curf++) \
-    ReadImage(args. pfx##s[curf].repr(), pfx##as[curf], ish);
+    ReadImage(args. pfx##s[curf].repr(), pfx##as[curf], ish); \
 
   rdAux(bg);
   rdAux(df);
@@ -353,15 +359,23 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // create canonical denoiser(s)
+  deque<Denoiser> canonDZs;
+  if (!msas.size())
+    canonDZs.emplace_back(ish, (int) args.denoiseRad, args.denoiseThr);
+  else if (msas.size()==1)
+    canonDZs.emplace_back(ish, (int) args.denoiseRad, args.denoiseThr, msas[0]);
+  else
+    for ( int curI = 0 ; curI < nofIn ; curI++)
+      canonDZs.emplace_back(ish, (int) args.denoiseRad, args.denoiseThr, msas[curI]);
+
   // denoise bg and dg
-  Denoiser canonDZ(ish, args.denoiseRad, args.denoiseThr);
   for (int curg=0 ; curg<bgas.size() ; curg++)
-    canonDZ.proc(bgas[curg], mask(msas, curg));
+    curDnz(canonDZs, curg).proc(bgas[curg]);
   for (int curg=0 ; curg<dgas.size() ; curg++)
-    canonDZ.proc(dgas[curg], mask(msas, curg));
+    curDnz(canonDZs, curg).proc(dgas[curg]);
 
   // Prepare read factories
-  const int nofIn = args.images.size();
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
     allInRd.at(curI).add(args.images.at(curI));
@@ -386,14 +400,13 @@ int main(int argc, char *argv[]) {
   deque<Map> allOut, allIn;
   for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
     allIn.emplace_back(ish);
-    if (args.testMe >= 0) {
-      allInRd[curI].read(args.testMe, allIn[curI]);
-      canonDZ.proc(allIn.back(), mask(msas, curI));
-    } else if (nofOuts == 1) {
-      allInRd[curI].read(projes[0], allIn[curI]);
-      canonDZ.proc(allIn.back(), mask(msas, curI));
-    } else
+    if (args.testMe < 0  &&  nofOuts > 1)
       allIn.back()=0.0;
+    else {
+      const int trd = args.testMe >= 0  ?  args.testMe  :  projes[0];
+      allInRd[curI].read(trd, allIn[curI]);
+      curDnz(canonDZs, curI).proc(allIn.back());
+    }
   }
   string testFormat;
   if (args.testMe >= 0) {
@@ -427,7 +440,7 @@ int main(int argc, char *argv[]) {
     for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
       allOutSv[curSplt].save(projes[0], allOut[curSplt]);
   else // finally process
-    ProjInThread(allInRd, allOutSv, msas, canonDZ, canonPP, projes, args.beverbose)
+    ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.beverbose)
         .execute();
 
   exit(0);

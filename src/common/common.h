@@ -66,7 +66,8 @@ static inline int fisnan(double x){ return _isnan(x); }
 static inline int fisok(double x){ return _isnormal(x) || _fpclassify(x) == FP_ZERO; }
 #else
 // without optimize attribute the comparison to FP_ZERO gives true for x=NaN on GCC with optimization. WTF?!!!
-__attribute__((optimize("O0"))) static inline bool fisok(double x){ return std::isnormal(x) || ( std::fpclassify(x) == FP_ZERO ) ; }
+__attribute__((optimize("O0")))
+static inline bool fisok(double x){ return std::isnormal(x) || ( std::fpclassify(x) == FP_ZERO ) ; }
 #endif
 
 
@@ -386,6 +387,14 @@ safe(const blitz::Array<T,N> & arr, bool preserve=true){
 }
 
 
+template<class T, int N> bool operator==( const blitz::TinyVector<T,N> & t1
+                                        , const blitz::TinyVector<T,N> & t2) {
+  for (int dim=0; dim<N; dim++)
+    if (t1[dim]!=t2[dim])
+      return false;
+  return true;
+}
+
 template<class T, int N> bool areSame(const blitz::Array<T,N> & arr1,
                                       const blitz::Array<T,N> & arr2) {
   return arr1.data()   == arr2.data()   &&
@@ -561,8 +570,23 @@ void deAbs(Map & arr);
 struct PointF2D {
   float x;      ///< X coordinate
   float y;       ///< Y coordinate
+
   inline PointF2D(float _x=0, float _y=0)
-  : x(_x), y(_y) {}
+    : x(_x), y(_y)
+  {}
+
+  inline PointF2D & operator+=(const PointF2D & rhs) {
+    x += rhs.x;
+    y += rhs.y;
+    return *this;
+  }
+
+  inline PointF2D & operator-=(const PointF2D & rhs) {
+    x -= rhs.x;
+    y -= rhs.y;
+    return *this;
+  }
+
 };
 
 inline bool operator==( const PointF2D & p1, const PointF2D & p2){
@@ -572,6 +596,7 @@ inline bool operator==( const PointF2D & p1, const PointF2D & p2){
 inline bool operator!=( const PointF2D & p1, const PointF2D & p2){
   return p1.x != p2.x || p1.y != p2.y;
 }
+
 
 
 std::string

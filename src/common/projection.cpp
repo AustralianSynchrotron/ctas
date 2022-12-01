@@ -19,6 +19,10 @@ BZ_DECLARE_FUNCTION(denan);
 static inline float invert(float x){ return x==0.0 ? 0.0 : 1.0/x ;}
 BZ_DECLARE_FUNCTION(invert);
 
+static inline float subzero(float x){ return x < 0.0 ? 0.0 : x ;}
+BZ_DECLARE_FUNCTION(subzero);
+
+
 static inline float thrshld(float v, float av){ return v-av; }
 BZ_DECLARE_FUNCTION2(thrshld);
 
@@ -178,22 +182,17 @@ ProcProj::ProcProj( const StitchRules & _st
                         , msas.size() ? msas[0] : zmap );
   }
 
-  // process masks
-  deque<Map> pmsas;
-  for (int curI = 0; curI < msas.size() ; curI++) {
-    Map msT;
-    iproc.proc(msas[curI], msT);
-    prepareMask(msT, true);
-    pmsas.emplace_back(msT.shape());
-    pmsas.back() = msT;
-    if (saveMasks.length())
-      SaveDenan(saveMasks.dtitle() + "_I" + (msas.size()>1 ? toString(curI) : string()) + ".tif", msT);
-  }
 
   if (strl.nofIn == 1) { // no stitching
-    if (msas.size())
-      mskF.reference(pmsas[0]);
+
     ssh = psh;
+    if (msas.size()) {
+      Map & wght = wghts.emplace_back(psh);
+      iproc.proc(msas[0], wght);
+      prepareMask(wght, true);
+      mskF.reference(wght);
+    }
+
   } else {
 
     // prepare origins for each input image
@@ -225,32 +224,36 @@ ProcProj::ProcProj( const StitchRules & _st
     ssh = Shape(maxy-miny+1, maxx-minx+1);
 
     // prepare weights image
-    wght.resize(psh);
+    Map wght(psh);
     for (ArrIndex ycur = 0 ; ycur < psh(0) ; ycur++ )
       for (ArrIndex xcur = 0 ; xcur < psh(1) ; xcur++ )
         wght(ycur, xcur) = 1 + ( psh(0) - abs( 2*ycur - psh(0) + 1l ) )
                              * ( psh(1) - abs( 2*xcur - psh(1) + 1l ) );
 
+    // process masks
+    wghts.resize( msas.size() ? msas.size() : 1);
+    if (!msas.size()) {
+      wghts[0].reference(wght);
+    } else {
+      for (int curI = 0; curI < msas.size() ; curI++) {
+        Map & wghtI = wghts[curI];
+        iproc.proc(msas[curI], wghtI);
+        prepareMask(wghtI, true);
+        if (saveMasks.length())
+          SaveDenan(saveMasks.dtitle() + "_I" + (msas.size()>1 ? toString(curI) : string()) + ".tif", wghtI);
+        wghtI *= wght;
+      }
+    }
+
     // prepare sum of weights image
     swght.resize(ssh);
     swght=0.0;
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
-      const blitz::Range r0(origins[acur].y, origins[acur].y + psh(0)-1);
-      const blitz::Range r1(origins[acur].x, origins[acur].x + psh(1)-1);
-      if (pmsas.size()) {
-        Map msk;
-        if (pmsas.size()==1) {
-          msk.reference(pmsas[0]);
-          if (strl.flip && acur == strl.nofIn/2)
-            msk.reverseSelf(blitz::secondDim);
-        } else {
-          msk.reference(pmsas[acur]);
-          if (strl.flip && acur == strl.nofIn/2)
-            msk.reverseSelf(blitz::secondDim);
-        }
-        swght(r0,r1) += wght * msk;
-      } else
-        swght(r0,r1) += wght;
+      Map wghtI(wghts[ wghts.size()==1 ? 0 : acur ]);
+      swght( blitz::Range(origins[acur].y, origins[acur].y + psh(0)-1)
+           , blitz::Range(origins[acur].x, origins[acur].x + psh(1)-1))
+        +=  ! strl.flip || acur < strl.nofIn/2
+            ?   wghtI  :  wghtI.reverse(blitz::secondDim);
     }
     swght = invert(swght);
 
@@ -260,11 +263,13 @@ ProcProj::ProcProj( const StitchRules & _st
       mskF = swght;
       invert(mskF);
       prepareMask(mskF, false);
-      if (saveMasks.length())
-        SaveDenan(saveMasks.dtitle() + ".tif", mskF);
     }
 
   }
+
+  // save final mask
+  if (msas.size() && saveMasks.length())
+      SaveDenan(saveMasks.dtitle() + ".tif", mskF);
 
   // prepare final
   if (strl.fcrp)
@@ -282,7 +287,7 @@ ProcProj::ProcProj(const ProcProj & other)
   : strl(other.strl)
   , psh(other.psh)
   , ssh(other.ssh)
-  , wght(other.wght)
+  , wghts(other.wghts)
   , swght(other.swght)
   , origins(other.origins)
   , mskF(other.mskF)
@@ -292,6 +297,7 @@ ProcProj::ProcProj(const ProcProj & other)
   , allIn(other.allIn.size())
   , doGapsFill(other.doGapsFill)
 {
+  prdn("Check if wghts is same as other, not a copy.");
   if (doGapsFill)
     initCL();
 }
@@ -299,30 +305,59 @@ ProcProj::ProcProj(const ProcProj & other)
 
 
 void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool> & addMe) {
-  stitched=0.0;
-  int maxx = 0;
-  int maxy = 0;
-  int minx = ssh(1);
-  int miny = ssh(0);
-  for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
-    if ( addMe.size() != strl.nofIn || addMe[acur] ) {
-      Map & incur = allIn[acur];
-      if (strl.flip && acur >= strl.nofIn/2)
-        incur.reverseSelf(blitz::secondDim);
+  if ( addMe.size() && addMe.size() != strl.nofIn )
+    throw_error(modname, "Unexpected input array size " +toString(addMe.size())+
+                         " for " +toString(strl.nofIn)+ " frames stitch.");
+  if ( addMe.size() && std::all_of(addMe.begin(), addMe.end(), [](bool a){return !a;}) ) {
+    warn(modname, "Stitching no images.");
+    stitched=0.0;
+    return;
+  }
+
+  blitz::Range yRange(all);
+  blitz::Range xRange(all);
+  if (strl.nofIn == 1) {
+    stitched = allIn[0];
+    if (wghts.size())
+      stitched *= wghts[0];
+  } else if ( ! addMe.size() || std::all_of(addMe.begin(), addMe.end(), [](bool a){return a;}) ) {
+    stitched=0.0;
+    for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
+      const bool flipMe = strl.flip && acur >= strl.nofIn/2;
+      Map incur(allIn[acur]);
+      incur *= wghts[wghts.size()==1 ? 0 : acur];
       stitched( blitz::Range(origins[acur].y, origins[acur].y + psh(0)-1)
-                , blitz::Range(origins[acur].x, origins[acur].x + psh(1)-1) )
-          += wght * incur;
-      if (minx > origins[acur].x) minx = origins[acur].x;
-      if (miny > origins[acur].y) miny = origins[acur].y;
-      if (maxx < origins[acur].x+psh(1)) maxx = origins[acur].x+psh(1);
-      if (maxy < origins[acur].y+psh(0)) maxy = origins[acur].y+psh(0);
+              , blitz::Range(origins[acur].x, origins[acur].x + psh(1)-1))
+        +=  ! strl.flip || acur < strl.nofIn/2  // don't flipMe
+            ?   incur  :  incur.reverse(blitz::secondDim);
     }
+    stitched *= swght;
+  } else {
+    xRange.setRange(ssh(1),0);
+    yRange.setRange(ssh(0),0);
+    Map sswght(ssh);
+    sswght=0;
+    for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
+      const blitz::Range r0(origins[acur].y, origins[acur].y + psh(0)-1);
+      const blitz::Range r1(origins[acur].x, origins[acur].x + psh(1)-1);
+      if (addMe[acur]) {
+        const bool flipMe = strl.flip && acur >= strl.nofIn/2;
+        Map wght(wghts[wghts.size()==1 ? 0 : acur]);
+        Map incur(allIn[acur]);
+        incur *= wght;
+        stitched(r0, r1) += !flipMe ? incur : incur.reverse(blitz::secondDim);
+        sswght  (r0, r1) += !flipMe ? wght  : wght .reverse(blitz::secondDim);
+        xRange.setRange(min(xRange.first(), r1.first()), max(xRange.last(), r1.last()));
+        yRange.setRange(min(yRange.first(), r0.first()), max(yRange.last(), r0.last()));
+      }
+    }
+    invert(sswght(yRange, xRange));
+    stitched(yRange, xRange) *= sswght(yRange, xRange);
   }
-  stitched *= swght;
-  if ( ! interim_name.empty() && miny<maxy && minx<maxx ) {
-    Map toSave = stitched(blitz::Range(miny, maxy-1), blitz::Range(minx, maxx-1));
-    SaveDenan(interim_name, toSave);
-  }
+
+  if ( ! interim_name.empty() )
+    SaveDenan(interim_name, stitched(yRange, xRange));
+
 }
 
 

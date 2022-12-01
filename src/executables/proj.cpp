@@ -246,6 +246,7 @@ static const Denoiser & curDnz(const deque<Denoiser> & dnzs, uint cur) {
   else if (dnzs.size() > cur)
     return dnzs[cur];
   throw_error("select denoiser", "Empty or incomplete list of denoisers.");
+  return dnzs[0]; // just to get rid of warning
 }
 
 

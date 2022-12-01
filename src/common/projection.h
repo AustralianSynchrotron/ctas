@@ -56,7 +56,7 @@ class ProcProj {
   const StitchRules & strl;
   Shape psh;
   Shape ssh;
-  Map wght;
+  std::deque<Map> wghts;
   Map swght;
   std::deque<PointF2D> origins;
   Map mskF;

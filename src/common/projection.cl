@@ -1,10 +1,10 @@
 
 kernel void  gauss (
-  read_only            int  Xs,
-  read_only            int  Ys,
-             global float*  iom,
-  read_only  global float*  mask,
-  read_only          float  sig )
+  const int  Xs,
+  const int  Ys,
+  global float*  iom,
+  global const float*  mask,
+  const float  sig )
 {
   const int idx = get_global_id(0);
   const int idy = get_global_id(1);

@@ -48,7 +48,7 @@ void StitchRules::slot(int cur, int* cur1, int* cur2, int* curF) const {
     throw_error("stitch slot", "Current index " +toString(cur)+ " is beyond the range "
                                "[0.." +toString(nofIn-1)+ "].");
   int _curF = flip && cur >= nofIn/2;
-  cur /= _curF+1;
+  cur -= _curF * nofIn/2;
   if (curF) *curF = _curF;
   if (cur2) *cur2 = cur / origin1size;
   if (cur1) *cur1 = cur % origin1size;
@@ -93,6 +93,8 @@ void ProcProj::prepareMask(Map & _gaps, bool bepicky) {
 
   for ( int stp = 1 ; stp <= strl.edge ; stp++ ) {
     const float fill = step*stp;
+    //const float usq = stp * step - 1 ;
+    //const float fill = sqrt(1.0 - usq*usq);
 
     for (ArrIndex i = 0 ; i<ish(0) ; i++)
       for (ArrIndex j = 0 ; j<ish(1) ; j++)
@@ -197,7 +199,7 @@ ProcProj::ProcProj( const StitchRules & _st
 
     // prepare origins for each input image
     int maxx(0), maxy(0), minx(0), miny(0);
-    const int maxXshift = abs(strl.origin1.x * strl.origin1size) + abs(strl.origin2.x * strl.origin2size);
+    const int maxXshift = abs(strl.origin1.x * (strl.origin1size-1)) + abs(strl.origin2.x * (strl.origin2size-1));
     for (int curI = 0; curI < strl.nofIn ; curI++) {
       int cur1, cur2, curF;
       strl.slot(curI, &cur1, &cur2, &curF);
@@ -205,7 +207,7 @@ ProcProj::ProcProj( const StitchRules & _st
       curP.x = strl.origin1.x * cur1 + strl.origin2.x * cur2;
       curP.y = strl.origin1.y * cur1 + strl.origin2.y * cur2;
       if (curF) {
-        curP.x = strl.originF.y + maxXshift - curP.x;
+        curP.x = strl.originF.x + maxXshift - curP.x - 1;
         curP.y += strl.originF.y;
       }
       origins.push_back(curP);
@@ -220,15 +222,15 @@ ProcProj::ProcProj( const StitchRules & _st
       if (tily > maxy) maxy = tily;
     }
     for (int curI = 0; curI < strl.nofIn ; curI++)
-      origins[curI] -= PointF2D(miny, minx);
+      origins[curI] -= PointF2D(minx, miny);
     ssh = Shape(maxy-miny+1, maxx-minx+1);
 
     // prepare weights image
     Map wght(psh);
     for (ArrIndex ycur = 0 ; ycur < psh(0) ; ycur++ )
       for (ArrIndex xcur = 0 ; xcur < psh(1) ; xcur++ )
-        wght(ycur, xcur) = 1 + ( psh(0) - abs( 2*ycur - psh(0) + 1l ) )
-                             * ( psh(1) - abs( 2*xcur - psh(1) + 1l ) );
+        wght(ycur, xcur) =   ( psh(0) - abs( 2*ycur - psh(0) + 1l ) )
+                           * ( psh(1) - abs( 2*xcur - psh(1) + 1l ) );
 
     // process masks
     wghts.resize( msas.size() ? msas.size() : 1);
@@ -260,8 +262,7 @@ ProcProj::ProcProj( const StitchRules & _st
     // prepare final mask
     if (msas.size()) {
       mskF.resize(ssh);
-      mskF = swght;
-      invert(mskF);
+      mskF = invert(swght);
       prepareMask(mskF, false);
     }
 
@@ -337,21 +338,21 @@ void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool
     yRange.setRange(ssh(0),0);
     Map sswght(ssh);
     sswght=0;
+    stitched=0.0;
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
       const blitz::Range r0(origins[acur].y, origins[acur].y + psh(0)-1);
       const blitz::Range r1(origins[acur].x, origins[acur].x + psh(1)-1);
       if (addMe[acur]) {
         const bool flipMe = strl.flip && acur >= strl.nofIn/2;
         Map wght(wghts[wghts.size()==1 ? 0 : acur]);
-        Map incur(allIn[acur]);
-        incur *= wght;
+        Map incur(allIn[acur] * wght);
         stitched(r0, r1) += !flipMe ? incur : incur.reverse(blitz::secondDim);
         sswght  (r0, r1) += !flipMe ? wght  : wght .reverse(blitz::secondDim);
         xRange.setRange(min(xRange.first(), r1.first()), max(xRange.last(), r1.last()));
         yRange.setRange(min(yRange.first(), r0.first()), max(yRange.last(), r0.last()));
       }
     }
-    invert(sswght(yRange, xRange));
+    sswght(yRange, xRange) = invert(sswght(yRange, xRange));
     stitched(yRange, xRange) *= sswght(yRange, xRange);
   }
 
@@ -399,28 +400,28 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
       vector<bool> addMe(strl.nofIn, false);
       int cur1, cur2, curF;
       for (int fl=0 ; fl <= (int) strl.flip; fl++ ) {
-        const string sfF = strl.flip ? (curF ? "F" : "D") : "";
+        const string sfF = strl.flip ? (fl ? "F" : "D") : "";
         if (strl.origin1size>1)
-          for (int st = 0 ; st < strl.origin1size; st++) {
-            for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
-              strl.slot(curproj, &cur1, &cur2, &curF);
-              addMe[curproj]  =  cur1 == st  &&  curF == fl;
-            }
-            const string sf = toString(mask2format("@", strl.origin1size), st);
-            stitchSome(interim_name.dtitle() + "_U"+sfF+sf+".tif", addMe);
-          }
-        if (strl.origin2size>1)
           for (int st = 0 ; st < strl.origin2size; st++) {
             for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
               strl.slot(curproj, &cur1, &cur2, &curF);
               addMe[curproj]  =  cur2 == st  &&  curF == fl;
             }
             const string sf = toString(mask2format("@", strl.origin2size), st);
+            stitchSome(interim_name.dtitle() + "_U"+sfF+sf+".tif", addMe);
+          }
+        if (strl.origin2size>1)
+          for (int st = 0 ; st < strl.origin1size; st++) {
+            for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
+              strl.slot(curproj, &cur1, &cur2, &curF);
+              addMe[curproj]  =  cur1 == st  &&  curF == fl;
+            }
+            const string sf = toString(mask2format("@", strl.origin1size), st);
             stitchSome(interim_name.dtitle() + "_V"+sfF+sf+".tif", addMe);
           }
         if (strl.flip) {
           for ( int curproj = 0 ; curproj < strl.nofIn ; curproj++) {
-            strl.slot(curproj, &cur1, &cur2, &curF);
+            strl.slot(curproj, 0, 0, &curF);
             addMe[curproj]  =  curF == fl;
           }
           stitchSome(interim_name.dtitle() + "_W" + sfF + ".tif", addMe);
@@ -444,8 +445,6 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
     crop(stitched, final, strl.fcrp);
   else
     final.reference(stitched);
-  if (! interim_name.empty() && (doGapsFill || strl.fcrp) )
-    SaveDenan( interim_name.dtitle() + "_Y.tif", final);
 
   // splits
   if ( strl.splits.empty() ) {
@@ -453,6 +452,8 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
     res[0].resize(final.shape());
     res[0]=final;
   } else {
+    if (! interim_name.empty() && (doGapsFill || strl.fcrp) )
+      SaveDenan( interim_name.dtitle() + "_Y.tif", final);
     const string svformat = mask2format("_Z@", strl.splits.size() );
     int fLine=0, lLine=0;
     const int vsplit = strl.splits.at(0) ? 0 : 1;

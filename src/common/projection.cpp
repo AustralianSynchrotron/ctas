@@ -298,7 +298,6 @@ ProcProj::ProcProj(const ProcProj & other)
   , allIn(other.allIn.size())
   , doGapsFill(other.doGapsFill)
 {
-  prdn("Check if wghts is same as other, not a copy.");
   if (doGapsFill)
     initCL();
 }

@@ -324,7 +324,13 @@ void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool
     stitched=0.0;
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
       const bool flipMe = strl.flip && acur >= strl.nofIn/2;
-      Map incur(allIn[acur]);
+      Map incur;
+      if (interim_name.empty())
+        incur.reference(allIn[acur]);
+      else {
+        incur.resize(psh);
+        incur=allIn[acur];
+      }
       incur *= wghts[wghts.size()==1 ? 0 : acur];
       stitched( blitz::Range(origins[acur].y, origins[acur].y + psh(0)-1)
               , blitz::Range(origins[acur].x, origins[acur].x + psh(1)-1))

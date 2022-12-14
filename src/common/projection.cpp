@@ -71,7 +71,7 @@ const string ProcProj::modname="ProcProj";
 cl_program ProcProj::oclProgram = 0;
 
 
-void ProcProj::prepareMask(Map & _gaps, bool bepicky) {
+void ProcProj::prepareMask(Map & _gaps, bool bepicky, uint edge) {
   const float mm = min(_gaps);
   const float MM = max(_gaps);
   if (MM <= 0)
@@ -87,11 +87,11 @@ void ProcProj::prepareMask(Map & _gaps, bool bepicky) {
         _gaps(i,j)=1.0 ;
 
   const Shape ish = _gaps.shape();
-  const float step = 1.0 / (strl.edge +1);
+  const float step = 1.0 / (edge +1);
   Map tmp(_gaps.shape());
   tmp = _gaps;
 
-  for ( int stp = 1 ; stp <= strl.edge ; stp++ ) {
+  for ( int stp = 1 ; stp <= edge ; stp++ ) {
     const float fill = step*stp;
     //const float usq = stp * step - 1 ;
     //const float fill = sqrt(1.0 - usq*usq);
@@ -184,17 +184,26 @@ ProcProj::ProcProj( const StitchRules & _st
                         , msas.size() ? msas[0] : zmap );
   }
 
+  // prepare processed masks
+  wghts.resize(msas.size(), psh);
+  Map zmask(strl.ish), zpmask(psh);
+  for (int curI = 0; curI < msas.size() ; curI++) {
+    Map & wghtI = wghts[curI];
+    iproc.proc(msas[curI], wghtI);
+    zmask = msas[curI];
+    prepareMask(zmask, false, 0);
+    iproc.proc(zmask, zpmask);
+    prepareMask(zpmask, true, strl.edge);
+    wghtI *= zpmask;
+    if (saveMasks.length())
+      SaveDenan(saveMasks.dtitle() + "_I" +
+                (msas.size()>1 ? toString(curI) : string()) + ".tif", wghtI);
+  }
 
   if (strl.nofIn == 1) { // no stitching
-
     ssh = psh;
-    if (msas.size()) {
-      Map & wght = wghts.emplace_back(psh);
-      iproc.proc(msas[0], wght);
-      prepareMask(wght, true);
-      mskF.reference(wght);
-    }
-
+    if (msas.size())
+      mskF.reference(wghts[0]);
   } else {
 
     // prepare origins for each input image
@@ -233,19 +242,11 @@ ProcProj::ProcProj( const StitchRules & _st
                            * ( psh(1) - abs( 2*xcur - psh(1) + 1l ) );
 
     // process masks
-    wghts.resize( msas.size() ? msas.size() : 1);
-    if (!msas.size()) {
-      wghts[0].reference(wght);
-    } else {
-      for (int curI = 0; curI < msas.size() ; curI++) {
-        Map & wghtI = wghts[curI];
-        iproc.proc(msas[curI], wghtI);
-        prepareMask(wghtI, true);
-        if (saveMasks.length())
-          SaveDenan(saveMasks.dtitle() + "_I" + (msas.size()>1 ? toString(curI) : string()) + ".tif", wghtI);
-        wghtI *= wght;
-      }
-    }
+    if (!msas.size())
+      wghts.emplace_back(wght);
+    else
+      for (int curI = 0; curI < msas.size() ; curI++)
+        wghts[curI] *= wght;
 
     // prepare sum of weights image
     swght.resize(ssh);
@@ -263,14 +264,16 @@ ProcProj::ProcProj( const StitchRules & _st
     if (msas.size()) {
       mskF.resize(ssh);
       mskF = invert(swght);
-      prepareMask(mskF, false);
     }
 
   }
 
   // save final mask
-  if (msas.size() && saveMasks.length())
+  if (msas.size()) {
+    prepareMask(mskF, false,0);
+    if (saveMasks.length())
       SaveDenan(saveMasks.dtitle() + ".tif", mskF);
+  }
 
   // prepare final
   if (strl.fcrp)
@@ -313,14 +316,14 @@ void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool
     stitched=0.0;
     return;
   }
+  if (strl.nofIn == 1) {
+    warn(modname, "Single input: nothing to stitch.");
+    return;
+  }
 
   blitz::Range yRange(all);
   blitz::Range xRange(all);
-  if (strl.nofIn == 1) {
-    stitched = allIn[0];
-    if (wghts.size())
-      stitched *= wghts[0];
-  } else if ( ! addMe.size() || std::all_of(addMe.begin(), addMe.end(), [](bool a){return a;}) ) {
+  if ( ! addMe.size() || std::all_of(addMe.begin(), addMe.end(), [](bool a){return a;}) ) {
     stitched=0.0;
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
       const bool flipMe = strl.flip && acur >= strl.nofIn/2;
@@ -399,6 +402,8 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
   // stitching if needed
   if (strl.nofIn == 1) { // no stitching
     stitched.reference(allIn[0]);
+    if (mskF.size())
+      stitched *= mskF;
   } else {
     stitched.resize(ssh);
     if ( ! interim_name.empty() ) {
@@ -492,19 +497,26 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
 
 
 
-Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask)
+Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, Map & _mask)
   : sh(_sh)
-  , tarr(sh)
-  , swghts(sh)
-  , mask(_mask)
   , rad(abs(_rad))
   , thr(_threshold)
 {
-  if (!area(sh))
-    warn("denoiser", "empty input shape.");
+  if ( !area(sh) || !rad )
+    return;
+  if ( _mask.size() && _mask.shape() != sh)
+    throw_error("denoiser", "Mask shape ("+toString(_mask.shape())+") does not match"
+                            " that of the denoiser("+toString(sh)+").");
 
+  tarr.resize(sh);
+  swghts.resize(sh);
   swghts = 0.0;
-  static const uint rad2 = rad*rad;
+  if (_mask.size()) {
+    mask.resize(_mask.shape());
+    mask = _mask;
+  }
+  int cntr = 0;
+  const uint rad2 = rad*rad;
   for (int ii = -rad ; ii <= rad ; ii++) {
     const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     const blitz::Range resR0( max(0,  ii), sh(0) - 1 + min(0,  ii) );
@@ -516,15 +528,18 @@ Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _m
           swghts(resR0, resR1) += mask (srcR0, srcR1);
         else
           swghts(resR0, resR1) += 1.0;
+        cntr++;
       }
     }
   }
+  if (_mask.size())
+    _mask = swghts/cntr;
   swghts = invert(swghts);
 }
 
 
 void Denoiser::proc(Map & iom) const {
-  if ( !area(sh) || rad == 0)
+  if ( !area(sh) || !rad )
     return;
   if ( iom.shape() != sh )
     throw_error("denoiser", "Non matching shape of input array.");
@@ -548,8 +563,6 @@ void Denoiser::proc(Map & iom) const {
     }
   }
   tarr *= swghts;
-  SaveImage("testTA.tif", tarr);
-  SaveImage("testWG.tif", swghts);
 
   Map dv(sh);
   if (thr == 0.0) {
@@ -562,51 +575,10 @@ void Denoiser::proc(Map & iom) const {
     dv = abs( (iom-tarr) * dv ) + thr;
   }
   SaveImage("testDV.tif", dv);
-  Map ttt(sh);
-  ttt = blitz::where(dv <= 0.0, iom, tarr);
-  SaveImage("testTT.tif", dv);
-
-
-
-  /*
-  static const uint rad2 = rad*rad;
-  tarr = iom;
-  for (ArrIndex icur=0; icur<sh(0); icur++) {
-    const uint iiF = max(0l, icur-rad), iiT = min(sh(0), icur+rad+1);
-    for (ArrIndex jcur=0; jcur<sh(1); jcur++) {
-      const uint jjF = max(0l, jcur-rad), jjT = min(sh(1), jcur+rad+1);
-
-      uint cnt = 0;
-      float sum = 0.0;
-      for (ArrIndex ii = iiF ; ii < iiT ; ii++) {
-        uint ii2 = ii-icur;
-        ii2 *= ii2;
-        for (ArrIndex jj = jjF ; jj < jjT ; jj++) {
-          uint jj2 = jj-jcur;
-          jj2 *= jj2;
-          uint rr2 = ii2 + jj2;
-          if ( rr2 <= rad2  &&  rr2  &&  ( ! mask.size() || mask(ii,jj) != 0.0 ) ) {
-            sum += tarr(ii, jj);
-            cnt++;
-          }
-        }
-      }
-
-      if (cnt) {
-        if (thr == 0.0) // averaging
-          iom(icur,jcur) = (sum + tarr(icur,jcur)) / (cnt + 1);
-        else {
-          sum /= cnt;
-          const float dv =  sum - tarr(icur,jcur);
-          if (    ( thr > 0.0  &&  thr < abs(dv) )
-               || ( thr < 0.0  &&  (sum == 0.0 || -thr < abs(dv/sum)) ) )
-            iom(icur,jcur) = sum;
-        }
-      }
-
-    }
-  }
-  */
+  SaveImage("testIM.tif", iom);
+  SaveImage("testTR.tif", tarr);
+  iom = blitz::where(dv <= 0.0, iom, tarr);
+  SaveImage("testOM.tif", iom);
 
 }
 

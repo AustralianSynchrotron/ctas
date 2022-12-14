@@ -3,12 +3,12 @@
 
 
 kernel void fbp (
-    read_only  global float*  sino,
-    write_only global float*  slice,
+    global const float*       sino,
+    global float*             slice,
     int                       pixels,
     int                       thetas,
     float                     center,
-    read_only  global float2* cossins)
+    global const float2*      cossins)
 {
   const int i = get_global_id(0);
   const int j = get_global_id(1);

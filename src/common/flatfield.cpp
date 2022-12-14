@@ -79,31 +79,27 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
                             , const Map & _dg, const Map & _ms)
   : sh( shapeMe( {_bg.shape(), _df.shape(), _dg.shape(), _ms.shape()} ) )
   , df(_df)
-  , ms(_ms)
-  , bga_R(_bg.shape())
-  , bga(bga_R)
+  , bga(_bg.shape())
 {
   if (!area(sh))
     return;
   if (!_bg.size()) {
-    bga_R = 1.0;
+    bga = 1.0;
     return;
   }
 
-  bga_R = _bg;
+  bga = _bg;
   if (_dg.size())
-    bga_R -= _dg;
+    bga -= _dg;
   else if (_df.size())
-    bga_R -= _df;
+    bga -= _df;
 
   for (ArrIndex ycur = 0 ; ycur < sh(0) ; ycur++ )
     for (ArrIndex xcur = 0 ; xcur < sh(1) ; xcur++ ) {
-        float & val = bga_R(ycur,xcur);
-        if (ms.size() && ms(ycur,xcur)==0.0)
+        float & val = bga(ycur,xcur);
+        if (_ms.size() && _ms(ycur,xcur)==0.0)
           val = 0.0;
-        else if (val==0.0)
-          val = 0.0;
-        else
+        else if (val!=0.0)
           val = 1.0/val;
       }
 }
@@ -112,7 +108,6 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
 FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
   : sh(other.sh)
   , df(other.df)
-  , ms(other.ms)
   , bga(other.bga)
 {
   if (!area(sh))

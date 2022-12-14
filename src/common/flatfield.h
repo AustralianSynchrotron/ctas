@@ -52,12 +52,9 @@ private:
   const CLmem bg;
   const CLmem df;
   const CLmem dg;
-  const CLmem ms;
   #else // ONGPU
   const Map & df;
-  const Map & ms;
-  const Map & bga;
-  Map bga_R;
+  Map bga;
   #endif // ONGPU
 public:
   FlatFieldProc( const Map & _bg, const Map & _df

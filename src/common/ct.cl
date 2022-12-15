@@ -14,15 +14,24 @@ kernel void fbp (
   const int j = get_global_id(1);
   const int idx = i + j*pixels;
   const int hp = pixels / 2 ;
-  if (  (i-hp)*(i-hp) + (j-hp)*(j-hp) >= hp * hp - 1 ) {
+  const float acent = fabs(center);
+  int ip2 = i-hp;
+  ip2 *= ip2;
+  float ijp2 = j-hp-center;
+  ijp2 *= ijp2;
+  ijp2 += ip2;
+  if (  ( i <= acent  ||  i >= pixels-acent-1 )
+     || ( j <= hp+center  &&  ijp2 >= (hp+center) * (hp+center) )
+     || ( j >= hp+center  &&  ijp2 >= (hp-center) * (hp-center) ) )
+  {
     slice[idx]=0;
     return;
   }
   float total = 0.0f;
   for (size_t proj = 0; proj < thetas; proj++)  {
     const float2 cossin = cossins[proj];
-    int offsetI = center + (1-cossin.x-cossin.y) * hp
-                    + cossin.x * j + cossin.y * i;
+    int offsetI =   center + (1-cossin.x-cossin.y) * hp
+                  + cossin.x * (j-center) + cossin.y * i;
     total += sino[ offsetI + proj * pixels ];
   }
   slice[idx] = total;

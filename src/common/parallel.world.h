@@ -79,7 +79,6 @@ public:
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.h>
 
-bool clIsInited();
 cl_device_id CL_device();
 cl_context CL_context();
 cl_command_queue CL_queue();

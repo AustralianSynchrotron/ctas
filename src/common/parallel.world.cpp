@@ -175,6 +175,8 @@ cl_device_id _CL_device = 0;
 cl_context _CL_context = 0;
 cl_command_queue _CL_queue = 0;
 
+
+static bool clIsInited();
 cl_device_id CL_device() { return clIsInited() ? _CL_device : 0; }
 cl_context CL_context() { return clIsInited() ? _CL_context : 0; }
 cl_command_queue CL_queue() { return clIsInited() ? _CL_queue : 0; }

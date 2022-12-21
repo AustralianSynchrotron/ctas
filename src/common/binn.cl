@@ -1,8 +1,8 @@
 
 
 kernel void  binn2(
-  read_only global float*  in,
-  write_only global float* out,
+  global const float*      in,
+  global float*            out,
   int                      bx,
   int                      by,
   int                      iszx,
@@ -21,15 +21,15 @@ kernel void  binn2(
 
 
 kernel void  binn3(
-  read_only global float*  in,
-  write_only global float* out,
-  int                      bx,
-  int                      by,
-  int                      bz,
-  int                      iszx,
-  int                      iszy,
-  int                      oszx,
-  int                      oszy)
+  global const float*  in,
+  global float*        out,
+  int                  bx,
+  int                  by,
+  int                  bz,
+  int                  iszx,
+  int                  iszy,
+  int                  oszx,
+  int                  oszy)
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
@@ -49,7 +49,7 @@ kernel void  binn3(
 
 
 kernel void  addToSecond(
-  read_only global float*          in,
+  global const float*    in,
   global float*          inout)
 {
   const int idx = get_global_id(0);

@@ -339,6 +339,17 @@ int main(int argc, char *argv[]) {
   rdAux(ms);
   #undef rdAux
 
+  // normalize masks
+  for (int curm=0 ; curm<msas.size() ; curm++) {
+    Map & msk = msas[curm];
+    const float vmin = min(msk);
+    const float delta = max(msk) - vmin;
+    if (delta==0.0)
+      msk = 1.0;
+    else
+      msk = (msk-vmin)/delta;
+  }
+
   // Construct masks from bgs and df/gs if not provided but required by other parameters.
   if ( ! msas.size()  &&  (args.st.edge || args.st.sigma > 0.0) ) {
     deque<Map> & bgdf = dgas.size() ? dgas : dfas;

@@ -2,10 +2,10 @@
 
 kernel void  formframe (
              global float*  out,
-  read_only  global float*  im0,
-  read_only  global float*  im1,
-  read_only  global float*  gaps0,
-  read_only  global float*  gaps1)
+  global const float*  im0,
+  global const float*  im1,
+  global const float*  gaps0,
+  global const float*  gaps1)
 {
   const int idi = get_global_id(0);
   if ( gaps0[idi] == 0.0 && gaps1[idi] == 0.0 )
@@ -24,12 +24,12 @@ __constant const float sig = 0.45;
 __constant const float gdiv = 2*sig*sig;
 
 kernel void  eqnoise (
-  read_only            int  Xs,
-  read_only            int  Ys,
-  read_only  global float*  iim,
+         const    int  Xs,
+         const    int  Ys,
+  global const float*  iim,
              global float*  oim,
-  read_only  global float*  gaps0,
-  read_only  global float*  gaps1)
+  global const float*  gaps0,
+  global const float*  gaps1)
 {
   int idx = get_global_id(0);
   int idy = get_global_id(1);
@@ -93,9 +93,9 @@ kernel void  eqnoise (
 
 
 kernel void  gapfill (
-  read_only            int  Xs,
-  read_only            int  Ys,
-             global float*  oim)
+  const int  Xs,
+  const int  Ys,
+  global float*  oim)
 {
   const int idx = get_global_id(0);
   const int idy = get_global_id(1);

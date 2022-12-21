@@ -521,7 +521,7 @@ Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, Map & _mask)
     const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     const blitz::Range resR0( max(0,  ii), sh(0) - 1 + min(0,  ii) );
     for (int jj = -rad ; jj <= rad ; jj++) {
-      if ( ii*ii + jj*jj <= rad2  &&  ( ii || jj || thr != 0.0 ) ) {
+      if ( ii*ii + jj*jj <= rad2 ) {
         const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
         const blitz::Range resR1( max(0,  jj), sh(1) - 1 + min(0,  jj) );
         if (mask.size())
@@ -548,37 +548,40 @@ void Denoiser::proc(Map & iom) const {
 
   static const uint rad2 = rad*rad;
   tarr=0.0;
+  if (mask.size())
+    iom *= mask;
   for (int ii = -rad ; ii <= rad ; ii++) {
     const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     const blitz::Range resR0( max(0,  ii), sh(0) - 1 + min(0,  ii) );
     for (int jj = -rad ; jj <= rad ; jj++) {
-      if ( ii*ii + jj*jj <= rad2  &&  ( ii || jj || thr != 0.0 ) ) {
+      if ( ii*ii + jj*jj <= rad2 ) {
         const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
         const blitz::Range resR1( max(0,  jj), sh(1) - 1 + min(0,  jj) );
-        if (mask.size())
-          tarr(resR0, resR1) += iom(srcR0, srcR1) * mask (srcR0, srcR1);
-        else
           tarr(resR0, resR1) += iom(srcR0, srcR1);
       }
     }
   }
   tarr *= swghts;
 
-  Map dv(sh);
   if (thr == 0.0) {
     iom = tarr;
-    return;
-  } else if (thr > 0.0) {
-    dv = abs(iom-tarr) - thr;
+  } else if (thr<0) {
+    for (ArrIndex ycur = 0 ; ycur < sh(0) ; ycur++ )
+      for (ArrIndex xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+        float & tval = tarr(ycur,xcur);
+        float & ival = iom(ycur,xcur);
+        if (ival == 0.0 || ( tval != 0.0  &&  abs((ival-tval)/tval) > -thr) )
+          ival = tval;
+      }
   } else {
-    dv = invert(tarr);
-    dv = abs( (iom-tarr) * dv ) + thr;
+    for (ArrIndex ycur = 0 ; ycur < sh(0) ; ycur++ )
+      for (ArrIndex xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+        float & tval = tarr(ycur,xcur);
+        float & ival = iom(ycur,xcur);
+        if (ival == 0.0 ||  abs(ival-tval) > thr)
+          ival = tval;
+      }
   }
-  SaveImage("testDV.tif", dv);
-  SaveImage("testIM.tif", iom);
-  SaveImage("testTR.tif", tarr);
-  iom = blitz::where(dv <= 0.0, iom, tarr);
-  SaveImage("testOM.tif", iom);
 
 }
 

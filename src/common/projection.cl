@@ -8,7 +8,7 @@ kernel void  gauss (
   const int idx = get_global_id(0);
   const int idy = get_global_id(1);
   const int idi = idx + idy * Xs;
-  if (mask[idi] != 0.0 || sig <= 0.0)
+  if (mask[idi] != 0.0)
     return;
 
   // find nearest unmasked

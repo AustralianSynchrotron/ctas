@@ -24,8 +24,8 @@ kernel void  gauss (
       const int dx = floor( sqrt((float)(cr2-dy*dy)) );
       const int cshft = idyy * Xs + idx;
       if  ( ( idx-dx >= 0   &&  mask[cshft-dx] != 0.0 )
-         || ( idx+dx < Xs  &&  mask[cshft+dx] != 0.0 ) ) {
-        crad *= -1; // indicator
+         || ( idx+dx < Xs  &&  mask[cshft+dx] != 0.0 ) ) { // found
+        crad *= -1; // negative indicator set
         break;
       }
     }
@@ -47,11 +47,11 @@ kernel void  gauss (
     const int dy2 = dy*dy;
     const int xrad = floor(sqrt(2*sig22-dy2));
     for (int dx = -xrad ; dx <= xrad ; dx++) {
-      int idxx = idx+dx;
-      int idii = idiy + idxx;
+      const int idxx = idx+dx;
+      const int idii = idiy + idxx;
       if (idxx<0 || idxx>=Xs || mask[idii]==0.0)
         continue;
-      float wght = exp(-(dx*dx + dy2)/sig22);
+      const float wght = exp(-(dx*dx + dy2)/sig22);
       mass += wght;
       gsumd += wght*iom[idii];
     }

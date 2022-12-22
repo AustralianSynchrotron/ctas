@@ -25,7 +25,6 @@ struct StitchRules {
   bool flip;               ///< indicates if originF was given in options.
   std::deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
-  float sigma;             ///< sigma used in gaussian gap closure.
 
   StitchRules()
   : nofIn(0)
@@ -34,7 +33,6 @@ struct StitchRules {
   , origin2size(1)
   , flip(false)
   , edge(0)
-  , sigma(0)
   {}
 
   void slot(int cur, int* cur1, int* cur2, int* curF) const;

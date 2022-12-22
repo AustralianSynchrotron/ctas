@@ -148,9 +148,6 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of edge transition.",
          "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
          " to produce seamless image stitching." )
-    .add(poptmx::OPTION, &st.sigma, 0, "sigma", "Sigma used in gaussian gap closure.",
-         "The gaps left by the mask superimpositions can be closed with the gaussian blur with the given sigma."
-         "If no mask is provided, the closure will be applied to pixels with values <= 0 or NAN." )
 
     .add(poptmx::OPTION, &phs.dist, 'z', "dist", "Object to detector distance (mm).",
          "Needed only for the inline phase contrast processing." )
@@ -224,9 +221,9 @@ clargs(int argc, char *argv[])
 
   if (dgs.size() && ! bgs.size())
     exit_on_error(command, "No background images (" + table.desc(&bgs) + ") for provided darkgrounds (" + table.desc(&dgs) + ").");
-  if ( ! mss.size()  &&  ! bgs.size()  &&  (st.edge || st.sigma > 0.0) )
+  if ( ! mss.size()  &&  ! bgs.size()  &&  st.edge )
     throw_error(command, "No background (" + table.desc(&bgs) + ") or mask (" + table.desc(&mss) + ") images provided while"
-                         " mask operation (" + table.desc(&st.edge) + " and/or " + table.desc(&st.sigma) + ") is requested.");
+                         " mask operation (" + table.desc(&st.edge) + ") is requested.");
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
@@ -541,7 +538,7 @@ int main(int argc, char *argv[]) {
   #undef rdAux
 
   // Construct masks from bgs and df/gs if not provided but required by other parameters.
-  if ( ! msas.size()  &&  (args.st.edge || args.st.sigma > 0.0) ) {
+  if ( ! msas.size()  &&  args.st.edge ) {
     deque<Map> & bgdf = dgas.size() ? dgas : dfas;
     const int mssz = max(bgas.size(), bgdf.size());
     msas.resize(mssz);

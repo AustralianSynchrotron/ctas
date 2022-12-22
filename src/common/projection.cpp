@@ -133,8 +133,6 @@ void ProcProj::initCL() {
   gaussCL.setArg(1, int(mskF.shape()(0)));
   gaussCL.setArg(2, iomCL());
   gaussCL.setArg(3, maskCL());
-  gaussCL.setArg(4, float(strl.sigma) );
-
 }
 
 
@@ -279,7 +277,7 @@ ProcProj::ProcProj( const StitchRules & _st
   if (strl.fcrp)
     final.resize(crop(ssh, strl.fcrp));
 
-  doGapsFill = strl.sigma > 0.0  &&  any(mskF==0.0);
+  doGapsFill = any(mskF==0.0);
   initCL();
 
 }

@@ -577,9 +577,12 @@ _conversion (Crop* _val, const string & in) {
 void
 crop(const Map & inarr, Map & outarr, const Crop & crp) {
 
-  if ( ! crp.left && ! crp.right && ! crp.top && ! crp.bottom ) {
-    outarr.reference(inarr);
-    return;
+  if (!crp) {
+    if (!outarr.size()) {
+      outarr.reference(inarr);
+      return;
+    } else if (areSame(inarr, outarr))
+      return;
   }
   if (  crp.left + crp.right >= inarr.shape()(1)  ||
         crp.top + crp.bottom >= inarr.shape()(0) ) {
@@ -598,7 +601,7 @@ crop(const Map & inarr, Map & outarr, const Crop & crp) {
 
 void
 crop(Map & io_arr, const Crop & crp) {
-  if ( ! crp.left && ! crp.right && ! crp.top && ! crp.bottom )
+  if (!crp)
     return;
   if (  crp.left + crp.right >= io_arr.shape()(1)  ||
         crp.top + crp.bottom >= io_arr.shape()(0) ) {

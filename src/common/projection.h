@@ -71,7 +71,7 @@ class ProcProj {
 
   void stitchSome( const ImagePath & interim_name = ImagePath()
                  , const std::vector<bool> & addMe = std::vector<bool>());
-  static void prepareMask(Map & _gaps, bool bepicky, uint edge);
+  static void prepareMask(Map & _gaps, bool bepicky, uint edge=0);
   void initCL();
 
 public:
@@ -106,7 +106,7 @@ private:
 
 public:
 
-  Denoiser(const Shape & _sh, int _rad, float _threshold, Map & _mask);
+  Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask);
   Denoiser(const Shape & _sh, int _rad, float _threshold)
     : Denoiser(_sh, _rad, _threshold, mask) {}
 

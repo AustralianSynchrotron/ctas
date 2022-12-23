@@ -404,8 +404,6 @@ int main(int argc, char *argv[]) {
     exit_on_error(args.command, "Requested test is beyond number of projections.");
 
   // Process one slice
-  //Map zmap(ish);
-  //zmap=0.0;
   deque<Map> allOut, allIn;
   for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
     allIn.emplace_back(ish);

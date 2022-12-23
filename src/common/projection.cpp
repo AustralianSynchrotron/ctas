@@ -189,7 +189,7 @@ ProcProj::ProcProj( const StitchRules & _st
     Map & wghtI = wghts[curI];
     iproc.proc(msas[curI], wghtI);
     zmask = msas[curI];
-    prepareMask(zmask, false, 0);
+    prepareMask(zmask, false);
     iproc.proc(zmask, zpmask);
     prepareMask(zpmask, true, strl.edge);
     wghtI *= zpmask;
@@ -239,43 +239,80 @@ ProcProj::ProcProj( const StitchRules & _st
         wght(ycur, xcur) =   ( psh(0) - abs( 2*ycur - psh(0) + 1l ) )
                            * ( psh(1) - abs( 2*xcur - psh(1) + 1l ) );
 
-    // process masks
-    if (!msas.size())
-      wghts.emplace_back(wght);
-    else
-      for (int curI = 0; curI < msas.size() ; curI++)
-        wghts[curI] *= wght;
-
-    // prepare sum of weights image
+    // prepare sum of weights and of masks images
     swght.resize(ssh);
     swght=0.0;
+    if (msas.size()) {
+      mskF.resize(ssh);
+      mskF=0.0;
+    }
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
-      Map wghtI(wghts[ wghts.size()==1 ? 0 : acur ]);
-      swght( blitz::Range(origins[acur].y, origins[acur].y + psh(0)-1)
-           , blitz::Range(origins[acur].x, origins[acur].x + psh(1)-1))
-        +=  ! strl.flip || acur < strl.nofIn/2
-            ?   wghtI  :  wghtI.reverse(blitz::secondDim);
+      const blitz::Range r0(origins[acur].y, origins[acur].y + psh(0)-1)
+                       , r1(origins[acur].x, origins[acur].x + psh(1)-1);
+      const bool flipMe = strl.flip && acur >= strl.nofIn/2;
+      if (msas.size()) {
+        Map wghtI(wghts[ wghts.size()==1 ? 0 : acur ]);
+        Map wghtIF( ! strl.flip || acur < strl.nofIn/2
+                    ?  wghtI :  wghtI.reverse(blitz::secondDim) );
+        mskF(r0, r1) += wghtIF;
+        swght(r0, r1) += wghtIF * wght;
+      } else
+        swght(r0, r1) += wght;
     }
     swght = invert(swght);
 
-    // prepare final mask
-    if (msas.size()) {
-      mskF.resize(ssh);
-      mskF = invert(swght);
+    // prepare weights masks
+    if (!msas.size())
+      wghts.emplace_back(wght);
+    else {
+      for (int curI = 0; curI < wghts.size() ; curI++)
+        wghts[curI] *= wght;
+      if (saveMasks.length())
+        SaveDenan(saveMasks.dtitle() + "_X.tif", mskF);
     }
 
-  }
-
-  // save final mask
-  if (msas.size()) {
-    prepareMask(mskF, false,0);
-    if (saveMasks.length())
-      SaveDenan(saveMasks.dtitle() + ".tif", mskF);
   }
 
   // prepare final
   if (strl.fcrp)
     final.resize(crop(ssh, strl.fcrp));
+
+  // save final mask
+  if (msas.size()) {
+    prepareMask(mskF, false);
+    if (saveMasks.length()) {
+      Map mskSV;
+      if (strl.fcrp) {
+        mskSV.reference(final);
+        crop(mskF, mskSV, strl.fcrp);
+      } else {
+        mskSV.reference(mskF);
+      }
+      if (strl.splits.empty())
+        SaveDenan(saveMasks.dtitle() + ".tif", mskF);
+      else {
+        if (doGapsFill || strl.fcrp)
+          SaveDenan(saveMasks.dtitle() + "_Y.tif", mskF);
+        const string svformat = mask2format("_Z@", strl.splits.size() );
+        int fLine=0, lLine=0;
+        const int vsplit = strl.splits.at(0) ? 0 : 1;
+        const int mLine = final.shape()(vsplit);
+        for (int curS = vsplit ;  curS<=strl.splits.size()  ;  curS++) {
+          int curI = curS - vsplit;
+          lLine = ( curS == strl.splits.size()  ||  mLine < strl.splits.at(curS) )
+                  ?  mLine :  strl.splits.at(curS) ;
+          lLine--;
+          if ( lLine > fLine ) {
+            Map resp = vsplit
+                       ? mskSV( all, blitz::Range(fLine, lLine) )
+                       : mskSV( blitz::Range(fLine, lLine), all ) ;
+            SaveDenan( saveMasks.dtitle() + toString(svformat, curI) + ".tif", resp );
+          }
+          fLine=lLine+1;
+        }
+      }
+    }
+  }
 
   doGapsFill = any(mskF==0.0);
   initCL();
@@ -495,24 +532,22 @@ bool ProcProj::process(deque<Map> & allInR, deque<Map> & res, const ImagePath & 
 
 
 
-Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, Map & _mask)
+Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask)
   : sh(_sh)
   , rad(abs(_rad))
   , thr(_threshold)
+  , mask(_mask)
 {
   if ( !area(sh) || !rad )
     return;
-  if ( _mask.size() && _mask.shape() != sh)
+  const auto mssz=_mask.size();
+  if ( mssz && _mask.shape() != sh)
     throw_error("denoiser", "Mask shape ("+toString(_mask.shape())+") does not match"
                             " that of the denoiser("+toString(sh)+").");
 
   tarr.resize(sh);
   swghts.resize(sh);
   swghts = 0.0;
-  if (_mask.size()) {
-    mask.resize(_mask.shape());
-    mask = _mask;
-  }
   int cntr = 0;
   const uint rad2 = rad*rad;
   for (int ii = -rad ; ii <= rad ; ii++) {
@@ -522,7 +557,7 @@ Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, Map & _mask)
       if ( ii*ii + jj*jj <= rad2 ) {
         const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
         const blitz::Range resR1( max(0,  jj), sh(1) - 1 + min(0,  jj) );
-        if (mask.size())
+        if (mssz)
           swghts(resR0, resR1) += mask (srcR0, srcR1);
         else
           swghts(resR0, resR1) += 1.0;
@@ -530,8 +565,8 @@ Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, Map & _mask)
       }
     }
   }
-  if (_mask.size())
-    _mask = swghts/cntr;
+  //if ( mssz  &&  _mask.shape() == pmask.shape() )
+  //  pmask = swghts/cntr;
   swghts = invert(swghts);
 }
 

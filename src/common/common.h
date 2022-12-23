@@ -354,6 +354,7 @@ typedef blitz::Array<float,1> Line;
 /// Two dimensional array of the ::float elements.
 /// Used for sinograms, input and output images etc.
 typedef blitz::Array<float,2> Map;
+static const Map defaultMap;
 
 /// \brief 3D Array with data.
 ///

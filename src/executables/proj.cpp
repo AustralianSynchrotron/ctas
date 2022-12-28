@@ -253,7 +253,7 @@ class ProjInThread : public InThread {
   deque<SaveVolumeBySlice> & allOutSv;
   const deque<Denoiser> & dnsr;
   const ProcProj & proc;
-  const vector<int> & projes;
+  const deque<int> & projes;
 
   unordered_map<pthread_t, deque<Denoiser> > dnsrs;
   unordered_map<pthread_t, ProcProj> procs;
@@ -300,7 +300,7 @@ public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
               , const deque<Denoiser> & _dnsr, const ProcProj & _proc
-              , const vector<int> & _projes, bool verbose=false)
+              , const deque<int> & _projes, bool verbose=false)
     : InThread(verbose, "processing projections", _projes.size())
     , dnsr(_dnsr)
     , proc(_proc)
@@ -395,7 +395,7 @@ int main(int argc, char *argv[]) {
       exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
   }
   const int nofProj = allInRd.at(0).slices();
-  const vector<int> projes = slice_str2vec(args.out_range, nofProj);
+  const deque<int> projes = slice_str2vec(args.out_range, nofProj);
   const int nofOuts = projes.size();
   if (!nofOuts)
     exit_on_error(args.command, "Given range \"" + args.out_range + "\""

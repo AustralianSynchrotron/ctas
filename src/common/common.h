@@ -1119,7 +1119,7 @@ extern const std::string DimSliceOptionDesc;
 /// @return The vector consisting of the numbers of slices to be processed.
 ///         The vector is sorted and duplicates are removed.
 ///
-std::vector<int> COMMON_API
+std::deque<int> COMMON_API
 slice_str2vec(const std::string & sliceS, int hight);
 
 

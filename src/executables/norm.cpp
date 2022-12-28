@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
   Map arr;
   ReadImage( args.in_name, arr );
   const Shape sh = arr.shape();
-  vector<int> columns = slice_str2vec( args.columndesc, sh(1) );
+  deque<int> columns = slice_str2vec( args.columndesc, sh(1) );
 
   Line norm(sh(0));
   for (ArrIndex rcur=0; rcur<sh(0); rcur++) {

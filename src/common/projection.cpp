@@ -166,20 +166,19 @@ ProcProj::ProcProj( const StitchRules & _st
   chkAuxImgs(msas, "mask");
   #undef chkAuxImgs
 
-  const Map zmap;
   if (bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1) {
     for (int curI = 0; curI < strl.nofIn ; curI++) {
-      const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : zmap;
-      const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : zmap;
-      const Map & dgpl = dgas.size() ?  dgas[ dgas.size() == 1 ? 0 : curI ] : zmap;
-      const Map & mspl = msas.size() ?  msas[ msas.size() == 1 ? 0 : curI ] : zmap;
+      const Map & bgpl = bgas.size() ?  bgas[ bgas.size() == 1 ? 0 : curI ] : defaultMap;
+      const Map & dfpl = dfas.size() ?  dfas[ dfas.size() == 1 ? 0 : curI ] : defaultMap;
+      const Map & dgpl = dgas.size() ?  dgas[ dgas.size() == 1 ? 0 : curI ] : defaultMap;
+      const Map & mspl = msas.size() ?  msas[ msas.size() == 1 ? 0 : curI ] : defaultMap;
       ffprocs.emplace_back(bgpl, dfpl, dgpl, mspl);
     }
   } else {
-    ffprocs.emplace_back( bgas.size() ? bgas[0] : zmap
-                        , dfas.size() ? dfas[0] : zmap
-                        , dgas.size() ? dgas[0] : zmap
-                        , msas.size() ? msas[0] : zmap );
+    ffprocs.emplace_back( bgas.size() ? bgas[0] : defaultMap
+                        , dfas.size() ? dfas[0] : defaultMap
+                        , dgas.size() ? dgas[0] : defaultMap
+                        , msas.size() ? msas[0] : defaultMap );
   }
 
   // prepare processed masks
@@ -276,7 +275,6 @@ ProcProj::ProcProj( const StitchRules & _st
   // prepare final
   if (strl.fcrp)
     final.resize(crop(ssh, strl.fcrp));
-
   // save final mask
   if (msas.size()) {
     prepareMask(mskF, false);

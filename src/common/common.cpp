@@ -1327,12 +1327,12 @@ static inline int str2n(const string & str){
 
 
 
-vector<int>
+deque<int>
 slice_str2vec(const string & sliceS, int hight){
   // empty string
   if ( sliceS.empty() ) {
-    vector<int> ret(hight);
-    for (int slice = 0 ; slice < hight ; slice++)
+    deque<int> ret(abs(hight));
+    for (int slice = 0 ; slice < abs(hight) ; slice++)
       ret[slice]=slice;
     return ret;
   }
@@ -1374,10 +1374,8 @@ slice_str2vec(const string & sliceS, int hight){
                                " it has '" + negatec + "' character not in the first position."
                                " Moving it to the begining. Is it what you meant?");
           // moves all negatec's to the beginning and erases it's duplicates.
-          subS.erase
-          ( subS.begin(),
-            stable_partition( subS.begin(), subS.end(),
-                    bind2nd(equal_to<char>(),negatec) ) - 1 );
+          subS.erase( subS.begin(),
+            stable_partition( subS.begin(), subS.end(), bind2nd(equal_to<char>(),negatec) ) - 1 );
         }
       } else {
         negateall = false;
@@ -1396,9 +1394,11 @@ slice_str2vec(const string & sliceS, int hight){
       if ( subS.substr(0,2) == "n-" )
         subS.insert(1,"0");
       if ( subS[subS.length()-1] == '-' )
-        subS = subS + toString(hight-1);
+        subS += toString(hight-1);
 
       subSV.push_back(subS);
+
+
 
     }
 
@@ -1407,29 +1407,32 @@ slice_str2vec(const string & sliceS, int hight){
 
   // Check for global negation.
   if ( ( negateall |= ( subSV[0] == string(1,negatec) ) ) )
-    for ( int icur = 0 ; icur < hight ; icur++)
+    for ( int icur = 0 ; icur < abs(hight) ; icur++)
       sliceV.push_back(icur);
-  subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ), subSV.end() ); // no "negate" strings
+  //subSV.erase( remove( subSV.begin(), subSV.end(), string(1,negatec) ), subSV.end() ); // no "negate" strings
 
   // adds/removes substrings into the array of slices
   deque<string>::iterator subSVi = subSV.begin();
-  const deque<string>::iterator subSVe=subSV.end();
-  while ( subSVi != subSVe ) {
+  while ( subSVi != subSV.end() ) {
 
     bool negatethis = (*subSVi)[0]==negatec;
-    if (negatethis) (*subSVi).erase(0,1);
-      negatethis |= negateall;
+    if (negatethis)
+      (*subSVi).erase(0,1);
+    if (negateall)
+      negatethis = !negatethis;
 
     string::size_type minuspos = (*subSVi).find('-');
     if ( minuspos != string::npos ) {
       int
         rangeB = str2n( (*subSVi).substr(0,minuspos) ),
         rangeE = str2n( (*subSVi).substr(minuspos+1) );
-      if ( rangeB > rangeE ) swap(rangeB,rangeE);
-      if ( rangeB == rangeE )
+      if (rangeE < 0) // hight <= 0 and open end
+        rangeE = hight ? rangeB-hight-1 : rangeB;
+      else if ( rangeB == rangeE )
         warn("slice string", "One of the substrings with ranges in the string describing set of slices"
                              " has equal ends of the ranges. Is it what you meant?");
-      for (int curS = rangeB ; curS <= rangeE ; curS++ )
+      const int inc  =  rangeE < rangeB  ?  -1  :  1;
+      for (int curS = rangeB ; (rangeE-curS)*inc >=0  ; curS+= inc)
         rmadd(sliceV, curS, negatethis);
     } else {
       rmadd(sliceV, str2n( *subSVi ), negatethis );
@@ -1442,16 +1445,17 @@ slice_str2vec(const string & sliceS, int hight){
   // sort and remove duplicates, too large numbers
   //sort(sliceV.begin(), sliceV.end());
   //sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
-  if ( sliceV.back() >= hight )
-        warn("slice string", "The string describing set of slices includes slices beyond the size"
-                             " of the input image (" + toString(hight) + "). These slices are ignored." );
-  sliceV.erase(find_if(sliceV.begin(), sliceV.end(), bind2nd(greater<int>(), hight-1 ) ), sliceV.end());
-
+  if (hight<=0) {
+    int newHight = *max(sliceV.begin(), sliceV.end());
+    return slice_str2vec(sliceS, newHight);
+  }
+  sliceV.erase( find_if(sliceV.begin(), sliceV.end(), bind2nd(greater<int>(), hight-1 ) )
+              , sliceV.end());
   // last check
   if ( sliceV.empty() )
-        warn("slice string", "The string describing set of slices leads to the empty range of slices." );
-  vector<int> ret(sliceV.begin(), sliceV.end());
-  return ret;
+    warn("slice string",
+         "The string describing set of slices leads to the empty range of slices." );
+  return sliceV;
 
 }
 

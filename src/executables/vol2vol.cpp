@@ -113,7 +113,7 @@ class SliceInThread : public InThread {
   const clargs & args;
   ReadVolumeBySlice * ivolRd;
   SaveVolumeBySlice * ovolSv;
-  vector<int> indices;
+  deque<int> indices;
 
   unsigned bnz;
   Shape ish, osh;

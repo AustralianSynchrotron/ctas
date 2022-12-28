@@ -174,6 +174,31 @@ public:
   inline size_t slices() const {return iosh(0);}
   //inline Shape3 sizes() const {return _shape);}
 
+  template<class T> Shape exclDim(const T & sh3, int dimension) {
+    if (dimension>2)
+      throw_error("face of volume", "Impossible excluded dimension " +toString(dimension)+ ".");
+    Shape ret;
+    int idx=0, odx=0;
+    while (idx<3) {
+      if (idx != dimension)
+        ret(odx++) = sh3(idx);
+      idx++;
+    }
+    return ret;
+  }
+
+
+  template<class T> Shape3 inclDim(const T & sh2, int dimension, long sz) {
+    if (dimension>2)
+      throw_error("shape volume", "Impossible included dimension " +toString(dimension)+ ".");
+    Shape3 ret;
+    int idx=0, odx=0;
+    while (idx<3) {
+      ret(idx) = (idx == sliceDim) ? sz : sh2(odx++);
+      idx++;
+    }
+    return ret;
+  }
 
 protected :
 
@@ -185,6 +210,7 @@ protected :
   hid_t filespace;
   //pthread_mutex_t rwLock;
   blitz::Array<hsize_t, 1> cnts;
+  mutable deque<int> indices;
 
   void setFace(const Shape & fcsh) {
     iosh[1] = fcsh(sliceDim == 2 ? 1 : 0);
@@ -195,12 +221,12 @@ protected :
     if (  (dataset_dxpl = H5Pcreate(H5P_DATASET_XFER)) == H5I_INVALID_HID
        || H5Pset_buffer(dataset_dxpl, ar*sizeof(float), 0, 0) < 0 )
       dataset_dxpl=H5P_DEFAULT;
-    size_t bsize;
-    switch (sliceDim) {
-      case 0: bsize = ar; break;
-      case 1: bsize = iosh[1] ; break;
-      case 2: bsize = 1; break;
-    }
+    //size_t bsize;
+    //switch (sliceDim) {
+    //  case 0: bsize = ar; break;
+    //  case 1: bsize = iosh[1] ; break;
+    //  case 2: bsize = 1; break;
+    //}
     if (  (file_fapl = H5Pcreate(H5P_FILE_ACCESS)) == H5I_INVALID_HID
        || H5Pset_sieve_buf_size(file_fapl, ar*sizeof(float)) < 0
        || H5Pset_cache(file_fapl, 0, 1, ar*sizeof(float), 1) < 0 )
@@ -256,7 +282,6 @@ struct HDFread : public HDFrw {
 private :
 
   const static string modname;
-  mutable vector<int> indices;
 
 public :
 
@@ -289,17 +314,7 @@ public :
       complete();
       throw_error(modname, "Failed to read dataset size in " + id());
     }
-    Shape chsh;
-    if ( rank == 2 )
-      chsh = Shape(cnts(0), cnts(1));
-    else {
-      int idx=0, odx=0;
-      while (idx<rank) {
-        if (idx != sliceDim)
-          chsh(odx++) = cnts(idx);
-        idx++;
-      }
-    }
+    Shape chsh =  rank == 2 ? Shape(cnts(0), cnts(1))  :  exclDim(cnts, sliceDim);
     if (sliceDim==2) // need to transpose what I read in YZ plane
       chsh = Shape(chsh(1),chsh(0));
     if (chsh != sh)
@@ -393,10 +408,13 @@ public :
   {
     rank = 3;
     setFace(_sh);
-    setSlices(zsize);
     if ( ! zsize * area(face()) )
       throw warn(modname, "Zerro size to write.");
-
+    indices = slice_str2vec(slicesStr, -zsize);
+    if (!indices.size())
+      throw_error(modname, "Empty slices to write.");
+    const int maxIdx = *max_element(indices.begin(), indices.end());
+    setSlices(maxIdx+1);
     cnts.resize(3);
     int idx=0, odx=0;
     while (idx<3) {
@@ -404,7 +422,7 @@ public :
         cnts(idx) = ioface()(odx++);
       idx++;
     }
-    cnts(sliceDim) = zsize; // first will be used once as the 3D dimensions
+    cnts(sliceDim) = slices(); // first will be used once as the 3D dimensions
     blitz::Array<hsize_t,1> tcnts(3);
 #ifdef H5F_ACC_SWMR_WRITE
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
@@ -418,13 +436,21 @@ public :
     } else if (  (filespace = H5Dget_space(dataset)) <= 0
               || H5Sget_simple_extent_ndims(filespace) != 3
               || H5Sget_simple_extent_dims(filespace, tcnts.data(), 0) != rank ) {
-        complete();
+      complete();
     } else {
-        for (int idx=0 ; idx<3 ; idx++)
-          if (idx != sliceDim  &&  ioface()(idx) != tcnts(idx))
-            complete();
-        if (zsize > tcnts(sliceDim))
-          complete();
+      const Shape exFace = exclDim(tcnts, sliceDim);
+      if (exFace != ioface()) {
+        warn(modname, "Existing shape of HDF data \"" + name+":"+data + "\" ("+toString(exFace)+")"
+                      " does not match output ("+toString(ioface())+").");
+        complete();
+      }
+      if (maxIdx > tcnts(sliceDim)) {
+        warn(modname, "Existing size of HDF data \"" + name+":"+data + "\" ("+toString((long)tcnts(sliceDim))+")"
+                      " cannot fit output ("+toString(maxIdx)+").");
+        complete();
+      }
+      if (hdfFile<=0)
+        warn(modname, "Existing HDF data \"" + name+":"+data + "\". Will be overwritten.");
     }
     if (hdfFile<=0) {
 #ifdef H5F_ACC_SWMR_WRITE
@@ -445,7 +471,7 @@ public :
     if ( (memspace = H5Screate_simple(2, mcnts, 0))<0
        || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 ) {
       complete();
-      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
+      throw_error(modname, "Failed to prepare memory space to access file " + name + ".");
     }
 
   }
@@ -459,14 +485,14 @@ public :
   void write(int idx, const Map & storage) {
     if ( hdfFile <= 0 )
       throw_error(modname, "File \"" + id() + "\" was previously closed and no more write possible.");
-    if ( idx >= slices() )
+    if ( idx >= indices.size() )
       throw_error(modname, "Index " + toString(idx) + " to write is beyond initially requested size"
-                        + toString(slices()) + ". Write is ignored.");
+                        + toString(indices.size()) + ". Write is ignored.");
     if ( storage.shape() != face() )
       throw_error(modname, "Shape of the slice to write " + toString(storage.shape()) + " is different from"
                         " initially requested shape" + toString(face()) + ".");
 
-    hid_t lfillespace=local_fs(idx);
+    hid_t lfillespace=local_fs(indices[idx]);
     Map wr;
     if (sliceDim==2) {
       Map tmap(storage);
@@ -478,7 +504,7 @@ public :
 
     //pthread_mutex_lock(&rwLock);
     if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, wr.data()) < 0)
-      warn(modname, "Failed to write slice " +toString(idx)+ " to " + name + ".");
+      warn(modname, "Failed to write slice " +toString(indices[idx])+ " to " + name + ".");
     //pthread_mutex_unlock(&rwLock);
 
     H5Sclose(lfillespace);
@@ -1189,7 +1215,7 @@ private:
   _SaveVolumeBySlice writer;
   int sliceDim;
   Shape ssh;
-  vector<int>indices;
+  std::deque<int>indices;
   unordered_map<pthread_t,Map> maps;
 
   bool inThread (long int idx) {

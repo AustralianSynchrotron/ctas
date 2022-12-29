@@ -40,6 +40,7 @@
 #include <ctime>
 #include <cmath>
 #include <ctype.h>
+#include <functional> // for bind
 
 #include "common.h"
 #include "poptmx.h"
@@ -1368,17 +1369,15 @@ slice_str2vec(const string & sliceS, int hight){
 
       // modifies in regards to the negatec
       string::size_type lastneg = subS.rfind(negatec);
-      if ( lastneg != string::npos ) {
-        if ( lastneg != 0 ) {
-          warn("slice string", "Suspicious substring \""+ initS +"\" in the string describing set of slices:"
-                               " it has '" + negatec + "' character not in the first position."
-                               " Moving it to the begining. Is it what you meant?");
-          // moves all negatec's to the beginning and erases it's duplicates.
-          subS.erase( subS.begin(),
-            stable_partition( subS.begin(), subS.end(), bind2nd(equal_to<char>(),negatec) ) - 1 );
-        }
-      } else {
+      if ( lastneg == string::npos )
         negateall = false;
+      else if ( lastneg != 0 ) {
+        warn("slice string", "Suspicious substring \""+ initS +"\" in the string describing set of slices:"
+                             " it has '" + negatec + "' character not in the first position."
+                             " Moving it to the begining. Is it what you meant?");
+        // moves all negatec's to the beginning and erases it's duplicates.
+        subS.erase( subS.begin(), stable_partition
+                    ( subS.begin(), subS.end(), bind(equal_to<char>(), placeholders::_1, negatec) ) - 1 );
       }
 
       // modifies in regards to '-'
@@ -1388,6 +1387,7 @@ slice_str2vec(const string & sliceS, int hight){
                              " and last minuses is ignored. Is it what you meant?");
         subS = subS.substr(0,subS.find('-')) + subS.substr(subS.rfind('-') );
       }
+
       // make sure minus is surrounded by numbers.
       if ( subS[0] == '-' )
         subS = "0" + subS;
@@ -1397,8 +1397,6 @@ slice_str2vec(const string & sliceS, int hight){
         subS += toString(hight-1);
 
       subSV.push_back(subS);
-
-
 
     }
 
@@ -1442,14 +1440,14 @@ slice_str2vec(const string & sliceS, int hight){
 
   }
 
-  // sort and remove duplicates, too large numbers
+  //// sort and remove duplicates, too large numbers
   //sort(sliceV.begin(), sliceV.end());
   //sliceV.erase( unique( sliceV.begin(), sliceV.end() ), sliceV.end() );
-  if (hight<=0) {
-    int newHight = *max(sliceV.begin(), sliceV.end());
-    return slice_str2vec(sliceS, newHight);
-  }
-  sliceV.erase( find_if(sliceV.begin(), sliceV.end(), bind2nd(greater<int>(), hight-1 ) )
+  if (hight<=0)
+    return slice_str2vec(sliceS, 1 + *max_element(sliceV.begin(), sliceV.end()));
+
+  sliceV.erase( find_if(sliceV.begin(), sliceV.end(),
+                        bind(greater<int>(), placeholders::_1, hight-1 ) )
               , sliceV.end());
   // last check
   if ( sliceV.empty() )

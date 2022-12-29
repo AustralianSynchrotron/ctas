@@ -439,18 +439,19 @@ public :
       complete();
     } else {
       const Shape exFace = exclDim(tcnts, sliceDim);
-      if (exFace != ioface()) {
-        warn(modname, "Existing shape of HDF data \"" + name+":"+data + "\" ("+toString(exFace)+")"
-                      " does not match output ("+toString(ioface())+").");
+      const long exIdx = tcnts(sliceDim);
+      if ( ( exFace != ioface()  &&  ( warn(modname,
+               "Existing shape of HDF data \"" + name+":"+data + "\" ("+toString(exFace)+")"
+               " does not match output ("+toString(ioface())+")."), true) )
+           ||
+           ( maxIdx > exIdx-1  &&  ( warn(modname,
+               "Existing size of HDF data \"" + name+":"+data + "\""
+               " ("+toString(exIdx)+" slice"+(exIdx==1?"":"s")+")"
+               " cannot accomodate index "+toString(maxIdx)+"."), true) )
+           ) {
         complete();
-      }
-      if (maxIdx > tcnts(sliceDim)) {
-        warn(modname, "Existing size of HDF data \"" + name+":"+data + "\" ("+toString((long)tcnts(sliceDim))+")"
-                      " cannot fit output ("+toString(maxIdx)+").");
-        complete();
-      }
-      if (hdfFile<=0)
         warn(modname, "Existing HDF data \"" + name+":"+data + "\". Will be overwritten.");
+      }
     }
     if (hdfFile<=0) {
 #ifdef H5F_ACC_SWMR_WRITE

@@ -136,7 +136,7 @@ clargs(int argc, char *argv[])
     string inputline;
     while ( ! cin.eof() && getline(cin, inputline) ) {
       trim(inputline);
-      if (inputline.size()) {
+      if (inputline.size() && inputline.at(0) != '#' ) {
         deque<string> inputdeque = split(inputline, " ");
         if (!tiledImages) {
           tiledImages = inputdeque.size();

@@ -137,26 +137,30 @@ class ProcInThread : public InThread {
   const float d2bN;
   SaveVolumeBySlice allOut;
 
-  unordered_map<pthread_t, IPCprocess > procs;
-  unordered_map<pthread_t, Map > iomaps;
+  unordered_map<pthread_t, IPCprocess*> procs;
+  unordered_map<pthread_t, Map*> iomaps;
 
   bool inThread(long int idx) {
     if (idx >= allIn.slices())
       return false;
 
     const pthread_t me = pthread_self();
-    lock();
     if ( ! procs.count(me) ) { // first call
-      if (procs.empty())
-        procs.emplace(piecewise_construct,
-                      forward_as_tuple(me),
-                      forward_as_tuple(sh, d2bN));
-      else
-        procs.emplace(me, procs.begin()->second);
-      iomaps.emplace(me, sh);
+      lock();
+      if (procs.empty()) // need this first element to initialize the rest
+        procs.emplace(me, new IPCprocess(sh, d2bN));
+      unlock();
+      IPCprocess * eproc = procs.count(me) ? 0 : new IPCprocess(*(procs.begin()->second));
+      Map * iomap = new Map(sh);
+      lock();
+      if (eproc)
+        procs.emplace(me, eproc);
+      iomaps.emplace(me, iomap);
+      unlock();
     }
-    IPCprocess & myProc = procs.at(me);
-    Map & myIOmap = iomaps.at(me);
+    lock();
+    IPCprocess & myProc = *procs.at(me);
+    Map & myIOmap = *iomaps.at(me);
     unlock();
 
     allIn.read(idx, myIOmap);
@@ -181,6 +185,13 @@ public:
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
   {
     bar.setSteps(sz);
+  }
+
+  ~ProcInThread() {
+    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
+    for (auto celem : procs) delnul(celem.second);
+    for (auto celem : iomaps)  delnul(celem.second);
+    #undef delnul
   }
 
 };

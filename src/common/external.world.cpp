@@ -960,8 +960,8 @@ class ReadVolInThread : public InThread {
   const Crop crp;
   const Binn bnn;
   ReadVolumeBySlice reader;
-  unordered_map< pthread_t, ImageProc> rdprocs;
-  unordered_map< pthread_t, Map> rdmaps;
+  unordered_map< pthread_t, ImageProc* > rdprocs;
+  unordered_map< pthread_t, Map* > rdmaps;
 
 public:
 
@@ -988,6 +988,13 @@ public:
       return;
   }
 
+  ~ReadVolInThread() {
+    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
+    for (auto celem : rdprocs) delnul(celem.second);
+    for (auto celem : rdmaps)  delnul(celem.second);
+    #undef delnul
+  }
+
 
   bool inThread (long int idx) {
 
@@ -995,16 +1002,17 @@ public:
       return false;
 
     pthread_t me = pthread_self();
-    lock();
     if ( ! rdprocs.count(me) ) {
-      rdprocs.emplace(piecewise_construct,
-                      forward_as_tuple(me),
-                      forward_as_tuple(ang, crp, bnn, ish));
-      //rdprocs.try_emplace(me, ang, crp, bnn, ish);
-      rdmaps.emplace(me, sh);
+      ImageProc * erdproc = new ImageProc(ang, crp, bnn, ish);
+      Map * erdmap = new Map(sh);
+      lock();
+      rdprocs.emplace(me, erdproc);
+      rdmaps.emplace(me, erdmap);
+      unlock();
     }
-    ImageProc & myrdproc = rdprocs.at(me);
-    Map & myrdmap = rdmaps.at(me);
+    lock();
+    ImageProc & myrdproc = *rdprocs.at(me);
+    Map & myrdmap = *rdmaps.at(me);
     unlock();
 
     myrdproc.read(reader, idx, myrdmap);
@@ -1225,9 +1233,10 @@ private:
     const pthread_t me = pthread_self();
     lock();
     if ( ! maps.count(me) )  // first call
-      maps.emplace(me, ssh);
+      maps.emplace(me, 0);
     Map & cur = maps.at(me) ;
     unlock();
+    cur.resize(ssh);
 
     const int idi = indices[idx];
     switch ( sliceDim ) {

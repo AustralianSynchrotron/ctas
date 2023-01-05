@@ -139,26 +139,29 @@ class RecInThread : public InThread {
   const Shape osh;
   SaveVolumeBySlice ovolSv;
 
-  unordered_map<pthread_t, CTrec> recs;
-  unordered_map<pthread_t, Map> imaps;
-  unordered_map<pthread_t, Map> omaps;
+  unordered_map<pthread_t, CTrec*> recs;
+  unordered_map<pthread_t, Map*> imaps;
+  unordered_map<pthread_t, Map*> omaps;
 
   bool inThread(long int idx) {
     if (idx >= ivolRd.slices())
       return false;
 
     const pthread_t me = pthread_self();
-    lock();
     if ( ! recs.count(me) ) {
-      recs.emplace(piecewise_construct,
-                   forward_as_tuple(me),
-                   forward_as_tuple(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type));
-      imaps.emplace(me, ish);
-      omaps.emplace(me, osh);
+      CTrec * erec = new CTrec(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type);
+      Map * eimap = new Map(ish);
+      Map * eomap = new Map(osh);
+      lock();
+      recs.emplace(me, erec);
+      imaps.emplace(me, eimap);
+      omaps.emplace(me, eomap);
+      unlock();
     }
-    CTrec & myRec = recs.at(me);
-    Map & myImap = imaps.at(me);
-    Map & myOmap = omaps.at(me);
+    lock();
+    CTrec & myRec = *recs.at(me);
+    Map & myImap = *imaps.at(me);
+    Map & myOmap = *omaps.at(me);
     unlock();
 
     ivolRd.read(idx, myImap);
@@ -180,6 +183,14 @@ public:
     , ovolSv(ctrl.outmask, osh, ivolRd.slices(), ctrl.mincon, ctrl.maxcon)
   {
     bar.setSteps(ivolRd.slices());
+  }
+
+  ~RecInThread() {
+    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
+    for (auto celem : recs) delnul(celem.second);
+    for (auto celem : imaps)  delnul(celem.second);
+    for (auto celem : omaps)  delnul(celem.second);
+    #undef delnul
   }
 
 

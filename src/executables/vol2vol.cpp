@@ -164,6 +164,10 @@ class SliceInThread : public InThread {
       divKernel.setArg(1, (float)1.0/bn);
     }
 
+    ~CLacc() {
+      pthread_mutex_destroy(&locker);
+    }
+
     bool addme (Map & nmap) {
       if (bn==1)
         return false;
@@ -186,9 +190,9 @@ class SliceInThread : public InThread {
 
   };
 
-  unordered_map<pthread_t, ImageProc> rdprocs;
-  unordered_map<pthread_t, Map> rdmaps;
-  deque<CLacc> accs;
+  unordered_map<pthread_t, ImageProc* > rdprocs;
+  unordered_map<pthread_t, Map *> rdmaps;
+  list<CLacc> accs;
 
 
   bool inThread(long int idx) {
@@ -200,17 +204,20 @@ class SliceInThread : public InThread {
       return true;
 
     const pthread_t me = pthread_self();
-    lock();
     if ( ! rdprocs.count(me) ) {
-      rdprocs.emplace(piecewise_construct,
-                      forward_as_tuple(me),
-                      forward_as_tuple(0, crp, bnn, ish));
-      //rdprocs.try_emplace(me, 0, crp, bnn, ish);
-      rdmaps.emplace(me, osh);
+      ImageProc * erdprocs = new ImageProc(0, crp, bnn, ish);
+      Map * erdmap = new Map(osh);
+      lock();
+      rdprocs.emplace(me, erdprocs);
+      rdmaps.emplace(me, erdmap);
+      unlock();
     }
-    ImageProc & myrdproc = rdprocs.at(me);
-    Map & myrdmap = rdmaps.at(me);
+    lock();
+    ImageProc & myrdproc = *rdprocs.at(me);
+    Map & myrdmap = *rdmaps.at(me);
+    unlock();
 
+    lock(1);
     if (!accs.size())
       accs.emplace_back(osh, bnz);
     auto useacc = accs.begin();
@@ -226,13 +233,13 @@ class SliceInThread : public InThread {
       }
       if (useacc == accs.end()) {
         accs.emplace_back(osh, bnz);
-        useacc = accs.end() - 1;
+        useacc = accs.end();
+        --useacc;
       }
     }
     CLacc & myacc = *useacc;
     myacc.odx = sodx;
-
-    unlock();
+    unlock(1);
 
     myrdproc.read(*ivolRd, idx, myrdmap);
     if ( ! myacc.addme(myrdmap) )
@@ -275,12 +282,12 @@ public:
   }
 
   ~SliceInThread() {
-    if (ivolRd)
-      delete ivolRd;
-    ivolRd = 0;
-    if (ovolSv)
-      delete ovolSv;
-    ovolSv = 0;
+    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
+    for (auto celem : rdprocs) delnul(celem.second);
+    for (auto celem : rdmaps)  delnul(celem.second);
+    delnul(ivolRd);
+    delnul(ovolSv)
+    #undef delnul
   }
 
 

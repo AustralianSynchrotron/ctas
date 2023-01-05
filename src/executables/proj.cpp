@@ -316,14 +316,12 @@ public:
   {}
 
   ~ProjInThread() {
-    for (auto celem : dnsrs)
-      delete celem.second;
-    for (auto celem : procs)
-      delete celem.second;
-    for (auto celem : allInMaps)
-      delete celem.second;
-    for (auto celem : results)
-      delete celem.second;
+    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
+    for (auto celem : dnsrs)     delnul(celem.second) ;
+    for (auto celem : procs)     delnul(celem.second) ;
+    for (auto celem : allInMaps) delnul(celem.second) ;
+    for (auto celem : results)   delnul(celem.second) ;
+    #undef delnul
   }
 
 

@@ -1,12 +1,11 @@
 #ifndef PARALLEL_WORLD_H
 #define PARALLEL_WORLD_H
 
+#ifndef _H_CTAS_H_
+#pragma message "File" __FILE__ "is not supposed to be included implicitly."
+#pragma message "Expect compilation failure."
 #include "common.h"
-
-
-
-
-
+#endif
 
 /// \brief Number of threads for the process.
 ///
@@ -41,7 +40,8 @@ class InThread {
 
 private:
 
-  pthread_mutex_t proglock; // to be used by the sub-classes users via lock/unlock methods
+  pthread_mutex_t proglock;
+  std::unordered_map<int, pthread_mutex_t*> locks; // to be used by the sub-classes users via lock/unlock methods
 
   virtual bool inThread(long int) = 0;
 
@@ -61,13 +61,20 @@ public:
     , bar(verbose, procName, steps)
   { if (steps) bar.start(); }
 
+  ~InThread() {
+    for (auto mylock : locks) {
+      pthread_mutex_destroy(mylock.second);
+      delete mylock.second;
+    }
+    pthread_mutex_destroy(&proglock);
+  }
+
   void execute(int nThreads=0);
   static void execute( bool (*_thread_routine) (long int), int nThreads=0 );
   static void execute( bool (*_thread_routine) (), int nThreads=0 );
 
-  inline void lock() { pthread_mutex_lock(&proglock); }
-  inline void unlock() { pthread_mutex_unlock(&proglock); }
-
+  void lock(int idx=0);
+  void unlock(int idx=0);
 
 };
 

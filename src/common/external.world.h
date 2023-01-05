@@ -1,10 +1,12 @@
 #ifndef EXTARNAL_WORLD_H
 #define EXTARNAL_WORLD_H
 
+#ifndef _H_CTAS_H_
+#pragma message "File" __FILE__ "is not supposed to be included implicitly."
+#pragma message "Expect compilation failure."
 #include "common.h"
-#include <unordered_map>
-#include <deque>
-#include <algorithm>
+#endif
+
 
 
 

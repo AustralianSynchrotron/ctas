@@ -1,4 +1,4 @@
-#include "parallel.world.h"
+#include "common.h"
 #include <unistd.h>
 
 using namespace std;
@@ -79,6 +79,12 @@ private :
   ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg )
     : ThreadDistributor(0, 0, _sub_routine, _arg)
   {}
+
+  ~ThreadDistributor() {
+    pthread_mutex_destroy(&idxLock);
+    pthread_mutex_destroy(&startLock);
+    pthread_cond_destroy(&startCond);
+  }
 
 
   long int distribute() {
@@ -162,6 +168,23 @@ void InThread::execute( bool (*_thread_routine) (long int), int nThreads) {
 
 void InThread::execute( bool (*_thread_routine)(), int nThreads) {
   ThreadDistributor::execute(_thread_routine, nThreads);
+}
+
+void InThread::lock(int idx) {
+  if (!locks.count(idx)) {
+    pthread_mutex_lock(&proglock);
+    // check again just for the case if was added before locking above
+    if (!locks.count(idx))
+      locks.emplace(idx, new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER));
+    pthread_mutex_unlock(&proglock);
+  }
+  pthread_mutex_lock(locks.at(idx));
+}
+
+void InThread::unlock(int idx) {
+  if (!locks.count(idx))
+    throw_error("InThread", "Trying to unlock non-existing mutex " +toString(idx)+ ".");
+  pthread_mutex_unlock(locks.at(idx));
 }
 
 

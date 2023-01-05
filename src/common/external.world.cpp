@@ -1,5 +1,4 @@
-#include "external.world.h"
-#include "parallel.world.h"
+#include "common.h"
 
 #include <tiffio.h>
 #include <hdf5.h>
@@ -961,7 +960,6 @@ class ReadVolInThread : public InThread {
   const Crop crp;
   const Binn bnn;
   ReadVolumeBySlice reader;
-  pthread_mutex_t proglock;
   unordered_map< pthread_t, ImageProc> rdprocs;
   unordered_map< pthread_t, Map> rdmaps;
 

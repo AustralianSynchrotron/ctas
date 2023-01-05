@@ -53,6 +53,9 @@
 #include <string>
 #include <deque>
 #include <vector>
+#include <unordered_map>
+#include <deque>
+#include <algorithm>
 #include <math.h>
 
 #define BZ_THREADSAFE
@@ -1093,6 +1096,7 @@ private:
 public:
 
   ProgressBar(bool _showme=false, const std::string & _message="", int _steps=0);
+  ~ProgressBar() {pthread_mutex_destroy(&proglock);}
 
   void setSteps(int _steps);
   void start();

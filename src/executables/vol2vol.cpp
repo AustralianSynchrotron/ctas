@@ -201,7 +201,6 @@ class SliceInThread : public InThread {
 
     const pthread_t me = pthread_self();
     lock();
-
     if ( ! rdprocs.count(me) ) {
       rdprocs.emplace(piecewise_construct,
                       forward_as_tuple(me),

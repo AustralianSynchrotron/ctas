@@ -77,7 +77,7 @@ clargs(int argc, char *argv[])
 
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &out_name, 'o', "output", "Output image.", "", out_name)
-    .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process.",
+    .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process. All if not used.",
          SliceOptionDesc + ". Only makes sense in multiple projections.", "all")
     .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
@@ -243,7 +243,7 @@ static const Denoiser & curDnz(const deque<Denoiser> & dnzs, uint cur) {
   else if (dnzs.size() > cur)
     return dnzs[cur];
   throw_error("select denoiser", "Empty or incomplete list of denoisers.");
-  return dnzs[0]; // just to get rid of warning
+  return dnzs[0]; // just to get rid of no-return warning
 }
 
 
@@ -255,10 +255,10 @@ class ProjInThread : public InThread {
   const ProcProj & proc;
   const deque<int> & projes;
 
-  unordered_map<pthread_t, deque<Denoiser> > dnsrs;
-  unordered_map<pthread_t, ProcProj> procs;
-  unordered_map<pthread_t, deque<Map> > allInMaps;
-  unordered_map<pthread_t, deque<Map> > results;
+  unordered_map<pthread_t, deque<Denoiser>* > dnsrs;
+  unordered_map<pthread_t, ProcProj*> procs;
+  unordered_map<pthread_t, deque<Map>* > allInMaps;
+  unordered_map<pthread_t, deque<Map>* > results;
 
   bool inThread(long int idx) {
 
@@ -266,17 +266,23 @@ class ProjInThread : public InThread {
       return false;
 
     const pthread_t me = pthread_self();
-    lock();
     if ( ! procs.count(me) ) { // first call
-      dnsrs.emplace(me, dnsr);
-      procs.emplace(me, proc);
-      allInMaps.emplace(me, deque<Map>(allInRd.size()));
-      results.emplace(me,deque<Map>());
+      deque<Denoiser> * ednsr = new deque<Denoiser>(dnsr);
+      ProcProj* eproc = new ProcProj(proc);
+      deque<Map> * eAllInMaps = new deque<Map>(allInRd.size());
+      deque<Map> * eresults = new deque<Map>();
+      lock();
+      dnsrs.emplace(me, ednsr);
+      procs.emplace(me, eproc);
+      allInMaps.emplace(me, eAllInMaps);
+      results.emplace(me, eresults);
+      unlock();
     }
-    deque<Denoiser> & myDnsr = dnsrs.at(me);
-    ProcProj & myProc = procs.at(me);
-    deque<Map> & myAllIn = allInMaps.at(me);
-    deque<Map> & myRes = results.at(me);
+    lock();
+    deque<Denoiser> & myDnsr = *dnsrs.at(me);
+    ProcProj & myProc = *procs.at(me);
+    deque<Map> & myAllIn = *allInMaps.at(me);
+    deque<Map> & myRes = *results.at(me);
     unlock();
 
     try {
@@ -309,6 +315,17 @@ public:
     , allOutSv(_outSave)
   {}
 
+  ~ProjInThread() {
+    for (auto celem : dnsrs)
+      delete celem.second;
+    for (auto celem : procs)
+      delete celem.second;
+    for (auto celem : allInMaps)
+      delete celem.second;
+    for (auto celem : results)
+      delete celem.second;
+  }
+
 
 };
 
@@ -324,7 +341,7 @@ int main(int argc, char *argv[]) {
   st.ish = ish;
   const int nofIn = args.images.size();
 
-  // Read flat-fielding images
+  // Read auxiliary images
   #define rdAux(pfx) \
   deque<Map> pfx##as(args.pfx##s.size()); \
   for ( int curf = 0 ; curf < args. pfx##s.size() ; curf++) \

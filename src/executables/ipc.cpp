@@ -78,7 +78,7 @@ clargs::clargs(int argc, char *argv[]) :
   .add(poptmx::ARGUMENT, &images, "input", "Raw images to be processed.", "")
 
   .add(poptmx::NOTE, "OPTIONS:")
-  .add(poptmx::OPTION, &oname, 'o', "out", "Image name to output the phase component", "", "<NONE>")
+  .add(poptmx::OPTION, &oname, 'o', "out", "Image name to output phase component", "", "<input>")
   .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)", NeedForQuant)
   .add(poptmx::OPTION, &dd, 'r', "resolution", "Pixel size of the detector (micron)",
        NeedForQuant, toString(dd))
@@ -102,8 +102,6 @@ clargs::clargs(int argc, char *argv[]) :
 
   if ( ! table.count(&images) )
     exit_on_error(command, "Missing required argument: "+table.desc(&images)+".");
-  if ( ! table.count(&oname) )
-    exit_on_error(command, "Missing required option: " +table.desc(&oname)+ ".");
   if ( ! table.count(&dist) )
     exit_on_error(command, "Missing required option: " +table.desc(&dist)+ ".");
 

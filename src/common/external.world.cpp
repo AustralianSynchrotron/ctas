@@ -281,22 +281,34 @@ struct HDFread : public HDFrw {
 private :
 
   const static string modname;
+  hid_t wrtmemspace;
 
 public :
 
-  HDFread(const ImagePath & filedesc)
+  HDFread(const ImagePath & filedesc, bool overwrite=false)
     : HDFrw(filedesc)
+    , wrtmemspace(0)
   {
     if (!isValidHDF())
       throw_error(modname, "No HDF file at "+id()+".");
     const Shape sh = ImageSizes(filedesc);
     setFace(sh);
 
-#ifdef H5F_ACC_SWMR_READ
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
-#else
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-#endif
+    unsigned int h5openflags;
+    if (overwrite) {
+      #ifdef H5F_ACC_SWMR_WRITE
+      h5openflags = H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE;
+      #else
+      h5openflags = H5F_ACC_RDWR;
+      #endif
+    } else {
+      #ifdef H5F_ACC_SWMR_READ
+      h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
+      #else
+      h5openflags = H5F_ACC_RDONLY;
+      #endif
+    }
+    hdfFile = H5Fopen(name.c_str(), h5openflags, H5P_DEFAULT);
     if (  hdfFile<=0
        || (dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<0
        || (filespace = H5Dget_space(dataset))<0
@@ -318,11 +330,30 @@ public :
       chsh = Shape(chsh(1),chsh(0));
     if (chsh != sh)
       throw_error(modname, "Inconsistent read from file " + id());
+    if (overwrite) {
+      #ifdef H5F_ACC_SWMR_WRITE
+      H5Fstart_swmr_write(hdfFile);
+      #endif
+      hsize_t moffs[2] = {0, 0};
+      if ( (wrtmemspace = H5Screate_simple(2, cnts.data(), 0))<0
+         || H5Sselect_hyperslab(wrtmemspace, H5S_SELECT_SET, moffs, NULL, cnts.data(), NULL) < 0 )  {
+        warn(modname, "Failed to prepare memory space to write into file " + name + ".");
+        if (wrtmemspace>0)
+          H5Sclose(wrtmemspace);
+        wrtmemspace=0;
+      }
+    }
     if ( rank == 2 )
       indices.push_back(0);
     else if ( rank == 3 )
       indices = slice_str2vec(slicesStr, cnts(sliceDim));
     setSlices(indices.size());
+  }
+
+
+  ~HDFread() {
+    if (wrtmemspace)
+      H5Sclose(wrtmemspace);
   }
 
 
@@ -340,23 +371,63 @@ public :
     else
       rd.reference(safe(storage, false));
 
-    hsize_t mcnts[2] = {hsize_t(rd.shape()(0)), hsize_t(rd.shape()(1))},
-            moffs[2] = {0, 0};
-    hid_t memspace = H5Screate_simple(2, mcnts, 0);
-    if (  memspace < 0
-       || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
-      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
+    hid_t memspace;
+    if (!crp)
+      memspace = wrtmemspace;
+    else {
+      hsize_t mcnts[2] = {hsize_t(rd.shape()(0)), hsize_t(rd.shape()(1))},
+              moffs[2] = {0, 0};
+      memspace = H5Screate_simple(2, mcnts, 0);
+      if (  memspace < 0
+         || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
+        throw_error(modname, "Failed to prepare memory space to access file " + name + ".");
+    }
     //pthread_mutex_lock(&rwLock);
     if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, rd.data()) < 0)
       warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
     //pthread_mutex_unlock(&rwLock);
-    H5Sclose(memspace);
+    if (memspace != wrtmemspace)
+      H5Sclose(memspace);
 
     if (sliceDim==2)
       rd.transposeSelf(blitz::secondDim, blitz::firstDim);
     if ( rd.data() != storage.data() )
       storage = rd;
     H5Sclose(lfillespace);
+  }
+
+
+  void write(uint idx, Map & storage) {
+
+    if ( ! hdfFile )
+      throw_error(modname, "File " + name + " was previously closed.");
+    unsigned intent;
+    H5Fget_intent(hdfFile, &intent);
+    if (!wrtmemspace)
+      throw_error(modname, "Can't write into " + name + " which was open read-only.");
+    if ( idx >= indices.size() )
+      throw_error(modname, "Index is beyond slices to write to " + name + ".");
+    if ( storage.shape() != face() )
+      throw_error(modname, "Shape of the slice to write " + toString(storage.shape())
+                  + " is different from existing shape" + toString(face()) + ".");
+
+    hid_t lfillespace=local_fs(indices[idx]);
+    Map wr;
+    if (sliceDim==2) {
+      Map tmap(storage);
+      wr.resize(ioface());
+      wr = tmap.transpose(blitz::secondDim, blitz::firstDim);
+    } else {
+      wr.reference(safe(storage));
+    }
+
+    //pthread_mutex_lock(&rwLock);
+    if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, wrtmemspace, lfillespace, H5P_DEFAULT, wr.data()) < 0)
+      warn(modname, "Failed to write slice " +toString(indices[idx])+ " to " + name + ".");
+    //pthread_mutex_unlock(&rwLock);
+
+    H5Sclose(lfillespace);
+
   }
 
 };
@@ -425,6 +496,8 @@ public :
     blitz::Array<hsize_t,1> tcnts(3);
 #ifdef H5F_ACC_SWMR_WRITE
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+    if (hdfFile>0)
+      H5Fstart_swmr_write(hdfFile);
 #else
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 #endif
@@ -465,6 +538,10 @@ public :
       complete();
       throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
     }
+#ifdef H5F_ACC_SWMR_WRITE
+    H5Fstart_swmr_write(hdfFile);
+#endif
+
 
     hsize_t mcnts[2] = { hsize_t(ioface()(0)), hsize_t(ioface()(1))},
             moffs[2] = {0, 0};
@@ -489,8 +566,8 @@ public :
       throw_error(modname, "Index " + toString(idx) + " to write is beyond initially requested size"
                         + toString(indices.size()) + ". Write is ignored.");
     if ( storage.shape() != face() )
-      throw_error(modname, "Shape of the slice to write " + toString(storage.shape()) + " is different from"
-                        " initially requested shape" + toString(face()) + ".");
+      throw_error(modname, "Shape of the slice to write " + toString(storage.shape())
+                  + " is different from initially requested shape" + toString(face()) + ".");
 
     hid_t lfillespace=local_fs(indices[idx]);
     Map wr;

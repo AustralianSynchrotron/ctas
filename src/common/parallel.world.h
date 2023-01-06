@@ -40,15 +40,15 @@ class InThread {
 
 private:
 
-  pthread_mutex_t proglock;
-  std::unordered_map<int, pthread_mutex_t*> locks; // to be used by the sub-classes users via lock/unlock methods
+  static const std::string modname;
+  std::deque<pthread_mutex_t> locks; // to be used by the sub-classes users via lock/unlock methods
 
   virtual bool inThread(long int) = 0;
 
   inline static bool
   inThread(void * args, long int idx) {
     if (!args)
-      throw_error("InThread", "Wrongly used class. Report to developers.");
+      throw_error(modname, "Wrongly used class. Report to developers.");
     return ((InThread*)args)->inThread(idx);
   }
 
@@ -57,22 +57,23 @@ public:
   ProgressBar bar;
 
   InThread(bool verbose=false, const std::string procName = std::string(), int steps=0)
-    : proglock(PTHREAD_MUTEX_INITIALIZER)
-    , bar(verbose, procName, steps)
-  { if (steps) bar.start(); }
+    : bar(verbose, procName, steps)
+  {
+    if (steps)
+      bar.start();
+    needMutexes(1);
+  }
 
   ~InThread() {
-    for (auto mylock : locks) {
-      pthread_mutex_destroy(mylock.second);
-      delete mylock.second;
-    }
-    pthread_mutex_destroy(&proglock);
+    for (auto mylock : locks)
+      pthread_mutex_destroy(&mylock);
   }
 
   void execute(int nThreads=0);
   static void execute( bool (*_thread_routine) (long int), int nThreads=0 );
   static void execute( bool (*_thread_routine) (), int nThreads=0 );
 
+  void needMutexes(uint nof_mut=1);
   void lock(int idx=0);
   void unlock(int idx=0);
 

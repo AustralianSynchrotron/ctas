@@ -156,6 +156,7 @@ public:
 
 
 
+const string InThread::modname="InThread";
 
 void InThread::execute(int nThreads) {
   bar.start();
@@ -170,21 +171,28 @@ void InThread::execute( bool (*_thread_routine)(), int nThreads) {
   ThreadDistributor::execute(_thread_routine, nThreads);
 }
 
-void InThread::lock(int idx) {
-  if (!locks.count(idx)) {
-    pthread_mutex_lock(&proglock);
-    // check again just for the case if was added before locking above
-    if (!locks.count(idx))
-      locks.emplace(idx, new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER));
-    pthread_mutex_unlock(&proglock);
+
+void InThread::needMutexes(uint nof_mut) {
+  if (nof_mut==locks.size())
+    return;
+  if (nof_mut<locks.size()) {
+    warn(modname, "Request to reduce number of available mutexes will be ignored.");
+    return;
   }
-  pthread_mutex_lock(locks.at(idx));
+  while (locks.size() != nof_mut)
+    locks.push_back(PTHREAD_MUTEX_INITIALIZER);
+}
+
+void InThread::lock(int idx) {
+  if (idx>=locks.size())
+    throw_error(modname, "Trying to lock non-existing mutex " +toString(idx)+ ".");
+  pthread_mutex_lock(&locks.at(idx));
 }
 
 void InThread::unlock(int idx) {
-  if (!locks.count(idx))
-    throw_error("InThread", "Trying to unlock non-existing mutex " +toString(idx)+ ".");
-  pthread_mutex_unlock(locks.at(idx));
+  if (idx>=locks.size())
+    throw_error(modname, "Trying to unlock non-existing mutex " +toString(idx)+ ".");
+  pthread_mutex_unlock(&locks.at(idx));
 }
 
 

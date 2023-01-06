@@ -277,6 +277,7 @@ public:
                                    , fisok(args.mincon) ?  args.mincon : 0
                                    , fisok(args.maxcon) ?  args.maxcon : 0);
 
+    needMutexes(2);
     bar.setSteps(indices.size()*bnz);
 
   }

@@ -685,11 +685,6 @@ operator!=( const Crop & cr1, const Crop & cr2){
 }
 
 
-inline bool isNonZero(const Crop cr) {
-  return cr.top || cr.bottom || cr.left || cr.right;
-}
-
-
 std::string COMMON_API
 type_desc (Crop*);
 

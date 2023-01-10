@@ -133,7 +133,7 @@ class ProcInThread : public InThread {
   const Shape sh;
   const uint sz;
   const float d2bN;
-  SaveVolumeBySlice allOut;
+  SaveVolumeBySlice * allOut;
 
   unordered_map<pthread_t, IPCprocess*> procs;
   unordered_map<pthread_t, Map*> iomaps;
@@ -144,15 +144,12 @@ class ProcInThread : public InThread {
 
     const pthread_t me = pthread_self();
     if ( ! procs.count(me) ) { // first call
+      Map * iomap = new Map(sh);
       lock();
       if (procs.empty()) // need this first element to initialize the rest
         procs.emplace(me, new IPCprocess(sh, d2bN));
-      unlock();
-      IPCprocess * eproc = procs.count(me) ? 0 : new IPCprocess(*(procs.begin()->second));
-      Map * iomap = new Map(sh);
-      lock();
-      if (eproc)
-        procs.emplace(me, eproc);
+      else
+        procs.emplace(me, new IPCprocess(*(procs.begin()->second)));
       iomaps.emplace(me, iomap);
       unlock();
     }
@@ -165,7 +162,10 @@ class ProcInThread : public InThread {
     myProc.extract(myIOmap);
     if (args.phsExp)
       myIOmap = exp(-myIOmap);
-    allOut.save(idx, myIOmap);
+    if (allOut)
+      allOut->save(idx, myIOmap);
+    else
+      allIn.write(idx, myIOmap);
 
     bar.update();
     return true;
@@ -176,12 +176,14 @@ public:
   ProcInThread(const clargs & _args)
     : InThread(_args.beverbose, "IPC processing")
     , args(_args)
-    , allIn(args.images)
+    , allIn(args.images, args.oname.empty())
     , sh(allIn.face())
     , sz(allIn.slices())
-    , allOut(args.oname, sh, sz)
+    , allOut(0)
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
   {
+    if (!args.oname.empty())
+      allOut = new SaveVolumeBySlice(args.oname, sh, sz);
     bar.setSteps(sz);
   }
 
@@ -189,7 +191,9 @@ public:
     #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
     for (auto celem : procs) delnul(celem.second);
     for (auto celem : iomaps)  delnul(celem.second);
+    delnul(allOut);
     #undef delnul
+
   }
 
 };

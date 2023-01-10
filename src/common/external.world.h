@@ -234,13 +234,16 @@ class ReadVolumeBySlice {
 private:
   void * guts;
 public:
-  ReadVolumeBySlice(const std::deque<ImagePath> & filelist = std::deque<ImagePath>() );
-  inline ReadVolumeBySlice(const ImagePath & file)
-    : ReadVolumeBySlice(std::deque<ImagePath>(1, file)) {};
+  ReadVolumeBySlice(const std::deque<ImagePath> & filelist = std::deque<ImagePath>(), bool overwrite=false);
+  inline ReadVolumeBySlice(bool overwrite)
+    : ReadVolumeBySlice(std::deque<ImagePath>(), overwrite) {};
+  inline ReadVolumeBySlice(const ImagePath & file, bool overwrite=false)
+    : ReadVolumeBySlice(std::deque<ImagePath>(1, file), overwrite) {};
   ~ReadVolumeBySlice();
   void add(const std::deque<ImagePath> & filelist);
   void add(const ImagePath & fileind);
   void read(uint sl, Map & trg, const Crop & crp = Crop());
+  bool write(uint sl, Map & out);
   size_t slices() const;
   Shape face() const;
 };

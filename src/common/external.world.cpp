@@ -389,14 +389,15 @@ public :
     if ( H5Dread(dataset, H5T_NATIVE_FLOAT, memspace, lfillespace, H5P_DEFAULT, rd.data()) < 0)
       warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
     //pthread_mutex_unlock(&rwLock);
-    if (memspace != memspace_full)
-      H5Sclose(memspace);
-
     if (sliceDim==2)
       rd.transposeSelf(blitz::secondDim, blitz::firstDim);
     if ( rd.data() != storage.data() )
       storage = rd;
+
+    if (memspace != memspace_full)
+      H5Sclose(memspace);
     H5Sclose(lfillespace);
+
   }
 
 
@@ -406,7 +407,7 @@ public :
       throw_error(modname, "File " + name + " was previously closed.");
     unsigned intent;
     H5Fget_intent(hdfFile, &intent);
-    if (!memspace_full)
+    if ( ! (intent & H5F_ACC_RDWR) )
       throw_error(modname, "Can't write into " + name + " which was open read-only.");
     if ( idx >= indices.size() )
       throw_error(modname, "Index is beyond slices to write to " + name + ".");
@@ -713,7 +714,7 @@ void
 BadShape(const ImagePath & filename, const Shape & shp){
   Shape ashp = ImageSizes(filename);
   if ( ashp != shp )
-    throw_error("load image", "The shape of the image"
+    throw_error("load image", "Shape of the image "
                 "\"" + filename + "\"  (" + toString(ashp) + ") is not equal"
                 " to the requested shape (" + toString(shp)  + ").");
 }
@@ -964,16 +965,18 @@ struct _ReadVolBySlice  {
   unordered_map<size_t,HDFread> hdfs;
   size_t ssize;
   Shape face;
+  const bool writable;
 
-  _ReadVolBySlice()
+  _ReadVolBySlice(bool overwrite=false)
     : ilist()
     , ssize(0)
     , face()
+    , writable(overwrite)
   {}
 
 
-  _ReadVolBySlice(const std::deque<ImagePath> & filelist)
-    : _ReadVolBySlice()
+  _ReadVolBySlice(const std::deque<ImagePath> & filelist, bool overwrite=false)
+    : _ReadVolBySlice(overwrite)
   {
     add(filelist);
   }
@@ -986,7 +989,7 @@ struct _ReadVolBySlice  {
       try {
         //hdfs.emplace(fileind, fileind);
         const size_t key = hash<string>{}(fileind.repr());
-        hdfs.emplace(key, fileind);
+        hdfs.try_emplace(key, fileind, writable);
         //ssize += hdfs.at(fileind).slices();
         ssize += hdfs.at(key).slices();
       } catch (...) {
@@ -996,7 +999,7 @@ struct _ReadVolBySlice  {
 
 
   void add(const std::deque<ImagePath> & filelist) {
-    for ( deque<ImagePath>::const_iterator curI = filelist.begin() ; curI < filelist.end() ; curI++ )
+    for ( auto curI = filelist.begin() ; curI < filelist.end() ; curI++ )
       add(*curI);
   }
 
@@ -1023,6 +1026,38 @@ struct _ReadVolBySlice  {
     }
     return false;
   }
+
+
+  bool write (long int idx, Map & out) {
+    if (!writable)
+      throw_error("Volume reader", "This reader was open read-only. Writing is not permitted.");
+    int cfirst=0;
+    for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
+      const ImagePath flnm = ilist[cfl];
+      //if (hdfs.count(flnm)) {
+      const size_t key = hash<string>{}(flnm.repr());
+      if (hdfs.count(key)) {
+        HDFread & hdf = hdfs.at(key);
+        if (idx < cfirst + hdf.slices()) {
+          hdf.write(idx-cfirst, out);
+          return true;
+        }
+        cfirst += hdf.slices();
+      } else {
+        if (idx==cfirst){
+          const Shape imgsh=ImageSizes(flnm);
+          if ( imgsh != out.shape())
+            throw_error("Volume reader", "Shape of the output map (" + toString(out.shape())
+                        + ") does not match that of the image " +flnm+ "("+toString(imgsh)+").");
+          SaveImage(flnm, out);
+          return true;
+        }
+        cfirst++;
+      }
+    }
+    return false;
+  }
+
 
   size_t size() const {return ssize;}
 
@@ -1116,8 +1151,8 @@ ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbos
 
 
 
-ReadVolumeBySlice::ReadVolumeBySlice(const deque<ImagePath> & filelist)
-  : guts(new _ReadVolBySlice(filelist))
+ReadVolumeBySlice::ReadVolumeBySlice(const deque<ImagePath> & filelist, bool overwrite)
+  : guts(new _ReadVolBySlice(filelist, overwrite))
 {}
 
 
@@ -1138,6 +1173,10 @@ ReadVolumeBySlice::~ReadVolumeBySlice() {
 
 void ReadVolumeBySlice::read(uint sl, Map& trg, const Crop & crp) {
   ((_ReadVolBySlice*) guts)->read(sl, trg, crp);
+}
+
+bool ReadVolumeBySlice::write(uint sl, Map& trg) {
+  return ((_ReadVolBySlice*) guts)->write(sl, trg);
 }
 
 size_t ReadVolumeBySlice::slices() const {

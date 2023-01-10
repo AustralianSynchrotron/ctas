@@ -35,7 +35,7 @@
 #include <complex>
 #include <fftw3.h>
 
-//#define ONGPU
+#define ONGPU
 #ifdef ONGPU
 #include <clFFT.h>
 #endif

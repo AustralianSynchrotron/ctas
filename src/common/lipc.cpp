@@ -160,9 +160,11 @@ IPCprocess::~IPCprocess() {
 
 void IPCprocess::initCL() {
 
+  if (!CL_isReady())
+    throw_error(modname, "OpenCL is not functional.");
+
   clmid(clAllocArray<float>(2*mid.size()));
   kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
-
   kernelApplyPhsFilter.setArg(0, clmid());
   kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
   kernelApplyPhsFilter.setArg(2, (cl_int) msh(0));
@@ -174,8 +176,8 @@ void IPCprocess::initCL() {
   const size_t mshs[2] = {(size_t) msh(1), (size_t) msh(0)};
   if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
        CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
-       CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context, CLFFT_2D, mshs)) ||
-       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue, NULL, NULL)) ||
+       CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context(), CLFFT_2D, mshs)) ||
+       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue(), NULL, NULL)) ||
        CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
     throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
   if (clfftTmpBufSize)
@@ -187,10 +189,10 @@ cl_int IPCprocess::clfftExec(clfftDirection dir) const {
   if (d2b<0)
     return CL_SUCCESS;
   cl_int err;
-  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue, 0, NULL, NULL, &clmid(), NULL, clfftTmpBuff());
+  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue(), 0, NULL, NULL, &clmid(), NULL, clfftTmpBuff());
   if ( CL_SUCCESS != err )
     throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");
-  err = clFinish(CL_queue);
+  err = clFinish(CL_queue());
   if ( CL_SUCCESS != err )
     throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
   return err;

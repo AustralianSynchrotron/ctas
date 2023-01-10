@@ -87,9 +87,12 @@ public:
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.h>
 
-cl_device_id CL_device();
-cl_context CL_context();
-cl_command_queue CL_queue();
+cl_device_id & CL_device();
+cl_context & CL_context();
+cl_command_queue & CL_queue();
+inline bool CL_isReady() {
+  return CL_device() && CL_queue() && CL_context();
+}
 
 class CLmem {
     cl_mem clR;

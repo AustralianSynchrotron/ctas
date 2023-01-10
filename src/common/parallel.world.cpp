@@ -206,20 +206,14 @@ cl_device_id _CL_device = 0;
 cl_context _CL_context = 0;
 cl_command_queue _CL_queue = 0;
 
+static bool CL_intialize();
+cl_device_id & CL_device() { CL_intialize(); return _CL_device; }
+cl_context & CL_context() { CL_intialize(); return _CL_context; }
+cl_command_queue & CL_queue() { CL_intialize(); return _CL_queue; }
 
-static bool clIsInited();
-cl_device_id CL_device() { return clIsInited() ? _CL_device : 0; }
-cl_context CL_context() { return clIsInited() ? _CL_context : 0; }
-cl_command_queue CL_queue() { return clIsInited() ? _CL_queue : 0; }
+bool CL_intialize() {
 
-
-
-
-static bool clInited = false;
-
-bool clIsInited() {
-
-  if (clInited)
+  if (_CL_context && _CL_device && _CL_queue)
     return true;
 
   cl_int err;
@@ -304,60 +298,53 @@ bool clIsInited() {
 
   }
 
-
   if (devices.empty()) {
-
     warn("OpenCLinit", "No OpenCL devices found.");
     return false;
-
-  } else { // more than one device found
-
-    int idx=-1;
-    cl_ulong devmem, devmaxmem=0;
-    for (int devidx=0; devidx < devices.size(); devidx++) {
-      err = clGetDeviceInfo(devices[devidx], CL_DEVICE_GLOBAL_MEM_SIZE,
-                            sizeof(cl_ulong),  &devmem, 0);
-      if (err == CL_SUCCESS  &&  devmem > devmaxmem) {
-        devmaxmem = devmem;
-        idx=devidx;
-      }
-    }
-
-    if (idx >= 0)
-      _CL_device = devices[idx];
-
-    /* TODO:
-     * complete this part to read device name from the config
-     * file instead of choosing the device with maximum memory
-     * above.
-     */
-
   }
 
-  cl_platform_id platform;
-  err = clGetDeviceInfo(_CL_device, CL_DEVICE_PLATFORM, sizeof(cl_platform_id),  &platform, 0);
-  if (err != CL_SUCCESS) {
+  int idx=-1;
+  cl_ulong devmem, devmaxmem=0;
+  for (int devidx=0; devidx < devices.size(); devidx++) {
+    err = clGetDeviceInfo(devices[devidx], CL_DEVICE_GLOBAL_MEM_SIZE,
+                          sizeof(cl_ulong),  &devmem, 0);
+    if (err == CL_SUCCESS  &&  devmem > devmaxmem) {
+      devmaxmem = devmem;
+      idx=devidx;
+    }
+  }
+  if (idx < 0 || ! devices[idx]) {
+    warn("OpenCLinit", "Could not select OpenCL device.");
+    return false;
+  }
+  cl_device_id f_CL_device = devices[idx];
+
+  cl_platform_id platform = 0;
+  err = clGetDeviceInfo(f_CL_device, CL_DEVICE_PLATFORM, sizeof(cl_platform_id),  &platform, 0);
+  if (err != CL_SUCCESS || ! platform) {
     warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_PLATFORM\": "
          + toString(err) );
     return false;
   }
 
-  _CL_context = clCreateContext(0, 1, &_CL_device, 0, 0, &err);
-  if (err != CL_SUCCESS) {
+  cl_context f_CL_context = clCreateContext(0, 1, &f_CL_device, 0, 0, &err);
+  if (err != CL_SUCCESS || ! f_CL_context) {
     warn("OpenCLinit", "Could not create OpenCL context: " + toString(err) );
     return false;
   }
 
-
-  _CL_queue = clCreateCommandQueueWithProperties(_CL_context, _CL_device, NULL, &err);
-  //_CL_queue = clCreateCommandQueue(_CL_context, _CL_device, 0, &err);
-  if (err != CL_SUCCESS) {
+  cl_command_queue f_CL_queue = clCreateCommandQueueWithProperties(
+                                  f_CL_context, f_CL_device, NULL, &err);
+  //cl_command_queue f_CL_queue = clCreateCommandQueue(f_CL_context, f_CL_device, 0, &err);
+  if (err != CL_SUCCESS || ! f_CL_queue) {
     warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
     return false;
   }
 
-  clInited = true;
-  return clInited;
+  _CL_device = f_CL_device;
+  _CL_context = f_CL_context;
+  _CL_queue = f_CL_queue;
+  return true;
 
 }
 
@@ -365,7 +352,7 @@ bool clIsInited() {
 
 cl_program initProgram(const string & src, const string & modname) {
 
-  if ( ! clIsInited() )
+  if ( ! CL_intialize() )
     return 0;
 
   cl_int err = CL_SUCCESS;

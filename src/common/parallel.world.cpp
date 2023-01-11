@@ -1,5 +1,6 @@
 #include "common.h"
 #include <unistd.h>
+#include <list>
 
 using namespace std;
 
@@ -41,7 +42,7 @@ private :
   pthread_cond_t startCond; // to be signalled after all threads has started
 
   long int currentidx;
-  std::vector<pthread_t> threads;
+  std::list<pthread_t> threads;
 
   void * arg;
   bool (*sub_routine0) ();
@@ -110,7 +111,7 @@ private :
   static void * in_thread (void * vdist) {
     ThreadDistributor * dist = (ThreadDistributor*) vdist;
     while ( in_threade(dist) ) {}
-    return 0;
+    return vdist;
   }
 
   void start(uint nThreads=0) {
@@ -121,13 +122,13 @@ private :
       if ( pthread_create( & thread, NULL, in_thread, this ) )
         warn("Thread operation", "Can't create thread.");
       else
-        threads.push_back(thread);
+        threads.emplace_back(thread);
     pthread_cond_signal(&startCond);
   }
 
   void finish() {
-    for (int ith = 0 ; ith < threads.size() ; ith++)
-      pthread_join( threads[ith], 0);
+    for (auto curTh = threads.begin() ; curTh != threads.end() ; curTh++)
+      pthread_join(*curTh, NULL);
   }
 
 

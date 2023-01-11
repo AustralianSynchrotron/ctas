@@ -549,12 +549,12 @@ Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _m
   int cntr = 0;
   const uint rad2 = rad*rad;
   for (int ii = -rad ; ii <= rad ; ii++) {
-    const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     const blitz::Range resR0( max(0,  ii), sh(0) - 1 + min(0,  ii) );
+    const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     for (int jj = -rad ; jj <= rad ; jj++) {
       if ( ii*ii + jj*jj <= rad2 ) {
-        const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
         const blitz::Range resR1( max(0,  jj), sh(1) - 1 + min(0,  jj) );
+        const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
         if (mssz)
           swghts(resR0, resR1) += mask (srcR0, srcR1);
         else
@@ -582,12 +582,12 @@ void Denoiser::proc(Map & iom) const {
   if (mask.size())
     iom *= mask;
   for (int ii = -rad ; ii <= rad ; ii++) {
-    const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     const blitz::Range resR0( max(0,  ii), sh(0) - 1 + min(0,  ii) );
+    const blitz::Range srcR0( max(0, -ii), sh(0) - 1 + min(0, -ii) );
     for (int jj = -rad ; jj <= rad ; jj++) {
       if ( ii*ii + jj*jj <= rad2 ) {
-        const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
         const blitz::Range resR1( max(0,  jj), sh(1) - 1 + min(0,  jj) );
+        const blitz::Range srcR1( max(0, -jj), sh(1) - 1 + min(0, -jj) );
           tarr(resR0, resR1) += iom(srcR0, srcR1);
       }
     }

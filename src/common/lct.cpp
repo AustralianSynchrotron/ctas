@@ -30,12 +30,11 @@
 
 #define _USE_MATH_DEFINES // for M_PI
 
-#include "kernel.h"
+#include "ct.h"
 #include "common.h"
 #include "poptmx.h"
 #include <algorithm>
 #include <numeric> /* partial_sum */
-#include <time.h>
 #include <pthread.h>
 #include <gsl/gsl_sf_bessel.h> // for Bessel functions
 #include <unistd.h>
@@ -44,15 +43,6 @@
 using namespace std;
 
 const string Filter::modname="filter";
-
-/// \brief Constructor.
-///
-/// @param _tp Filter type.
-/// @param _as Additional parameter.
-///
-Filter::Filter(Ftype _tp, float _as)
-  : filttp(_tp), alsig(_as) {
-}
 
 
 /// \brief Constructor
@@ -63,7 +53,8 @@ Filter::Filter(Ftype _tp, float _as)
 /// @param _as Additional parameter.
 ///
 Filter::Filter(const string &_name, float _as)
-  : alsig(_as) {
+  : alsig(_as)
+{
   string name = upper(_name);
   if ( name.empty() || name == "NONE" ) filttp = NONE;
   else if ( name == "RAMP" || name.empty() ) filttp = RAMP;
@@ -88,43 +79,20 @@ Filter::Filter(const string &_name, float _as)
 string
 Filter::name() const {
   switch (filttp) {
-  case NONE:
-    return "NONE";
-  case RAMP:
-    return "RAMP";
-  case BARLETT:
-    return "BARLETT";
-  case WELCH:
-    return "WELCH";
-  case PARZEN:
-    return "PARZEN";
-  case HANN:
-    return "HANN";
-  case HAMMING:
-    return "HAMMING";
-  case BLACKMAN:
-    return "BLACKMAN";
-  case LANCKZOS:
-    return "LANCKZOS";
-  case KAISER:
-    return "KAISER";
-  case GAUSS:
-    return "GAUSS";
-  default :
-    throw_bug(__FUNCTION__);
-    return "";
+  case NONE    : return "NONE";
+  case RAMP    : return "RAMP";
+  case BARLETT : return "BARLETT";
+  case WELCH   : return "WELCH";
+  case PARZEN  : return "PARZEN";
+  case HANN    : return "HANN";
+  case HAMMING : return "HAMMING";
+  case BLACKMAN: return "BLACKMAN";
+  case LANCKZOS: return "LANCKZOS";
+  case KAISER  : return "KAISER";
+  case GAUSS   : return "GAUSS";
+  default      : throw_bug(__FUNCTION__); return "NONE"; // return only to silence warning
   }
 }
-
-/// \brief Filter type
-///
-/// @return Type of the filter.
-///
-Filter::Ftype
-Filter::filter() const {
-  return filttp;
-}
-
 
 
 /// \brief Prepares the window function.
@@ -140,8 +108,10 @@ Filter::filter() const {
 Line &
 Filter::fill(Line &filt, int pixels) const {
 
-  if ( ! pixels ) pixels = filt.size();
-  else filt.resize(pixels);
+  if ( ! pixels )
+    pixels = filt.size();
+  else
+    filt.resize(pixels);
   if ( ! pixels )
     throw_error(modname, "Zero-size filter requested.");
 
@@ -224,15 +194,6 @@ Filter::fill(Line &filt, int pixels) const {
 
 }
 
-bool
-operator==(const Filter &a, const Filter &b) {
-  return a.filter() == b.filter();
-}
-
-bool
-operator!=(const Filter &a, const Filter &b) {
-  return a.filter() != b.filter();
-}
 
 const string FilterOptionDesc=
   "Must be a string consisting of two parts (the second one is optional):"
@@ -311,9 +272,46 @@ filter_line(Line &ln, const Line &f_win,
   _ln *= f_win;
   fftwf_execute_r2r( *planB, lnp, lnp);
   _ln /= _ln.size(); // normalization of the data.
-  if ( ln.data() != _ln.data() )
+  if ( !areSame(ln, _ln) )
     ln = _ln;
 }
+
+
+
+//! Applies a ring filter of a specified size (must be odd)
+void RingFilter::apply(Map & sinogram) {
+  if (!box)
+    return;
+  const size_t thetas=sinogram.shape()(0);
+  const size_t width=sinogram.shape()(1);
+  if (width != average.size())
+    throw_error("RingFilter", "Wrong sinogram width "+toString(width)+
+                              " where "+toString(average.size())+" is expected.");
+
+  //sum the array over angles and put result in arrAvg
+  average=0;
+  for(int nCurAngle = 0; nCurAngle < thetas; nCurAngle++)
+    average += sinogram(nCurAngle, all);
+  average /= thetas;
+
+  temp=0;
+  for(int ii = -box; ii <= (int) box; ii++)
+    temp( blitz::Range( max(0, ii), width - 1 + min(0, ii) ) ) +=
+        average( blitz::Range( max(0, -ii), width - 1 + min(0, -ii) ) );
+  temp( blitz::Range(box, width-1-box) ) /= 2*box+1;
+  for(int ii = 0; ii < box; ii++) {
+    temp(ii) /= box+ii+1;
+    temp(width-1-ii) /= box+ii+1;
+  }
+  temp -= average;
+
+  //subtract arrFilter filter from the sinogram
+  for(int nCurAngle = 0; nCurAngle < thetas; nCurAngle++)
+    sinogram(nCurAngle, all) += temp;
+
+}
+
+
 
 
 
@@ -327,6 +325,8 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   , zidth(pow(2, ceil(log2(2*ish(1)-1))))
   , contrast(cn)
   , filter(ft)
+  , filt_window(zidth)
+  , zsinoline(zidth)
 {
 
   if (ish(1) < 2)
@@ -334,7 +334,6 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   if (!ish(0))
     throw_error (modname, "Zero projections in sinogram.");
 
-  filt_window.resize(zidth);
   filter.fill(filt_window);
   filt_window *= zidth / (float) ish(1);
   if ( contrast == Contrast::REF )
@@ -377,31 +376,30 @@ CTrec::~CTrec(){
 }
 
 
-void CTrec::prepare_sino(Map &sinogram) {
+void CTrec::prepare_sino(Map & sinogram) {
 
   if (sinogram.shape() != ish )
+    throw_error(modname, "Wrong sinogram shape ("+toString(sinogram.shape())+")"
+                         " where ("+toString(ish)+") is expected.");
 
-  sinogram.reference(safe(sinogram));
   if (contrast == Contrast::ABS)
     deAbs(sinogram);
 
-  const int zShift = ( zidth - ish(1) ) / 2;
-  const int thetas = sinogram.rows();
-  Line zsinoline(zidth); // zero-padded sinoline.
-
   if ( contrast != Contrast::FLT ) {
-    for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-      Line sinoline = sinogram(iTheta, all);
+    const int zShift = ( zidth - ish(1) ) / 2;
+    const blitz::Range zRange(zShift, zShift+ish(1));
+    for (int iTheta = 0 ; iTheta < ish(0) ; iTheta++) {
+      Line sinoline(sinogram(iTheta, all));
       zsinoline = 0.0;
-      zsinoline(blitz::Range(zShift, zShift+ish(1))) = sinoline;
+      zsinoline(zRange) = sinoline;
       filter_line(zsinoline, filt_window, &planF, &planB);
-      sinoline = zsinoline(blitz::Range(zShift, zShift+ish(1)));
+      sinoline = zsinoline(zRange);
     }
   }
 
   if ( contrast == Contrast::REF ) {
-    for (int iTheta = 0 ; iTheta < thetas ; iTheta++) {
-      Line sinoline = sinogram(iTheta, all);
+    for (int iTheta = 0 ; iTheta < ish(0) ; iTheta++) {
+      Line sinoline(sinogram(iTheta, all));
       partial_sum( sinoline.begin(), sinoline.end(), sinoline.begin() );
     }
   }
@@ -495,7 +493,6 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   safe_fftw_destroy_plan(planB);
 
 }
-
 
 
 

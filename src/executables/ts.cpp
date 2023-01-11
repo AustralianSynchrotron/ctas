@@ -33,7 +33,7 @@
 #define _USE_MATH_DEFINES // for M_PI
 
 #include "../common/common.h"
-#include "../common/kernel.h"
+#include "../common/ct.h"
 #include "../common/poptmx.h"
 
 using namespace std;
@@ -50,7 +50,7 @@ struct clargs {
   bool SaveInt;					///< Save image as 16-bit integer.
 
   /// \CLARGSF
-  clargs(int argc, char *argv[]); 
+  clargs(int argc, char *argv[]);
 };
 
 /// Description of the TS input configuration file.
@@ -65,7 +65,7 @@ const string TSconfigDesc =
   "The path to the file is relative to the path of the data file.";
 
 clargs::
-clargs(int argc, char *argv[]) : 
+clargs(int argc, char *argv[]) :
   outmask("ts-<data file>-<plane>.tif"),
   plane(0),
   center(0),
@@ -75,48 +75,48 @@ clargs(int argc, char *argv[]) :
 {
 
   poptmx::OptionTable table
-	("Tomosynthesis reconstruction.",
-	 "The program reads file which describes the images containing TS"
-	 " projections and performs TS reconstruction of the requested plane.");
+  ("Tomosynthesis reconstruction.",
+   "The program reads file which describes the images containing TS"
+   " projections and performs TS reconstruction of the requested plane.");
 
   table
-	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &data_name, "data file",
-		 "Input file describing the projection images.",
-		 TSconfigDesc)
-	.add(poptmx::ARGUMENT, &outmask, "result",
-		 "Output reconstructed image.", "", outmask)
+  .add(poptmx::NOTE, "ARGUMENTS:")
+  .add(poptmx::ARGUMENT, &data_name, "data file",
+     "Input file describing the projection images.",
+     TSconfigDesc)
+  .add(poptmx::ARGUMENT, &outmask, "result",
+     "Output reconstructed image.", "", outmask)
 
-	.add(poptmx::NOTE, "OPTIONS:")
-	.add(poptmx::OPTION, &contrast, 'C', "contrast",
-		 "Input component.",
-		 "Type of the contrast presented in the sinogram. "
-		 + Contrast::Desc, contrast.name())
-	.add(poptmx::OPTION, &plane, 'y', "plane",
+  .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &contrast, 'C', "contrast",
+     "Input component.",
+     "Type of the contrast presented in the sinogram. "
+     + Contrast::Desc, contrast.name())
+  .add(poptmx::OPTION, &plane, 'y', "plane",
          "Plane of the reconstruction.", "Relative to the rotation center.")
-	.add(poptmx::OPTION, &center, 'c', "center",
-		 "Rotation center.", CenterOptionDesc, toString(center))
-	.add(poptmx::OPTION, &SaveInt,'i', "int",
+  .add(poptmx::OPTION, &center, 'c', "center",
+     "Rotation center.", CenterOptionDesc, toString(center))
+  .add(poptmx::OPTION, &SaveInt,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+  exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+  table.usage();
+  exit(0);
   }
 
   command = table.name();
 
 
   if ( ! table.count(&plane) )
-	exit_on_error( command, "The reconstruction plane must be explicitly set."
-				   " Use option " + table.desc(&plane) + " for this.");
+  exit_on_error( command, "The reconstruction plane must be explicitly set."
+           " Use option " + table.desc(&plane) + " for this.");
   if ( ! table.count(&data_name) )
-	exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&data_name)+".");
+  exit_on_error(command, string () +
+          "Missing required argument: "+table.desc(&data_name)+".");
   if ( ! table.count(&outmask) )
     outmask = upgrade(data_name, "ts-") + "-" +  toString(plane) + ".tif";
 
@@ -142,36 +142,36 @@ struct proj_info {
   /// @param data_name The data file to be parsed. Read ::TSconfigDesc.
   inline proj_info(const string & data_name) {
 
-	// Opens the data file.
-	FILE* input_list = fopen(data_name.c_str(), "r");
-	if ( ! input_list )
-	  exit_on_error ("scan input", "Could not open input data file"
-					 " '" + data_name + "' for reading.");
+  // Opens the data file.
+  FILE* input_list = fopen(data_name.c_str(), "r");
+  if ( ! input_list )
+    exit_on_error ("scan input", "Could not open input data file"
+           " '" + data_name + "' for reading.");
     if ( feof(input_list) )
-	  exit_on_error ("scan input", "The input file"
-					 "\"" + data_name + "\" is empty.");
+    exit_on_error ("scan input", "The input file"
+           "\"" + data_name + "\" is empty.");
 
-	string fdir(data_name, 0, data_name.rfind("/")+1);
-	const int MAXSTRING = 1024;
-	float nangle;
-	char curin[MAXSTRING];
-	while ( ! feof(input_list) &&
-			fscanf (input_list, "%f %s\n", &nangle, curin) == 2 )
-	  list.push_back( pair<float,string> 
-					  ( nangle*M_PI/180, cdpath(fdir,curin) ) );
+  string fdir(data_name, 0, data_name.rfind("/")+1);
+  const int MAXSTRING = 1024;
+  float nangle;
+  char curin[MAXSTRING];
+  while ( ! feof(input_list) &&
+      fscanf (input_list, "%f %s\n", &nangle, curin) == 2 )
+    list.push_back( pair<float,string>
+            ( nangle*M_PI/180, cdpath(fdir,curin) ) );
     if ( ! feof(input_list) )
-	  warn ("scan input", "Certain part of the input file"
-			" \"" + data_name + "\" could not be scanned."
-			" succeeded in " + toString(list.size()) + " strings.");
-	fclose(input_list);
+    warn ("scan input", "Certain part of the input file"
+      " \"" + data_name + "\" could not be scanned."
+      " succeeded in " + toString(list.size()) + " strings.");
+  fclose(input_list);
 
     if ( ! list.size()  )
-	  throw_error("scan input", "Input file \"" + data_name + "\""
-				  " does not provide any input info.");
+    throw_error("scan input", "Input file \"" + data_name + "\""
+          " does not provide any input info.");
 
-	angle  = list[0].first;
-	name   = list[0].second;
-	icur   = 0;
+  angle  = list[0].first;
+  name   = list[0].second;
+  icur   = 0;
 
   }
 
@@ -181,12 +181,12 @@ struct proj_info {
   /// @return \c false if the last element was parsed, \c true otherwise.
   ///
   inline bool advance() {
-	if ( icur >= list.size() )
-	  return false;
-	angle = list[icur].first;
-	name = list[icur].second;
-	icur++;
-	return true;
+  if ( icur >= list.size() )
+    return false;
+  angle = list[icur].first;
+  name = list[icur].second;
+  icur++;
+  return true;
   }
 
 };
@@ -197,13 +197,13 @@ struct proj_info {
 int main( int argc, char *argv[] ) {
 
   const clargs args(argc, argv);
-	
+
   proj_info proj_i(args.data_name);
   Shape shape=ImageSizes(proj_i.name);
   if (shape(1)/2 <= abs(args.plane) )
-	exit_on_error(args.command, "The reconstruction plane is outside the image:"
-				  " Image width: " + toString(shape(1)) + ", reconstruction"
-				  " plane: " + toString(args.plane) + ".");
+  exit_on_error(args.command, "The reconstruction plane is outside the image:"
+          " Image width: " + toString(shape(1)) + ", reconstruction"
+          " plane: " + toString(args.plane) + ".");
 
   string first_name = proj_i.name;
   Map proj(shape), result(shape);
@@ -211,15 +211,15 @@ int main( int argc, char *argv[] ) {
   ProgressBar bar(args.beverbose, "reconstruction", proj_i.list.size() );
   while ( proj_i.advance() ) {
     ReadImage(proj_i.name, proj, shape);
-	ts_add(proj, result, Filter(), args.center,
-		   args.contrast, proj_i.angle, args.plane);
-	bar.update();
+  ts_add(proj, result, Filter(), args.center,
+       args.contrast, proj_i.angle, args.plane);
+  bar.update();
   }
   bar.done();
 
   SaveImage(args.outmask, result, args.SaveInt);
 
   exit (0);
-	
+
 }
 

@@ -31,7 +31,7 @@
 #include "../common/projection.h"
 #include "../common/poptmx.h"
 #include "../common/ipc.h"
-#include "../common/kernel.h"
+#include "../common/ct.h"
 #include <algorithm>
 #include <string.h>
 #include <unordered_map>

@@ -150,10 +150,13 @@ private:
 
 public:
 
-  Filter(Ftype _tp=RAMP, float _as=0); ///< Trivial constructor
+  Filter(Ftype _tp=RAMP, float _as=0)
+    : filttp(_tp), alsig(_as)
+  {}
+
   Filter(const std::string &_name, float _as=0);  ///< Constructor from name
 
-  Ftype filter() const ;    ///< Filter
+  inline Ftype filter() const {return filttp;}    ///< Filter
   std::string name() const;     ///< Returns name
 
   Line &fill(Line &filt, int pixels = 0) const;   ///< Fills the window
@@ -168,8 +171,10 @@ public:
 ///
 /// @return \c true if the filters are equal, \c false otherwise.
 ///
-bool KERNEL_API
-operator==(const Filter & a, const Filter & b);
+inline bool KERNEL_API
+operator==(const Filter & a, const Filter & b) {
+  return a.filter() == b.filter();
+}
 
 /// \brief Compare filters.
 ///
@@ -178,8 +183,10 @@ operator==(const Filter & a, const Filter & b);
 ///
 /// @return \c false if the filters are equal, \c true otherwise.
 ///
-bool KERNEL_API
-operator!=(const Filter & a, const Filter & b);
+inline bool KERNEL_API
+operator!=(const Filter & a, const Filter & b)  {
+  return a.filter() != b.filter();
+}
 
 /// Description of the option giving the Filter type.
 extern KERNEL_API const std::string FilterOptionDesc;
@@ -199,6 +206,28 @@ bool KERNEL_API _conversion (Filter* _val, const std::string & in);
 
 
 
+class RingFilter {
+private:
+  size_t box;   ///< box of the ring filter.
+  Line average;
+  Line temp;
+
+public:
+
+  RingFilter(size_t width, size_t ringBox=0)
+    : box(ringBox)
+    , average(ringBox ? width : 0)
+    , temp(ringBox ? width : 0)
+  {}
+
+  void apply(Map & sinogram);
+
+};
+
+
+
+
+
 /// \brief CT reconstruction class
 ///
 /// This class first collects all information needed for the CT reconstruction
@@ -214,11 +243,12 @@ private:
 
   const Shape ish;
   const Shape osh;
-  const int zidth;          ///< zero-padded width
+  const size_t zidth;          ///< zero-padded width
   Contrast contrast;     ///< Type of the contrast.
-  Filter filter;       ///< Type of the filter function.
 
+  Filter filter;       ///< Type of the filter function.
   Line filt_window;       ///< The array containing the filter window.
+  Line zsinoline;         ///< 0-padded sinogram line.
   fftwf_plan planF;       ///< Forward FFT transformation.
   fftwf_plan planB;       ///< Backward FFT transformation.
 
@@ -229,7 +259,6 @@ private:
   CLmem clAngles;
 
   void prepare_sino(Map & sinogram);
-
 
 public:
 

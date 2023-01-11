@@ -31,7 +31,7 @@
 #include "../common/common.h"
 #include "../common/poptmx.h"
 #include "../common/flatfield.h"
-#include "../common/kernel.h"
+#include "../common/ct.h"
 #include "../common/ipc.h"
 #include <algorithm>
 #include <string.h>

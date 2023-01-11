@@ -8,7 +8,7 @@ add_executable(ct ct.cpp)
 target_link_libraries(ct
   common
   poptmx
-  kernel
+  lct
 )
 
 
@@ -44,7 +44,7 @@ add_executable(ts ts.cpp)
 target_link_libraries(ts
   common
   poptmx
-  kernel
+  lct  
 )
 
 
@@ -75,7 +75,7 @@ target_link_libraries(prct
   poptmx
   flatfield
   lipc
-  kernel
+  lct 
   projection
 )
 
@@ -94,7 +94,7 @@ target_clsrc(bctppl formframe.cl)
 target_link_libraries(bctppl
   common
   poptmx
-  kernel
+  lct
   flatfield
   lipc
 )

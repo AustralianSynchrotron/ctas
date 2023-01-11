@@ -33,7 +33,7 @@
 
 
 #include "../common/common.h"
-#include "../common/kernel.h"
+#include "../common/ct.h"
 #include "../common/poptmx.h"
 
 using namespace std;
@@ -49,10 +49,10 @@ struct clargs {
   ImagePath outmask;           ///< Name of the file to save the result to.
   float arc;
   float dd;             ///< Pixel size.
+  uint ringBox;
   bool beverbose;				///< Be verbose flag
   float mincon;         ///< Black intensity.
   float maxcon;         ///< White intensity.
-
 
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -69,6 +69,7 @@ clargs(int argc, char *argv[])
   , outmask("reconstructed-<sinogram>")
   , arc(180)
   , dd(1.0)
+  , ringBox(0)
 {
 
   poptmx::OptionTable table
@@ -99,6 +100,8 @@ clargs(int argc, char *argv[])
        "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
   //  .add(poptmx::OPTION, &lambda, 'w', "wavelength",
   //  "Wave length (Angstrom).", "Wavelength.")
+  .add(poptmx::OPTION, &ringBox, 'R', "ring",
+           "Half size of the ring filter.", "", toString(ringBox))
   .add(poptmx::OPTION, &mincon, 'm', "min", "Pixel value corresponding to black.",
        " All values below this will turn black.", "<minimum>")
   .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
@@ -139,6 +142,7 @@ class RecInThread : public InThread {
   const Shape osh;
   SaveVolumeBySlice ovolSv;
 
+  unordered_map<pthread_t, RingFilter*> rings;
   unordered_map<pthread_t, CTrec*> recs;
   unordered_map<pthread_t, Map*> imaps;
   unordered_map<pthread_t, Map*> omaps;
@@ -150,21 +154,25 @@ class RecInThread : public InThread {
     const pthread_t me = pthread_self();
     if ( ! recs.count(me) ) {
       CTrec * erec = new CTrec(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type);
+      RingFilter * ering = new RingFilter(ish(1), ctrl.ringBox);
       Map * eimap = new Map(ish);
       Map * eomap = new Map(osh);
       lock();
+      rings.emplace(me, ering);
       recs.emplace(me, erec);
       imaps.emplace(me, eimap);
       omaps.emplace(me, eomap);
       unlock();
     }
     lock();
+    RingFilter & myRing = *rings.at(me);
     CTrec & myRec = *recs.at(me);
     Map & myImap = *imaps.at(me);
     Map & myOmap = *omaps.at(me);
     unlock();
 
     ivolRd.read(idx, myImap);
+    myRing.apply(myImap);
     myRec.reconstruct(myImap, myOmap, ctrl.center, ctrl.dd);
     ovolSv.save(idx, myOmap);
     bar.update();
@@ -187,13 +195,12 @@ public:
 
   ~RecInThread() {
     #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
-    for (auto celem : recs) delnul(celem.second);
-    for (auto celem : imaps)  delnul(celem.second);
-    for (auto celem : omaps)  delnul(celem.second);
+    for (auto celem : rings) delnul(celem.second);
+    for (auto celem : recs)  delnul(celem.second);
+    for (auto celem : imaps) delnul(celem.second);
+    for (auto celem : omaps) delnul(celem.second);
     #undef delnul
   }
-
-
 
 };
 

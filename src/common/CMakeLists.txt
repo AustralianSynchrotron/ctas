@@ -59,9 +59,9 @@ add_library(flatfield SHARED flatfield.h flatfield.cpp)
 target_clsrc(flatfield ff.cl)
 
 
-add_library(kernel SHARED kernel.h kernel.cpp)
-target_clsrc(kernel ct.cl)
-target_link_libraries(kernel
+add_library(lct SHARED ct.h lct.cpp)
+target_clsrc(lct ct.cl)
+target_link_libraries(lct
   fftw3f
   gsl
   gslcblas
@@ -88,7 +88,7 @@ add_library(ldei SHARED dei.h ldei.cpp)
 add_library(ledei SHARED ledei.cpp)
 
 install(TARGETS
-  poptmx common kernel lipc ldei ledei projection flatfield
+  poptmx common lct lipc ldei ledei projection flatfield
   LIBRARY DESTINATION ${LIB_DESTINATION}
 )
 

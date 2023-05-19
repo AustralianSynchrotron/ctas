@@ -243,7 +243,8 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
     for (int curI = 0; curI < strl.nofIn ; curI++)
       origins[curI] -= PointF2D(minx, miny);
     if ( ssh != Shape(maxy-miny+1, maxx-minx+1) )
-      throw_bug(modname + " Mistake in calculating stitched shape.");
+      throw_bug(modname + " Mistake in calculating stitched shape: "
+                +toString(ssh)+" != "+toString(ssh)+".");
 
     // prepare weights image
     Map wght(psh);

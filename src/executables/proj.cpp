@@ -540,8 +540,8 @@ int main(int argc, char *argv[]) {
     allOutSv.emplace_back(filedescind, outShapes[curSplt], nofOuts);
   }
 
-  // Process and save
-  if ( args.testMe >= 0 ) {
+  // Test or process and save
+  if ( args.testMe >= 0 ) { // test
     deque<Map> allIn;
     for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
       allIn.emplace_back(ish);

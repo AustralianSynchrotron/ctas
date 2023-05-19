@@ -184,11 +184,14 @@ private:
   ErrTp terr;                   ///< Error severity
   std::string module;                ///< Name of the module where the error happened
   std::string message;               ///< The message which describes the error
+  mutable bool reported;
 
 public:
   CtasErr(ErrTp _terr, const std::string & mod, const std::string & msg);
+  //~CtasErr() {report();};
   ErrTp type() const;			///< Returns error type.
   void report() const;		    ///< Reports the error to the ctderr.
+  std::string & consume();
 };
 
 
@@ -364,8 +367,26 @@ static const Map defaultMap;
 /// Three dimensional array of the ::float elements.
 typedef blitz::Array<float,3> Volume;
 
-const blitz::Range all = blitz::Range::all();
 typedef blitz::MyIndexType ArrIndex;
+const blitz::Range all = blitz::Range::all();
+
+inline blitz::Range dstR(size_t size, ssize_t shift) {
+  return blitz::Range(std::max(0l, shift), size - 1 + std::min(0l, shift));
+}
+
+inline blitz::Range srcR(size_t size, ssize_t shift) {
+  return blitz::Range(std::max(0l, -shift), size - 1 + std::min(0l, -shift));
+}
+
+#define dstRa(size, shift0, shift1) \
+  dstR(size(0), shift0), dstR(size(1), shift1)
+#define srcRa(size, shift0, shift1) \
+  srcR(size(0), shift0), srcR(size(1), shift1)
+
+static blitz::firstIndex  i0;
+static blitz::secondIndex i1;
+
+
 
 
 
@@ -414,7 +435,7 @@ template<class T, int N> bool areSame(const blitz::Array<T,N> & arr1,
 
 struct Shape : public blitz::TinyVector<ArrIndex,2> {
   Shape(ArrIndex hght=0, ArrIndex wdth=0) : blitz::TinyVector<ArrIndex,2>(hght,wdth) {}
-  Shape(const blitz::TinyVector<ArrIndex,2> & other) : blitz::TinyVector<ArrIndex,2>(other) {}
+  template <class T> Shape(const blitz::TinyVector<T,2> & other) : blitz::TinyVector<ArrIndex,2>(other) {}
 };
 
 
@@ -485,9 +506,6 @@ operator!=( const Shape3 & sh1, const Shape3 & sh2){
 inline Shape faceShape(const Shape3 & sh) {
   return Shape(sh(1), sh(2));
 }
-
-
-
 
 
 
@@ -710,6 +728,15 @@ crop(const Map & inarr, Map & outarr, const Crop & crp);
 ///
 void COMMON_API
 crop(Map & io_arr, const Crop & crp);
+
+/// \brief Crop the array by returning the reference to the portion of original array.
+///
+/// @param io_arr Input/output array.
+/// @param crop Crop resulting image
+///
+const Map COMMON_API
+crop(const Map & iarr, const Crop & crp);
+
 
 
 inline Shape

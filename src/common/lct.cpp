@@ -39,40 +39,32 @@
 #include <gsl/gsl_sf_bessel.h> // for Bessel functions
 #include <unistd.h>
 
-
 using namespace std;
 
 const string Filter::modname="filter";
 
 
-/// \brief Constructor
-///
-/// Similar to the previous one, but reads the filter type from the string.
-///
-/// @param _name Filter name.
-/// @param _as Additional parameter.
-///
-Filter::Filter(const string &_name, float _as)
-  : alsig(_as)
-{
+
+Filter::Ftype Filter::fromName(const string &_name) {
   string name = upper(_name);
-  if ( name.empty() || name == "NONE" ) filttp = NONE;
-  else if ( name == "RAMP" || name.empty() ) filttp = RAMP;
-  else if ( name == "BARLETT") filttp = RAMP;
-  else if ( name == "WELCH") filttp = WELCH;
-  else if ( name == "PARZEN") filttp = PARZEN;
-  else if ( name == "HANN") filttp = HANN;
-  else if ( name == "HAMMING") filttp = HAMMING;
-  else if ( name == "BLACKMAN") filttp = BLACKMAN;
-  else if ( name == "LANCKZOS") filttp = LANCKZOS;
-  else if ( name == "KAISER") filttp = KAISER;
-  else if ( name == "GAUSS") filttp = GAUSS;
+  if ( name == "NONE" ) return NONE;
+  else if ( name.empty() || name == "RAMP" ) return RAMP;
+  else if ( name == "BARLETT") return RAMP;
+  else if ( name == "WELCH") return WELCH;
+  else if ( name == "PARZEN") return PARZEN;
+  else if ( name == "HANN") return HANN;
+  else if ( name == "HAMMING") return HAMMING;
+  else if ( name == "BLACKMAN") return BLACKMAN;
+  else if ( name == "LANCKZOS") return LANCKZOS;
+  else if ( name == "KAISER") return KAISER;
+  else if ( name == "GAUSS") return GAUSS;
   else throw_error(modname, "The string \""+ _name +"\""
                      " does not describe any known filter.");
-  //check_alsig();
+  return NONE; // only to get rid of the non-return warning
 }
 
-/// \brief Name of the filter type.
+
+// \brief Name of the filter type.
 ///
 /// @return Name of the filter.
 ///
@@ -278,36 +270,32 @@ filter_line(Line &ln, const Line &f_win,
 
 
 
-//! Applies a ring filter of a specified size (must be odd)
 void RingFilter::apply(Map & sinogram) {
-  if (!box)
+  if ( !box || ! average.size() )
     return;
-  const size_t thetas=sinogram.shape()(0);
-  const size_t width=sinogram.shape()(1);
-  if (width != average.size())
-    throw_error("RingFilter", "Wrong sinogram width "+toString(width)+
+  const Shape sh(sinogram.shape());
+  if (sh(1) != average.size())
+    throw_error("RingFilter", "Wrong sinogram width "+toString(sh(1))+
                               " where "+toString(average.size())+" is expected.");
+  if (!sh(0))
+    throw_error("RingFilter", "Empty sinogram.");
 
-  //sum the array over angles and put result in arrAvg
   average=0;
-  for(int nCurAngle = 0; nCurAngle < thetas; nCurAngle++)
-    average += sinogram(nCurAngle, all);
-  average /= thetas;
+  for(int idx = 0; idx < sh(0); idx++)
+    average += sinogram(idx, all);
+  average /= sh(0);
 
   temp=0;
   for(int ii = -box; ii <= (int) box; ii++)
-    temp( blitz::Range( max(0, ii), width - 1 + min(0, ii) ) ) +=
-        average( blitz::Range( max(0, -ii), width - 1 + min(0, -ii) ) );
-  temp( blitz::Range(box, width-1-box) ) /= 2*box+1;
+    temp(dstR(sh(1),ii)) += average(srcR(sh(1),ii));
+  temp( blitz::Range(box, sh(1)-1-box) ) /= 2*box+1;
   for(int ii = 0; ii < box; ii++) {
     temp(ii) /= box+ii+1;
-    temp(width-1-ii) /= box+ii+1;
+    temp(sh(1)-1-ii) /= box+ii+1;
   }
   temp -= average;
-
-  //subtract arrFilter filter from the sinogram
-  for(int nCurAngle = 0; nCurAngle < thetas; nCurAngle++)
-    sinogram(nCurAngle, all) += temp;
+  for(int idx = 0; idx < sh(0); idx++)
+    sinogram(idx, all) += temp;
 
 }
 
@@ -315,9 +303,115 @@ void RingFilter::apply(Map & sinogram) {
 
 
 
-const string CTrec::modname = "reconstruction";
-cl_program CTrec::program = 0;
 
+bool CTrec::ForCLdev::checkReady() {
+  if (clSlice)
+    return true;
+  if ( ! CL_isReady() || ( program && ! clSlice ) )
+    return false;
+
+  try {
+
+    static const std::string oclsrc = {
+      #include "ct.cl.includeme"
+    };
+    program = initProgram( oclsrc, program, modname, cl.cont);
+    if (!program)
+      throw_error(modname, "Failed to compile CT CL program.");
+
+    clSlice(clAllocArray<float>(area(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
+    clSino(clAllocArray<float>(area(parent.ish), CL_MEM_READ_ONLY, cl.cont));
+    clAngles(blitz2cl(parent.cossins, CL_MEM_READ_ONLY, cl.que));
+
+    kernelSino(program, "fbp");
+    kernelSino.setArg(0, clSino());
+    kernelSino.setArg(1, clSlice());
+    kernelSino.setArg(2, (cl_int) parent.ish(1));
+    kernelSino.setArg(3, (cl_int) parent.ish(0));
+    kernelSino.setArg(4, clAngles());
+    kernelSino.setArg(6, recCof);
+
+  }  catch (...)  {
+    kernelSino.free();
+    clAngles.free();
+    clSlice.free();
+    clSino.free();
+    return false;
+  }
+  return true;
+}
+
+
+int CTrec::ForCLdev::reconstruct(Map & fsin, Map & slice, float center) { // already filtered sinogram
+  if (fsin.shape() != parent.ish)
+    throw_error(modname, "Unexpected array size on OCL reconstruct.");
+  if ( ! CL_isReady() || ( program && ! clSlice ) )
+    return -1;
+  if ( pthread_mutex_trylock(&locker) )
+    return 0;
+  bool toRet = 0;
+
+  try{
+    if (!checkReady())
+      throw 0;
+    blitz2cl(fsin, clSino(), cl.que);
+    kernelSino.setArg(5, (cl_float) center);
+    kernelSino.exec(parent.osh, cl.que);
+    slice.resize(parent.osh);
+    cl2blitz(clSlice(), slice, cl.que);
+    toRet=1;
+  } catch (...) {}
+
+  pthread_mutex_unlock(&locker);
+  return toRet;
+} ;
+
+void CTrec::ForCLdev::setRecCof(float _recCof) {
+  recCof = _recCof;
+  if (kernelSino)
+    kernelSino.setArg(6, recCof);
+}
+
+bool
+CTrec::ForCLdev::sino(Map &sinogram) {
+  if ( sinogram.shape() != parent.ish )
+    throw_error ( modname, "Shape of input sinogram (" + toString(sinogram.shape()) + ")"
+                           " does not match initial (" + toString(parent.ish) + ").");
+  if ( ! CL_isReady() || ( program && ! clSino )  )
+    return false;
+  bool toRet = false;
+  pthread_mutex_lock(&locker);
+  try { blitz2cl(sinogram, clSino(), cl.que); toRet = true;}
+  catch (...) { warn(modname, "Failed to upload sinogram to OCL device."); }
+  pthread_mutex_unlock(&locker);
+  return toRet;
+}
+
+bool
+CTrec::ForCLdev::repeat(Map & slice, float center) {
+  if ( abs(center) >= parent.ish(1)/2 )
+    throw_error(modname, "Rotation center "+toString(center)+
+                         " is outside the image of width " + toString(parent.ish(1)) + ".");
+  if ( ! CL_isReady() || ( program && ! clSino ) || pthread_mutex_trylock(&locker) )
+    return false;
+  bool toRet = false;
+  try {
+    if (!checkReady())
+      throw 0;
+    kernelSino.setArg(5, (cl_float) center);
+    kernelSino.exec(parent.osh, cl.que);
+    slice.resize(parent.osh);
+    cl2blitz(clSlice(), slice, cl.que);
+    toRet = false;
+  }
+  catch (...) { warn(modname, "Failed to perform reconstruction on OCL device."); }
+  pthread_mutex_unlock(&locker);
+  return toRet;
+}
+
+
+
+const string CTrec::modname = "reconstruction";
 
 CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   : ish(sinoshape)
@@ -327,6 +421,12 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   , filter(ft)
   , filt_window(zidth)
   , zsinoline(zidth)
+  , recCof(1)
+  , cossins(ish(0))
+  , envs(_envs)
+  , gpuReleasedCondition(new pthread_cond_t(PTHREAD_COND_INITIALIZER))
+  , gpuReleasedMutex(new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER))
+  , gpuWasReleased(_gpuWasReleased)
 {
 
   if (ish(1) < 2)
@@ -341,38 +441,67 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   planF = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_R2HC);
   planB = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_HC2R);
 
-  clSlice(clAllocArray<float>(area(osh), CL_MEM_WRITE_ONLY));
-  clSino(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
-  blitz::Array<cl_float2, 1> angles(ish(0));
-  if (abs(arc)<=1.0) // if it was a step then converts into arc
-    arc *= ish(0)-1;
+  if (arc < 1.0)
+    arc *= ish(0);
+  arc *= M_PI / 180;
   for (size_t i = 0; i < ish(0); i++) {
-    float th = arc * M_PI * i / ( ish(0) * 180.0 );
-    angles(i).s[0] = sinf(th);
-    angles(i).s[1] = cosf(th);
+    float th = i * arc / ish(0);
+    cossins(i).s[0] = sinf(th);
+    cossins(i).s[1] = cosf(th);
   }
-  clAngles(blitz2cl(angles, CL_MEM_READ_ONLY));
 
-  static const string oclsrc = {
-    #include "ct.cl.includeme"
-  };
-  program = initProgram( oclsrc, program, modname);
-  if (!program)
-    throw_error(modname, "Failed to compile CT CL program.");
-  kernelSino(program, "fbp");
-  kernelSino.setArg(0, clSino());
-  kernelSino.setArg(1, clSlice());
-  kernelSino.setArg(2, (cl_int) ish(1));
-  kernelSino.setArg(3, (cl_int) ish(0));
-  kernelSino.setArg(5, clAngles());
+  if (!CL_isReady())
+    warn(modname, "OpenCL is not functional.");
+  for (CLenv & env : clenvs)
+    try{ envs.emplace_back(env, *this); } catch(...) {}
+  if (envs.empty())
+    useCPU = true;
 
+}
+
+
+CTrec::CTrec(CTrec & other)
+  : ish(other.ish)
+  , osh(other.osh)
+  , zidth(other.zidth)
+  , contrast(other.contrast)
+  , filter(other.filter)
+  , filt_window(other.filt_window)
+  , zsinoline(zidth)
+  , recCof(other.recCof)
+  , cossins(other.cossins)
+  , envs(other.envs)
+  , gpuReleasedCondition(other.gpuReleasedCondition)
+  , gpuReleasedMutex(other.gpuReleasedMutex)
+  , gpuWasReleased(other.gpuWasReleased)
+  , useCPU(other.useCPU)
+{
+  planF = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_R2HC);
+  planB = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_HC2R);
 }
 
 
 /// \brief Destructor
 CTrec::~CTrec(){
+  if(addressof(envs) == std::addressof(envs)) { // parent instance
+    pthread_mutex_destroy(gpuReleasedMutex);
+    delete gpuReleasedMutex;
+    pthread_cond_destroy(gpuReleasedCondition);
+    delete gpuReleasedCondition;
+  }
   safe_fftw_destroy_plan(planF);
   safe_fftw_destroy_plan(planB);
+}
+
+
+void CTrec::setPhysics(float pixelSize, float lambda) {
+  recCof = 1.0;
+  if (lambda > 0.0)
+    recCof *= lambda / (2*M_PI);
+  if (pixelSize > 0.0)
+    recCof *= M_PI / pixelSize;
+  for (ForCLdev & env : envs)
+    env.setRecCof(recCof);
 }
 
 
@@ -407,40 +536,159 @@ void CTrec::prepare_sino(Map & sinogram) {
 }
 
 
-
-
-/// \brief Core reconstruction.
-///
-/// @param sinogram Input sinogram. After the reconstruction
-/// represents filtered sinogram.
-/// @param center Rotation center.
-///
 void
-CTrec::reconstruct(Map &sinogram, Map & slice, float center, float pixelSize) {
-
+CTrec::sino(Map &sinogram) {
   if ( sinogram.shape() != ish )
     throw_error ( modname, "Shape of input sinogram (" + toString(sinogram.shape()) + ")"
                            " does not match initial (" + toString(ish) + ").");
+  mysino.reference(sinogram);
+  prepare_sino(mysino);
+  for (ForCLdev & env : envs)
+    env.sino(mysino);
+}
+
+
+void
+CTrec::repeat(Map & slice, float center) {
   if ( abs(center) >= ish(1)/2 )
-    throw_error(modname, "The rotation center "+toString(center)+
-                         " is outside the image width " + toString(ish(1)) + ".");
-  if ( pixelSize <= 0 ) {
-    warn(modname, "Impossible pixel size (" + toString(pixelSize) + ")."
-    " Using 1.0 instead.");
-    pixelSize=1.0;
+    throw_error(modname, "Rotation center "+toString(center)+
+                         " is outside the sinogram width " + toString(ish(1)) + ".");
+  slice.resize(osh);
+
+  if (useCPU) {
+
+    for (ForCLdev & env : envs)
+      if (env.repeat(slice, center))
+        return;
+    reconstructOnCPU(slice, center);
+
+  } else {
+
+    while (true) {
+      for (ForCLdev & env : envs) {
+        const int reced = env.repeat(slice, center);
+        if (reced) {
+          pthread_mutex_lock(gpuReleasedMutex);
+          gpuWasReleased = true;
+          pthread_cond_signal(gpuReleasedCondition);
+          pthread_mutex_unlock(gpuReleasedMutex);
+        }
+        if (reced < 0) { // GPU failed
+          warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
+          reconstructOnCPU(slice, center);
+          return;
+        }
+        if (reced)
+          return;
+      }
+      pthread_mutex_lock(gpuReleasedMutex);
+      if (!gpuWasReleased)
+        pthread_cond_wait(gpuReleasedCondition, gpuReleasedMutex);
+      gpuWasReleased = false;
+      pthread_mutex_unlock(gpuReleasedMutex);
+    }
+
+
   }
 
-  prepare_sino(sinogram);
-  blitz2cl(sinogram, clSino());
-  kernelSino.setArg(4, (cl_float) center);
-  kernelSino.exec(osh);
+}
+
+
+void
+CTrec::reconstruct(Map &sinogram, Map & slice, float center) {
+  if ( abs(center) >= ish(1)/2 )
+    throw_error(modname, "Rotation center "+toString(center)+
+                         " is outside the sinogram width " + toString(ish(1)) + ".");
   slice.resize(osh);
-  cl2blitz(clSlice(), slice);
-  // \Delta\Theta = \pi/thetas comes from the integration over \Theta.
-  // The pixelSize is missing inside the CT algorithm in the filtering function Filter::fill().
-  slice *= M_PI / (pixelSize * ish(0));
+  prepare_sino(sinogram);
+
+  if (useCPU) {
+
+    for (ForCLdev & env : envs)
+      if (env.reconstruct(sinogram, slice, center) > 0)
+        return;
+    mysino.reference(sinogram);
+    reconstructOnCPU(slice, center);
+
+  } else {
+
+    while (true) {
+      for (ForCLdev & env : envs) {
+        const int reced = env.reconstruct(sinogram, slice, center);
+        if (reced) {
+          pthread_mutex_lock(gpuReleasedMutex);
+          gpuWasReleased = true;
+          pthread_cond_signal(gpuReleasedCondition);
+          pthread_mutex_unlock(gpuReleasedMutex);
+        }
+        if (reced < 0) { // GPU failed
+          warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
+          mysino.reference(sinogram);
+          reconstructOnCPU(slice, center);
+        }
+        if (reced)
+          return;
+      }
+      pthread_mutex_lock(gpuReleasedMutex);
+      if (!gpuWasReleased)
+        pthread_cond_wait(gpuReleasedCondition, gpuReleasedMutex);
+      gpuWasReleased = false;
+      pthread_mutex_unlock(gpuReleasedMutex);
+    }
+
+  }
 
 }
+
+
+void
+CTrec::reconstructOnCPU(Map & slice, float center) {
+  switchToGPU=false;
+  const int hp = ish(1) / 2 ;
+  const float acent = fabs(center);
+  for (ArrIndex i = 0 ; i < osh(1) ; i++) {
+    int ip2 = i-hp;
+    ip2 *= ip2;
+    if ( i <= acent  ||  i >= ish(1)-acent-1 )
+       slice(all,i)=0;
+    else {
+      for (ArrIndex j = 0 ; j < osh(0) ; j++) {
+        float ijp2 = j-hp-center;
+        ijp2 *= ijp2;
+        ijp2 += ip2;
+        if (    ( j <= hp+center  &&  ijp2 >= (hp+center) * (hp+center) )
+             || ( j >= hp+center  &&  ijp2 >= (hp-center) * (hp-center) ) )
+        {
+          slice(j,i)=0;
+        } else {
+          float total = 0.0f;
+          for (ArrIndex proj = 0; proj < ish(0); proj++)  {
+            const cl_float2 & cossin = cossins(proj);
+            ArrIndex iS=   center + (1-cossin.x-cossin.y) * hp
+                           + cossin.x * (j-center) + cossin.y * i;
+            total += mysino(proj, iS);
+          }
+          if (recCof != 0.0)
+            total *= recCof;
+          //total *= 2 / (pixelSize * 100);
+          slice(j,i) = total / ish(0);
+        }
+        if (switchToGPU) {
+          switchToGPU=false;
+          for (ForCLdev & env : envs)
+            if (env.reconstruct(mysino, slice, center))
+              return;
+        }
+      }
+    }
+  }
+}
+
+
+
+
+
+
 
 
 
@@ -493,6 +741,44 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   safe_fftw_destroy_plan(planB);
 
 }
+
+
+
+float horizontalShift( Map & pxaProj_0, Map & pxaProj_180) {
+  if (pxaProj_0.shape() != pxaProj_180.shape())
+    throw_error(modname_ax, "Different shapes of input projections: "
+       "("+toString(pxaProj_0.shape())+") and ("+toString(pxaProj_180.shape())+") .");
+  if (!pxaProj_0.size())
+    throw_error(modname_ax, "Empty input projections.");
+  const Shape ish = pxaProj_0.shape();
+  float sum=0;
+  blitz::Array<complex<float>,1> mid(ish(1)), mids(ish(1));
+  fftwf_complex * midd = (fftwf_complex*)(void*) mid.data(); // Bad trick!
+  fftwf_plan fft_f = fftwf_plan_dft_1d(ish(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
+  fftwf_plan fft_b = fftwf_plan_dft_1d(ish(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
+  for (ArrIndex sl=0 ; sl<ish(0) ; sl++) {
+    mid = blitz::cast< complex<float> >(pxaProj_0(sl, all));
+    fftwf_execute(fft_f);
+    mids=mid;
+    mid = blitz::cast< complex<float> >(pxaProj_180(sl,all));
+    fftwf_execute(fft_f);
+    mid *= mids;
+    //mid(0)=0;
+    fftwf_execute(fft_b);
+    sum += minIndex(real(mid))(0);
+  }
+  fftwf_destroy_plan(fft_f);
+  fftwf_destroy_plan(fft_b);
+  return sum/ish(0);
+}
+
+
+
+
+
+
+
+
 
 
 

@@ -592,14 +592,14 @@ private:
 
     const pthread_t me = pthread_self();
     lock();
-    if ( ! recs.count(me) ) // first call
-      recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
+    //if ( ! recs.count(me) ) // first call
+    //  recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
     CTrec & rec = recs.at(me);
     unlock();
 
     Map sino(frames(all, idx, all));
     Map slice;
-    rec.reconstruct(sino, slice, 0, pixelSize); // centre is 0 after frames formation
+    rec.reconstruct(sino, slice, 0); // centre is 0 after frames formation
     result(idx, all, all) = slice;
     bar.update();
     return true;

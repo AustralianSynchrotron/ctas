@@ -126,6 +126,8 @@ clargs::clargs(int argc, char *argv[]) :
 }
 
 
+#include <unistd.h>
+
 class ProcInThread : public InThread {
 
   const clargs & args;
@@ -138,21 +140,37 @@ class ProcInThread : public InThread {
   unordered_map<pthread_t, IPCprocess*> procs;
   unordered_map<pthread_t, Map*> iomaps;
 
+  bool beforeThread() {
+    const pthread_t me = pthread_self();
+    if ( procs.count(me) )
+      return true;
+    IPCprocess * ipcproc;
+    Map * iomap;
+    try {
+      ipcproc = procs.empty() ? new IPCprocess(sh, d2bN)
+                              : new IPCprocess(*(procs.begin()->second));
+      iomap = new Map(sh);
+    } catch (...) {
+      if (ipcproc)
+        delete ipcproc;
+      if (iomap)
+        delete iomap;
+      return false;
+    }
+    lock();
+    procs.emplace(me, ipcproc);
+    iomaps.emplace(me, iomap);
+    unlock();
+    return true;
+  }
+
   bool inThread(long int idx) {
     if (idx >= allIn.slices())
       return false;
 
     const pthread_t me = pthread_self();
-    if ( ! procs.count(me) ) { // first call
-      Map * iomap = new Map(sh);
-      lock();
-      if (procs.empty()) // need this first element to initialize the rest
-        procs.emplace(me, new IPCprocess(sh, d2bN));
-      else
-        procs.emplace(me, new IPCprocess(*(procs.begin()->second)));
-      iomaps.emplace(me, iomap);
-      unlock();
-    }
+    if ( ! procs.count(me) )
+      return false; // must have been created in beforeThread;
     lock();
     IPCprocess & myProc = *procs.at(me);
     Map & myIOmap = *iomaps.at(me);
@@ -188,12 +206,10 @@ public:
   }
 
   ~ProcInThread() {
-    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
-    for (auto celem : procs) delnul(celem.second);
-    for (auto celem : iomaps)  delnul(celem.second);
-    delnul(allOut);
-    #undef delnul
-
+    auto dlnl = [&](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
+    for (auto celem : procs) dlnl(celem.second);
+    for (auto celem : iomaps) dlnl(celem.second);
+    dlnl(allOut);
   }
 
 };
@@ -202,10 +218,13 @@ public:
 
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
-  const clargs args(argc, argv) ;
-  ProcInThread procall(args);
-  procall.execute();
-  // exit(0);  // commented to run destructors
+  try {
+    const clargs args(argc, argv) ;
+    ProcInThread procall(args);
+    procall.execute();
+  } catch (...) {
+    throw;
+  }
 }
 
 

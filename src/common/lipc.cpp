@@ -19,14 +19,6 @@
 using namespace std;
 
 
-
-
-const string IPCprocess::modname = "IPC process";	///< Module name.
-
-#ifdef ONGPU
-cl_program IPCprocess::oclProgram = 0;
-#endif // ONGPU
-
 static int ipow(int base, int exp) {
   int result = 1;
   for (;;)  {
@@ -51,7 +43,6 @@ static vector<int> factor(int n, const vector<int> & primes) {
   return f;
 }
 
-
 static int closest_factorable(int n, const vector<int> & primes) {
   int d = 0;
   vector<int> r;
@@ -67,18 +58,140 @@ static int closest_factorable(int n, const vector<int> & primes) {
   return fnl;
 }
 
-IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
+
+
+const string IPCprocess::modname = "IPC process";	///< Module name.
+
+
+
+IPCprocess::ForCLdev::ForCLdev(CLenv & _cl, const Shape & _sh, float _d2b)
   : sh(_sh)
   , msh(closest_factorable(sh(0), {2,3,5,7}),
         closest_factorable(sh(1), {2,3,5,7}))
   , d2b(_d2b)
-  #ifdef ONGPU
+  , cl(_cl)
   , clmid(0)
+  , oclProgram(0)
+  , clfft_plan(0)
   , clfftTmpBuff(0)
-  #else // ONGPU
+  , locker(PTHREAD_MUTEX_INITIALIZER)
+{
+  if (d2b<=0)
+    return;
+  if (!CL_isReady())
+    warn(modname, "OpenCL is not functional.");
+}
+
+
+
+IPCprocess::ForCLdev::~ForCLdev() {
+  if (clfft_plan)
+    clfftDestroyPlan(&clfft_plan);
+  pthread_mutex_destroy(&locker);
+}
+
+
+
+bool
+IPCprocess::ForCLdev::extract(Map & in) {
+
+  if (d2b<=0)
+    return true;
+  if (in.shape() != msh)
+    throw_error(modname, "Unexpected array size on OCL extract.");
+  if ( ! CL_isReady() || ( cin.size() && ! clfft_plan ) ||  pthread_mutex_trylock(&locker) )
+    return false;
+
+  bool toRet = false;
+  try {
+
+    // allocate on first execution
+    if ( !clfft_plan ) {
+
+      cin.resize(msh);
+      const string oclSource = {
+        #include "ipc.cl.includeme"
+      };
+      oclProgram = initProgram(oclSource, oclProgram, "IPC on OCL", cl.cont);
+      if (!oclProgram) {
+        warn(modname, "Failed to compile OCL program for IPC processing.");
+        return false;
+      }
+
+      clmid(clAllocArray<float>(area(msh)*2, cl.cont));
+      kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
+      kernelApplyPhsFilter.setArg(0, clmid());
+      kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
+      kernelApplyPhsFilter.setArg(2, (cl_int) msh(0));
+      kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
+
+      cl_int err=10;
+      size_t clfftTmpBufSize = 0;
+      clfftSetupData fftSetup;
+      const size_t mshs[2] = {(size_t) msh(1), (size_t) msh(0)};
+      if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
+           CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
+           CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, cl.cont, CLFFT_2D, mshs)) ||
+           //CL_SUCCESS != (err = clfftSetPlanPrecision(clfft_plan, CLFFT_SINGLE_FAST)) ||
+           //CL_SUCCESS != (err = clfftSetLayout(clfft_plan, CLFFT_REAL, CLFFT_HERMITIAN_INTERLEAVED )) ||
+           CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &cl.que, NULL, NULL)) ||
+           CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
+      {
+        if (clfft_plan) {
+          clfftDestroyPlan(&clfft_plan);
+          clfft_plan=0;
+        }
+        throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
+      }
+      if (clfftTmpBufSize)
+        clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize, cl.cont));
+
+    }
+
+    // execute
+    cin = blitz::cast<complex<float>>(in);
+    blitz2cl(cin, clmid(), cl.que);
+    clfftExec(CLFFT_FORWARD);
+    kernelApplyPhsFilter.exec(area(msh), cl.que);
+    clfftExec(CLFFT_BACKWARD);
+    cl2blitz(clmid(), cin, cl.que);
+    in = real(cin);
+    toRet = true;
+
+  } catch (...) {}
+
+  pthread_mutex_unlock(&locker);
+  return toRet;
+
+}
+
+
+cl_int IPCprocess::ForCLdev::clfftExec(clfftDirection dir) const {
+  if (d2b<0)
+    return CL_SUCCESS;
+  cl_int err;
+  err = clfftEnqueueTransform(clfft_plan, dir, 1, &cl.que, 0, NULL, NULL, &clmid(), NULL, clfftTmpBuff());
+  if ( CL_SUCCESS != err )
+    throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");
+  err = clFinish(cl.que);
+  if ( CL_SUCCESS != err )
+    throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
+  return err;
+}
+
+
+
+
+IPCprocess::IPCprocess(const Shape & _sh, float _d2b)
+  : sh(_sh)
+  , msh(closest_factorable(sh(0), {2,3,5,7}),
+        closest_factorable(sh(1), {2,3,5,7}))
+  , d2b(_d2b)
   , phsFilter(msh)
-  #endif // ONGPU
   , mid(msh)
+  , envs(_envs)
+  , fft_f(0)
+  , fft_b(0)
 {
 
   if (d2b <= 0.0) // no IPC processing
@@ -87,15 +200,10 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
     throw_error(modname, "Insufficient size requested: (" + toString(sh) + ")."
                 " Must be at least (" + toString(Shape(3,3)) + ").");
 
-  #ifdef ONGPU
-  const string oclSource = {
-    #include "ipc.cl.includeme"
-  };
-  oclProgram = initProgram(oclSource, oclProgram, "IPC on OCL" );
-  if (!oclProgram)
-    throw_error(modname, "Failed to compile OCL program for IPC processing.");
-  initCL();
-  #else // ONGPU
+  if (!CL_isReady())
+    warn(modname, "OpenCL is not functional.");
+  for (CLenv & env : clenvs)
+    try{ envs.emplace_back(env, sh, d2b); } catch(...) {}
 
   float* midd = mid.data();
   fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
@@ -116,99 +224,42 @@ IPCprocess::IPCprocess( const Shape & _sh, float _d2b)
       phsFilter(i,j) = ei + ej;
     }
   }
-  phsFilter = d2b/(d2b*phsFilter+1);
-
-  #endif // ONGPU
+  phsFilter = 1/(mid.size()*(d2b*phsFilter+1));
 
 }
 
 
-IPCprocess::IPCprocess( const IPCprocess & other)
+IPCprocess::IPCprocess( const IPCprocess & other )
   : sh(other.sh)
   , msh(other.msh)
   , d2b(other.d2b)
-  #ifdef ONGPU
-  , clmid(0)
-  , clfftTmpBuff(0)
-  #else // ONGPU
   , phsFilter(other.phsFilter)
-  #endif // ONGPU
   , mid(other.mid.shape())
+  , envs(other.envs)
+  , fft_f(0)
+  , fft_b(0)
 {
-  #ifdef ONGPU
-  initCL();
-  #else // ONGPU
+  if (d2b <= 0.0) // no IPC processing
+    return;
   float* midd = mid.data();
   fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
   fft_b = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_HC2R, FFTW_HC2R, FFTW_ESTIMATE);
-  #endif // ONGPU
 }
 
 
 IPCprocess::~IPCprocess() {
-  #ifdef  ONGPU
-  clfftDestroyPlan(&clfft_plan);
-  #else // ONGPU
-  fftwf_destroy_plan(fft_f);
-  fftwf_destroy_plan(fft_b);
-  #endif // ONGPU
+  if (fft_f)
+    fftwf_destroy_plan(fft_f);
+  if (fft_b)
+    fftwf_destroy_plan(fft_b);
 }
 
 
 
-#ifdef ONGPU
-
-void IPCprocess::initCL() {
-
-  if (!CL_isReady())
-    throw_error(modname, "OpenCL is not functional.");
-
-  clmid(clAllocArray<float>(2*mid.size()));
-  kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
-  kernelApplyPhsFilter.setArg(0, clmid());
-  kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
-  kernelApplyPhsFilter.setArg(2, (cl_int) msh(0));
-  kernelApplyPhsFilter.setArg(3, (cl_float) d2b );
-
-  cl_int err;
-  size_t clfftTmpBufSize = 0;
-  clfftSetupData fftSetup;
-  const size_t mshs[2] = {(size_t) msh(1), (size_t) msh(0)};
-  if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
-       CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
-       CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, CL_context(), CLFFT_2D, mshs)) ||
-       CL_SUCCESS != (err = clfftBakePlan(clfft_plan, 1, &CL_queue(), NULL, NULL)) ||
-       CL_SUCCESS != (err = clfftGetTmpBufSize(clfft_plan, &clfftTmpBufSize) ) )
-    throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
-  if (clfftTmpBufSize)
-    clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize));
-
-}
-
-cl_int IPCprocess::clfftExec(clfftDirection dir) const {
-  if (d2b<0)
-    return CL_SUCCESS;
-  cl_int err;
-  err = clfftEnqueueTransform(clfft_plan, dir, 1, &CL_queue(), 0, NULL, NULL, &clmid(), NULL, clfftTmpBuff());
-  if ( CL_SUCCESS != err )
-    throw_error(modname, "Failed to execute clFFT plan: " + toString(err) + ".");
-  err = clFinish(CL_queue());
-  if ( CL_SUCCESS != err )
-    throw_error(modname, "Failed to complete clFFT plan: " + toString(err) + ".");
-  return err;
-}
-
-#endif // ONGPU
-
-
-namespace blitz {
-static inline std::complex<float> f2c(float x){ return std::complex<float>(x);}
-BZ_DECLARE_FUNCTION_RET(f2c, std::complex<float>);
-}
 
 
 void
-IPCprocess::extract(const Map & in, Map & out) const {
+IPCprocess::extract(const Map & in, Map & out) {
   if ( in.shape() != sh )
     throw_error(modname, "Size of the input array (" +toString(in.shape())+ ")"
                 " does not match the expected one (" +toString(sh)+ ")." );
@@ -227,12 +278,18 @@ IPCprocess::extract(const Map & in, Map & out) const {
   const blitz::Range r0_1(0, sh(0)-1), r1_1(0, sh(1)-1);
   deAbs(out);
   mid = 0.0;
-  mid(r0_1, r1_1) =
-    #ifdef ONGPU
-      f2c(out);
-    #else
-      out;
-    #endif
+  mid(r0_1, r1_1) = out;
+  bool doneOnGPU = false;
+  for (ForCLdev & env : envs)
+    if ((doneOnGPU = env.extract(mid)))
+      break;
+  if (!doneOnGPU) {
+    fftwf_execute(fft_f);
+    mid *= phsFilter;
+    fftwf_execute(fft_b);
+  }
+  out = mid(r0_1, r1_1);
+
 
   //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );
   //const Shape cpnt( opnt(0)+sh(0) , opnt(1)+sh(1) );
@@ -256,25 +313,6 @@ IPCprocess::extract(const Map & in, Map & out) const {
   //mid(r0_2, r1_0) = mid(cpnt(0)-1, opnt(1));
   //mid(r0_2, r1_2) = mid(cpnt(0)-1, cpnt(1)-1);
 
-
-  #ifdef ONGPU
-  blitz2cl(mid, clmid());
-  clfftExec(CLFFT_FORWARD);
-  kernelApplyPhsFilter.exec(mid.size());
-  clfftExec(CLFFT_BACKWARD);
-  cl2blitz(clmid(), mid);
-  out = real(mid(r0_1, r1_1));
-  #else // ONGPU
-  fftwf_execute(fft_f);
-  mid *= phsFilter;
-  fftwf_execute(fft_b);
-  mid /= mid.size();
-  out = mid(r0_1, r1_1);
-  #endif // ONGPU
-
-  out *= 1.0/d2b;
-  //const float bmean = mean(out(all, 0)) + mean(out(all, sh(1)-1));
-  //out -= bmean/2.0;
 
 }
 

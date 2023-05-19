@@ -49,10 +49,12 @@ struct clargs {
   ImagePath outmask;           ///< Name of the file to save the result to.
   float arc;
   float dd;             ///< Pixel size.
+  float lambda;             ///< wavelength
   uint ringBox;
   bool beverbose;				///< Be verbose flag
   float mincon;         ///< Black intensity.
   float maxcon;         ///< White intensity.
+  bool allowCPU;
 
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -68,22 +70,24 @@ clargs(int argc, char *argv[])
   , maxcon(0)
   , outmask("reconstructed-<sinogram>")
   , arc(180)
-  , dd(1.0)
+  , dd(0.0)
+  , lambda(0.0)
   , ringBox(0)
+  , allowCPU(false)
 {
 
   poptmx::OptionTable table
-  ("CT reconstruction of one sinogram.",
-   "The program reads pre-formed sinogram and reconstructs it.");
+  ("CT reconstruction of sinogram(s).",
+   "The program reads pre-formed sinograms and reconstructs them.");
 
   table
   .add(poptmx::NOTE, "ARGUMENTS:")
   .add(poptmx::ARGUMENT, &sinograms, "sinogram",
        "Input image containing the sinogram.", "")
-  .add(poptmx::ARGUMENT, &outmask, "result",
-       "Output reconstructed image.", "", outmask)
 
   .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &outmask, 'o', "output",
+       "Mask to output reconstructed image(s).", "", outmask)
   .add(poptmx::OPTION, &contrast, 'k', "contrast",
        "Input component.",
        "Type of the contrast presented in the sinogram. " + Contrast::Desc)
@@ -98,14 +102,18 @@ clargs(int argc, char *argv[])
        "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
   .add(poptmx::OPTION, &dd, 'r', "resolution",
        "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
-  //  .add(poptmx::OPTION, &lambda, 'w', "wavelength",
-  //  "Wave length (Angstrom).", "Wavelength.")
+  .add(poptmx::OPTION, &lambda, 'w', "wavelength",
+       "Wave length (Angstrom).", "If this option is used then outputs refraction index."
+                                  " Otherwise outputs linnear attenuation coefficient (1/m).")
   .add(poptmx::OPTION, &ringBox, 'R', "ring",
            "Half size of the ring filter.", "", toString(ringBox))
   .add(poptmx::OPTION, &mincon, 'm', "min", "Pixel value corresponding to black.",
        " All values below this will turn black.", "<minimum>")
   .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
        " All values above this will turn white.", "<maximum>")
+  .add(poptmx::OPTION, &allowCPU, 0, "cpu", "Allow CT'ing on CPU (very slow).",
+       "By default CPU processing is allowed only if no OpenCL devices were found or failing."
+       " Using CPU can be benificial on large slices, but detrimental on small ones.", toString(allowCPU))
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -125,7 +133,12 @@ clargs(int argc, char *argv[])
   if ( table.count(&dd) ) {
     if ( dd <= 0.0 )
       exit_on_error(command, "Negative pixel size (given by "+table.desc(&dd)+").");
-    dd /= 1.0E6;
+    dd /= 1.0E6; // mum -> m
+  }
+  if ( table.count(&lambda) ) {
+    if ( lambda <= 0.0 )
+      exit_on_error(command, "Negative wawelwngth (given by "+table.desc(&lambda)+").");
+    lambda /= 1.0E10; // Angstrom -> m
   }
   if (arc <= 0.0)
     exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
@@ -141,6 +154,7 @@ class RecInThread : public InThread {
   const Shape ish;
   const Shape osh;
   SaveVolumeBySlice ovolSv;
+  CTrec canonRec;
 
   unordered_map<pthread_t, RingFilter*> rings;
   unordered_map<pthread_t, CTrec*> recs;
@@ -148,18 +162,23 @@ class RecInThread : public InThread {
   unordered_map<pthread_t, Map*> omaps;
 
   bool inThread(long int idx) {
-    if (idx >= ivolRd.slices())
+
+    if (idx >= ivolRd.slices()) {
+      for (auto & inrecs : recs)
+        inrecs.second->doOnGPU();
       return false;
+    }
 
     const pthread_t me = pthread_self();
     if ( ! recs.count(me) ) {
-      CTrec * erec = new CTrec(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type);
+      CTrec * erec = ivolRd.slices() == 1 ? &canonRec : new CTrec(canonRec);
+      erec->setPhysics(ctrl.dd, ctrl.lambda);
       RingFilter * ering = new RingFilter(ish(1), ctrl.ringBox);
       Map * eimap = new Map(ish);
       Map * eomap = new Map(osh);
       lock();
-      rings.emplace(me, ering);
       recs.emplace(me, erec);
+      rings.emplace(me, ering);
       imaps.emplace(me, eimap);
       omaps.emplace(me, eomap);
       unlock();
@@ -173,7 +192,7 @@ class RecInThread : public InThread {
 
     ivolRd.read(idx, myImap);
     myRing.apply(myImap);
-    myRec.reconstruct(myImap, myOmap, ctrl.center, ctrl.dd);
+    myRec.reconstruct(myImap, myOmap, ctrl.center);
     ovolSv.save(idx, myOmap);
     bar.update();
     return true;
@@ -189,17 +208,19 @@ public:
     , ish(ivolRd.face())
     , osh(ish(1),ish(1))
     , ovolSv(ctrl.outmask, osh, ivolRd.slices(), ctrl.mincon, ctrl.maxcon)
+    , canonRec(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type)
   {
     bar.setSteps(ivolRd.slices());
+    if (ctrl.allowCPU)
+      canonRec.allowCPU();
   }
 
   ~RecInThread() {
-    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
-    for (auto celem : rings) delnul(celem.second);
-    for (auto celem : recs)  delnul(celem.second);
-    for (auto celem : imaps) delnul(celem.second);
-    for (auto celem : omaps) delnul(celem.second);
-    #undef delnul
+    auto dlnl = [&](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
+    for (auto celem : rings) dlnl(celem.second);
+    for (auto celem : recs)  dlnl(celem.second);
+    for (auto celem : imaps) dlnl(celem.second);
+    for (auto celem : omaps) dlnl(celem.second);
   }
 
 };

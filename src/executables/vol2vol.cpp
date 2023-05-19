@@ -48,6 +48,7 @@ struct clargs {
   float mincon;         ///< Black intensity.
   float maxcon;         ///< White intensity.
   bool SaveInt;         ///< Save image as 16-bit integer.
+  float reNAN;
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -60,6 +61,7 @@ clargs(int argc, char *argv[])
   , mincon(NAN)
   , maxcon(NAN)
   , SaveInt(false)
+  , reNAN(NAN)
   , beverbose(false)
 {
 
@@ -86,6 +88,7 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
     .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
+    .add(poptmx::OPTION, &reNAN,'N', "nan", "Replace NAN's with this number.", "")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -100,6 +103,9 @@ clargs(int argc, char *argv[])
 
   if ( ! table.count(&images) )
     exit_on_error(command, "No input image given.");
+  if ( beverbose && outmask == "-" )
+    exit_on_error(command, "Verbose option ("+table.desc(&beverbose)+") is incompatible with"
+                           " printing to stdout (\'-\' given to "+table.desc(&outmask)+" option).");
 
 }
 
@@ -205,7 +211,7 @@ class SliceInThread : public InThread {
 
     const pthread_t me = pthread_self();
     if ( ! rdprocs.count(me) ) {
-      ImageProc * erdprocs = new ImageProc(0, crp, bnn, ish);
+      ImageProc * erdprocs = new ImageProc(0, crp, bnn, ish, args.reNAN);
       Map * erdmap = new Map(osh);
       lock();
       rdprocs.emplace(me, erdprocs);
@@ -262,6 +268,8 @@ public:
     ivolRd = new ReadVolumeBySlice(args.images);
     ish = ivolRd->face();
     isz = ivolRd->slices();
+    if (!isz)
+      throw_error(args.command, "Empty volume to read.");
     crp = args.crp;
     bnn = args.bnn;
     bnz = args.bnn.z ? args.bnn.z : isz;
@@ -302,10 +310,11 @@ cl_program SliceInThread::CLacc::binnProgram = 0;
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-
   const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
-  if (  ( ! args.slicedesc.empty()  &&  string("xXyY").find(args.slicedesc.at(0)) != string::npos )
-     || ( toInt  &&  ( ! fisok(args.mincon)  ||  ! fisok(args.maxcon) ) ) ) {
+
+  if (  ( ! args.slicedesc.empty()
+          &&  string("xXyY").find(args.slicedesc.at(0)) != string::npos )
+        || ( toInt  &&  ( ! fisok(args.mincon)  ||  ! fisok(args.maxcon) ) ) ) {
     // Requires whole volume in memory to produce cross-sections or calculate min/max
 
     Volume ivol;

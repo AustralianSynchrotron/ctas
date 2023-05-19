@@ -12,6 +12,23 @@ target_link_libraries(ct
 )
 
 
+add_executable(ring ring.cpp)
+target_link_libraries(ring
+  common
+  poptmx
+  lct
+)
+
+
+
+add_executable(ax axis.cpp)
+target_link_libraries(ax
+  common
+  poptmx
+  lct
+  projection
+)
+
 add_executable(rc2fd rc2fd.cpp)
 target_link_libraries(rc2fd
   common
@@ -44,7 +61,7 @@ add_executable(ts ts.cpp)
 target_link_libraries(ts
   common
   poptmx
-  lct  
+  lct
 )
 
 
@@ -69,17 +86,6 @@ target_link_libraries(proj
 )
 
 
-add_executable(prct prct.cpp)
-target_link_libraries(prct
-  common
-  poptmx
-  flatfield
-  lipc
-  lct 
-  projection
-)
-
-
 
 add_executable(v2v vol2vol.cpp)
 target_clsrc(v2v ../common/binn.cl)
@@ -87,6 +93,7 @@ target_link_libraries(v2v
   common
   poptmx
 )
+
 
 
 add_executable(bctppl bctppl.cpp)
@@ -104,15 +111,16 @@ target_link_libraries(bctppl
 
 
 
-#add_executable(test test.cpp)
-#target_link_libraries(test
-#  common
-#  poptmx
-#)
+add_executable(test test.cpp)
+target_link_libraries(test
+  common
+  poptmx
+  projection
+)
 
 
 set( all_targets
-  ipc dei edei norm ct ts rc2fd proj prct v2v bctppl
+  ipc dei edei norm ax ct ts rc2fd proj v2v bctppl ring
 )
 
 

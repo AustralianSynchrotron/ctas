@@ -47,6 +47,7 @@ struct clargs {
   ImagePath out_name;              ///< Name of the output image.
   string out_range;
   StitchRules st;
+  int zbinn;
   int testMe;          ///< Prefix to save interim results
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
@@ -63,6 +64,7 @@ clargs(int argc, char *argv[])
           " Transformations are applied in the following order: rotate, crop, binning." )
   , denoiseRad(0)
   , denoiseThr(0.0)
+  , zbinn(1)
   , testMe(-1)
   , beverbose(false)
 {
@@ -82,6 +84,8 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
     .add(poptmx::OPTION, &st.bnn, 'b', "binn", BinnOptionDesc, "")
+    .add(poptmx::OPTION, &zbinn, 'z', "zinn", "Binning over multiple input prrojections.",
+         "If zero binn binns all outputs. Ignored for tests.")
     .add(poptmx::OPTION, &st.angle,'r', "rotate", "Rotation angle.", "")
     .add(poptmx::OPTION, &st.origin1, 'g', "origin", "Origin of the image in the first stitch.",
          "Position of the next image origin (top left corner) on the current image.")
@@ -153,16 +157,15 @@ clargs(int argc, char *argv[])
     exit_on_error(command, "No input images given.");
   st.nofIn = tiledImages;
 
-  #define chkNofIns(ims, lbl) \
+  auto chkNofIns = [&](const deque<ImagePath> & ims, const string & lbl) {
     if (ims.size() && ims.size() != 1 && ims.size() != st.nofIn) \
-      exit_on_error(command, "Number of " lbl " images given by " + table.desc(&ims) + " option " \
+      exit_on_error(command, "Number of " +lbl+ " images given by " + table.desc(&ims) + " option " \
                              " is neither 0, 1, nor the number of inputs (" + toString(st.nofIn) +  ").");
-
+  };
   chkNofIns(bgs, "background");
   chkNofIns(dfs, "darkfield");
   chkNofIns(dgs, "darkground");
   chkNofIns(mss, "mask");
-  #undef chkNofIns
 
   if (dgs.size() && ! bgs.size())
     exit_on_error(command, "No background images (" + table.desc(&bgs) + ") for provided darkgrounds (" + table.desc(&dgs) + ").");
@@ -237,7 +240,7 @@ BZ_DECLARE_FUNCTION(invert);
 
 
 
-static const Denoiser & curDnz(const deque<Denoiser> & dnzs, uint cur) {
+static const Denoiser & curDnz(const deque<Denoiser> & dnzs, int cur) {
   if (dnzs.size()==1)
     return dnzs[0];
   else if (dnzs.size() > cur)
@@ -254,47 +257,136 @@ class ProjInThread : public InThread {
   const deque<Denoiser> & dnsr;
   const ProcProj & proc;
   const deque<int> & projes;
+  const int zbinn;
 
   unordered_map<pthread_t, deque<Denoiser>* > dnsrs;
   unordered_map<pthread_t, ProcProj*> procs;
   unordered_map<pthread_t, deque<Map>* > allInMaps;
-  unordered_map<pthread_t, deque<Map>* > results;
+
+  // Class to accumulate projections in binning Z axis.
+  struct Accumulator {
+
+    Map storage;
+    const int bn;
+    int odx;
+    int cnt;
+    pthread_mutex_t * locker;
+
+    Accumulator(Shape sh, int _bn)
+      : bn(_bn)
+      , odx(-1)
+      , cnt(0)
+      , locker(0)
+    {
+      if (!bn)
+        throw_bug("Z-binning. Binning can't be 0.");
+      if (bn==1)
+        return;
+      storage.resize(sh);
+      locker = new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER);
+    }
+
+    ~Accumulator() {
+      if (!locker)
+        return;
+      if (cnt)
+        warn("Z-binning", "Unfinished accumulation on slice "+toString(odx)+".");
+      pthread_mutex_destroy(locker);
+      delete locker;
+      locker = 0;
+    }
+
+    // returns true if accamulation has filled
+    bool addme (Map & nmap) {
+      if (bn==1)
+        return true;
+      if (nmap.shape() != storage.shape())
+        throw_error("Z-binning", "Wrong input image shape.");
+      pthread_mutex_lock(locker);
+      cnt++;
+      if (cnt==1) // first map
+        storage = nmap;
+      else if (cnt == bn) { // last map
+        nmap = (nmap + storage) / bn;
+        cnt = 0;
+        odx = -1;
+      } else
+        storage += nmap;
+      const bool toRet = (cnt==0);
+      pthread_mutex_unlock(locker);
+      return toRet;
+    }
+
+  };
+  deque< pair< pthread_mutex_t, list<Accumulator> > > accs;
+
 
   bool inThread(long int idx) {
 
-    if (idx >= projes.size() || projes[idx] >= allOutSv[0].slices())
+    const long int odx = idx/zbinn;
+    if (odx >= allOutSv[0].slices() || idx >= allInRd[0].slices() )
       return false;
+    if ( find(projes.begin(), projes.end(), odx) == projes.end() )
+      return true;
 
     const pthread_t me = pthread_self();
     if ( ! procs.count(me) ) { // first call
       deque<Denoiser> * ednsr = new deque<Denoiser>(dnsr);
       ProcProj* eproc = new ProcProj(proc);
       deque<Map> * eAllInMaps = new deque<Map>(allInRd.size());
-      deque<Map> * eresults = new deque<Map>();
       lock();
       dnsrs.emplace(me, ednsr);
       procs.emplace(me, eproc);
       allInMaps.emplace(me, eAllInMaps);
-      results.emplace(me, eresults);
       unlock();
     }
     lock();
     deque<Denoiser> & myDnsr = *dnsrs.at(me);
     ProcProj & myProc = *procs.at(me);
     deque<Map> & myAllIn = *allInMaps.at(me);
-    deque<Map> & myRes = *results.at(me);
     unlock();
 
     try {
       for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
-        allInRd[curI].read(projes[idx], myAllIn[curI]);
+        allInRd[curI].read(idx, myAllIn[curI]);
         curDnz(myDnsr, curI).proc(myAllIn[curI]);
       }
-      myProc.process(myAllIn, myRes);
-      for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
-        allOutSv[curO].save(projes[idx], myRes[curO]);
+      deque<Map> & myRes = myProc.process(myAllIn);
+      if (zbinn == 1)
+        for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
+          allOutSv[curO].save(odx, myRes[curO]);
+      else {
+        for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ ) {
+          pthread_mutex_lock(&accs[curO].first);
+          list<Accumulator> & curAccs = accs[curO].second;
+          Map & curMyRes = myRes[curO];
+          if (!curAccs.size())
+            curAccs.emplace_back(curMyRes.shape(), zbinn);
+          auto useacc = curAccs.end();
+          for ( auto accsp  = curAccs.begin() ; accsp != curAccs.end() ; accsp++) {
+            if (useacc == curAccs.end() && accsp->odx<0 ) { // found free
+              useacc = accsp;
+              useacc->odx = odx; // reserve this acc, but keep searching
+            } else if (accsp->odx == odx) {  // found existing
+              if ( useacc != curAccs.end() ) // if was reserved
+                useacc->odx = -1; // release reservation
+              useacc = accsp;
+              break;
+            }
+          }
+          if (useacc == curAccs.end()) { // nothing found: create new
+            curAccs.emplace_back(curMyRes.shape(), zbinn);
+            useacc = --curAccs.end();
+          }
+          Accumulator & myacc = *useacc;
+          myacc.odx = odx;
+          pthread_mutex_unlock(&accs[curO].first);
+          if (myacc.addme(curMyRes))
+            allOutSv[curO].save(odx, curMyRes);
+        }
+      }
     } catch (...) {
-      warn("form projection", toString("Failed on index %i, slice %i.", idx, projes[idx]));
+      warn("form projection", toString("Failed processing input index %i, for output slice %i.", idx, odx));
     }
 
     bar.update();
@@ -306,22 +398,28 @@ public:
 
   ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
               , const deque<Denoiser> & _dnsr, const ProcProj & _proc
-              , const deque<int> & _projes, bool verbose=false)
-    : InThread(verbose, "processing projections", _projes.size())
+              , const deque<int> & _projes, const int _zbinn, bool verbose)
+    : InThread(verbose, "processing projections")
     , dnsr(_dnsr)
     , proc(_proc)
     , projes(_projes)
     , allInRd(_allInRd)
     , allOutSv(_outSave)
-  {}
+    , zbinn(_zbinn ? _zbinn : allInRd.at(0).slices())
+  {
+    bar.setSteps(zbinn*projes.size());
+    if (zbinn != 1)
+      for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
+        accs.emplace_back( pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER), list<Accumulator>() );
+  }
 
   ~ProjInThread() {
-    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
-    for (auto celem : dnsrs)     delnul(celem.second) ;
-    for (auto celem : procs)     delnul(celem.second) ;
-    for (auto celem : allInMaps) delnul(celem.second) ;
-    for (auto celem : results)   delnul(celem.second) ;
-    #undef delnul
+    auto dlnl = [&](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
+    for (auto celem : dnsrs)       dlnl(celem.second) ;
+    for (auto celem : procs)       dlnl(celem.second) ;
+    for (auto celem : allInMaps)   dlnl(celem.second) ;
+    for (auto & accPair : accs)
+      pthread_mutex_destroy(&accPair.first);
   }
 
 
@@ -335,16 +433,13 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
   const Shape ish(ImageSizes(args.images.at(0).at(0).repr()));
-  StitchRules st = args.st;
-  st.ish = ish;
   const int nofIn = args.images.size();
 
   // Read auxiliary images
   #define rdAux(pfx) \
-  deque<Map> pfx##as(args.pfx##s.size()); \
-  for ( int curf = 0 ; curf < args. pfx##s.size() ; curf++) \
-    ReadImage(args. pfx##s[curf].repr(), pfx##as[curf], ish); \
-
+    deque<Map> pfx##as(args.pfx##s.size()); \
+    for ( int curf = 0 ; curf < args. pfx##s.size() ; curf++) \
+      ReadImage(args. pfx##s[curf].repr(), pfx##as[curf], ish);
   rdAux(bg);
   rdAux(df);
   rdAux(dg);
@@ -403,45 +498,36 @@ int main(int argc, char *argv[]) {
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
     allInRd.at(curI).add(args.images.at(curI));
-    uint cSls = allInRd.at(curI).slices();
+    int cSls = allInRd.at(curI).slices();
     if (!cSls)
       exit_on_error(args.command, "No images in input "+ toString(curI) +".");
     if (curI && allInRd.at(0).slices() != cSls)
       exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
   }
   const int nofProj = allInRd.at(0).slices();
-  const deque<int> projes = slice_str2vec(args.out_range, nofProj);
-  const int nofOuts = projes.size();
-  if (!nofOuts)
-    exit_on_error(args.command, "Given range \"" + args.out_range + "\""
-                                " is beyond input slices"+toString(nofProj)+".");
-  if ( args.testMe >= nofProj )
+  const int nofOuts = args.zbinn ? nofProj/args.zbinn : 1;
+  if ( args.testMe >= nofOuts )
     exit_on_error(args.command, "Requested test is beyond number of projections.");
+  const deque<int> projes = slice_str2vec(args.out_range, nofOuts);
+  if (!projes.size())
+    exit_on_error(args.command, "Given range \"" + args.out_range + "\""
+                                " is beyond output slices "+toString(nofOuts)+".");
 
-  // Process one slice
-  deque<Map> allOut, allIn;
-  for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
-    allIn.emplace_back(ish);
-    if (args.testMe < 0  &&  nofOuts > 1)
-      allIn.back()=0.0;
-    else {
-      const int trd = args.testMe >= 0  ?  args.testMe  :  projes[0];
-      allInRd[curI].read(trd, allIn[curI]);
-      curDnz(canonDZs, curI).proc(allIn.back());
-    }
-  }
-  string testFormat;
-  if (args.testMe >= 0) {
-    testFormat = args.out_name.dtitle();
-    if (testFormat.find('@') != string::npos)
-      testFormat = toString(mask2format(testFormat, nofProj), args.testMe);
-    testFormat += "%s";
-  }
-  ProcProj canonPP(st, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
-  canonPP.process(allIn, allOut, toString(testFormat, ".tif"));
+  // Prepare canonical projection processor
+  const string testFormat = [&](){
+    if (args.testMe < 0)
+      return string();
+    string toRet = args.out_name.dtitle();
+    if (toRet.find('@') != string::npos)
+      toRet = toString(mask2format(testFormat, nofProj), args.testMe);
+    toRet += "%s";
+    return toRet;
+  }();
+  ProcProj canonPP(args.st, ish, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
 
   // Prepare saving factories
-  const size_t nofSplts = allOut.size();
+  const std::vector<Shape> & outShapes = canonPP.outputShapes();
+  const size_t nofSplts = outShapes.size();
   const string spformat = mask2format("_split@", nofSplts);
   deque<SaveVolumeBySlice> allOutSv;
   for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
@@ -451,18 +537,27 @@ int main(int argc, char *argv[]) {
     if (nofSplts > 1)
       filedescind =   filedescind.dtitle() + toString(spformat, curSplt)
                     + filedescind.ext() + filedescind.desc();
-    allOutSv.emplace_back(filedescind, allOut[curSplt].shape(), nofProj);
+    allOutSv.emplace_back(filedescind, outShapes[curSplt], nofOuts);
   }
 
-  // save or process
-  if ( args.testMe >= 0 )
-    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
-      allOutSv[curSplt].save(args.testMe, allOut[curSplt]);
-  else if ( nofOuts == 1 )
-    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++)
-      allOutSv[curSplt].save(projes[0], allOut[curSplt]);
-  else // finally process
-    ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.beverbose)
+  // Process and save
+  if ( args.testMe >= 0 ) {
+    deque<Map> allIn;
+    for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
+      allIn.emplace_back(ish);
+      const int trd = args.zbinn * ( args.testMe >= 0  ?  args.testMe  :  projes[0] );
+      allInRd[curI].read(trd, allIn[curI]);
+      curDnz(canonDZs, curI).proc(allIn.back());
+    }
+    const deque<Map> & allOut = canonPP.process(allIn, toString(testFormat, ".tif"));
+    for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
+      const Map & cOut = allOut[curSplt];
+      const int svIdx = args.zbinn ? args.testMe / args.zbinn : 0;
+      ImagePath svPath = allOutSv[curSplt].save(svIdx, cOut);
+      cout << nofProj << " " << cOut.shape()(0) << " " << cOut.shape()(1) << " " << svPath << "\n";
+    }
+  } else // finally process
+    ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.zbinn, args.beverbose)
         .execute();
 
   exit(0);

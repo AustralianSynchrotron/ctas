@@ -35,6 +35,7 @@
 
 #include "common.h"
 #include <fftw3.h>
+#include <list>
 
 #ifdef _WIN32
 
@@ -148,13 +149,22 @@ private:
   Ftype filttp;         ///< Filter type
   float alsig;          ///< Additional parameter required by some filters
 
+  static Ftype fromName(const std::string &_name);
+
 public:
 
   Filter(Ftype _tp=RAMP, float _as=0)
-    : filttp(_tp), alsig(_as)
-  {}
+    : filttp(_tp)
+    , alsig(_as)
+  {
+    if (filttp == KAISER  && alsig < 0.0 )
+      throw_error(modname, "Alpha parameter of Kaiser filter must be non-negative (set "+toString(alsig)+"). ");
+    if (filttp == GAUSS  && alsig <= 0.0 )
+      throw_error(modname, "Sigma parameter of Guass filter must be strictly positive (set "+toString(alsig)+"). ");
+  }
 
-  Filter(const std::string &_name, float _as=0);  ///< Constructor from name
+  Filter(const std::string &_name, float _as=0)
+    : Filter(fromName(_name), _as) {};  ///< Constructor from name
 
   inline Ftype filter() const {return filttp;}    ///< Filter
   std::string name() const;     ///< Returns name
@@ -239,7 +249,6 @@ class KERNEL_API CTrec {
 private:
 
   static const std::string modname; ///< Module name.
-  static cl_program program;
 
   const Shape ish;
   const Shape osh;
@@ -251,32 +260,102 @@ private:
   Line zsinoline;         ///< 0-padded sinogram line.
   fftwf_plan planF;       ///< Forward FFT transformation.
   fftwf_plan planB;       ///< Backward FFT transformation.
+  Map mysino;
+  blitz::Array<cl_float2, 1> cossins;
+  float recCof;
 
-  CLkernel kernelSino;
-  CLkernel kernelLine;
-  CLmem clSlice;
-  CLmem clSino;
-  CLmem clAngles;
+  class ForCLdev {
+
+    CLenv & cl;
+    const CTrec & parent;
+    cl_program program;
+    CLkernel kernelSino;
+    CLmem clSlice;
+    CLmem clSino;
+    CLmem clAngles;
+    cl_float recCof;
+    pthread_mutex_t locker;
+
+    bool checkReady();
+
+  public:
+
+    ForCLdev(CLenv & _cl, const CTrec & _parent)
+      : cl(_cl)
+      , parent(_parent)
+      , program(0)
+      , kernelSino(0)
+      , clAngles(0)
+      , clSino(0)
+      , clSlice(0)
+      , recCof(1.0)
+      , locker(PTHREAD_MUTEX_INITIALIZER)
+    {};
+
+    ~ForCLdev() {
+      pthread_mutex_destroy(&locker);
+    } ;
+
+    int reconstruct(Map & fsin, Map & slice, float center) ;
+
+    void setRecCof(float _recCof) ;
+
+    bool sino(Map &sinogram) ;
+
+    bool repeat(Map & slice, float center) ;
+
+  };
+
+  std::list<ForCLdev>  _envs;
+  std::list<ForCLdev> & envs;
+
+  bool switchToGPU = false;
+  bool useCPU = false;
+  pthread_mutex_t * gpuReleasedMutex;
+  pthread_cond_t * gpuReleasedCondition;
+  bool _gpuWasReleased = false;
+  bool & gpuWasReleased;
 
   void prepare_sino(Map & sinogram);
+  void reconstructOnCPU(Map & slice, float center);
 
 public:
 
   CTrec(const Shape &sinoshape, Contrast cn, float arc=180, const Filter &ft=Filter());
-
+  CTrec(CTrec & other);
   ~CTrec();
 
-  void reconstruct(Map &sinogram, Map & slice, float center, float pixelSize=1.0);
+  inline Shape recShape(const float center=0.0) const {
+    return Shape(osh(0)-2*ceil(abs(center)),osh(1));
+  };
+
+  inline Crop recCrop(const float center=0.0) const {
+    const float cacent = ceil(abs(center));
+    return Crop(0,cacent,0,cacent);
+  };
+
+  void setPhysics(float pixelSize=0.0, float lambda=0.0);
+  void sino(Map &sinogram);
+  void repeat(Map & slice, float center);
+  void reconstruct(Map &sinogram, Map & slice, float center);
+
+  void doOnGPU() {switchToGPU=true;}
+  void allowCPU() {useCPU=true;}
 
   inline static void reconstruct(Map &sinogram, Map & slice
                                  , Contrast cn, float arc=180, const Filter &ft=Filter()
-                                 , float center=0, float pixelSize=1.0) {
-    CTrec(sinogram.shape(), cn, arc, ft).reconstruct(sinogram, slice, center, pixelSize);
+                                 , float center=0, float pixelSize=0.0, float lambda=0.0) {
+    CTrec rec(sinogram.shape(), cn, arc, ft);
+    rec.setPhysics(pixelSize, lambda);
+    rec.reconstruct(sinogram, slice, center);
   }
 
 
 };
 
+
+
+float horizontalShift( Map & pxaProj_0, Map & pxaProj_180);
 
 
 /// Add one projection to the TS image.

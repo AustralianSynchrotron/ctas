@@ -34,6 +34,7 @@
 #include "common.h"
 #include <complex>
 #include <fftw3.h>
+#include <list>
 
 #define ONGPU
 #ifdef ONGPU
@@ -119,31 +120,34 @@ public:
 private:
 
   static const std::string modname;	///< Module name.
-  #ifdef ONGPU
-  mutable CMap mid;             ///< Internally used array for the zero-padded data.
-  #else // ONGPU
+
+  class ForCLdev {
+    const Shape sh;
+    const Shape msh;
+    const float d2b;
+    CLenv & cl;
+    CMap cin;
+    CLmem clmid;                 ///< Internally used array for the zero-padded data.
+    cl_program oclProgram;
+    CLkernel kernelApplyPhsFilter;
+    clfftPlanHandle clfft_plan;
+    CLmem clfftTmpBuff;
+    cl_int clfftExec(clfftDirection dir) const;
+    pthread_mutex_t locker;
+  public:
+    ForCLdev(CLenv & _cl, const Shape & _sh, float _d2b);
+    ~ForCLdev();
+    bool extract(Map & in);
+  };
+
+  std::list<ForCLdev>  _envs;
+  std::list<ForCLdev> & envs;
+  int cntr = 0;
+
   mutable Map mid;
-  #endif // ONGPU
-
-  #ifdef ONGPU
-
-  static cl_program oclProgram;
-  mutable CLmem clmid;                 ///< Internally used array for the zero-padded data.
-  CLkernel kernelApplyPhsFilter;
-  clfftPlanHandle clfft_plan;
-  CLmem clfftTmpBuff;
-
-  void initCL();
-
-  cl_int clfftExec(clfftDirection dir) const;
-
-  #else // ONGPU
-
   Map phsFilter;                ///< FFT filter.
   fftwf_plan fft_f;             ///< Forward 2D FFT plan.
   fftwf_plan fft_b;             ///< Backward 2D FFT plan
-
-  #endif // ONGPU
 
 public:
 
@@ -170,9 +174,9 @@ public:
   ///              PHS:  multiplier missing for the physical correct values (theoretically (dd/2.0*M_PI)^2/dist ).
   ///
   /// @note the arrays ::in and ::out must not be the same.
-  void extract(const Map & in, Map & out) const ;
+  void extract(const Map & in, Map & out) ;
 
-  void extract(Map & io) const {
+  void extract(Map & io) {
     extract(io, io);
   }
 

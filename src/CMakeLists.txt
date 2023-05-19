@@ -5,6 +5,7 @@ add_definitions(-DOPENCL_FOUND)
 add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
 set(OPENCL_LL "OpenCL")
 find_package(clFFT REQUIRED)
+include_directories("${CLFFT_INCLUDE_DIRS}")
 set(CLFFT_LL "clFFT")
 
 macro (target_clsrc trg clf)

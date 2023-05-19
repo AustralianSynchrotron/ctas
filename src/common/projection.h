@@ -1,8 +1,7 @@
 
+#include <list>
 #include "common.h"
 #include "flatfield.h"
-
-
 
 
 
@@ -12,7 +11,6 @@
 struct StitchRules {
 
   uint nofIn;
-  Shape ish;
   Crop crp;                  ///< Crop input projection image
   Crop fcrp;                  ///< Crop final projection image
   Binn bnn;                  ///< binning factor
@@ -37,8 +35,6 @@ struct StitchRules {
 
   void slot(int cur, int* cur1, int* cur2, int* curF) const;
 
-  Shape outShape() const;
-
 };
 
 
@@ -52,8 +48,10 @@ class ProcProj {
 
   // shared, all const except in the constructor.
   const StitchRules & strl;
-  Shape psh;
-  Shape ssh;
+  const Shape ish; // input image
+  const Shape psh; // processed image
+  const Shape ssh; // stitched image
+  const std::vector<Shape> oshs; // split images
   std::deque<Map> wghts;
   Map swght;
   std::deque<PointF2D> origins;
@@ -65,32 +63,109 @@ class ProcProj {
   ImageProc iproc;
   std::deque<Map> allIn;
   Map stitched, final;
+  std::deque<Map> res; // will all reference final
   bool doGapsFill;
   CLkernel gaussCL;
   CLmem iomCL;
 
   void stitchSome( const ImagePath & interim_name = ImagePath()
                  , const std::vector<bool> & addMe = std::vector<bool>());
-  static void prepareMask(Map & _gaps, bool bepicky, uint edge=0);
   void initCL();
 
 public:
 
-  ProcProj( const StitchRules & _st
+  ProcProj( const StitchRules & _st, const Shape & _ish
           , const std::deque<Map> & bgas, const std::deque<Map> & dfas
           , const std::deque<Map> & dgas, const std::deque<Map> & msas
           , const Path & saveMasks = Path());
 
   ProcProj(const ProcProj & other);
 
-  bool process( std::deque<Map> & allInR, std::deque<Map> & res
-              , const ImagePath & interim_name = ImagePath());
+  std::deque<Map> & process( std::deque<Map> & allInR, const ImagePath & interim_name = ImagePath());
 
-  Shape outShape() const {
-    return strl.outShape();
+  const std::vector<Shape> & outputShapes() const {return oshs;}
+
+};
+
+
+
+/*
+
+class Trans {
+
+public:
+
+  static const std::string modname;
+
+  const Shape ish;
+  const float angle;
+  const Crop crop;
+  const PointF2D binn; // negative binn to flip
+  Map mask;
+
+  Map afterRot;
+  Map afterRotMask;
+  void rotate(const Map & in, Map & out);
+
+  Map afterScale;
+  Map afterScaleMask;
+  void scale(const Map & in, Map & out);
+
+public:
+
+  Trans(const Shape & _ish,
+        float _angle,
+        const Crop & _crop,
+        const PointF2D & _binn,
+        const Map & _mask = Map());
+
+  void process(const Map & in, Map & out) {
+    if (!area(ish))
+      return;
+    if (in.shape() != ish)
+      throw_error(modname, "Shape missmatch of process ("+toString(ish)+") and input ("+toString(in.shape())+").");
   }
 
 };
+const std::string Trans::modname = "transform";
+
+
+struct Stitch {
+
+  struct Rule {
+    Shape ish;
+    Crop crp;
+    float angle;
+    PointF2D origin;
+    PointF2D scale; // negative scale to flip
+  };
+
+  std::deque<Rule> rules;
+  std::deque<FlatFieldProc> ffprocs;
+  std::deque<Map> wghts;
+
+  struct Init {
+    Rule rule;
+    Map bg;
+    Map df;
+    Map dg;
+    Map ms;
+  };
+
+  Stitch(const std::deque<Init> & inits, int nofInput = 0) {
+
+  }
+
+};
+
+
+*/
+
+
+
+
+
+
 
 
 
@@ -106,9 +181,7 @@ private:
 
 public:
 
-  Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask);
-  Denoiser(const Shape & _sh, int _rad, float _threshold)
-    : Denoiser(_sh, _rad, _threshold, mask) {}
+  Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask=defaultMap);
 
   Denoiser(const Denoiser & other)
     : sh(other.sh)

@@ -36,13 +36,13 @@ Array<P_numtype,N_rank>::Array(_bz_ArrayExpr<T_expr> expr)
 
 #ifdef BZ_DEBUG
         if ((lbound(i) == tiny(MyIndexType())) ||
-            (ubound == huge(MyIndexType())) 
+            (ubound == huge(MyIndexType()))
           || (ordering(i) == tiny(int())) || (ascending == tiny(int())))
         {
           BZPRECHECK(0,
            "Attempted to construct an array from an expression " << endl
            << "which does not have a shape.  To use this constructor, "
-           << endl 
+           << endl
            << "the expression must contain at least one array operand.");
           return;
         }
@@ -186,7 +186,7 @@ bool Array<P_numtype, N_rank>::isStorageContiguous() const
 template<typename P_numtype, int N_rank>
 void Array<P_numtype, N_rank>::dumpStructureInformation(ostream& os) const
 {
-    os << "Dump of Array<" << BZ_DEBUG_TEMPLATE_AS_STRING_LITERAL(P_numtype) 
+    os << "Dump of Array<" << BZ_DEBUG_TEMPLATE_AS_STRING_LITERAL(P_numtype)
        << ", " << N_rank << ">:" << endl
        << "ordering_      = " << storage_.ordering() << endl
        << "ascendingFlag_ = " << storage_.ascendingFlag() << endl
@@ -214,11 +214,11 @@ void Array<P_numtype, N_rank>::reference(const Array<P_numtype, N_rank>& array)
 
 /* This method makes the array reference another, but it does it as a
    "weak" reference that is not counted. If you can guarantee that the
-   array memory block containing the data is persistent, this will 
-   allow reference counting to be bypassed for this array, which if 
+   array memory block containing the data is persistent, this will
+   allow reference counting to be bypassed for this array, which if
    mutex-locking is involved is a significant overhead. */
 template<typename P_numtype, int N_rank>
-void 
+void
 Array<P_numtype, N_rank>::weakReference(const Array<P_numtype, N_rank>& array)
 {
     reference(Array<P_numtype, N_rank>(array.noConst().data(),
@@ -242,7 +242,7 @@ void Array<P_numtype, N_rank>::setStorage(GeneralArrayStorage<N_rank> x)
 }
 
 /*
- * This method is called to allocate memory for a new array.  
+ * This method is called to allocate memory for a new array.
  */
 template<typename P_numtype, int N_rank>
 _bz_inline2 void Array<P_numtype, N_rank>::setupStorage(int lastRankInitialized)
@@ -304,8 +304,8 @@ void Array<P_numtype, N_rank>::makeUnique()
 }
 
 template<typename P_numtype, int N_rank>
-Array<P_numtype, N_rank> Array<P_numtype, N_rank>::transpose(int r0, int r1, 
-    int r2, int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10)
+Array<P_numtype, N_rank> Array<P_numtype, N_rank>::transpose(int r0, int r1,
+    int r2, int r3, int r4, int r5, int r6, int r7, int r8, int r9, int r10) const
 {
     T_array B(*this);
     B.transposeSelf(r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10);
@@ -349,7 +349,7 @@ void Array<P_numtype, N_rank>::doTranspose(int destRank, int sourceRank,
 
     length_[destRank] = array.length_[sourceRank];
     stride_[destRank] = array.stride_[sourceRank];
-    storage_.setAscendingFlag(destRank, 
+    storage_.setAscendingFlag(destRank,
         array.isRankStoredAscending(sourceRank));
     storage_.setBase(destRank, array.base(sourceRank));
 
@@ -380,7 +380,7 @@ void Array<P_numtype, N_rank>::reverseSelf(int rank)
 }
 
 template<typename P_numtype, int N_rank>
-Array<P_numtype, N_rank> Array<P_numtype,N_rank>::reverse(int rank)
+Array<P_numtype, N_rank> Array<P_numtype,N_rank>::reverse(int rank) const
 {
     T_array B(*this);
     B.reverseSelf(rank);
@@ -388,30 +388,30 @@ Array<P_numtype, N_rank> Array<P_numtype,N_rank>::reverse(int rank)
 }
 
 template<typename P_numtype, int N_rank> template<typename P_numtype2>
-Array<P_numtype2,N_rank> Array<P_numtype,N_rank>::extractComponent(P_numtype2, 
+Array<P_numtype2,N_rank> Array<P_numtype,N_rank>::extractComponent(P_numtype2,
     int componentNumber, int numComponents) const
 {
-    BZPRECONDITION((componentNumber >= 0) 
+    BZPRECONDITION((componentNumber >= 0)
         && (componentNumber < numComponents));
 
     TinyVector<MyIndexType,N_rank> stride2;
     for (int i=0; i < N_rank; ++i)
       stride2(i) = stride_(i) * numComponents;
-    const P_numtype2* dataFirst2 = 
+    const P_numtype2* dataFirst2 =
         ((const P_numtype2*)dataFirst()) + componentNumber;
-    return Array<P_numtype2,N_rank>(const_cast<P_numtype2*>(dataFirst2), 
+    return Array<P_numtype2,N_rank>(const_cast<P_numtype2*>(dataFirst2),
         length_, stride2, storage_);
 }
 
-/* 
+/*
  * These routines reindex the current array to use a new base vector.
  * The first reindexes the array, the second just returns a reindex view
  * of the current array, leaving the current array unmodified.
  * (Contributed by Derrick Bass)
  */
 template<typename P_numtype, int N_rank>
-_bz_inline2 void Array<P_numtype, N_rank>::reindexSelf(const 
-    TinyVector<MyIndexType, N_rank>& newBase) 
+_bz_inline2 void Array<P_numtype, N_rank>::reindexSelf(const
+    TinyVector<MyIndexType, N_rank>& newBase)
 {
     MyIndexType delta = 0;
     for (int i=0; i < N_rank; ++i)
@@ -426,9 +426,9 @@ _bz_inline2 void Array<P_numtype, N_rank>::reindexSelf(const
 }
 
 template<typename P_numtype, int N_rank>
-_bz_inline2 Array<P_numtype, N_rank> 
+_bz_inline2 Array<P_numtype, N_rank>
 Array<P_numtype, N_rank>::reindex(
-    const TinyVector<MyIndexType, N_rank>& newBase) 
+    const TinyVector<MyIndexType, N_rank>& newBase)
 {
     T_array B(*this);
     B.reindexSelf(newBase);

@@ -43,6 +43,17 @@ private:
   static const std::string modname;
   std::deque<pthread_mutex_t> locks; // to be used by the sub-classes users via lock/unlock methods
 
+  virtual bool beforeThread() {
+    return true;
+  }
+
+  inline static bool
+  beforeThread(void * args) {
+    if (!args)
+      throw_error(modname, "Wrongly used class. Report to developers.");
+    return ((InThread*)args)->beforeThread();
+  }
+
   virtual bool inThread(long int) = 0;
 
   inline static bool
@@ -87,12 +98,22 @@ public:
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.h>
 
-cl_device_id & CL_device();
-cl_context & CL_context();
-cl_command_queue & CL_queue();
+cl_device_id CL_device();
+cl_context CL_context();
+cl_command_queue CL_queue();
 inline bool CL_isReady() {
   return CL_device() && CL_queue() && CL_context();
 }
+
+
+struct CLenv {
+  cl_device_id dev;
+  cl_context cont;
+  cl_command_queue que;
+};
+
+extern std::vector<CLenv> clenvs;
+
 
 class CLmem {
     cl_mem clR;
@@ -108,18 +129,20 @@ public:
     inline void free() { if (clR) clReleaseMemObject(clR); clR=0; }
 };
 
+
 class CLkernel {
   cl_kernel kern;
 public:
   inline CLkernel(cl_program program=0, const std::string & _name = std::string())
     : kern(0) { this->operator()(program, _name); }
-  inline ~CLkernel() { if (kern) clReleaseKernel(kern) ; }
+  inline ~CLkernel() { free(); }
+  void free() {if (kern) clReleaseKernel(kern) ; kern=0;}
   CLkernel & operator()(cl_program program=0, const std::string & name = std::string());
   inline operator bool() const { return kern; }
   std::string name() const;
-  cl_int exec(size_t size=1) const;
-  cl_int exec(const Shape & sh) const;
-  cl_int exec(const Shape3 & sh) const ;
+  cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const;
+  cl_int exec(const Shape & sh, cl_command_queue clque=CL_queue()) const;
+  cl_int exec(const Shape3 & sh, cl_command_queue clque=CL_queue()) const ;
   template <class T> cl_int setArg (cl_uint arg_idx, const T & val) const {
     cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
     if (clerr != CL_SUCCESS)
@@ -130,70 +153,71 @@ public:
 };
 
 
-// this version protects with pthread mutex lock
-cl_program & initProgram(const std::string & src, cl_program & program, const std::string & modname);
-
-cl_program initProgram(const std::string & src, const std::string & modname);
-
-
-template <class T>
-cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {
-  cl_int clerr;
-  cl_mem clStorage = clCreateBuffer ( CL_context(), flag, sizeof(T), 0, &clerr);
-  if (clerr != CL_SUCCESS)
-    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(clerr) );
-  return clStorage;
-}
-
-
-template <class T>
-T cl2var(const cl_mem & buff) {
-  T var;
-  cl_int clerr = clEnqueueReadBuffer(CL_queue(), buff, CL_TRUE, 0, sizeof(T), &var, 0, 0, 0 );
-  if (clerr != CL_SUCCESS)
-    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(clerr) );
-  return var;
-}
+cl_program & initProgram( const std::string & src, cl_program & program
+                        , const std::string & modname, cl_context context=CL_context());
 
 
 template <typename T>
-cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+cl_mem clAllocArray(size_t arrSize, cl_mem_flags flag=CL_MEM_READ_WRITE, cl_context context=CL_context()) {
   cl_int err;
   const size_t iStorageSize = sizeof(T) * arrSize ;
-  cl_mem clStorage = clCreateBuffer ( CL_context(), flag, iStorageSize, 0, &err);
+  static pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_lock(&locker);
+  cl_mem clStorage = clCreateBuffer(context, flag, iStorageSize, 0, &err);
+  pthread_mutex_unlock(&locker);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(err) );
+  //T val;
+  //err = clEnqueueFillBuffer(CL_queue(), clStorage, &val, sizeof(T), 0, iStorageSize, 0,0,0);
+  //if (err != CL_SUCCESS)
+  //  throw_error("OpenCL", "Could not allocate OpenCL buffer: " + toString(err) );
   return clStorage;
+}
+
+template <typename T>
+cl_mem clAllocArray(size_t arrSize, cl_context context) {
+  return clAllocArray<T>(arrSize, CL_MEM_READ_WRITE, context);
 }
 
 
 template <typename T, int N>
-cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem clStorage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
+cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
+               , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
   blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueWriteBuffer(  CL_queue(), clStorage, CL_TRUE, 0, sizeof(T) * _storage.size(),
-                                      _storage.data(), 0, 0, 0);
-  if (err != CL_SUCCESS) {
-  //  prdn(_storage.size());
-  //  std::cout << _storage.data() << "\n";
-  //  prdn(clStorage);
+  cl_int err = clEnqueueWriteBuffer( clque, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size()
+                                     , _storage.data(), 0, 0, 0);
+  if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
-  }
   return clStorage;
 }
 
+template <typename T, int N>
+cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage, cl_command_queue clque) {
+  return blitz2cl(storage, clStorage, CL_MEM_READ_WRITE, clque);
+}
 
 template <typename T, int N>
-cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_mem_flags flag=CL_MEM_READ_WRITE) {
-  cl_mem clStorage = clAllocArray<T>(storage.size(), flag);
-  return blitz2cl<T,N>(storage, clStorage, flag);
+cl_mem blitz2cl( const blitz::Array<T,N> & storage
+               , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+  cl_context context;
+  cl_int err = clGetCommandQueueInfo(clque, CL_QUEUE_CONTEXT, sizeof(cl_context), &context, 0);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not get context from queue: " + toString(err));
+  cl_mem clStorage = clAllocArray<T>(storage.size(), flag, context);
+  return blitz2cl<T,N>(storage, clStorage, flag, clque);
+}
+
+template <typename T, int N>
+cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_command_queue clque) {
+  return blitz2cl(storage, CL_MEM_READ_WRITE, clque);
 }
 
 
 template <typename T, int N>
-blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
+blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage, cl_command_queue clque=CL_queue()) {
 
   blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueReadBuffer(CL_queue(), clbuffer, CL_TRUE, 0,
+  cl_int err = clEnqueueReadBuffer(clque, clbuffer, CL_TRUE, 0,
                                    sizeof(T) * _storage.size(),
                                    _storage.data(), 0, 0, 0 );
   if (err != CL_SUCCESS)
@@ -204,13 +228,35 @@ blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage) {
 
 }
 
+
 template <typename T>
-cl_int fillClArray(cl_mem clStorage, size_t size, T val) {
-  cl_int clerr = clEnqueueFillBuffer(CL_queue(), clStorage, &val, sizeof(T), 0, sizeof(T) * size, 0,0,0);
+cl_int fillClArray(cl_mem clStorage, size_t size, T val, cl_command_queue clque=CL_queue()) {
+  cl_int clerr = clEnqueueFillBuffer(clque, clStorage, &val, sizeof(T), 0, sizeof(T) * size, 0,0,0);
   if (clerr != CL_SUCCESS)
     throw_error("Fill CL buffer", "Failed to fill the buffer: " + toString(clerr));
   return clerr;
 }
+
+
+//template <class T>
+//cl_mem var2cl(cl_mem_flags flag = CL_MEM_WRITE_ONLY) {
+//  cl_int clerr;
+//  cl_mem clStorage = clCreateBuffer ( CL_context(), flag, sizeof(T), 0, &clerr);
+//  if (clerr != CL_SUCCESS)
+//    throw_error("OpenCL", "Could not create OpenCL buffer: " + toString(clerr) );
+//  return clStorage;
+//}
+//
+//
+//template <class T>
+//T cl2var(const cl_mem & buff) {
+//  T var;
+//  cl_int clerr = clEnqueueReadBuffer(CL_queue(), buff, CL_TRUE, 0, sizeof(T), &var, 0, 0, 0 );
+//  if (clerr != CL_SUCCESS)
+//    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(clerr) );
+//  return var;
+//}
+
 
 
 /*

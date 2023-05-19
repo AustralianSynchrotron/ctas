@@ -255,7 +255,7 @@ private:
 public:
   SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
   ~SaveVolumeBySlice();
-  void save(uint sl, const Map & trg);
+  ImagePath save(uint sl, const Map & trg);
   size_t slices() const;
 };
 
@@ -270,6 +270,7 @@ private:
   const float ang;
   const Crop crp;
   const Binn bnn;
+  const float reNAN;
   BinnProc bnnprc;
   Map inmap;
   Map rotmap;
@@ -278,7 +279,7 @@ private:
 
 public:
 
-  ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish);
+  ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish, float _reNAN=NAN);
   ImageProc(const ImageProc & other)
     : ImageProc(other.ang, other.crp, other.bnn, other.ish)
   {}

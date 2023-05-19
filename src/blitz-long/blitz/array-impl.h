@@ -996,7 +996,7 @@ public:
     void transposeSelf(int r0, int r1, int r2=0, int r3=0, int r4=0, int r5=0,
                        int r6=0, int r7=0, int r8=0, int r9=0, int r10=0);
     T_array transpose(int r0, int r1, int r2=0, int r3=0, int r4=0, int r5=0,
-                      int r6=0, int r7=0, int r8=0, int r9=0, int r10=0);
+                      int r6=0, int r7=0, int r8=0, int r9=0, int r10=0) const;
 
     int                               rank() const
     { return N_rank; }
@@ -1107,7 +1107,7 @@ public:
     // NEEDS_WORK -- resizeAndPreserve(Range,...)
     // NEEDS_WORK -- resizeAndPreserve(const Domain<N_rank>&);
 
-    T_array                           reverse(int rank);
+    T_array                           reverse(int rank) const ;
     void                              reverseSelf(int rank);
 
     MyIndexType                       rows() const

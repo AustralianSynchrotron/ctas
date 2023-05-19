@@ -7,8 +7,9 @@ kernel void fbp (
     global float*             slice,
     int                       pixels,
     int                       thetas,
+    global const float2*      cossins,
     float                     center,
-    global const float2*      cossins)
+    float                     coeff)
 {
   const int i = get_global_id(0);
   const int j = get_global_id(1);
@@ -34,7 +35,10 @@ kernel void fbp (
                   + cossin.x * (j-center) + cossin.y * i;
     total += sino[ offsetI + proj * pixels ];
   }
-  slice[idx] = total;
+  if (coeff != 0.0)
+    total *= coeff;
+    //total *= 2 / (pixelSize * 100);
+  slice[idx] = total / thetas;
 }
 
 

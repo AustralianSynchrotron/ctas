@@ -88,11 +88,14 @@ CtasErr::CtasErr(ErrTp _terr, const string & mod, const string & msg)
   : terr(_terr)
   , module(mod)
   , message(msg)
+  , reported(false)
 {}
 
 /// \brief Prints the error into the standard error stream.
 void
 CtasErr::report() const {
+  if (reported)
+    return;
   switch ( terr ) {
   case WARN:
     cerr << "WARNING!";
@@ -106,6 +109,14 @@ CtasErr::report() const {
   }
   cerr << " In module \'" << module << "\'. " << message << endl;
   cerr.flush();
+  reported=true;
+}
+
+
+std::string &
+CtasErr::consume() {
+  reported=true;
+  return message;
 }
 
 
@@ -358,10 +369,12 @@ mask2format(const string & mask, int maxslice){
   }
   //replace last '@' with the format expression.
   auto atpos = format.rfind('@');
-  if (atpos == string::npos)
-    throw_error("mask2format", "no mask sign '@'");
-  else
-    format.replace( atpos, 1, "%0" + toString( toString(maxslice-1).length() ) + "u");
+  if (atpos == string::npos) {
+    atpos = format.find_last_of('.');
+    format.insert(atpos,"@");
+    atpos = format.rfind('@');
+  }
+  format.replace( atpos, 1, "%0" + toString( toString(maxslice-1).length() ) + "u");
   return format;
 }
 
@@ -459,8 +472,8 @@ _conversion (Contrast* _val, const string & in) {
 
 void deAbs(Map & arr) {
   if ( blitz::min(arr) <= 0.0 ) {
-    warn("unzero", "Minimum in the array is sub-zero."
-         " This should never happen with the absorption data.");
+    //warn("unzero", "Minimum in the array is sub-zero."
+    //     " This should never happen with the absorption data.");
     const float mina = blitz::max(arr)/1000000.0;
     if ( mina <= 0.0 )
       throw_error ("unzero", "Bad absorption data (maximum is sub-zero).");
@@ -556,6 +569,8 @@ crop(Volume & io_arr, const Crop3 & crp) {
 
 
 
+
+
 string
 type_desc (Crop*){
   return "UINT:UINT:UINT:UINT";
@@ -612,9 +627,23 @@ crop(Map & io_arr, const Crop & crp) {
     return;
   }
   io_arr.reference( io_arr( blitz::Range(crp.top,  io_arr.shape()(0)-1-crp.bottom ),
-                            blitz::Range(crp.left, io_arr.shape()(1)-1-crp.right ) ) );
+                            blitz::Range(crp.left, io_arr.shape()(1)-1-crp.right ) )
+                    .copy() );
 }
 
+
+const Map
+crop(const Map & iarr, const Crop & crp) {
+  if (!crp)
+    return iarr;
+  if (  crp.left + crp.right  >= iarr.shape()(1)  ||
+        crp.top  + crp.bottom >= iarr.shape()(0) ) {
+    warn("Crop array", "Cropping (" + toString(crp) + ") is larger than array size.");
+    return defaultMap;
+  }
+  return iarr( blitz::Range(crp.top,  iarr.shape()(0)-1-crp.bottom ),
+               blitz::Range(crp.left, iarr.shape()(1)-1-crp.right ) );
+}
 
 
 
@@ -1110,27 +1139,26 @@ toString(const string fmt, ...){
 ProgressBar::ProgressBar(bool _showme, const string & _message, int _steps)
   : showme(_showme)
   , message(_message)
-  , steps(_steps)
   , proglock(PTHREAD_MUTEX_INITIALIZER)
 {
   if ( ! showme ) return;
-  step = 0;
-  waswidth = 0;
-  reservedChs = 0;
+  setSteps(_steps);
 }
 
 
 void
 ProgressBar::setSteps(int _steps) {
-  if (steps)
-    warn("ProgressBar", "Resetting steps of the progress bar.");
+  //if (steps)
+  //  warn("ProgressBar", "Resetting steps of the progress bar.");
   steps=_steps;
+  step=0;
+  waswidth=0;
+  reservedChs=0;
 }
 
 void
 ProgressBar::start(){
-  if ( !showme )
-    return;
+  if ( !showme ) return;
   if ( reservedChs )
     return; // Was already started
 
@@ -1452,7 +1480,7 @@ slice_str2vec(const string & sliceS, int hight){
   // last check
   if ( sliceV.empty() )
     warn("slice string",
-         "The string describing set of slices leads to the empty range of slices." );
+         "String \""+sliceS+"\" describing set of up to "+toString(hight)+" slices leads to the empty range of slices." );
   return sliceV;
 
 }

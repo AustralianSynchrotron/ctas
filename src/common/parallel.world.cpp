@@ -43,8 +43,10 @@ private :
 
   long int currentidx;
   std::list<pthread_t> threads;
+  bool somefinished;
 
   void * arg;
+  bool (*before_thread)(void *);
   bool (*sub_routine0) ();
   bool (*sub_routine1) (long int);
   bool (*sub_routine2) (void *, long int);
@@ -56,14 +58,16 @@ private :
   }
 
   inline ThreadDistributor( bool (*_sub_routine0)(),
-                     bool (*_sub_routine1)(long int),
-                     bool (*_sub_routine2) (void *, long int),
-                     void * _arg)
+                            bool (*_sub_routine1)(long int),
+                            bool (*_sub_routine2) (void *, long int),
+                            void * _arg,
+                            bool (*_before_thread)(void *) = 0 )
     : idxLock(PTHREAD_MUTEX_INITIALIZER)
     , startLock(PTHREAD_MUTEX_INITIALIZER)
     , startCond(PTHREAD_COND_INITIALIZER)
     , currentidx(0)
     , arg(_arg)
+    , before_thread(_before_thread)
     , sub_routine0(_sub_routine0)
     , sub_routine1(_sub_routine1)
     , sub_routine2(_sub_routine2)
@@ -77,8 +81,8 @@ private :
     : ThreadDistributor(0, _sub_routine, 0, 0)
   {}
 
-  ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg )
-    : ThreadDistributor(0, 0, _sub_routine, _arg)
+  ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg, bool (*_before_thread)(void *) = 0)
+    : ThreadDistributor(0, 0, _sub_routine, _arg, _before_thread)
   {}
 
   ~ThreadDistributor() {
@@ -110,19 +114,39 @@ private :
 
   static void * in_thread (void * vdist) {
     ThreadDistributor * dist = (ThreadDistributor*) vdist;
+    bool keepgoing=true;
+    if (dist->before_thread) {
+      try {
+        keepgoing = dist->before_thread(dist->arg);
+      } catch (...) {
+        keepgoing=false;
+      }
+    }
+    pthread_mutex_unlock(&dist->startLock);
+    if (!keepgoing)
+      return vdist;
     while ( in_threade(dist) ) {}
+    dist->somefinished=true;
     return vdist;
   }
 
   void start(uint nThreads=0) {
-    pthread_t thread;
     if (!nThreads)
       nThreads=run_threads;
-    for (int ith = 0 ; ith < nThreads ; ith++)
-      if ( pthread_create( & thread, NULL, in_thread, this ) )
+    somefinished=false;
+    pthread_mutex_lock(&startLock);
+    pthread_t thread;
+    for (int ith = 0 ; ith < nThreads ; ith++) {
+      if (somefinished)
+        break;
+      if ( pthread_create( & thread, NULL, in_thread, this ) ) {
         warn("Thread operation", "Can't create thread.");
-      else
+        pthread_mutex_unlock(&startLock);
+      } else
         threads.emplace_back(thread);
+      pthread_mutex_lock(&startLock);
+    }
+    pthread_mutex_unlock(&startLock);
     pthread_cond_signal(&startCond);
   }
 
@@ -133,6 +157,12 @@ private :
 
 
 public:
+
+  static void execute( bool (*_thread_routine) (void *, long int), bool (*_before_routine)(void*), void * _arg, int nThreads=0 ) {
+    ThreadDistributor dist(_thread_routine, _arg, _before_routine);
+    dist.start(nThreads);
+    dist.finish();
+  }
 
   static void execute( bool (*_thread_routine) (void *, long int), void * _arg, int nThreads=0 ) {
     ThreadDistributor dist(_thread_routine, _arg);
@@ -161,7 +191,7 @@ const string InThread::modname="InThread";
 
 void InThread::execute(int nThreads) {
   bar.start();
-  ThreadDistributor::execute(inThread, this, nThreads);
+  ThreadDistributor::execute(inThread, beforeThread, this, nThreads);
 }
 
 void InThread::execute( bool (*_thread_routine) (long int), int nThreads) {
@@ -202,33 +232,27 @@ void InThread::unlock(int idx) {
 
 //#include<libconfig.h++>
 //using namespace libconfig;
-
-cl_device_id _CL_device = 0;
-cl_context _CL_context = 0;
-cl_command_queue _CL_queue = 0;
-
+std::vector<CLenv> clenvs(0);
+int cl_defidx=-1;
 static bool CL_intialize();
-cl_device_id & CL_device() { CL_intialize(); return _CL_device; }
-cl_context & CL_context() { CL_intialize(); return _CL_context; }
-cl_command_queue & CL_queue() { CL_intialize(); return _CL_queue; }
+cl_device_id CL_device() { CL_intialize(); return cl_defidx<0 ? 0 : clenvs[cl_defidx].dev; }
+cl_context CL_context() { CL_intialize(); return cl_defidx<0 ? 0 : clenvs[cl_defidx].cont; }
+cl_command_queue CL_queue() { CL_intialize(); return cl_defidx<0 ? 0 : clenvs[cl_defidx].que; }
 
 bool CL_intialize() {
 
-  if (_CL_context && _CL_device && _CL_queue)
+  if (cl_defidx>=0)
     return true;
 
   cl_int err;
 
   cl_uint nof_platforms;
   err = ::clGetPlatformIDs(0, 0, &nof_platforms);
-  if (err != CL_SUCCESS) {
+  if ( err != CL_SUCCESS  ||  0 >= nof_platforms ) {
     warn("OpenCLinit", "Could not get number of OpenCL platforms: " + toString(err) );
     return false;
   }
-
   vector<cl_platform_id> platforms(nof_platforms);
-  vector<cl_device_id> devices;
-
   err = clGetPlatformIDs(nof_platforms, platforms.data(), 0);
   if (err != CL_SUCCESS) {
     warn("OpenCLinit", "Could not get OpenCL platforms: " + toString(err) );
@@ -238,9 +262,8 @@ bool CL_intialize() {
   for (int plidx=0; plidx < platforms.size() ; plidx++ ) {
 
     cl_uint nof_devices = 0;
-
     err = clGetDeviceIDs( platforms[plidx], CL_DEVICE_TYPE_GPU, 0, 0, &nof_devices);
-    if (err != CL_SUCCESS) {
+    if ( err != CL_SUCCESS || 0 >= nof_devices ) {
       warn("OpenCLinit", "Could not get OpenCL number of GPU devices of a platform: "
            + toString(err) );
     } else {
@@ -255,8 +278,8 @@ bool CL_intialize() {
 
         for (int devidx=0; devidx<platform_devices.size(); devidx++) {
 
-          cl_device_id dev = platform_devices[devidx];
           bool errHappened=false;
+          cl_device_id dev = platform_devices[devidx];
 
           cl_bool devIsAvailable;
           err = clGetDeviceInfo(dev, CL_DEVICE_AVAILABLE,
@@ -285,11 +308,23 @@ bool CL_intialize() {
             errHappened=true;
           }
 
+          cl_context cont = clCreateContext(0, 1, &dev, 0, 0, &err);
+          if (err != CL_SUCCESS || ! cont) {
+            warn("OpenCLinit", "Could not create OpenCL context: " + toString(err) );
+            errHappened=true;
+          }
+
+          cl_command_queue que = clCreateCommandQueueWithProperties(cont, dev, NULL, &err);
+          if (err != CL_SUCCESS || ! que) {
+            warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
+            errHappened=true;
+          }
+
           if ( ! errHappened &&
                devIsAvailable &&
                devCompilerIsAvailable &&
                ( devExecCapabilities & CL_EXEC_KERNEL ) )
-            devices.push_back(dev);
+            clenvs.push_back({dev, cont, que});
 
         }
 
@@ -298,60 +333,33 @@ bool CL_intialize() {
     }
 
   }
-
-  if (devices.empty()) {
+  if (clenvs.empty()) {
     warn("OpenCLinit", "No OpenCL devices found.");
     return false;
   }
 
-  int idx=-1;
   cl_ulong devmem, devmaxmem=0;
-  for (int devidx=0; devidx < devices.size(); devidx++) {
-    err = clGetDeviceInfo(devices[devidx], CL_DEVICE_GLOBAL_MEM_SIZE,
+  for (int devidx=0; devidx < clenvs.size(); devidx++) {
+    err = clGetDeviceInfo(clenvs[devidx].dev, CL_DEVICE_GLOBAL_MEM_SIZE,
                           sizeof(cl_ulong),  &devmem, 0);
     if (err == CL_SUCCESS  &&  devmem > devmaxmem) {
       devmaxmem = devmem;
-      idx=devidx;
+      cl_defidx=devidx;
     }
   }
-  if (idx < 0 || ! devices[idx]) {
-    warn("OpenCLinit", "Could not select OpenCL device.");
+  if (cl_defidx<0) {
+    warn("OpenCLinit", "Could not select default OpenCL device.");
     return false;
   }
-  cl_device_id f_CL_device = devices[idx];
-
-  cl_platform_id platform = 0;
-  err = clGetDeviceInfo(f_CL_device, CL_DEVICE_PLATFORM, sizeof(cl_platform_id),  &platform, 0);
-  if (err != CL_SUCCESS || ! platform) {
-    warn("OpenCLinit", "Could not get OpenCL device info \"CL_DEVICE_PLATFORM\": "
-         + toString(err) );
-    return false;
-  }
-
-  cl_context f_CL_context = clCreateContext(0, 1, &f_CL_device, 0, 0, &err);
-  if (err != CL_SUCCESS || ! f_CL_context) {
-    warn("OpenCLinit", "Could not create OpenCL context: " + toString(err) );
-    return false;
-  }
-
-  cl_command_queue f_CL_queue = clCreateCommandQueueWithProperties(
-                                  f_CL_context, f_CL_device, NULL, &err);
-  //cl_command_queue f_CL_queue = clCreateCommandQueue(f_CL_context, f_CL_device, 0, &err);
-  if (err != CL_SUCCESS || ! f_CL_queue) {
-    warn("OpenCLinit", "Could not create OpenCL queue: " + toString(err) );
-    return false;
-  }
-
-  _CL_device = f_CL_device;
-  _CL_context = f_CL_context;
-  _CL_queue = f_CL_queue;
   return true;
 
 }
 
 
 
-cl_program initProgram(const string & src, const string & modname) {
+
+
+cl_program initProgram(const string & src, const string & modname, cl_context context) {
 
   if ( ! CL_intialize() )
     return 0;
@@ -360,7 +368,25 @@ cl_program initProgram(const string & src, const string & modname) {
   const size_t length = src.size();
   const char * csrc = src.data();
 
-  cl_program program = clCreateProgramWithSource(CL_context(), 1, &csrc, &length, &err);
+  cl_uint numdev;
+  err = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &numdev, 0);
+  if (err != CL_SUCCESS) {
+    warn(modname, "Could not get number of OpenCL devices from context: " + toString(err) );
+    return 0;
+  }
+  if (numdev != 1) {
+    warn(modname, "Context with non-single device.");
+    return 0;
+  }
+  cl_device_id cldev;
+  err = clGetContextInfo(context, CL_CONTEXT_DEVICES, sizeof(cl_device_id), &cldev, 0);
+  if (err != CL_SUCCESS) {
+    warn(modname, "Could not get OpenCL device from context: " + toString(err) );
+    return 0;
+  }
+
+
+  cl_program program = clCreateProgramWithSource(context, 1, &csrc, &length, &err);
   if (err != CL_SUCCESS) {
     warn(modname, "Could not load OpenCL program: " + toString(err) );
     return 0;
@@ -373,7 +399,7 @@ cl_program initProgram(const string & src, const string & modname) {
     ". More detailsd below:" );
 
     cl_build_status stat;
-    err = clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_STATUS,
+    err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_STATUS,
                                 sizeof(cl_build_status), &stat, 0);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build status: " + toString(err) );
@@ -381,12 +407,10 @@ cl_program initProgram(const string & src, const string & modname) {
       warn(modname, "   Build status: " + toString(stat));
 
     size_t len=0;
-    err=clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_OPTIONS,
-                              0, 0, &len);
+    err=clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_OPTIONS, 0, 0, &len);
     char * buildOptions = (char*) calloc(len, sizeof(char));
     if (buildOptions)
-      err=clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_OPTIONS,
-                                len, buildOptions, 0);
+      err=clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_OPTIONS, len, buildOptions, 0);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build options: " + toString(err) );
     else
@@ -394,12 +418,10 @@ cl_program initProgram(const string & src, const string & modname) {
     if (buildOptions)
       free(buildOptions);
 
-    err = clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_LOG,
-                                0, 0, &len);
+    err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_LOG, 0, 0, &len);
     char * buildLog = (char*) calloc(len, sizeof(char));
     if (buildLog)
-      err = clGetProgramBuildInfo(program, CL_device(), CL_PROGRAM_BUILD_LOG,
-                                  len, buildLog, 0);
+      err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_LOG, len, buildLog, 0);
     if (err != CL_SUCCESS)
       warn(modname, "Could not get OpenCL program build log: " + toString(err) );
     else
@@ -418,11 +440,11 @@ cl_program initProgram(const string & src, const string & modname) {
 }
 
 
-cl_program & initProgram(const string & src, cl_program & program, const string & modname) {
+cl_program & initProgram(const string & src, cl_program & program, const string & modname, cl_context context) {
   static pthread_mutex_t protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_lock(&protectProgramCompilation);
   if (!program)
-    program = initProgram(src, modname);
+    program = initProgram(src, modname, context);
   pthread_mutex_unlock(&protectProgramCompilation);
   return program;
 }
@@ -454,52 +476,48 @@ std::string CLkernel::name() const {
   cl_int clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, 0, 0, &len);
   if ( clerr != CL_SUCCESS )
     throw_error("kernelName", "Could not get OpenCL kernel name size: " + toString(clerr));
-  char *kernel_function = (char *) calloc(len, sizeof(char));
-  std::string _name;
-  if (kernel_function) {
-    clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, len, kernel_function, 0);
-    if (clerr == CL_SUCCESS)
-      _name = std::string(kernel_function, len);
-    free(kernel_function);
+  string kernel_function(len-1, ' '); // -1 to exclude NL
+  if (kernel_function.data()) {
+    clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, len, kernel_function.data(), 0);
     if (clerr != CL_SUCCESS)
       throw_error("kernelName", "Could not get OpenCL kernel name: " + toString(clerr));
   }
-  return _name;
+  return kernel_function;
 }
 
-cl_int CLkernel::exec(size_t size) const {
+cl_int CLkernel::exec(size_t size, cl_command_queue clque) const {
   if (!kern)
     return CL_SUCCESS;
-  cl_int clerr = clEnqueueNDRangeKernel( CL_queue(), kern, 1, 0,  & size, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, 1, 0,  & size, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel " + toString("%p", kern) + "\"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(CL_queue());
+  clerr = clFinish(clque);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
 }
 
-cl_int CLkernel::exec(const Shape & sh) const {
+cl_int CLkernel::exec(const Shape & sh, cl_command_queue clque) const {
   if (!kern)
     return CL_SUCCESS;
   size_t sizes[2] = {size_t(sh(1)), size_t(sh(0))};
-  cl_int clerr = clEnqueueNDRangeKernel( CL_queue(), kern, 2, 0, sizes, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, 2, 0, sizes, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(CL_queue());
+  clerr = clFinish(clque);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
 }
 
-cl_int CLkernel::exec(const Shape3 & sh) const {
+cl_int CLkernel::exec(const Shape3 & sh, cl_command_queue clque) const {
   if (!kern)
     return CL_SUCCESS;
   size_t sizes[3] = {size_t(sh(2)), size_t(sh(1)), size_t(sh(0))};
-  cl_int clerr = clEnqueueNDRangeKernel( CL_queue(), kern, 3, 0, sizes, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, 3, 0, sizes, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(CL_queue());
+  clerr = clFinish(clque);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;

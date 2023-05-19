@@ -554,7 +554,7 @@ int main(int argc, char *argv[]) {
       const Map & cOut = allOut[curSplt];
       const int svIdx = args.zbinn ? args.testMe / args.zbinn : 0;
       ImagePath svPath = allOutSv[curSplt].save(svIdx, cOut);
-      cout << nofProj << " " << cOut.shape()(0) << " " << cOut.shape()(1) << " " << svPath << "\n";
+      cout << nofOuts << " " << cOut.shape()(0) << " " << cOut.shape()(1) << " " << svPath << "\n";
     }
   } else // finally process
     ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.zbinn, args.beverbose)

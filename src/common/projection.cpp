@@ -226,7 +226,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
       curP.x = strl.origin1.x * cur1 + strl.origin2.x * cur2;
       curP.y = strl.origin1.y * cur1 + strl.origin2.y * cur2;
       if (curF) {
-        curP.x = strl.originF.x + maxXshift - curP.x - 1;
+        curP.x = strl.originF.x + maxXshift - curP.x;
         curP.y += strl.originF.y;
       }
       origins.push_back(curP);

@@ -398,11 +398,11 @@ public :
       h5openflags = H5F_ACC_RDWR;
       //#endif
     } else {
-      //#ifdef H5F_ACC_SWMR_READ
-      //h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
-      //#else
+      #ifdef H5F_ACC_SWMR_READ
+      h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
+      #else
       h5openflags = H5F_ACC_RDONLY;
-      //#endif
+      #endif
     }
     hdfFile = H5Fopen(name.c_str(), h5openflags, H5P_DEFAULT);
     if (  hdfFile<=0
@@ -426,11 +426,11 @@ public :
       chsh = Shape(chsh(1),chsh(0));
     if (chsh != sh)
       throw_error(modname, "Inconsistent read from file " + id());
-    if (overwrite) {
+    //if (overwrite) {
       //#ifdef H5F_ACC_SWMR_WRITE
       //H5Fstart_swmr_write(hdfFile);
       //#endif
-    }
+    //}
     if ( rank == 2 )
       indices.push_back(0);
     else if ( rank == 3 )
@@ -658,9 +658,9 @@ public :
       throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
     }
 
-#ifdef H5F_ACC_SWMR_WRITE
-    H5Fstart_swmr_write(hdfFile);
-#endif
+//#ifdef H5F_ACC_SWMR_WRITE
+//    H5Fstart_swmr_write(hdfFile);
+//#endif
 
     mmapMeIfYouCan(true);
 

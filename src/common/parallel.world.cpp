@@ -46,10 +46,10 @@ private :
   bool somefinished;
 
   void * arg;
-  bool (*before_thread)(void *);
-  bool (*sub_routine0) ();
-  bool (*sub_routine1) (long int);
-  bool (*sub_routine2) (void *, long int);
+  function<bool(void*)> before_thread;
+  function<bool()> sub_routine0;
+  function<bool(long int)> sub_routine1;
+  function<bool(void*, long int)> sub_routine2;
   bool sub_routine (long int idx) {
     if (sub_routine0) return sub_routine0();
     if (sub_routine1) return sub_routine1(idx);
@@ -57,11 +57,11 @@ private :
     return false;
   }
 
-  inline ThreadDistributor( bool (*_sub_routine0)(),
-                            bool (*_sub_routine1)(long int),
-                            bool (*_sub_routine2) (void *, long int),
-                            void * _arg,
-                            bool (*_before_thread)(void *) = 0 )
+  inline ThreadDistributor( function<bool()> _sub_routine0,
+                            function<bool(long int)> _sub_routine1,
+                            function<bool(void*, long int)> _sub_routine2,
+                            void * _arg = 0,
+                            function<bool(void*)> _before_thread = 0 )
     : idxLock(PTHREAD_MUTEX_INITIALIZER)
     , startLock(PTHREAD_MUTEX_INITIALIZER)
     , startCond(PTHREAD_COND_INITIALIZER)
@@ -73,15 +73,15 @@ private :
     , sub_routine2(_sub_routine2)
   {}
 
-  ThreadDistributor( bool (*_sub_routine)() )
-    : ThreadDistributor(_sub_routine, 0, 0, 0)
+  ThreadDistributor( function<bool()> _sub_routine )
+    : ThreadDistributor(_sub_routine, 0, 0)
   {}
 
-  ThreadDistributor( bool (*_sub_routine)(long int) )
-    : ThreadDistributor(0, _sub_routine, 0, 0)
+  ThreadDistributor( function<bool(long int)> _sub_routine )
+    : ThreadDistributor(0, _sub_routine, 0)
   {}
 
-  ThreadDistributor( bool (*_sub_routine) (void *, long int), void * _arg, bool (*_before_thread)(void *) = 0)
+  ThreadDistributor( function<bool(void *, long int)> _sub_routine, void * _arg, function<bool(void*)> _before_thread = 0)
     : ThreadDistributor(0, 0, _sub_routine, _arg, _before_thread)
   {}
 
@@ -158,26 +158,27 @@ private :
 
 public:
 
-  static void execute( bool (*_thread_routine) (void *, long int), bool (*_before_routine)(void*), void * _arg, int nThreads=0 ) {
-    ThreadDistributor dist(_thread_routine, _arg, _before_routine);
+  static void execute( function<bool()> _thread_routine, int nThreads=0) {
+    ThreadDistributor dist(_thread_routine);
     dist.start(nThreads);
     dist.finish();
   }
 
-  static void execute( bool (*_thread_routine) (void *, long int), void * _arg, int nThreads=0 ) {
+  static void execute( function<bool(long int)> _thread_routine, int nThreads=0 ) {
+    ThreadDistributor dist(_thread_routine);
+    dist.start(nThreads);
+    dist.finish();
+  }
+
+  static void execute( function<bool(void*, long int)> _thread_routine, void * _arg, int nThreads=0 ) {
     ThreadDistributor dist(_thread_routine, _arg);
     dist.start(nThreads);
     dist.finish();
   }
 
-  static void execute( bool (*_thread_routine) (long int), int nThreads=0) {
-    ThreadDistributor dist(_thread_routine);
-    dist.start(nThreads);
-    dist.finish();
-  }
-
-  static void execute( bool (*_thread_routine)(), int nThreads=0) {
-    ThreadDistributor dist(_thread_routine);
+  static void execute( function<bool(void*, long int)> _thread_routine, function<bool(void*)> _before_routine,
+                       void * _arg, int nThreads=0 ) {
+    ThreadDistributor dist(_thread_routine, _arg, _before_routine);
     dist.start(nThreads);
     dist.finish();
   }
@@ -191,15 +192,28 @@ const string InThread::modname="InThread";
 
 void InThread::execute(int nThreads) {
   bar.start();
-  ThreadDistributor::execute(inThread, beforeThread, this, nThreads);
+  ThreadDistributor::execute([&](void* arg, long int n){return inThread(arg, n);},
+                             [&](void* arg){return beforeThread(arg);},
+                             this, nThreads);
 }
 
-void InThread::execute( bool (*_thread_routine) (long int), int nThreads) {
+void InThread::execute(function<bool()> _thread_routine, int nThreads) {
   ThreadDistributor::execute(_thread_routine, nThreads);
 }
 
-void InThread::execute( bool (*_thread_routine)(), int nThreads) {
+void InThread::execute( function<bool(long int)> _thread_routine, int nThreads) {
   ThreadDistributor::execute(_thread_routine, nThreads);
+}
+
+void InThread::execute( int from, int to, function<void(long int)> _thread_routine, int nThreads) {
+  auto toExec = [&](long int idx) {
+    if (to<=from) return false;
+    if (idx>=to) return false;
+    if (idx>=from)
+      _thread_routine(idx);
+    return true;
+  };
+  ThreadDistributor::execute(toExec, nThreads);
 }
 
 

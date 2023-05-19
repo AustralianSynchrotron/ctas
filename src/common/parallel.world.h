@@ -7,6 +7,8 @@
 #include "common.h"
 #endif
 
+#include<functional>
+
 /// \brief Number of threads for the process.
 ///
 /// @param _threads Requested number of threads (0 for auto).
@@ -81,8 +83,13 @@ public:
   }
 
   void execute(int nThreads=0);
-  static void execute( bool (*_thread_routine) (long int), int nThreads=0 );
-  static void execute( bool (*_thread_routine) (), int nThreads=0 );
+  static void execute( std::function<bool()> _thread_routine, int nThreads=0 );
+  static void execute( std::function<bool(long int)> _thread_routine, int nThreads=0 );
+  static void execute( int from, int to, std::function<void(long int)> _thread_routine, int nThreads=0 );
+  static void execute( int to, std::function<void(long int)> _thread_routine, int nThreads = 0) {
+    execute(0, to, _thread_routine, nThreads);
+  }
+
 
   void needMutexes(uint nof_mut=1);
   void lock(int idx=0);

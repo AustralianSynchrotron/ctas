@@ -1222,10 +1222,12 @@ float raxis(Map & proj0, Map & proj180, const float maxDev ) {
     dlt -= proj0;
     return sqrt(blitz::sum(dlt * dlt));
   };
-  Line vaxS(steps) ;
+  Line vaxS(steps);
   Line errS(steps);
-  for( int j = 0; j < steps; j++ )
-    errS(j) = calcErr( vaxS(j) = 2 * (fcr - cent) + stpsz * (j-(steps-1)/2) );
+  InThread::execute( steps, [&](long int ii){
+    vaxS(ii) = 2 * (fcr - cent) + stpsz * (ii-(steps-1)/2);
+    errS(ii) = calcErr(vaxS(ii));
+  } );
 
   int idx;
   float minval = std::numeric_limits<float>::max();
@@ -1250,7 +1252,8 @@ float raxis(Map & proj0, Map & proj180, const float maxDev ) {
   errS2(1) = errS(idx);
   int idx2 = 1;
   for (int i = 0; i < maxSteps; i++) {
-    errS2(i+2) = calcErr( vaxS2(i+2) = vaxS(idx) + cdir * (i + 1) * stpsz ) ;
+    vaxS2(i+2) = vaxS(idx) + cdir * (i + 1) * stpsz;
+    errS2(i+2) = calcErr( vaxS2(i+2) ) ;
     if( errS2(i+2) < minval ) {
       minval = errS2(i+2);
       idx2 = i + 2;

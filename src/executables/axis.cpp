@@ -154,13 +154,13 @@ int main(int argc, char *argv[]) {
         Path ofile = toString(mask2format(args.outmask,3),num); \
         SaveImage( ofile.dtitle() + "_" + toString(cent) + ofile.ext() , recr); \
       }
-    rotax(sino, ang, args.maxShift);
-    saveres(0);
     rotax(sino, ang, args.maxShift, 0);
-    saveres(1);
+    saveres(0);
     rotax(sino, ang, args.maxShift, 1);
-    saveres(2);
+    saveres(1);
     rotax(sino, ang, args.maxShift, 2);
+    saveres(2);
+    rotax(sino, ang, args.maxShift, 3);
     saveres(3);
     #undef saveres
     if (rec)
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
       }
     rotax(pr0, pr180, args.maxShift);
     saveres(0);
-    //rotax(pr0, pr180);
+    //rotax(pr0, pr180); // commented out because results are crap
     //saveres(1);
     #undef saveres
   } else {

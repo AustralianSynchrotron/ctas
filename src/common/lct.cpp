@@ -379,7 +379,7 @@ CTrec::ForCLdev::sino(Map &sinogram) {
   if ( sinogram.shape() != parent.ish )
     throw_error ( modname, "Shape of input sinogram (" + toString(sinogram.shape()) + ")"
                            " does not match initial (" + toString(parent.ish) + ").");
-  if ( ! CL_isReady() || ( program && ! clSino )  )
+  if ( ! checkReady()  )
     return false;
   bool toRet = false;
   pthread_mutex_lock(&locker);
@@ -404,7 +404,7 @@ CTrec::ForCLdev::repeat(Map & slice, float center) {
     kernelSino.exec(parent.osh, cl.que);
     slice.resize(parent.osh);
     cl2blitz(clSlice(), slice, cl.que);
-    toRet = false;
+    toRet = true;
   }
   catch (...) { warn(modname, "Failed to perform reconstruction on OCL device."); }
   pthread_mutex_unlock(&locker);
@@ -500,7 +500,7 @@ CTrec::CTrec(CTrec & other)
 
 /// \brief Destructor
 CTrec::~CTrec(){
-  if(addressof(envs) == std::addressof(envs)) { // parent instance
+  if(addressof(envs) == addressof(_envs)) { // parent instance
     pthread_mutex_destroy(gpuReleasedMutex);
     delete gpuReleasedMutex;
     pthread_cond_destroy(gpuReleasedCondition);
@@ -857,7 +857,6 @@ public:
     }
     Map cSlice(crop((const Map &) slice, crp));
 
-    // Sobel filter
     derH=0;
     Map cDerH (crop((const Map &) derH , crp));
     cDerH(dstRa(oosh,-1,-1)) += -1 * cSlice(srcRa(oosh,-1,-1));
@@ -980,7 +979,9 @@ class AGinThread : public InThread {
   }
 
   void execPre(int steps, int abxsz, float coff) {
-    exec();
+    clean();
+    bar.done();
+    bar.setSteps(0);
     coffee = coff    ;
     vaxS.resize(steps);
     errS.resize(steps);
@@ -1037,14 +1038,6 @@ public:
     ags.clear();
   }
 
-
-  void exec() {
-    clean();
-    vaxS.free();
-    errS.free();
-    bar.done();
-    bar.setSteps(0);
-  }
 
   void exec1(int steps, int abxsz, float coff) {
     execPre(steps, abxsz, coff);
@@ -1151,18 +1144,18 @@ float raxis( Map & sino, const float anarc, const float maxDev, int algo)	{
       projLine += sino(j,all);
     const float threshold( 0.1 * max(projLine) + 0.9 * min(projLine) );
     auto thrFnd = [&](bool fromStart) {
-      for( int i = fromStart ? 0 : sh(1)-1 ; i != fromStart ? sh(1) : -1; i += fromStart ? sh(1) : -1 )
+      for( int i = fromStart ? 0 : sh(1)-1 ; i != fromStart ? sh(1) : -1; i += fromStart ? 1 : -1 )
         if( projLine(i) > threshold )
           return float(i);
-      return 0.0f;
+      return 0.0f; // just to avoid warning
     };
     fcr = ( thrFnd(true) + thrFnd(false) )/2.0f;
   } else
     throw_error(modname_ax, "Unknown algorithm for rotation axis "+toString(algo)+".");
 
-  if( abs(fcr - cent) / sh(1) > maxDevLM - maxDev )
+  if( abs(fcr - cent) / sh(1) > maxDev )
     throw_error(modname_ax, "Rotation axis relative shift " +toString(abs(fcr - cent) / sh(1))+
-                         " is larger than maximum shift "+toString(maxDevLM-maxDev)+".");
+                         " is larger than maximum shift "+toString(maxDev)+".");
   const float rbxsz = 1.0 - 2.0 * (maxDev + abs(fcr - cent) / sh(1));
   if( rbxsz < 0.5 )
     throw_error(modname_ax, "Relative box size " +toString(rbxsz)+
@@ -1185,10 +1178,8 @@ float raxis( Map & sino, const float anarc, const float maxDev, int algo)	{
     if (idxM == maxSteps - 1 || idxM == 0)
       return fcr;
   }
-  agproc.exec();
   float rf = improveMe(0.25, agproc.vaxS, agproc.errS, idxM, cdir,
                        [&](float x){return agproc.exec(x);});
-  agproc.exec();
   return cent + rf;
 
 };

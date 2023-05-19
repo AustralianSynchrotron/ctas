@@ -50,7 +50,7 @@ private:
   inline static bool
   beforeThread(void * args) {
     if (!args)
-      throw_error(modname, "Wrongly used class. Report to developers.");
+      throw_error(modname, "Incorrectly used class. Report to developers.");
     return ((InThread*)args)->beforeThread();
   }
 
@@ -59,7 +59,7 @@ private:
   inline static bool
   inThread(void * args, long int idx) {
     if (!args)
-      throw_error(modname, "Wrongly used class. Report to developers.");
+      throw_error(modname, "Incorrectly used class. Report to developers.");
     return ((InThread*)args)->inThread(idx);
   }
 

@@ -745,6 +745,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 
 
 float horizontalShift( Map & pxaProj_0, Map & pxaProj_180) {
+  const string modname_ax = "Axis shift";
   if (pxaProj_0.shape() != pxaProj_180.shape())
     throw_error(modname_ax, "Different shapes of input projections: "
        "("+toString(pxaProj_0.shape())+") and ("+toString(pxaProj_180.shape())+") .");

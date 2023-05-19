@@ -137,18 +137,19 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
          + (strl.origin1size-1)*abs(strl.origin1.x) + (strl.origin2size-1)*abs(strl.origin2.x) )
   , oshs( [&](){
       vector<Shape> toRet;
+      const Shape cssh = crop(ssh, strl.fcrp);
       if ( strl.splits.empty() )
-        toRet.push_back(ssh);
+        toRet.push_back(cssh);
       else {
         int fLine=0, lLine=0;
         const int vsplit = strl.splits.at(0) ? 0 : 1;
-        const int mLine = ssh(vsplit);
+        const int mLine = cssh(vsplit);
         for (int curS = vsplit ;  curS<=strl.splits.size()  ;  curS++) {
           lLine = ( curS == strl.splits.size()  ||  mLine < strl.splits.at(curS) )
                   ?  mLine :  strl.splits.at(curS) ;
           int sz = lLine-fLine;
           if ( sz > 0 )
-            toRet.push_back(vsplit ? Shape(ssh(0),sz) : Shape(sz, ssh(1)));
+            toRet.push_back(vsplit ? Shape(cssh(0),sz) : Shape(sz, cssh(1)));
           fLine=lLine;
         }
       }
@@ -483,7 +484,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
 
   // final crop
   final.reference(crop((const Map &)stitched, strl.fcrp));
-  if ( ssh != final.shape() )
+  if ( crop(ssh, strl.fcrp) != final.shape() )
     throw_error(modname, "Shape of the results ("+toString(final.shape())+")"
                          " does not match expected ("+toString(ssh)+").");
 

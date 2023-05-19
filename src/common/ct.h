@@ -321,7 +321,7 @@ private:
 
 public:
 
-  CTrec(const Shape &sinoshape, Contrast cn, float arc=180, const Filter &ft=Filter());
+  CTrec(const Shape &sinoshape, Contrast cn, const float anarc=180, const Filter &ft=Filter());
   CTrec(CTrec & other);
   ~CTrec();
 
@@ -355,9 +355,6 @@ public:
 
 
 
-float horizontalShift( Map & pxaProj_0, Map & pxaProj_180);
-
-
 /// Add one projection to the TS image.
 ///
 /// The projection array is modified during the reconstruction:
@@ -376,6 +373,17 @@ void KERNEL_API
 ts_add( Map &projection, Map &result, const Filter & filter,
     const float center, const Contrast contrast,
     const float angle, const int plane);
+
+
+
+
+
+
+
+float raxis(Map & sino, const float anarc, const float maxDev, int algo=0);
+float raxis(Map & proj0, Map & proj180, const float maxDev );
+float raxis(Map & proj0, Map & proj180);
+
 
 
 /// @}

@@ -412,8 +412,8 @@ safe(const blitz::Array<T,N> & arr, bool preserve=true){
 }
 
 
-template<class T, int N> bool operator==( const blitz::TinyVector<T,N> & t1
-                                        , const blitz::TinyVector<T,N> & t2) {
+template<class T1, class T2, int N> bool operator==( const blitz::TinyVector<T1,N> & t1
+                                                  , const blitz::TinyVector<T2,N> & t2) {
   for (int dim=0; dim<N; dim++)
     if (t1[dim]!=t2[dim])
       return false;
@@ -436,6 +436,7 @@ template<class T, int N> bool areSame(const blitz::Array<T,N> & arr1,
 struct Shape : public blitz::TinyVector<ArrIndex,2> {
   Shape(ArrIndex hght=0, ArrIndex wdth=0) : blitz::TinyVector<ArrIndex,2>(hght,wdth) {}
   template <class T> Shape(const blitz::TinyVector<T,2> & other) : blitz::TinyVector<ArrIndex,2>(other) {}
+  //bool operator==( const blitz::TinyVector<ArrIndex,2> & other ) const { return Shape(other) == *this ;}
 };
 
 
@@ -448,10 +449,10 @@ inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(
 ///
 /// @return \c true if the shapes are equal, \c false otherwise.
 ///
-inline bool
-operator==( const Shape & sh1, const Shape & sh2){
-  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1) );
-}
+//inline bool
+//operator==( const Shape & sh1, const Shape & sh2){
+//  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1) );
+//}
 
 /// \brief Compare shapes.
 ///

@@ -392,17 +392,17 @@ public :
 
     unsigned int h5openflags;
     if (overwrite) {
-      #ifdef H5F_ACC_SWMR_WRITE
-      h5openflags = H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE;
-      #else
+      //#ifdef H5F_ACC_SWMR_WRITE
+      //h5openflags = H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE;
+      //#else
       h5openflags = H5F_ACC_RDWR;
-      #endif
+      //#endif
     } else {
-      #ifdef H5F_ACC_SWMR_READ
-      h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
-      #else
+      //#ifdef H5F_ACC_SWMR_READ
+      //h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
+      //#else
       h5openflags = H5F_ACC_RDONLY;
-      #endif
+      //#endif
     }
     hdfFile = H5Fopen(name.c_str(), h5openflags, H5P_DEFAULT);
     if (  hdfFile<=0
@@ -427,9 +427,9 @@ public :
     if (chsh != sh)
       throw_error(modname, "Inconsistent read from file " + id());
     if (overwrite) {
-      #ifdef H5F_ACC_SWMR_WRITE
-      H5Fstart_swmr_write(hdfFile);
-      #endif
+      //#ifdef H5F_ACC_SWMR_WRITE
+      //H5Fstart_swmr_write(hdfFile);
+      //#endif
     }
     if ( rank == 2 )
       indices.push_back(0);
@@ -613,13 +613,13 @@ public :
     }
     cnts(sliceDim) = slices(); // first will be used once as the 3D dimensions
     blitz::Array<hsize_t,1> tcnts(3);
-#ifdef H5F_ACC_SWMR_WRITE
-    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
-    if (hdfFile>0)
-      H5Fstart_swmr_write(hdfFile);
-#else
+//#ifdef H5F_ACC_SWMR_WRITE
+//    hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+//    if (hdfFile>0)
+//      H5Fstart_swmr_write(hdfFile);
+//#else
     hdfFile = H5Fopen(name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-#endif
+//#endif
     if (hdfFile<=0) {
       complete();
     } else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<=0) {
@@ -645,11 +645,11 @@ public :
       }
     }
     if (hdfFile<=0) {
-#ifdef H5F_ACC_SWMR_WRITE
-      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-#else
+//#ifdef H5F_ACC_SWMR_WRITE
+//      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+//#else
       hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-#endif
+//#endif
       if (hdfFile>0)
         createNewGroup();
     }

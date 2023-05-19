@@ -38,6 +38,8 @@
 #include <pthread.h>
 #include <gsl/gsl_sf_bessel.h> // for Bessel functions
 #include <unistd.h>
+#include<functional>
+
 
 using namespace std;
 
@@ -413,7 +415,24 @@ CTrec::ForCLdev::repeat(Map & slice, float center) {
 
 const string CTrec::modname = "reconstruction";
 
-CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
+float arcO(const float anarc, const int points) {
+  float toRet = anarc;
+  if (toRet < 1.0)
+    toRet *= points-1;
+  toRet *= M_PI / 180; // deg -> rad
+  return toRet;
+}
+
+float angO(const float anarc, const int points) {
+  float toRet = anarc;
+  if (toRet > 1.0 && points > 1)
+    toRet /= points-1;
+  toRet *= M_PI / 180; // deg -> rad
+  return toRet;
+}
+
+
+CTrec::CTrec(const Shape &sinoshape, Contrast cn, const float anarc, const Filter & ft)
   : ish(sinoshape)
   , osh(ish(1),ish(1))
   , zidth(pow(2, ceil(log2(2*ish(1)-1))))
@@ -441,9 +460,7 @@ CTrec::CTrec(const Shape &sinoshape, Contrast cn, float arc, const Filter & ft)
   planF = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_R2HC);
   planB = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_HC2R);
 
-  if (arc < 1.0)
-    arc *= ish(0);
-  arc *= M_PI / 180;
+  const float arc = arcO(anarc, ish(0));
   for (size_t i = 0; i < ish(0); i++) {
     float th = i * arc / ish(0);
     cossins(i).s[0] = sinf(th);
@@ -744,24 +761,538 @@ ts_add( Map &projection, Map &result, const Filter & filter,
 
 
 
-float horizontalShift( Map & pxaProj_0, Map & pxaProj_180) {
-  const string modname_ax = "Axis shift";
-  if (pxaProj_0.shape() != pxaProj_180.shape())
+
+
+
+
+
+
+
+
+
+const string modname_ax = "Axis shift";
+
+
+
+class AverageGradient {
+private:
+  Map sino;
+  const Shape ish, osh;
+  CTrec ct;
+  blitz::Array<complex<float>,2> flt, mid;
+  fftwf_plan fft_f;
+  fftwf_plan fft_b;
+  Map slice;
+  Map derH;
+  Map derV;
+
+public:
+
+  AverageGradient(Map & _sino, const float anarc=180)
+    : sino(_sino)
+    , ish(sino.shape())
+    , osh(ish(1),ish(1))
+    , ct(ish, Contrast::ABS, anarc)
+    , mid(osh)
+    , fft_f(fftwf_plan_dft_2d(osh(0), osh(1), (fftwf_complex*) mid.data(), (fftwf_complex*) mid.data()
+                              , FFTW_FORWARD,  FFTW_ESTIMATE))
+    , fft_b(fftwf_plan_dft_2d(osh(0), osh(1), (fftwf_complex*) mid.data(), (fftwf_complex*) mid.data()
+                              , FFTW_BACKWARD, FFTW_ESTIMATE))
+    , slice(osh)
+    , derH(osh)
+    , derV(osh)
+  {
+    if(!area(ish))
+      throw_error("Average gradient", "Empty input sinogram.");
+    Map insin(sino.copy());
+    ct.sino(insin);
+    const float sigma = angO(anarc, ish(0)) * ish(1) / M_PI ;
+    if (sigma>1) {
+      flt.resize(osh);
+      const float sig22 = 2 * sigma * sigma;
+      mid = exp(-(i0*i0+i1*i1)/sig22);
+      fftwf_execute(fft_f);
+      flt = mid;
+    }
+  }
+
+  AverageGradient(AverageGradient & other)
+    : sino(other.sino)
+    , ish(other.ish)
+    , osh(ish(1),ish(1))
+    , ct(other.ct)
+    , flt(other.flt)
+    , mid(osh)
+    , fft_f(fftwf_plan_dft_2d(osh(0), osh(1), (fftwf_complex*) mid.data(), (fftwf_complex*) mid.data()
+                              , FFTW_FORWARD,  FFTW_ESTIMATE))
+    , fft_b(fftwf_plan_dft_2d(osh(0), osh(1), (fftwf_complex*) mid.data(), (fftwf_complex*) mid.data()
+                              , FFTW_BACKWARD, FFTW_ESTIMATE))
+    , slice(osh)
+    , derH(osh)
+    , derV(osh)
+  {
+    //Map insin(sino.copy());
+    //ct.sino(insin);
+  }
+
+
+  ~AverageGradient() {
+    fftwf_destroy_plan(fft_f);
+    fftwf_destroy_plan(fft_b);
+  }
+
+
+  float apply(const float axisR) {
+
+    const float centre = axisR - 0.5*(ish(1)-1);
+    ct.repeat(slice, centre);
+    const Crop crp = ct.recCrop(centre);
+    const Shape oosh = crop(osh,crp);
+    if( osh == flt.shape() ){
+      mid = blitz::cast< complex<float> >(slice);
+      fftwf_execute(fft_f);
+      mid *= flt;
+      fftwf_execute(fft_b);
+      slice = real(mid) / area(osh) ;
+    }
+    Map cSlice(crop((const Map &) slice, crp));
+
+    // Sobel filter
+    derH=0;
+    Map cDerH (crop((const Map &) derH , crp));
+    cDerH(dstRa(oosh,-1,-1)) += -1 * cSlice(srcRa(oosh,-1,-1));
+    cDerH(dstRa(oosh,-1, 0)) += -2 * cSlice(srcRa(oosh,-1, 0));
+    cDerH(dstRa(oosh,-1, 1)) += -1 * cSlice(srcRa(oosh,-1, 1));
+    cDerH(dstRa(oosh, 1,-1)) +=  1 * cSlice(srcRa(oosh, 1,-1));
+    cDerH(dstRa(oosh, 1, 0)) +=  2 * cSlice(srcRa(oosh, 1, 0));
+    cDerH(dstRa(oosh, 1, 1)) +=  1 * cSlice(srcRa(oosh, 1, 1));
+    derV=0;
+    Map cDerV (crop((const Map &) derV , crp));
+    cDerV(dstRa(oosh,-1,-1)) += -1 * cSlice(srcRa(oosh,-1,-1));
+    cDerV(dstRa(oosh, 0,-1)) += -2 * cSlice(srcRa(oosh, 0,-1));
+    cDerV(dstRa(oosh, 1,-1)) += -1 * cSlice(srcRa(oosh, 1,-1));
+    cDerV(dstRa(oosh,-1, 1)) +=  1 * cSlice(srcRa(oosh,-1, 1));
+    cDerV(dstRa(oosh, 0, 1)) +=  2 * cSlice(srcRa(oosh, 0, 1));
+    cDerV(dstRa(oosh, 1, 1)) +=  1 * cSlice(srcRa(oosh, 1, 1));
+
+    slice = 0.0;
+    cSlice = sqrt( derH * derH + derV * derV );
+    cSlice(all, 0)=0;
+    cSlice(all, oosh(1)-1)=0;
+    cSlice(0, all)=0;
+    cSlice(oosh(0)-1, all)=0;
+
+    const float sm = sum(cSlice);
+    const int nm = sum(where(cSlice>0.0, 1, 0));
+    return nm ? sm/nm : 0.0;
+
+  }
+
+};
+
+
+
+
+class AGinThread : public InThread {
+
+  AverageGradient agCanon;
+  unordered_map<pthread_t, AverageGradient*> ags;
+  list<AverageGradient*> fags;
+
+  const Shape sh;
+  const float cent;
+  const int stpsz;
+
+  float coffee;
+  int hfsteps;
+  int cdir;
+  bool found;
+
+  bool (AGinThread::*alldone)(long int idx);
+  float (AGinThread::*vaxis)(long int idx);
+  void (AGinThread::*exexafter)(long int idx);
+
+  bool beforeThread() {
+    if ( ! alldone || ! vaxis ) {
+      warn("Average gradient in thread", "Not ready for processing.");
+      return false;
+    }
+    const pthread_t me = pthread_self();
+    if (!ags.count(me)) {
+      AverageGradient * ag = 0;
+      lock();
+      if (fags.size()) {
+        ag = fags.front();
+        fags.pop_front();
+      }
+      unlock();
+      if (!ag)
+        ag = new AverageGradient(agCanon);
+      lock();
+      ags.insert({me, ag});
+      unlock();
+    }
+    return true;
+  }
+
+
+  bool inThread(long int idx) {
+    //clock_t sTV = clock();
+    if ( ! alldone || ! vaxis )
+      throw_error("Average gradient in thread", "Not ready for processing.");
+    if ((this->*alldone)(idx))
+      return false;
+    const pthread_t me = pthread_self();
+    lock();
+    if (!ags.count(me)) {
+      unlock();
+      throw_bug("Did not get through 'beforeThread'.");
+    }
+    AverageGradient & myAG = *(ags.at(me));
+    unlock();
+
+    float & vax = vaxS(idx);
+    vax = (this->*vaxis)(idx);
+    errS(idx) = myAG.apply(cent + vax);
+    if (exexafter)
+      (this->*exexafter)(idx);
+
+    bar.update();
+    return true;
+
+  }
+
+
+  bool alldone1(long int idx) {
+    return idx>=errS.size();
+  }
+
+  float vaxis1(long int idx) {
+    return coffee + stpsz * (idx - hfsteps);
+  }
+
+  bool alldone2(long int idx) {
+    return idx>=errS.size() || found ;
+  }
+
+  float vaxis2(long int idx) {
+    return coffee + stpsz * idx * cdir;
+  }
+
+  void execPre(int steps, int abxsz, float coff) {
+    exec();
+    coffee = coff    ;
+    vaxS.resize(steps);
+    errS.resize(steps);
+    bar.setSteps(steps);
+  }
+
+
+  void exexafter2(long int idx) {
+    lock(1);
+    if (!found) {
+      if (errS(idx) < minval) {
+        minval = errS(idx);
+        idxM = idx;
+      } else {
+        found = true;
+      }
+    }
+    unlock(1);
+  }
+
+
+
+public:
+
+  Line vaxS;
+  Line errS;
+  float minval;
+  int idxM;
+
+  AGinThread(Map & sino, const float anarc, const int _stpsz)
+    : InThread(false, "AG processing")
+    , agCanon(sino, anarc)
+    , sh(sino.shape())
+    , cent( 0.5 * ( sh(1) - 1 ) )
+    , stpsz(_stpsz)
+    , idxM(0)
+    , minval(std::numeric_limits<float>::max())
+  {
+    needMutexes(2);
+  }
+
+  ~AGinThread() {
+    clean();
+    auto dlnl = [&](auto pntr) {delete pntr; pntr=0;} ;
+    for (auto celem : fags) dlnl(celem);
+    ags.clear();
+  }
+
+  void clean() {
+    errS.free();
+    vaxS.free();
+    for (auto celem : ags)
+      fags.push_back(celem.second);
+    ags.clear();
+  }
+
+
+  void exec() {
+    clean();
+    vaxS.free();
+    errS.free();
+    bar.done();
+    bar.setSteps(0);
+  }
+
+  void exec1(int steps, int abxsz, float coff) {
+    execPre(steps, abxsz, coff);
+    hfsteps = (steps-1)/2 ;
+    alldone = &AGinThread::alldone1;
+    vaxis = &AGinThread::vaxis1;
+    exexafter = 0;
+    execute();
+    idxM = 0;
+    for( int i = 1; i < errS.size() - 1; i++ ) {
+      const float & cval = errS(i);
+      if( cval < errS(i-1) && cval < errS(i+1) && cval < minval ) {
+        idxM = i;
+        minval = cval;
+      }
+    }
+  }
+
+
+  void exec2(int steps, int abxsz, float coff, int dir) {
+    execPre(steps, abxsz, coff);
+    cdir  = dir;
+    found = false;
+    alldone = &AGinThread::alldone2;
+    vaxis = &AGinThread::vaxis2;
+    exexafter = &AGinThread::exexafter2;
+    execute();
+  }
+
+  float exec(float x) {
+    float ret = agCanon.apply(cent+x);
+    bar.update();
+    return ret;
+  }
+
+
+};
+
+
+
+float improveMe( const float eps, Line & vaxSi, const Line & errSi, int idx, int cdir
+             , std::function<float(float)> getvx ) {
+  float aa = vaxSi(idx-cdir);
+  float bb = vaxSi(idx+cdir);
+  float rf = vaxSi(idx);
+  float vl = errSi(idx);
+  while( abs(aa-rf) > eps  ||  abs(rf-bb) > eps ) {
+    const bool afar = abs(aa-rf) > abs(rf-bb);
+    float & lo = afar ? aa : bb;
+    float & hi = afar ? bb : aa;
+    const float x = (rf + lo) / 2;
+    const float vx = getvx(x);
+    if( vl <= vx )
+      lo = x;
+    else {
+      vl = vx;
+      hi = rf;
+      rf = x;
+    }
+  }
+  return rf;
+}
+
+
+
+float raxis( Map & sino, const float anarc, const float maxDev, int algo)	{
+
+  const Shape sh(sino.shape());
+  if(sh(0)<3 || sh(1)<3)
+    throw_error(modname_ax, "Shape of input sinogram (" + toString(sh) + ")"
+                            " is less than minimal (" + toString(Shape(3,3)) + ").");
+  const float arc = arcO(anarc, sh(0));
+  if (arc==0.0)
+    throw_error(modname_ax, "Zero sinogram arc.");
+  if (abs(arc)<M_PI)
+    throw_error(modname_ax, "Sinogram arc " +toString(abs(arc)*180/M_PI)+ " is less than 180 degree.");
+  const float maxDevLM = 0.25;
+  if( maxDev < 0 || maxDev > maxDevLM )
+    throw_error(modname_ax, "Invalid maximum relative shift of the rotation axis " +toString(maxDev)+ ".");
+  const float cent = 0.5 * ( sh(1) - 1 ) ;
+
+  auto raxisQ = [&]() {
+    const int idx180 = (sh(0)-1) * M_PI / abs(arcO(anarc, sh(0)));
+    const int nofln( sh(0) - idx180 );
+    Map row0(nofln, sh(1)), row180(nofln, sh(1));
+    for( int j = 0; j < nofln; j++ ) {
+      row0(j,all) = sino(j,all)+1;
+      row180(j,all) = sino(j+idx180,all)+1;
+    }
+    return raxis(row0, row180, min(maxDev, 0.5f));
+  };
+
+  float fcr=0;
+  if (!algo)
+    return raxisQ();
+  else if (algo==1)
+    fcr = cent;
+  else if (algo==2)
+    fcr = raxisQ();
+  else if (algo==3) {
+    Line projLine(sh(1));
+    projLine=0;
+    for(int j = 0; j < sh(0); j++)
+      projLine += sino(j,all);
+    const float threshold( 0.1 * max(projLine) + 0.9 * min(projLine) );
+    auto thrFnd = [&](bool fromStart) {
+      for( int i = fromStart ? 0 : sh(1)-1 ; i != fromStart ? sh(1) : -1; i += fromStart ? sh(1) : -1 )
+        if( projLine(i) > threshold )
+          return float(i);
+      return 0.0f;
+    };
+    fcr = ( thrFnd(true) + thrFnd(false) )/2.0f;
+  } else
+    throw_error(modname_ax, "Unknown algorithm for rotation axis "+toString(algo)+".");
+
+  if( abs(fcr - cent) / sh(1) > maxDevLM - maxDev )
+    throw_error(modname_ax, "Rotation axis relative shift " +toString(abs(fcr - cent) / sh(1))+
+                         " is larger than maximum shift "+toString(maxDevLM-maxDev)+".");
+  const float rbxsz = 1.0 - 2.0 * (maxDev + abs(fcr - cent) / sh(1));
+  if( rbxsz < 0.5 )
+    throw_error(modname_ax, "Relative box size " +toString(rbxsz)+
+                            " is less than miminum window of "+toString(0.5)+".");
+
+  const int stpsz = 8;
+  const int steps = 1 + 2 * (maxDev == 0.0  ?  1  :  maxDev * sh(1) / stpsz);
+  AGinThread agproc(sino, anarc, stpsz);
+  const int & idxM = agproc.idxM;
+  agproc.exec1(steps, rbxsz * sh(1), fcr - cent);
+  int cdir=1;
+  if(!idxM) { // no local minimum within the range
+    const int idx = (agproc.errS(0) < agproc.errS(steps - 1) ? 0 : steps - 1);
+    cdir = (idx == 0 ? -1 : 1);
+    const int coffee = agproc.vaxS(idx - cdir * 2);
+    const int maxSteps = sh(1) * maxDevLM - cdir * coffee / stpsz;
+    if (maxSteps <= 0)
+      throw_error(modname_ax, "Impossible number of steps.");
+    agproc.exec2(maxSteps, 0.5*sh(1), coffee, cdir);
+    if (idxM == maxSteps - 1 || idxM == 0)
+      return fcr;
+  }
+  agproc.exec();
+  float rf = improveMe(0.25, agproc.vaxS, agproc.errS, idxM, cdir,
+                       [&](float x){return agproc.exec(x);});
+  agproc.exec();
+  return cent + rf;
+
+};
+
+
+
+
+float raxis(Map & proj0, Map & proj180, const float maxDev ) {
+
+  if( maxDev < 0 || maxDev > 0.5 )
+    throw_error(modname_ax, "Invalid maximum relative shift of the rotation axis " +toString(maxDev)+ "."
+                            " Must be within [0, 0.5] range.");
+  if (proj0.shape() != proj180.shape())
     throw_error(modname_ax, "Different shapes of input projections: "
-       "("+toString(pxaProj_0.shape())+") and ("+toString(pxaProj_180.shape())+") .");
-  if (!pxaProj_0.size())
+       "("+toString(proj0.shape())+") and ("+toString(proj180.shape())+") .");
+  if (!proj0.size())
     throw_error(modname_ax, "Empty input projections.");
-  const Shape ish = pxaProj_0.shape();
+  const Shape sh = proj0.shape();
+  const float cent( 0.5 * (sh(1) - 1) );
+
+  Line proj(sh(1));
+  proj = 0;
+  for( int j = 0; j < sh(0); j++)
+    proj += fabs(proj0(j, all)-1.0) + fabs(proj180(j, all)-1.0);
+  const float fcr = [&]() { // Approximate position of the rotation axis
+    const float sum = blitz::sum(proj);
+    if (sum == 0.0)
+      throw_error(modname_ax, "Impossible input projection averaging to zero.");
+    return blitz::sum(i0*proj(i0)) / sum;
+  }();
+  const int stpsz = 16;
+  const int steps = 1 + 2 * (maxDev == 0.0  ?  1  :  maxDev * sh(1) / stpsz);
+  const Map proj180R(proj180.reverse(blitz::secondDim));
+  const float aver = ( blitz::sum(proj180R(all,0)) + blitz::sum(proj180R(all,sh(1)-1)) ) / (2*sh(0));
+
+  auto calcErr = [&](float x){
+    Map dlt(sh);
+    dlt = aver;
+    dlt(all, dstR(sh(1), x)) = proj180R(all, srcR(sh(1), x));
+    dlt -= proj0;
+    return sqrt(blitz::sum(dlt * dlt));
+  };
+  Line vaxS(steps) ;
+  Line errS(steps);
+  for( int j = 0; j < steps; j++ )
+    errS(j) = calcErr( vaxS(j) = 2 * (fcr - cent) + stpsz * (j-(steps-1)/2) );
+
+  int idx;
+  float minval = std::numeric_limits<float>::max();
+  for( int i = 1; i < steps - 1; i++)
+    if( errS(i) < errS(i-1) && errS(i) < errS(i+1) && errS(i) < minval )
+      minval = errS(idx=i);
+  if( minval != std::numeric_limits<float>::max() ) // local minimum found
+    return  cent + 0.5 * improveMe(1.0, vaxS, errS, idx, 1, calcErr) ;
+
+  idx = (errS(0) < errS(steps - 1) ? 0 : steps - 1);
+  const int cdir = (idx == 0 ? -1 : 1);
+  minval = errS(idx);
+  const int maxSteps = (sh(1) / 2 - cdir * vaxS(idx)) / stpsz;
+  if( maxSteps <= 0 )
+    throw_error(modname_ax, "Failed to calculate rotation centre.");
+
+  Line vaxS2(maxSteps + 2);
+  vaxS2(0) = vaxS(idx - cdir);
+  vaxS2(1) = vaxS(idx);
+  Line errS2(maxSteps + 2);
+  errS2(0) = errS(idx - cdir);
+  errS2(1) = errS(idx);
+  int idx2 = 1;
+  for (int i = 0; i < maxSteps; i++) {
+    errS2(i+2) = calcErr( vaxS2(i+2) = vaxS(idx) + cdir * (i + 1) * stpsz ) ;
+    if( errS2(i+2) < minval ) {
+      minval = errS2(i+2);
+      idx2 = i + 2;
+    } else
+      break;
+  }
+  if( idx2 == maxSteps + 1 )
+    throw_error(modname_ax, "Failed to calculate rotation centre.");
+  return cent + 0.5 * improveMe(1.0, vaxS2, errS2, idx2, cdir, calcErr);
+
+}
+
+
+
+
+
+float raxis(Map & proj0, Map & proj180) {
+  if (proj0.shape() != proj180.shape())
+    throw_error(modname_ax, "Different shapes of input projections: "
+       "("+toString(proj0.shape())+") and ("+toString(proj180.shape())+") .");
+  if (!proj0.size())
+    throw_error(modname_ax, "Empty input projections.");
+  const Shape ish = proj0.shape();
   float sum=0;
   blitz::Array<complex<float>,1> mid(ish(1)), mids(ish(1));
   fftwf_complex * midd = (fftwf_complex*)(void*) mid.data(); // Bad trick!
   fftwf_plan fft_f = fftwf_plan_dft_1d(ish(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
   fftwf_plan fft_b = fftwf_plan_dft_1d(ish(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
   for (ArrIndex sl=0 ; sl<ish(0) ; sl++) {
-    mid = blitz::cast< complex<float> >(pxaProj_0(sl, all));
+    mid = blitz::cast< complex<float> >(proj0(sl, all));
     fftwf_execute(fft_f);
     mids=mid;
-    mid = blitz::cast< complex<float> >(pxaProj_180(sl,all));
+    mid = blitz::cast< complex<float> >(proj180(sl,all));
     fftwf_execute(fft_f);
     mid *= mids;
     //mid(0)=0;

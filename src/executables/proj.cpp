@@ -519,7 +519,7 @@ int main(int argc, char *argv[]) {
       return string();
     string toRet = args.out_name.dtitle();
     if (toRet.find('@') != string::npos)
-      toRet = toString(mask2format(testFormat, nofProj), args.testMe);
+      toRet = toString(mask2format(toRet, nofProj), args.testMe);
     toRet += "%s";
     return toRet;
   }();

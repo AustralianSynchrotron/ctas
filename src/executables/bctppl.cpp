@@ -30,9 +30,7 @@
 
 #include "../common/common.h"
 #include "../common/poptmx.h"
-#include "../common/flatfield.h"
-#include "../common/ct.h"
-#include "../common/ipc.h"
+#include "../common/projection.h"
 #include <algorithm>
 #include <string.h>
 #include <math.h>
@@ -54,21 +52,15 @@ struct clargs {
   deque<ImagePath> bgs1;
   deque<ImagePath> ims0;
   deque<ImagePath> ims1;
-  PointF2D shift;  // for frame formation
-  float ashift;  // for frame formation
-  Filter filter_type;  // for CT
-  float dd;  // for Phase and CT
-  float arc; // for frame formation and CT
-  Crop crop; // for frame formation
-  Crop cropF; // for frame formation
+  PointF2D shift;
+  float ashift;
+  float arc;
+  Crop crop;
+  Crop cropF;
   float angle;
   Binn bnn;
-  float center; // for frame formation and CT
-  uint trans; // for frame formation
-  uint radFill; // for frame formation: fill gap intersections
-  float d2b; // for phase
-  float lambda; // for phase
-  float dist;  // for phase
+  float center;
+  uint trans;
   bool SaveInt;
   bool beverbose;
   int testme;
@@ -82,15 +74,10 @@ clargs(int argc, char *argv[])
   : outmask("_.tif")
   , shift(0,0)
   , ashift(0.0)
-  , dd(1.0)
   , arc(180)
   , angle(0)
   , center(0)
   , trans(0)
-  , radFill(0)
-  , d2b(0.0)
-  , lambda(1.0)
-  , dist(1.0)
   , SaveInt(false)
   , beverbose(false)
   , testme(-1)
@@ -128,18 +115,6 @@ clargs(int argc, char *argv[])
       .add(poptmx::OPTION, &trans, 'T', "trans", "Transition area around gaps.",
            "The area of this thickness around the gaps is used to smoothly"
            " interpolate between single (gap) and double signal areas." )
-      .add(poptmx::OPTION, &radFill, 'R', "fill", "Radius of the area used for filling gaps.", "")
-      .add(poptmx::OPTION, &dist, 'z', "distance", "Object-to-detector distance (mm)",
-             "More correctly the distance from the contact print plane and the detector plane"
-             " where the image was acquired. " + NeedForQuant)
-      .add(poptmx::OPTION, &d2b, 0, "d2b", d2bOptionDesc, "", toString(d2b))
-      .add(poptmx::OPTION, &lambda, 'w', "wavelength", "Wavelength of the X-Ray (Angstrom)",
-             "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
-      .add(poptmx::OPTION, &filter_type, 0, "filter",
-           "Filtering window used in the CT.", FilterOptionDesc, filter_type.name())
-      .add(poptmx::OPTION, &dd, 'r', "resolution",
-           "Pixel size (micron).", ResolutionOptionDesc, toString(dd))
-
       .add(poptmx::OPTION, &testme, 't', "test", "Tests single projection given.",
            "Outputs tif with the projection as well as processed masks." , "")
       .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
@@ -154,60 +129,29 @@ clargs(int argc, char *argv[])
   }
   command = table.name();
 
-  #define chck_inSet(set, role) \
+  auto chck_inSet = [&](deque<ImagePath> & set, const string & role) {
     if ( ! table.count(&set) ) \
       exit_on_error(command, "Missing required input for the " + string(role) + " set.");
-
+  };
   chck_inSet(ims0, "first image");
   chck_inSet(ims1, "second image");
   chck_inSet(bgs0, "first background");
   chck_inSet(bgs0, "second background");
-
-  #undef chck_inSet
 
   if ( arc <= 0.0 )
     exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
   if ( ashift < 0.0 )
     exit_on_error(command, "Angular shift between two sets (given by "+table.desc(&shift)+")"
                            " must be strictly positive.");
-  if ( ashift >= 360.0 ) {
-    float dummy;
-    ashift -= 360 * modf( ashift/360.0, &dummy);
-  }
-
-  if ( ! table.count(&dist) )
-    exit_on_error(command, "Missing required option: "+table.desc(&dist)+".");
-  if (dist <= 0.0)
-    exit_on_error(command, "Zero or negative distance (given by "+table.desc(&dist)+").");
-  dist /= 1.0E3; // convert mm -> m
-
-  if (dd <= 0.0)
-    exit_on_error(command, "Zero or negative pixel size (given by "+table.desc(&dd)+").");
-  dd /= 1.0E6; // convert micron -> m
-
-  if (d2b < 0.0)
-    exit_on_error(command, "Negative d2b parameter (given by "+table.desc(&d2b)+").");
-
-  if (lambda <= 0.0)
-    exit_on_error(command, "Zero or negative wavelength (given by "+table.desc(&lambda)+").");
-  if ( table.count(&lambda) && ! table.count(&d2b) )
-    warn(command, "The wavelength (given by "+table.desc(&lambda)+") has influence only together"
-         " with the d2b parameter (given by "+table.desc(&d2b)+").");
-  if ( ! table.count(&lambda) && table.count(&d2b) )
-    warn(command, "The wavelength (given by "+table.desc(&lambda)+") needed together with"
-         " the d2b parameter (given by "+table.desc(&d2b)+") for the correct results.");
-  lambda /= 1.0E10; // convert A -> m
-
-  while (angle>=360)
-    angle -= 360;
-  while (angle<0)
-    angle += 360;
-  angle *= M_PI / 180.0;
+  auto restrictTo360 = [](float & ang) { // restricts to [0..360) range
+    ang = remainder(ang, 360.0f);
+    if (ang<0)
+      ang+=360;
+  };
+  restrictTo360(ashift);
+  restrictTo360(angle);
 
 }
-
-
-
 
 
 
@@ -521,117 +465,6 @@ cl_program FrameFormInThread::formframeProgram = 0;
 
 
 
-class PhaseInThread : public InThread {
-
-private:
-
-  unordered_map<pthread_t,IPCprocess> procs;
-  Volume & frames;
-  float ind2b;
-
-  bool inThread(long int idx) {
-
-    if ( idx >= frames.shape()(0) )
-      return false;
-
-    const pthread_t me = pthread_self();
-    lock();
-    if ( ! procs.count(me) ) // first call
-      procs.insert({me, IPCprocess(faceShape(frames.shape()), ind2b)});
-    IPCprocess & myProc = procs.at(me);
-    unlock();
-
-    Map io(frames(idx,all,all));
-    myProc.extract(io);
-    bar.update();
-    return true;
-
-  }
-
-public:
-
-  PhaseInThread(Volume & fms, float _ind2b, bool verbose=false)
-    : frames(fms)
-    , ind2b(_ind2b)
-    , InThread(verbose , "Performing phase retrieval.", fms.shape()(0))
-  {}
-
-
-  static void execute(Volume & fms, float _ind2b, bool verbose=false) {
-    PhaseInThread(fms, _ind2b, verbose).InThread::execute();
-  }
-
-
-};
-
-
-
-
-
-
-
-
-
-class CTinThread : public InThread {
-
-private:
-
-  unordered_map<pthread_t,CTrec> recs;
-  const Volume & frames;
-  Volume & result;
-  const Contrast contrast;
-  const Filter filter;
-  const float pixelSize;
-  const Shape ssh;
-  const int slices;
-
-  bool inThread(long int idx) {
-
-    if ( idx >= slices )
-      return false;
-
-    const pthread_t me = pthread_self();
-    lock();
-    //if ( ! recs.count(me) ) // first call
-    //  recs.insert({me, CTrec(ssh, contrast, 180, filter)}); // arc is 180 after frames formation
-    CTrec & rec = recs.at(me);
-    unlock();
-
-    Map sino(frames(all, idx, all));
-    Map slice;
-    rec.reconstruct(sino, slice, 0); // centre is 0 after frames formation
-    result(idx, all, all) = slice;
-    bar.update();
-    return true;
-
-  }
-
-public:
-
-  CTinThread(const Volume & fms, Volume & res, Contrast cn, Filter ft, float pp, bool verbose=false)
-    : frames(fms)
-    , result(res)
-    , contrast(cn)
-    , filter(ft)
-    , pixelSize(pp)
-    , ssh(fms.shape()(2), fms.shape()(0))
-    , slices(fms.shape()(1))
-    , InThread(verbose , "Performing flat field.", fms.shape()(1))
-  {
-    result.resize(slices, ssh(0), ssh(0));
-  }
-
-
-  static void execute(const Volume & fms, Volume & res, Contrast cn, Filter ft, float pp, bool verbose=false) {
-    CTinThread(fms, res, cn, ft, pp, verbose).InThread::execute();
-  }
-
-
-};
-
-
-
-
 
 
 
@@ -673,37 +506,6 @@ int main(int argc, char *argv[]) {
 
   Volume frames;
   FrameFormInThread::execute(bgs0, bgs1, dfs0, dfs1, gaps, args, frames);
-
-  if (args.testme >= 0)
-    exit(0);
-  exit(0); // FOR tests only
-
-
-  // TODO Rings
-
-  // TODO Zinger
-
-
-
-
-
-  // Phase
-  const float ind2b = M_PI * args.d2b * args.dist * args.lambda / ( args.dd * args.dd );
-  PhaseInThread::execute(frames, ind2b, args.beverbose);
-  float coeff = args.dd * args.dd / (M_PI * args.lambda * args.dist);
-  if (args.d2b != 0.0 )
-    coeff /= args.d2b;
-  frames *= coeff;
-
-
-  // CT
-  Volume recs;
-  CTinThread::execute(frames, recs, Contrast::PHS, args.filter_type, args.dd);
-
-
-  // Output
-
-  exit(0);
 
 
 }

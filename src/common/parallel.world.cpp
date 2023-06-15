@@ -244,8 +244,6 @@ void InThread::unlock(int idx) {
 
 #ifdef OPENCL_FOUND
 
-//#include<libconfig.h++>
-//using namespace libconfig;
 std::vector<CLenv> clenvs(0);
 int cl_defidx=-1;
 static bool CL_intialize();
@@ -253,7 +251,8 @@ cl_device_id CL_device() { CL_intialize(); return cl_defidx<0 ? 0 : clenvs[cl_de
 cl_context CL_context() { CL_intialize(); return cl_defidx<0 ? 0 : clenvs[cl_defidx].cont; }
 cl_command_queue CL_queue() { CL_intialize(); return cl_defidx<0 ? 0 : clenvs[cl_defidx].que; }
 
-bool CL_intialize() {
+
+bool _CL_intialize() {
 
   if (cl_defidx>=0)
     return true;
@@ -367,6 +366,17 @@ bool CL_intialize() {
   }
   return true;
 
+}
+
+
+bool CL_intialize() {
+  static pthread_mutex_t lockInit(PTHREAD_MUTEX_INITIALIZER);
+  bool toRet=false;
+  pthread_mutex_lock(&lockInit);
+  try { toRet = _CL_intialize(); }
+  catch (...) { }
+  pthread_mutex_unlock(&lockInit);
+  return toRet;
 }
 
 

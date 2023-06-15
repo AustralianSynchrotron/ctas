@@ -51,16 +51,21 @@ using namespace std;
 
 const clock_t startTV = clock();
 clock_t prevTV = startTV;
-
-
+const time_t startTM = time(0);
+time_t prevTM = startTM;
 
 void prdn( const string & str ) {
   clock_t nowTV = clock();
-  double start_elapsed = double( nowTV - startTV ) / CLOCKS_PER_SEC;
-  double prev_elapsed = double( nowTV - prevTV ) / CLOCKS_PER_SEC;
-  printf("DONE %s:  %f  %f\n", str.c_str(), prev_elapsed, start_elapsed);
+  double start_elapsed_tv = double( nowTV - startTV ) / CLOCKS_PER_SEC;
+  double prev_elapsed_tv = double( nowTV - prevTV ) / CLOCKS_PER_SEC;
+  time_t nowTM = time(0);
+  int start_elapsed_tm = nowTM - startTM;
+  int prev_elapsed_tm = nowTM - prevTM;
+  printf("DONE %s:  %i(%f)  %i(%f)\n", str.c_str(),
+         prev_elapsed_tm, prev_elapsed_tv, start_elapsed_tm, start_elapsed_tv);
   fflush(stdout);
   prevTV=nowTV;
+  prevTM=nowTM;
 }
 
 

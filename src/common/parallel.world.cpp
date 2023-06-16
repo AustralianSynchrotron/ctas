@@ -368,14 +368,14 @@ bool _CL_intialize() {
 
 }
 
-
+static pthread_mutex_t lockCLinit(PTHREAD_MUTEX_INITIALIZER);
 bool CL_intialize() {
-  static pthread_mutex_t lockInit(PTHREAD_MUTEX_INITIALIZER);
+  if (cl_defidx>=0)
+    return true;
   bool toRet=false;
-  pthread_mutex_lock(&lockInit);
-  try { toRet = _CL_intialize(); }
-  catch (...) { }
-  pthread_mutex_unlock(&lockInit);
+  pthread_mutex_lock(&lockCLinit);
+  try { toRet = _CL_intialize(); } catch (...) { }
+  pthread_mutex_unlock(&lockCLinit);
   return toRet;
 }
 

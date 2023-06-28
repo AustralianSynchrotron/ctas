@@ -291,11 +291,28 @@ protected :
 
     if ( !hdfFile || !dataset || !file_fapl || dataMmap.size())
       return;
-    char * rp_name = realpath(name.c_str(),0);
-    string name_realpath(rp_name);
-    free(rp_name);
-    if (name_realpath.rfind("/dev/shm/", 0) != 0)
-      return;
+
+    string name_realpath( [&](){
+      char * rp_name = realpath(name.c_str(),0);
+      string toRet( rp_name ? rp_name : "" );
+      free(rp_name);
+      return toRet;
+    }() );
+
+    { // check if given path is in the list of mmap'able paths or in memory
+      stringstream mmappath( [&](){
+        const char * val = getenv("CTAS_MMAP_PATH") ;
+        return string( val ? val : "" );
+      }() );
+      bool inMmapList=false;
+      string tmp;
+      while( ! inMmapList  &&  getline(mmappath, tmp, ':') )
+        if ( size(tmp) && name_realpath.rfind(tmp, 0) == 0 )
+          inMmapList=true;
+      if ( ! inMmapList && name_realpath.rfind("/dev/shm/", 0) != 0 )
+        return;
+    }
+
     void * handle;
     if ( 0 > H5Fget_vfd_handle(hdfFile, file_fapl, & handle) )
       return;
@@ -1696,8 +1713,6 @@ SaveImageINT (const Path &filename, const Map &storage,
          "Zero-sized array for image '" + filename + "': won't save." );
     return;
   }
-
-  const int width = storage.columns();
 
   Map _storage(safe(storage));
   Map stor(_storage.shape());

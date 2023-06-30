@@ -32,6 +32,7 @@
 
 #include<limits>
 #include<algorithm>
+#include<numeric>
 #include<errno.h>
 #include<string.h>
 #include<stdlib.h>
@@ -76,11 +77,11 @@ lower(string str){
 /// @param mod   Sets CtasErr::module
 /// @param msg   Sets CtasErr::message
 ///
-Err::Err(Err::ErrTp _terr, const string & mod, const string & msg){
-  terr = _terr;
-  module = mod;
-  message = msg;
-}
+Err::Err(Err::ErrTp _terr, const string & mod, const string & msg)
+    : terr(_terr)
+    , module(mod)
+    , message(msg)
+{}
 
 /// \brief Prints the error into the standard error stream.
 void
@@ -149,18 +150,15 @@ get_terminal_width(){
 /// @return Array of the decomposed strings.
 ///
 static string
-print_table(const string & instr,
-            string::size_type space=string::npos) {
+print_table(const string & instr, string::size_type space=string::npos) {
 
+  if ( instr.empty() )
+    return string();
   if( space == string::npos)
     space=get_terminal_width();
 
   string out;
-  string::size_type idx=0, nidx=0, togo=0;
-
-  if ( instr.empty() )
-    return out;
-
+  string::size_type idx=0, nidx;
   while (idx != string::npos) {
 
     if ( nidx = instr.find('\n', idx),
@@ -266,7 +264,7 @@ Option::Option
   isarray(_isarray),
   counter(0)
 {
-  if ( ( kind == ARGUMENT || kind == OPTION ) && ( !val || !convert )  )
+  if ( ( kind == ARGUMENT || kind == OPTION ) && ( !val || !_convert )  )
     throw_error("construct option",
                 "Arguments and options must always have non-zero value"
                 " and conversion function.");
@@ -589,10 +587,8 @@ OptionTable::size() const {
 ///
 OptionTable::ListO
 OptionTable::find(const void * _val) const {
-  for (ListO icur = options.begin() ; icur != options.end() ; icur++)
-    if ( icur->val == _val)
-      return icur;
-  return options.end();
+  return find_if(options.begin(), options.end(),
+                 [&_val](const Option& opt){return opt.val == _val;});
 }
 
 /// Finds the entry in the options with the Option.char_name equal to _char_name.
@@ -605,11 +601,9 @@ OptionTable::ListO
 OptionTable::find(char _char_name) const {
   if ( ! _char_name )
     return options.end();
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-    if ( icur->char_name == _char_name &&
-         ( icur->kind == ARGUMENT || icur->kind == OPTION ) )
-      return icur;
-  return options.end();
+  return find_if(options.begin(), options.end(),
+                 [&_char_name](const Option& opt){
+                   return opt.char_name == _char_name && ( opt.kind == ARGUMENT || opt.kind == OPTION );});
 }
 
 /// Finds the entry in the options with the Option.long_name equal to _long_name.
@@ -622,11 +616,9 @@ OptionTable::ListO
 OptionTable::find(const string & _long_name) const {
   if ( _long_name.empty() )
     return options.end();
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-    if ( icur->long_name == _long_name &&
-         ( icur->kind == ARGUMENT || icur->kind == OPTION ) )
-      return icur;
-  return options.end();
+  return find_if(options.begin(), options.end(),
+                 [&_long_name](const Option& opt){
+                   return opt.long_name == _long_name && ( opt.kind == ARGUMENT || opt.kind == OPTION );});
 }
 
 /// Finds the first of the argument entries in the table which can take one
@@ -637,10 +629,8 @@ OptionTable::find(const string & _long_name) const {
 ///
 OptionTable::ListO
 OptionTable::find() const {
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-    if ( icur->kind == ARGUMENT && ( icur->isarray || ! icur->counter ) )
-      return icur;
-  return options.end();
+  return find_if(options.begin(), options.end(),
+                 [](const Option& opt){return opt.kind == ARGUMENT && ( opt.isarray || ! opt.counter ) ; });
 }
 
 
@@ -652,13 +642,9 @@ OptionTable::find() const {
 ///
 OptionTable::ListO
 OptionTable::has_array() const {
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-    if ( icur->kind == ARGUMENT && icur->isarray )
-      return icur;
-  return options.end();
+  return find_if(options.begin(), options.end(),
+                 [](const Option& opt){return opt.kind == ARGUMENT && opt.isarray; });
 }
-
-
 
 
 
@@ -668,7 +654,7 @@ OptionTable::parse(int argc, char *argv[]){
   // Reread all possible pointers.
   replacePointers(general_desc);
   replacePointers(general_long_desc);
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++) {
+  for (ListO icur=options.begin() ; icur != options.end() ; ++icur) {
     replacePointers(icur->short_desc);
     replacePointers(icur->long_desc);
   }
@@ -788,12 +774,8 @@ OptionTable::usage() const {
 
   cout << general_desc << endl
        << name();
-
-
-  for (ListO icur=options.begin() ; icur != options.end() ; ++icur) {
-    cout << " ";
-    icur->usage();
-  }
+  for_each(options.begin(), options.end(),
+           [](const Option& opt) { cout << ' '; opt.usage(); });
   cout << endl;
 
   if ( auto_help || auto_verb ) {
@@ -839,15 +821,16 @@ OptionTable::help() const {
   prefix_out(general_synopsis, sindent);
   cout << endl;
 
-  int descwidth=0, argwidth=0, curlen;
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++) {
+  int descwidth=0, argwidth=0;
+  for (ListO icur=options.begin() ; icur != options.end() ; ++icur) {
+    int curlen;
     if ( descwidth < (curlen = icur->desc(true).length() ) )
       descwidth = curlen;
     if ( argwidth  < (curlen = icur->arg_desc.length() ) )
       argwidth = curlen;
   }
 
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++)
+  for (ListO icur=options.begin() ; icur != options.end() ; ++icur)
     icur->help(descwidth, argwidth);
 
 }
@@ -861,7 +844,7 @@ OptionTable::Help() const {
   prefix_out(print_table(general_synopsis), sindent, true);
   cout << endl;
 
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++)
+  for (ListO icur=options.begin() ; icur != options.end() ; ++icur)
     icur->Help();
 
 }
@@ -872,10 +855,10 @@ OptionTable::Help() const {
 void
 OptionTable::man() const {
 
-  string version="";
-#ifdef VERSION
-  version=VERSION;
-#endif
+//  string version="";
+//#ifdef VERSION
+//  version=VERSION;
+//#endif
 
   string package="";
 #ifdef PACKAGE_STRING
@@ -903,7 +886,7 @@ OptionTable::man() const {
   prefix_out(general_long_desc, ".br\n",false);
   cout << endl;
 
-  for (ListO icur=options.begin() ; icur != options.end() ; icur++) {
+  for (ListO icur=options.begin() ; icur != options.end() ; ++icur) {
     cout << "./ START OPTION" << endl;
     icur->man();
     cout << "./ END OPTION" << endl
@@ -1039,7 +1022,7 @@ OptionTable::add( const OptionTable & _val ){
     add( NOTE, _val.general_desc, _val.general_long_desc);
   if ( ! _val.options.size() )
     warn("add table", "Empty table to add.");
-  for (ListO icur=_val.options.begin() ; icur != _val.options.end() ; icur++)
+  for (ListO icur=_val.options.begin() ; icur != _val.options.end() ; ++icur)
     add(*icur);
   return *this;
 }
@@ -1144,14 +1127,9 @@ OptionTable::has(const char _char_name) const {
 /// all entries were triggered.
 int
 OptionTable::count(const void * _val) const {
-
-  if ( ! _val ) {
-    int ret = 0;
-    for (ListO icur=options.begin() ; icur != options.end() ; icur++)
-      ret += icur->counter;
-    return ret;
-  }
-
+  if ( ! _val )
+    return accumulate(options.begin(), options.end(), 0,
+                      [](int sum, const Option& opt){return sum + opt.counter;});
   if (!has(_val))
     throw_error("check option", "Could not find the option in the table.");
   return find(_val)->counter;
@@ -1195,11 +1173,11 @@ OptionTable::replacePointers(std::string & str){
                   " the pointer from the string \""+str+"\".");
     if ( ! has(pntr) )
       throw_error("reread pointer", "Did not find requested pointer in the table.");
-    int size = str.find(pntrMark, pos+1);
-    if (size == string::npos)
+    int sz = str.find(pntrMark, pos+1);
+    if (sz == string::npos)
       throw_error("reread pointer", "Could not find end of the pointer in the string \""+str+"\".");
-    size += pntrMark.length() - pos ;
-    str.replace(pos, size, desc(pntr));
+    sz += pntrMark.length() - pos ;
+    str.replace(pos, sz, desc(pntr));
   }
 }
 

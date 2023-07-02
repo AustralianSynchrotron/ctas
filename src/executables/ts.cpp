@@ -199,7 +199,7 @@ int main( int argc, char *argv[] ) {
   const clargs args(argc, argv);
 
   proj_info proj_i(args.data_name);
-  Shape shape=ImageSizes(proj_i.name);
+  Shape<2> shape=ImageSizes(proj_i.name);
   if (shape(1)/2 <= abs(args.plane) )
   exit_on_error(args.command, "The reconstruction plane is outside the image:"
           " Image width: " + toString(shape(1)) + ", reconstruction"

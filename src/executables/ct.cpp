@@ -151,8 +151,8 @@ class RecInThread : public InThread {
 
   const clargs & ctrl;
   ReadVolumeBySlice ivolRd;
-  const Shape ish;
-  const Shape osh;
+  const Shape<2> ish;
+  const Shape<2> osh;
   SaveVolumeBySlice ovolSv;
   CTrec canonRec;
 

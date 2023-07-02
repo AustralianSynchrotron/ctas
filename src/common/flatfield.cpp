@@ -4,8 +4,8 @@
 
 
 
-Shape shapeMe(std::vector<Shape> shs) {
-  Shape firstSh(0,0);
+Shape<2> shapeMe(std::vector<Shape<2>> shs) {
+  Shape<2> firstSh(0,0);
   for (int idx=0 ; idx < shs.size() ; idx++) {
     if ( ! area(firstSh) )
       firstSh = shs[idx];

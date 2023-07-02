@@ -116,7 +116,7 @@ clargs(int argc, char *argv[])
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
-  const Shape ish = ImageSizes(args.imgs[0]);
+  const Shape<2> ish = ImageSizes(args.imgs[0]);
   if (ish(1) < 2 || ish(0) < 2)
     throw_error (args.command, "Size of input image ("+toString(ish)+") is less than 2x2.");
 

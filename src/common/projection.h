@@ -48,10 +48,10 @@ class ProcProj {
 
   // shared, all const except in the constructor.
   const StitchRules & strl;
-  const Shape ish; // input image
-  const Shape psh; // processed image
-  const Shape ssh; // stitched image
-  const std::vector<Shape> oshs; // split images
+  const Shape<2> ish; // input image
+  const Shape<2> psh; // processed image
+  const Shape<2> ssh; // stitched image
+  const std::vector<Shape<2>> oshs; // split images
   std::deque<Map> wghts;
   Map swght;
   std::deque<PointF2D> origins;
@@ -74,7 +74,7 @@ class ProcProj {
 
 public:
 
-  ProcProj( const StitchRules & _st, const Shape & _ish
+  ProcProj( const StitchRules & _st, const Shape<2> & _ish
           , const std::deque<Map> & bgas, const std::deque<Map> & dfas
           , const std::deque<Map> & dgas, const std::deque<Map> & msas
           , const Path & saveMasks = Path());
@@ -83,7 +83,7 @@ public:
 
   std::deque<Map> & process( std::deque<Map> & allInR, const ImagePath & interim_name = ImagePath());
 
-  const std::vector<Shape> & outputShapes() const {return oshs;}
+  const std::vector<Shape<2>> & outputShapes() const {return oshs;}
 
 };
 
@@ -172,7 +172,7 @@ struct Stitch {
 class Denoiser {
 
 private:
-  const Shape sh;
+  const Shape<2> sh;
   const int rad;
   const float thr;
   mutable Map tarr;
@@ -181,7 +181,7 @@ private:
 
 public:
 
-  Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask=defaultMap);
+  Denoiser(const Shape<2> & _sh, int _rad, float _threshold, const Map & _mask=defaultMap);
 
   Denoiser(const Denoiser & other)
     : sh(other.sh)

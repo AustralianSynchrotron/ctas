@@ -707,7 +707,7 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
   Binn3 bnn( ibnn.x ? ibnn.x : inarr.shape()(2) ,
              ibnn.y ? ibnn.y : inarr.shape()(1) ,
              ibnn.z ? ibnn.z : inarr.shape()(0) );
-  Shape3 osh( inarr.shape()(0) / bnn.z
+  Shape<3> osh( inarr.shape()(0) / bnn.z
             , inarr.shape()(1) / bnn.y
             , inarr.shape()(2) / bnn.x);
   outarr.resize(osh);
@@ -865,8 +865,8 @@ class _BinnProc {
 
 private:
   const Binn bnn;
-  const Shape ish;
-  const Shape osh;
+  const Shape<2> ish;
+  const Shape<2> osh;
   CLmem clinarr;
   CLmem cloutarr;
   CLkernel kernelBinn;
@@ -876,7 +876,7 @@ private:
 
 public:
 
-  _BinnProc(const Shape & _ish, const Binn & _bnn)
+  _BinnProc(const Shape<2> & _ish, const Binn & _bnn)
     : bnn( _bnn.x ? _bnn.x : _ish(1), _bnn.y ? _bnn.y : _ish(0) )
     , ish(_ish)
     , osh(binn(ish,bnn))
@@ -936,7 +936,7 @@ const string _BinnProc::modname = "BinnOCL";
 cl_program _BinnProc::binnProgram = 0;
 
 
-BinnProc::BinnProc(const Shape & ish, const Binn & bnn)
+BinnProc::BinnProc(const Shape<2> & ish, const Binn & bnn)
   : guts(new _BinnProc(ish,bnn))
 {}
 
@@ -960,24 +960,24 @@ void BinnProc::operator() (const Map & imap, Map & omap) {
 
 
 
-Shape rotate(const Shape & sh, float angle) {
+Shape<2> rotate(const Shape<2> & sh, float angle) {
   if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) // close to a 90-deg step
     if ( ! ( ((int) round(2*angle/M_PI)) % 2 ) )
       return sh;
     else
-      return Shape(sh(1),sh(0));
+      return Shape<2>(sh(1),sh(0));
   const float cosa = cos(-angle), sina = sin(-angle);
   const int
     rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
     rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
-  return Shape(rheight, rwidth);
+  return Shape<2>(rheight, rwidth);
 }
 
 
 void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
 
-  const Shape sh = inarr.shape();
-  const Shape osh = rotate(sh, angle);
+  const Shape<2> sh = inarr.shape();
+  const Shape<2> osh = rotate(sh, angle);
 
   if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
     const int nof90 = round(2*angle/M_PI);

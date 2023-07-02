@@ -242,7 +242,7 @@ find_minus( float Gm, Interp mpinter,
 	  throw_error("points",
 				  "Specified \\alpha of the minus point (" + toString(Gm) + ")"
 				  " is outside the RC minus slope"
-				  " [" + toString( Shape(alpha(0), alpha(maxlocRC)) ) + "].");
+				  " [" + toString( Shape<2>(alpha(0), alpha(maxlocRC)) ) + "].");
 	while ( alpha(icur) < Gm )
 	  icur++;
 	return ( alpha(icur) - Gm > Gm - alpha(icur-1) ) ?
@@ -269,7 +269,7 @@ find_minus( float Gm, Interp mpinter,
 	if ( Gm < minRC || Gm > maxRC )
 	  throw_error("points",
 				  "Specified intensity of the minus point (" + toString(Gm) + ") is"
-				  " outside the RC ranges [" + toString(Shape(minRC, maxRC)) + "].");
+				  " outside the RC ranges [" + toString(Shape<2>(minRC, maxRC)) + "].");
 	while ( RC( icur ) < Gm )
 	  icur++;
 	return RC(icur) - Gm > Gm - RC(icur-1) ?
@@ -310,7 +310,7 @@ find_plus( float Gp, Interp mpinter,
       throw_error("points",
 				  "Specified \\alpha of the plus point (" + toString(Gp) + ")"
 				  " is outside the RC plus slope"
-				  " [" + toString( Shape( alpha(maxlocRC), alpha(size-1)) ) + "].");
+				  " [" + toString( Shape<2>( alpha(maxlocRC), alpha(size-1)) ) + "].");
     while ( alpha(icur) < Gp )
       icur++;
     return alpha(icur) - Gp > Gp - alpha(icur-1)  ?
@@ -322,7 +322,7 @@ find_plus( float Gp, Interp mpinter,
 	  throw_error("points",
 				  "Specified position of the plus point (" + toString(Gp) + ")"
 				  " is outside the RC plus slope"
-				  " [" + toString( Shape (maxlocRC, size-1 ) ) + "].");
+				  " [" + toString( Shape<2> (maxlocRC, size-1 ) ) + "].");
     return int( Gp-1 );
 
   } else if ( mpinter == Interp::REFLECT ) {
@@ -337,7 +337,7 @@ find_plus( float Gp, Interp mpinter,
     if ( Gp < minRC || Gp > maxRC )
       throw_error("points",
 				  "Specified intensity of the plus point (" + toString(Gp) + ") is"
-				  " outside the RC ranges [" + toString(Shape(minRC, maxRC)) + "].");
+				  " outside the RC ranges [" + toString(Shape<2>(minRC, maxRC)) + "].");
     while ( RC( icur ) > Gp )
       icur++;
     return Gp - RC(icur) > RC(icur-1) - Gp ?

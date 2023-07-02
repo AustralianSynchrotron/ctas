@@ -122,7 +122,7 @@ class SliceInThread : public InThread {
   deque<int> indices;
 
   unsigned bnz;
-  Shape ish, osh;
+  Shape<2> ish, osh;
   unsigned isz, osz;
   Crop crp;
   Binn bnn;
@@ -130,7 +130,7 @@ class SliceInThread : public InThread {
   // Class to accumulate slices in binning Z axis.
   struct CLacc {
 
-    const Shape mish;
+    const Shape<2> mish;
     const unsigned bn;
     int odx;
     unsigned cnt;
@@ -141,7 +141,7 @@ class SliceInThread : public InThread {
     CLkernel addKernel;
     CLkernel divKernel;
 
-    CLacc(Shape _mish, unsigned _bn)
+    CLacc(Shape<2> _mish, unsigned _bn)
       : mish(_mish)
       , bn(_bn)
       , odx(-1)

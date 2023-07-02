@@ -521,7 +521,7 @@ cl_int CLkernel::exec(size_t size, cl_command_queue clque) const {
   return clerr;
 }
 
-cl_int CLkernel::exec(const Shape & sh, cl_command_queue clque) const {
+cl_int CLkernel::exec(const Shape<2> & sh, cl_command_queue clque) const {
   if (!kern)
     return CL_SUCCESS;
   size_t sizes[2] = {size_t(sh(1)), size_t(sh(0))};
@@ -534,7 +534,7 @@ cl_int CLkernel::exec(const Shape & sh, cl_command_queue clque) const {
   return clerr;
 }
 
-cl_int CLkernel::exec(const Shape3 & sh, cl_command_queue clque) const {
+cl_int CLkernel::exec(const Shape<3> & sh, cl_command_queue clque) const {
   if (!kern)
     return CL_SUCCESS;
   size_t sizes[3] = {size_t(sh(2)), size_t(sh(1)), size_t(sh(0))};

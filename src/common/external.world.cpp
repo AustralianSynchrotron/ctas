@@ -184,19 +184,19 @@ public :
   #undef closeMe
 
 private:
-  Shape3 iosh;
+  Shape<3> iosh;
 
 public:
-  inline Shape face() const {return sliceDim == blitz::thirdDim
-                    ?  Shape(iosh(2),iosh(1)) : Shape(iosh(1),iosh(2));}
-  inline Shape ioface() const {return Shape(iosh(1),iosh(2));}
+  inline Shape<2> face() const {return sliceDim == blitz::thirdDim
+                    ?  Shape<2>(iosh(2),iosh(1)) : Shape<2>(iosh(1),iosh(2));}
+  inline Shape<2> ioface() const {return Shape<2>(iosh(1),iosh(2));}
   inline size_t slices() const {return iosh(0);}
   //inline Shape3 sizes() const {return _shape);}
 
-  template<class T> Shape exclDim(const T & sh3, int dimension) {
+  template<class T> Shape<2> exclDim(const T & sh3, int dimension) {
     if (dimension>2)
       throw_error("face of volume", "Impossible excluded dimension " +toString(dimension)+ ".");
-    Shape ret;
+    Shape<2> ret;
     int idx=0, odx=0;
     while (idx<3) {
       if (idx != dimension)
@@ -207,10 +207,10 @@ public:
   }
 
 
-  template<class T> Shape3 inclDim(const T & sh2, int dimension, long sz) {
+  template<class T> Shape<3> inclDim(const T & sh2, int dimension, long sz) {
     if (dimension>2)
       throw_error("shape volume", "Impossible included dimension " +toString(dimension)+ ".");
-    Shape3 ret;
+    Shape<3> ret;
     int idx=0, odx=0;
     while (idx<3) {
       ret(idx) = (idx == sliceDim) ? sz : sh2(odx++);
@@ -233,7 +233,7 @@ protected :
   mutable deque<int> indices;
   Volume dataMmap;
 
-  void setFace(const Shape & fcsh) {
+  void setFace(const Shape<2> & fcsh) {
     iosh[1] = fcsh(sliceDim == blitz::thirdDim ? 1 : 0);
     iosh[2] = fcsh(sliceDim == blitz::thirdDim ? 0 : 1);
     const size_t ar = area(fcsh);
@@ -379,8 +379,8 @@ protected :
       mmap(0, fsize, writable ? PROT_WRITE|PROT_READ : PROT_READ, MAP_SHARED, fd, 0) );
     if ( ! datap || datap == MAP_FAILED )
       return;
-    const Shape3 datash = cnts.size()==3
-                          ? Shape3(cnts(0),cnts(1),cnts(2))  :  Shape3(1,cnts(0),cnts(1));
+    const Shape<3> datash = cnts.size()==3
+                          ? Shape<3>(cnts(0),cnts(1),cnts(2))  :  Shape<3>(1,cnts(0),cnts(1));
     dataMmap.reference( Volume(datap, datash, blitz::neverDeleteData) );
     //prdn("MMAPED " + name);
 
@@ -404,7 +404,7 @@ public :
   {
     if (!isValidHDF())
       throw_error(modname, "No HDF file at "+id()+".");
-    const Shape sh = ImageSizes(filedesc);
+    const Shape<2> sh = ImageSizes(filedesc);
     setFace(sh);
 
     unsigned int h5openflags;
@@ -438,9 +438,9 @@ public :
       complete();
       throw_error(modname, "Failed to read dataset size in " + id());
     }
-    Shape chsh =  rank == 2 ? Shape(cnts(0), cnts(1))  :  exclDim(cnts, sliceDim);
+    Shape<2> chsh =  rank == 2 ? Shape<2>(cnts(0), cnts(1))  :  exclDim(cnts, sliceDim);
     if (sliceDim==blitz::thirdDim) // need to transpose what I read in YZ plane
-      chsh = Shape(chsh(1),chsh(0));
+      chsh = Shape<2>(chsh(1),chsh(0));
     if (chsh != sh)
       throw_error(modname, "Inconsistent read from file " + id());
     //if (overwrite) {
@@ -606,7 +606,7 @@ private:
 
 public :
 
-  HDFwrite( const ImagePath & filedesc, Shape _sh, const size_t zsize
+  HDFwrite( const ImagePath & filedesc, Shape<2> _sh, const size_t zsize
           , float _mincon=0, float _maxcon=0)
     : HDFrw(filedesc)
     , mincon(_mincon)
@@ -646,7 +646,7 @@ public :
               || H5Sget_simple_extent_dims(filespace, tcnts.data(), 0) != rank ) {
       complete();
     } else {
-      const Shape exFace = exclDim(tcnts, sliceDim);
+      const Shape<2> exFace = exclDim(tcnts, sliceDim);
       const long exIdx = tcnts(sliceDim);
       if ( ( exFace != ioface()  &&  ( warn(modname,
                "Existing shape of HDF data \"" + name+":"+data + "\" ("+toString(exFace)+")"
@@ -775,7 +775,7 @@ PixelSize(const ImagePath & filename) {
 
 
 
-Shape
+Shape<2>
 ImageSizes_HDF5(const ImagePath & filename){
   const string modname="HDF size";
   HDFdesc me(filename);
@@ -808,9 +808,9 @@ ImageSizes_HDF5(const ImagePath & filename){
     cleanup();
     throw_error(modname, "Failed to read dataset size in " + filename.repr());
   }
-  Shape ret;
+  Shape<2> ret;
   if ( rank == 2 )
-    ret = Shape(cnts(0), cnts(1));
+    ret = Shape<2>(cnts(0), cnts(1));
   else {
     int idx=0, odx=0;
     while (idx<rank) {
@@ -820,14 +820,14 @@ ImageSizes_HDF5(const ImagePath & filename){
     }
   }
   if (me.sliceDim==blitz::thirdDim) // need to transpose what I read in YZ plane
-    ret = Shape(ret(1),ret(0));
+    ret = Shape<2>(ret(1),ret(0));
   cleanup();
   return ret;
   #undef cleanup
 }
 
 
-Shape
+Shape<2>
 ImageSizes(const ImagePath & filename){
   try {
     return ImageSizes_HDF5(filename);
@@ -842,7 +842,7 @@ ImageSizes(const ImagePath & filename){
     } catch (...) {
       throw_error("get image size", "Could not read image file \""+filename+"\".");
     }
-    return Shape( imag.rows(), imag.columns() );
+    return Shape<2>( imag.rows(), imag.columns() );
   }
 }
 
@@ -850,8 +850,8 @@ ImageSizes(const ImagePath & filename){
 
 
 void
-BadShape(const ImagePath & filename, const Shape & shp){
-  Shape ashp = ImageSizes(filename);
+BadShape(const ImagePath & filename, const Shape<2> & shp){
+  Shape<2> ashp = ImageSizes(filename);
   if ( ashp != shp )
     throw_error("load image", "Shape of the image "
                 "\"" + filename + "\"  (" + toString(ashp) + ") is not equal"
@@ -951,7 +951,7 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop & crp = Crop())
     safelyCloseTIFFandThrow(image, fd, modname,
       "Image \"" + filename + "\" has unsupported sample format.");
 
-  const Shape osh = crop(Shape(height,width),crp);
+  const Shape<2> osh = crop(Shape<2>(height,width),crp);
   storage.resize(osh);
   tdata_t buf = _TIFFmalloc(TIFFScanlineSize(image));
   for (uint curidx = crp.top; curidx < height - crp.bottom; curidx++) {
@@ -1028,7 +1028,7 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
   const int
     width = imag.columns(),
     hight = imag.rows();
-  const Shape osh = crop(Shape(hight,width),crp);
+  const Shape<2> osh = crop(Shape<2>(hight,width),crp);
   storage.resize(osh);
 
   // below might be buggy - see notes in SaveImageINT_IM
@@ -1048,7 +1048,7 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
 
 
 void
-ReadImage(const ImagePath & filename, Map & storage, const Crop & crp, const Shape & shp){
+ReadImage(const ImagePath & filename, Map & storage, const Crop & crp, const Shape<2> & shp){
   try {
     const string ext = lower(filename.ext());
     if (area(shp))
@@ -1104,7 +1104,7 @@ struct _ReadVolBySlice  {
   //unordered_map<ImagePath,HDFread> hdfs;
   unordered_map<size_t,HDFread> hdfs;
   size_t ssize;
-  Shape face;
+  Shape<2> face;
   const bool writable;
 
   _ReadVolBySlice(bool overwrite=false)
@@ -1183,7 +1183,7 @@ struct _ReadVolBySlice  {
         cfirst += hdf.slices();
       } else {
         if (idx==cfirst){
-          const Shape imgsh=ImageSizes(flnm);
+          const Shape<2> imgsh=ImageSizes(flnm);
           if ( imgsh != out.shape())
             throw_error("Volume reader", "Shape of the output map (" + toString(out.shape())
                         + ") does not match that of the image " +flnm+ "("+toString(imgsh)+").");
@@ -1207,8 +1207,8 @@ struct _ReadVolBySlice  {
 class ReadVolInThread : public InThread {
 
   Volume & storage;
-  Shape ish;
-  Shape sh;
+  Shape<2> ish;
+  Shape<2> sh;
   const float ang;
   const Crop crp;
   const Binn bnn;
@@ -1322,7 +1322,7 @@ size_t ReadVolumeBySlice::slices() const {
 }
 
 
-Shape ReadVolumeBySlice::face() const {
+Shape<2> ReadVolumeBySlice::face() const {
   return ((_ReadVolBySlice*) guts)->face;
 }
 
@@ -1330,7 +1330,7 @@ Shape ReadVolumeBySlice::face() const {
 
 
 
-ImageProc::ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish, float _reNAN)
+ImageProc::ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape<2> & _ish, float _reNAN)
   : ish(_ish)
   , ang(_ang)
   , crp(_crp)
@@ -1421,7 +1421,7 @@ private:
 
 public:
 
-  _SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin, float mmax)
+  _SaveVolumeBySlice(const ImagePath & filedesc, Shape<2> _sh, size_t _zsize, float mmin, float mmax)
     : zsize(_zsize)
     , hdfFile(0)
     , mincon(mmin)
@@ -1531,7 +1531,7 @@ private:
   const Volume & vol;
   _SaveVolumeBySlice writer;
   int sliceDim;
-  Shape ssh;
+  Shape<2> ssh;
   std::deque<int>indices;
   unordered_map<pthread_t,Map> maps;
 
@@ -1570,27 +1570,27 @@ public:
     , InThread(verbose , "saving volume")
   {
 
-    Shape3 vsh(vol.shape());
+    Shape<3> vsh(vol.shape());
     string sindex = slicedesc.size()  ?  slicedesc  :  "Z";
     switch ( sindex.at(0) ) {
       case 'x':
       case 'X':
         sindex.erase(0,1);
         sliceDim=2;
-        ssh = Shape(vsh(0),vsh(1));
+        ssh = Shape<2>(vsh(0),vsh(1));
         break;
       case 'y':
       case 'Y':
         sindex.erase(0,1);
         sliceDim=1;
-        ssh = Shape(vsh(0),vsh(2));
+        ssh = Shape<2>(vsh(0),vsh(2));
         break;
       case 'z':
       case 'Z':
         sindex.erase(0,1);
       default:
         sliceDim=0;
-        ssh = Shape(vsh(1),vsh(2));
+        ssh = Shape<2>(vsh(1),vsh(2));
     }
     indices = slice_str2vec(sindex, vsh(sliceDim));
     bar.setSteps(indices.size());
@@ -1613,7 +1613,7 @@ void SaveVolume(const ImagePath & filedesc, Volume & storage, bool verbose,
 
 
 
-SaveVolumeBySlice::SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize,
+SaveVolumeBySlice::SaveVolumeBySlice(const ImagePath & filedesc, Shape<2> _sh, size_t _zsize,
                                      float mmin, float mmax)
   : guts(new _SaveVolumeBySlice(filedesc, _sh, _zsize, mmin, mmax))
 {}
@@ -1938,7 +1938,7 @@ LoadData ( const Path filename, Map & storage ) {
       data_read.push_back(nums);
   }
 
-  const Shape data_shape(data_read.size(), data_read.size() ? data_read[0].size() : 0);
+  const Shape<2> data_shape(data_read.size(), data_read.size() ? data_read[0].size() : 0);
   storage.resize(data_shape);
   for ( ArrIndex y=0 ; y < data_shape(0) ; y++)
     for ( ArrIndex x=0 ; x < data_shape(1) ; x++)

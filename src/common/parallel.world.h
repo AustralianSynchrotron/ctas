@@ -148,8 +148,8 @@ public:
   inline operator bool() const { return kern; }
   std::string name() const;
   cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const;
-  cl_int exec(const Shape & sh, cl_command_queue clque=CL_queue()) const;
-  cl_int exec(const Shape3 & sh, cl_command_queue clque=CL_queue()) const ;
+  cl_int exec(const Shape<2> & sh, cl_command_queue clque=CL_queue()) const;
+  cl_int exec(const Shape<3> & sh, cl_command_queue clque=CL_queue()) const ;
   template <class T> cl_int setArg (cl_uint arg_idx, const T & val) const {
     cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
     if (clerr != CL_SUCCESS)

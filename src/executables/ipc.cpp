@@ -132,7 +132,7 @@ class ProcInThread : public InThread {
 
   const clargs & args;
   ReadVolumeBySlice allIn;
-  const Shape sh;
+  const Shape<2> sh;
   const uint sz;
   const float d2bN;
   SaveVolumeBySlice * allOut;

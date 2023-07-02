@@ -43,7 +43,7 @@
 
 class FlatFieldProc {
 public:
-  const Shape sh; // must be first
+  const Shape<2> sh; // must be first
 private:
   #ifdef ONGPU
   static cl_program ffProgram;
@@ -139,7 +139,7 @@ flatfield(Map & result, const Map & fg, const Map & bg){
       result.reference(fg);
     return;
   }
-  const Shape sh=fg.shape();
+  const Shape<2> sh=fg.shape();
   if( sh != bg.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
   if( sh != result.shape() )
@@ -174,7 +174,7 @@ flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc, const Ma
     return;
   }
 
-  const Shape sh=fg.shape();
+  const Shape<2> sh=fg.shape();
   if( sh != bg.shape() || sh != dc.shape() || sh != gf.shape() )
     throw_error("flat field", "Different shapes of the input arrays.");
   if( sh != result.shape() )

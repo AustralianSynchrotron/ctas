@@ -100,7 +100,7 @@ clargs(int argc, char *argv[]) :
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
-  Shape sh(args.y, args.x);
+  Shape<2> sh(args.y, args.x);
   Map intensity(sh);
   CMap tif(sh);
   simulateTif( tif, sh, args.d2b, args.theta, args.dd, args.lambda);

@@ -98,7 +98,7 @@ propagate(const CMap & tif, Map & out, float dd, float lambda, float dist);
 /// @param lambda Wavelength.
 ///
 void IPC_API
-simulateTif( CMap & tif, const Shape & sh, float bd,
+simulateTif( CMap & tif, const Shape<2> & sh, float bd,
              float theta, float dd, float lambda);
 
 
@@ -113,8 +113,8 @@ class IPC_API IPCprocess{
 
 public:
 
-  const Shape sh;                     ///< Shape of the input contrasts.
-  const Shape msh;
+  const Shape<2> sh;                     ///< Shape of the input contrasts.
+  const Shape<2> msh;
   const float d2b;
 
 private:
@@ -122,8 +122,8 @@ private:
   static const std::string modname;	///< Module name.
 
   class ForCLdev {
-    const Shape sh;
-    const Shape msh;
+    const Shape<2> sh;
+    const Shape<2> msh;
     const float d2b;
     CLenv & cl;
     CMap cin;
@@ -135,7 +135,7 @@ private:
     cl_int clfftExec(clfftDirection dir) const;
     pthread_mutex_t locker;
   public:
-    ForCLdev(CLenv & _cl, const Shape & _sh, float _d2b);
+    ForCLdev(CLenv & _cl, const Shape<2> & _sh, float _d2b);
     ~ForCLdev();
     bool extract(Map & in);
   };
@@ -156,7 +156,7 @@ public:
   /// @param _sh Shape of the input contrasts.
   /// @param d2b Ratio of the (\f$\delta/\beta\f$). Must be supplied multiplied by
   ///            M_PI * dist * lambda / dd^2
-  IPCprocess(const Shape & _sh, float _d2b);
+  IPCprocess(const Shape<2> & _sh, float _d2b);
 
   IPCprocess(const IPCprocess & other);
 

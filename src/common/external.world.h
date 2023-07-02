@@ -98,7 +98,7 @@ PixelSize(const ImagePath & filename);
 ///
 /// @return Image sizes.
 ///
-Shape  COMMON_API
+Shape<2>  COMMON_API
 ImageSizes(const ImagePath & filename);
 
 
@@ -111,7 +111,7 @@ ImageSizes(const ImagePath & filename);
 /// @param shp The expected shape.
 ///
 void COMMON_API
-BadShape(const ImagePath & filename, const Shape & shp);
+BadShape(const ImagePath & filename, const Shape<2> & shp);
 
 
 
@@ -126,10 +126,10 @@ BadShape(const ImagePath & filename, const Shape & shp);
 ///
 void COMMON_API
 ReadImage( const ImagePath & filename, Map & storage
-         , const Crop & crp = Crop(), const Shape & shp = Shape());
+         , const Crop & crp = Crop(), const Shape<2> & shp = Shape<2>());
 
 inline void COMMON_API
-ReadImage(const ImagePath & filename, Map & storage, const Shape & shp) {
+ReadImage(const ImagePath & filename, Map & storage, const Shape<2> & shp) {
   ReadImage(filename, storage, Crop(), shp);
 }
 
@@ -245,7 +245,7 @@ public:
   void read(uint sl, Map & trg, const Crop & crp = Crop());
   bool write(uint sl, Map & out);
   size_t slices() const;
-  Shape face() const;
+  Shape<2> face() const;
 };
 
 
@@ -253,7 +253,7 @@ class SaveVolumeBySlice {
 private:
   void * guts;
 public:
-  SaveVolumeBySlice(const ImagePath & filedesc, Shape _sh, size_t _zsize, float mmin=0, float mmax=0);
+  SaveVolumeBySlice(const ImagePath & filedesc, Shape<2> _sh, size_t _zsize, float mmin=0, float mmax=0);
   ~SaveVolumeBySlice();
   ImagePath save(uint sl, const Map & trg);
   size_t slices() const;
@@ -266,7 +266,7 @@ public:
 class ImageProc {
 
 private:
-  const Shape ish;
+  const Shape<2> ish;
   const float ang;
   const Crop crp;
   const Binn bnn;
@@ -279,7 +279,7 @@ private:
 
 public:
 
-  ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish, float _reNAN=NAN);
+  ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape<2> & _ish, float _reNAN=NAN);
   ImageProc(const ImageProc & other)
     : ImageProc(other.ang, other.crp, other.bnn, other.ish)
   {}
@@ -288,24 +288,24 @@ public:
   void read(ReadVolumeBySlice & volRd, uint sl, Map & storage);
   void proc(const Map & imap, Map & omap);
 
-  Shape outShape() const {
+  Shape<2> outShape() const {
     return outShape(ang, crp, bnn, ish);
   }
 
-  static Shape outShape(float _ang, const Crop & _crp, const Binn & _bnn, const Shape & _ish) {
+  static Shape<2> outShape(float _ang, const Crop & _crp, const Binn & _bnn, const Shape<2> & _ish) {
     return binn( crop( rotate(_ish, _ang), _crp), _bnn);
   }
 
   static void read(const ImagePath & filename, Map & storage
                    , float _ang, const Crop & _crp, const Binn & _bnn
-                   , const Shape _ish = Shape()) {
+                   , const Shape<2> _ish = Shape<2>()) {
     ImageProc(_ang, _crp, _bnn, area(_ish) ? _ish : ImageSizes(filename))
         .read(filename, storage);
   }
 
   static void read(ReadVolumeBySlice & volRd, uint sl, Map & storage
                    , float _ang, const Crop & _crp, const Binn & _bnn
-                   , const Shape _ish = Shape()) {
+                   , const Shape<2> _ish = Shape<2>()) {
     ImageProc(_ang, _crp, _bnn, area(_ish) ? _ish : volRd.face())
         .read(volRd, sl, storage);
   }

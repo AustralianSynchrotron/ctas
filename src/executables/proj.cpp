@@ -272,7 +272,7 @@ class ProjInThread : public InThread {
     int cnt;
     pthread_mutex_t * locker;
 
-    Accumulator(Shape sh, int _bn)
+    Accumulator(Shape<2> sh, int _bn)
       : bn(_bn)
       , odx(-1)
       , cnt(0)
@@ -432,7 +432,7 @@ public:
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  const Shape ish(ImageSizes(args.images.at(0).at(0).repr()));
+  const Shape<2> ish(ImageSizes(args.images.at(0).at(0).repr()));
   const int nofIn = args.images.size();
 
   // Read auxiliary images
@@ -526,7 +526,7 @@ int main(int argc, char *argv[]) {
   ProcProj canonPP(args.st, ish, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
 
   // Prepare saving factories
-  const std::vector<Shape> & outShapes = canonPP.outputShapes();
+  const std::vector<Shape<2>> & outShapes = canonPP.outputShapes();
   const size_t nofSplts = outShapes.size();
   const string spformat = mask2format("_split@", nofSplts);
   deque<SaveVolumeBySlice> allOutSv;

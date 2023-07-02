@@ -250,8 +250,8 @@ private:
 
   static const std::string modname; ///< Module name.
 
-  const Shape ish;
-  const Shape osh;
+  const Shape<2> ish;
+  const Shape<2> osh;
   const size_t zidth;          ///< zero-padded width
   Contrast contrast;     ///< Type of the contrast.
 
@@ -321,12 +321,12 @@ private:
 
 public:
 
-  CTrec(const Shape &sinoshape, Contrast cn, const float anarc=180, const Filter &ft=Filter());
+  CTrec(const Shape<2> &sinoshape, Contrast cn, const float anarc=180, const Filter &ft=Filter());
   CTrec(CTrec & other);
   ~CTrec();
 
-  inline Shape recShape(const float center=0.0) const {
-    return Shape(osh(0)-2*ceil(abs(center)),osh(1));
+  inline Shape<2> recShape(const float center=0.0) const {
+    return Shape<2>(osh(0)-2*ceil(abs(center)),osh(1));
   };
 
   inline Crop recCrop(const float center=0.0) const {

@@ -275,7 +275,7 @@ filter_line(Line &ln, const Line &f_win,
 void RingFilter::apply(Map & sinogram) {
   if ( !box || ! average.size() )
     return;
-  const Shape sh(sinogram.shape());
+  const Shape<2> sh(sinogram.shape());
   if (sh(1) != average.size())
     throw_error("RingFilter", "Wrong sinogram width "+toString(sh(1))+
                               " where "+toString(average.size())+" is expected.");
@@ -432,7 +432,7 @@ float angO(const float anarc, const int points) {
 }
 
 
-CTrec::CTrec(const Shape &sinoshape, Contrast cn, const float anarc, const Filter & ft)
+CTrec::CTrec(const Shape<2> &sinoshape, Contrast cn, const float anarc, const Filter & ft)
   : ish(sinoshape)
   , osh(ish(1),ish(1))
   , zidth(pow(2, ceil(log2(2*ish(1)-1))))
@@ -777,7 +777,7 @@ const string modname_ax = "Axis shift";
 class AverageGradient {
 private:
   Map sino;
-  const Shape ish, osh;
+  const Shape<2> ish, osh;
   CTrec ct;
   blitz::Array<complex<float>,2> flt, mid;
   fftwf_plan fft_f;
@@ -847,7 +847,7 @@ public:
     const float centre = axisR - 0.5*(ish(1)-1);
     ct.repeat(slice, centre);
     const Crop crp = ct.recCrop(centre);
-    const Shape oosh = crop(osh,crp);
+    const Shape<2> oosh = crop(osh,crp);
     if( osh == flt.shape() ){
       mid = blitz::cast< complex<float> >(slice);
       fftwf_execute(fft_f);
@@ -898,7 +898,7 @@ class AGinThread : public InThread {
   unordered_map<pthread_t, AverageGradient*> ags;
   list<AverageGradient*> fags;
 
-  const Shape sh;
+  const Shape<2> sh;
   const float cent;
   const int stpsz;
 
@@ -1105,10 +1105,10 @@ float improveMe( const float eps, Line & vaxSi, const Line & errSi, int idx, int
 
 float raxis( Map & sino, const float anarc, const float maxDev, int algo)	{
 
-  const Shape sh(sino.shape());
+  const Shape<2> sh(sino.shape());
   if(sh(0)<3 || sh(1)<3)
     throw_error(modname_ax, "Shape of input sinogram (" + toString(sh) + ")"
-                            " is less than minimal (" + toString(Shape(3,3)) + ").");
+                            " is less than minimal (" + toString(Shape<2>(3,3)) + ").");
   const float arc = arcO(anarc, sh(0));
   if (arc==0.0)
     throw_error(modname_ax, "Zero sinogram arc.");
@@ -1197,7 +1197,7 @@ float raxis(Map & proj0, Map & proj180, const float maxDev ) {
        "("+toString(proj0.shape())+") and ("+toString(proj180.shape())+") .");
   if (!proj0.size())
     throw_error(modname_ax, "Empty input projections.");
-  const Shape sh = proj0.shape();
+  const Shape<2> sh = proj0.shape();
   const float cent( 0.5 * (sh(1) - 1) );
 
   Line proj(sh(1));
@@ -1276,7 +1276,7 @@ float raxis(Map & proj0, Map & proj180) {
        "("+toString(proj0.shape())+") and ("+toString(proj180.shape())+") .");
   if (!proj0.size())
     throw_error(modname_ax, "Empty input projections.");
-  const Shape ish = proj0.shape();
+  const Shape<2> ish = proj0.shape();
   float sum=0;
   blitz::Array<complex<float>,1> mid(ish(1)), mids(ish(1));
   fftwf_complex * midd = (fftwf_complex*)(void*) mid.data(); // Bad trick!

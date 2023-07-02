@@ -346,7 +346,60 @@ cdpath(const Path & dir, const Path & file);
 
 
 
+typedef blitz::MyIndexType ArrIndex;
 
+
+template<class T1, class T2, int N>
+inline bool operator==( const blitz::TinyVector<T1,N> & t1
+               , const blitz::TinyVector<T2,N> & t2) {
+  for (int dim=0; dim<N; dim++)
+    if (t1[dim]!=t2[dim])
+      return false;
+  return true;
+}
+
+template<class T1, class T2, int N>
+inline bool operator!=( const blitz::TinyVector<T1,N> & t1
+               , const blitz::TinyVector<T2,N> & t2) {
+  return ! (t1 == t2);
+}
+
+template<int N>
+inline std::string toString (const blitz::TinyVector<ArrIndex,N> & shp) {
+  std::string toRet("{");
+  for (int dim = 0; dim < N; ++dim)
+    toRet += toString(shp[dim]) + (dim == N-1 ? "" : ", ");
+  toRet += "}";
+  return toRet;
+}
+
+
+template<int N>
+struct Shape
+  : public blitz::TinyVector<ArrIndex,N>
+{
+  Shape() : blitz::TinyVector<ArrIndex,N>() { for (int dim = 0; dim < N; ++dim) (*this)[dim] = 0; }
+  Shape(ArrIndex hght, ArrIndex wdth) : blitz::TinyVector<ArrIndex,2>(hght,wdth) {}
+  Shape(ArrIndex dpth, ArrIndex hght, ArrIndex wdth) : blitz::TinyVector<ArrIndex,3>(dpth,hght,wdth) {}
+  template <class T>
+  Shape(const blitz::TinyVector<T,N> & other) : blitz::TinyVector<ArrIndex,N>(other) {}
+  template <class T>
+  Shape& operator=(const blitz::TinyVector<T,N> & other) {
+    for (int dim = 0; dim < N; ++dim)
+      (*this)[dim] = other[dim];
+    return *this;
+  }
+  // above template does not instantinate automatically to produce below assign operator
+  Shape& operator=(const Shape & other) { return this->operator=(other); }
+};
+
+inline size_t area(const Shape<2> & sh) {
+  return sh(0) * sh(1) ;
+}
+
+inline Shape<2> faceShape(const Shape<3> & sh) {
+  return Shape<2>(sh(1), sh(2));
+}
 
 
 /// \brief 1D line with data.
@@ -367,7 +420,6 @@ static const Map defaultMap;
 /// Three dimensional array of the ::float elements.
 typedef blitz::Array<float,3> Volume;
 
-typedef blitz::MyIndexType ArrIndex;
 const blitz::Range all = blitz::Range::all();
 
 inline blitz::Range dstR(size_t size, ssize_t shift) {
@@ -379,15 +431,12 @@ inline blitz::Range srcR(size_t size, ssize_t shift) {
 }
 
 #define dstRa(size, shift0, shift1) \
-  dstR(size(0), shift0), dstR(size(1), shift1)
+dstR(size(0), shift0), dstR(size(1), shift1)
 #define srcRa(size, shift0, shift1) \
-  srcR(size(0), shift0), srcR(size(1), shift1)
+    srcR(size(0), shift0), srcR(size(1), shift1)
 
 static blitz::firstIndex  i0;
 static blitz::secondIndex i1;
-
-
-
 
 
 // Returns the array which has elements stored continiously and contiguosly.
@@ -411,103 +460,13 @@ safe(const blitz::Array<T,N> & arr, bool preserve=true){
   return retArr;
 }
 
-
-template<class T1, class T2, int N> bool operator==( const blitz::TinyVector<T1,N> & t1
-                                                  , const blitz::TinyVector<T2,N> & t2) {
-  for (int dim=0; dim<N; dim++)
-    if (t1[dim]!=t2[dim])
-      return false;
-  return true;
-}
-
-template<class T, int N> bool areSame(const blitz::Array<T,N> & arr1,
-                                      const blitz::Array<T,N> & arr2) {
+template<class T, int N>
+inline bool areSame(const blitz::Array<T,N> & arr1,
+                    const blitz::Array<T,N> & arr2) {
   return arr1.data()   == arr2.data()   &&
          arr1.stride() == arr2.stride() &&
          arr1.shape()  == arr2.shape();
 }
-
-
-
-
-/// \brief Shape of an 2D array.
-//typedef blitz::TinyVector<ArrIndex,2> Shape;
-
-struct Shape : public blitz::TinyVector<ArrIndex,2> {
-  Shape(ArrIndex hght=0, ArrIndex wdth=0) : blitz::TinyVector<ArrIndex,2>(hght,wdth) {}
-  template <class T> Shape(const blitz::TinyVector<T,2> & other) : blitz::TinyVector<ArrIndex,2>(other) {}
-  //bool operator==( const blitz::TinyVector<ArrIndex,2> & other ) const { return Shape(other) == *this ;}
-};
-
-
-inline std::string toString (const Shape & shp) { return toString("%u, %u", shp(1), shp(0));}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c true if the shapes are equal, \c false otherwise.
-///
-//inline bool
-//operator==( const Shape & sh1, const Shape & sh2){
-//  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1) );
-//}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c false if the shapes are equal, \c true otherwise.
-///
-inline bool
-operator!=( const Shape & sh1, const Shape & sh2){
-  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1) );
-}
-
-inline size_t area(const Shape & sh) {
-  return sh(0) * sh(1) ;
-}
-
-
-
-
-/// \brief Shape of an 2D array.
-typedef blitz::TinyVector<ArrIndex,3> Shape3;
-
-inline std::string toString (const Shape3 & shp) {
-  return toString("%u, %u, %u", shp(2), shp(1), shp(0));
-}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c true if the shapes are equal, \c false otherwise.
-///
-inline bool
-operator==( const Shape3 & sh1, const Shape3 & sh2){
-  return ( sh1(0)==sh2(0)  &&  sh1(1)==sh2(1)  &&  sh1(2)==sh2(2) );
-}
-
-/// \brief Compare shapes.
-///
-/// @param sh1 first shape.
-/// @param sh2 second shape.
-///
-/// @return \c false if the shapes are equal, \c true otherwise.
-///
-inline bool
-operator!=( const Shape3 & sh1, const Shape3 & sh2){
-  return ( sh1(0)!=sh2(0)  ||  sh1(1)!=sh2(1)  ||  sh1(2)!=sh2(2) );
-}
-
-inline Shape faceShape(const Shape3 & sh) {
-  return Shape(sh(1), sh(2));
-}
-
 
 
 
@@ -740,9 +699,9 @@ crop(const Map & iarr, const Crop & crp);
 
 
 
-inline Shape
-crop(const Shape & sh, const Crop & crp) {
-  const Shape csz(sh(0) - crp.top  - crp.bottom, sh(1) - crp.left - crp.right);
+inline Shape<2>
+crop(const Shape<2> & sh, const Crop & crp) {
+  const Shape<2> csz(sh(0) - crp.top  - crp.bottom, sh(1) - crp.left - crp.right);
   if ( csz(0) <= 0 || csz(1) <= 0 )
     throw_error("Crop", "Cropping is larger than the shape of input volume.");
   return csz;
@@ -928,7 +887,7 @@ class BinnProc {
 private:
   void * guts;
 public:
-  BinnProc(const Shape & ish, const Binn & bnn);
+  BinnProc(const Shape<2> & ish, const Binn & bnn);
   ~BinnProc();
   void operator() (const Map & imap, Map & omap);
 };
@@ -938,8 +897,8 @@ inline uint binn(uint sz, uint bn) {
   return bn ? sz/bn : 1 ;
 }
 
-inline Shape binn(const Shape & sh, const Binn & bnn) {
-  return Shape(binn(sh(0),bnn.y), binn(sh(1),bnn.x) );
+inline Shape<2> binn(const Shape<2> & sh, const Binn & bnn) {
+  return Shape<2>(binn(sh(0),bnn.y), binn(sh(1),bnn.x) );
 }
 
 inline void binn(const Map & imap, Map & omap, const Binn & bnn) {
@@ -1025,7 +984,7 @@ binn(Volume & io_arr, const Binn3 & bnn);
 
 
 
-Shape rotate(const Shape & sh, float angle);
+Shape<2> rotate(const Shape<2> & sh, float angle);
 
 /// \brief Rotate the array.
 ///

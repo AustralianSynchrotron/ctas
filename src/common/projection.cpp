@@ -70,7 +70,7 @@ Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
   if (!edge)
     return mask;
 
-  const Shape ish = mask.shape();
+  const Shape<2> ish = mask.shape();
   const float step = 1.0 / (edge +1);
   Map tmp(mask.shape());
   tmp = mask;
@@ -124,7 +124,7 @@ void ProcProj::initCL() {
 }
 
 
-ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
+ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
                   , const deque<Map> & bgas, const deque<Map> & dfas
                   , const deque<Map> & dgas, const deque<Map> & msas
                   , const Path & saveMasks)
@@ -136,8 +136,8 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
        , psh(1) + strl.flip*abs(strl.originF.x)
          + (strl.origin1size-1)*abs(strl.origin1.x) + (strl.origin2size-1)*abs(strl.origin2.x) )
   , oshs( [&](){
-      vector<Shape> toRet;
-      const Shape cssh = crop(ssh, strl.fcrp);
+      vector<Shape<2>> toRet;
+      const Shape<2> cssh = crop(ssh, strl.fcrp);
       if ( strl.splits.empty() )
         toRet.push_back(cssh);
       else {
@@ -149,7 +149,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
                   ?  mLine :  strl.splits.at(curS) ;
           int sz = lLine-fLine;
           if ( sz > 0 )
-            toRet.push_back(vsplit ? Shape(cssh(0),sz) : Shape(sz, cssh(1)));
+            toRet.push_back(vsplit ? Shape<2>(cssh(0),sz) : Shape<2>(sz, cssh(1)));
           fLine=lLine;
         }
       }
@@ -242,7 +242,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape & _ish
     }
     for (int curI = 0; curI < strl.nofIn ; curI++)
       origins[curI] -= PointF2D(minx, miny);
-    if ( ssh != Shape(maxy-miny+1, maxx-minx+1) )
+    if ( ssh != Shape<2>(maxy-miny+1, maxx-minx+1) )
       throw_bug(modname + " Mistake in calculating stitched shape: "
                 +toString(ssh)+" != "+toString(ssh)+".");
 
@@ -636,7 +636,7 @@ void Trans::rotate(const Map & in, Map & out) {
 
 
 
-Denoiser::Denoiser(const Shape & _sh, int _rad, float _threshold, const Map & _mask)
+Denoiser::Denoiser(const Shape<2> & _sh, int _rad, float _threshold, const Map & _mask)
   : sh(_sh)
   , rad(abs(_rad))
   , thr(_threshold)

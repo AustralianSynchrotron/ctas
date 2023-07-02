@@ -171,8 +171,8 @@ private:
   FlatFieldProc canon1;
   const clargs & args;
 
-  Shape ish;
-  Shape osh;
+  Shape<2> ish;
+  Shape<2> osh;
   int nofProj;
   float step;
   int nshift;
@@ -194,7 +194,7 @@ private:
     Map tim;
     Map crim;
 
-    void prepareme(const Shape & _osh, CLmem & _clgaps) {
+    void prepareme(const Shape<2> & _osh, CLmem & _clgaps) {
 
       static const string oclsrc = {
         #include "formframe.cl.includeme"
@@ -348,7 +348,7 @@ private:
         if (_gaps(i,j)<1.0)
           _gaps(i,j)=0.0 ;
 
-    const Shape ish = _gaps.shape();
+    const Shape<2> ish = _gaps.shape();
     const float step = 1.0 / (args.trans+1);
     Map tmp(_gaps.shape());
     tmp = _gaps;
@@ -434,7 +434,7 @@ public:
 
 
     ish = gaps.shape();
-    osh = Shape( gapst.shape()(0) - args.cropF.top  - args.cropF.bottom
+    osh = Shape<2>( gapst.shape()(0) - args.cropF.top  - args.cropF.bottom
                , gapst.shape()(1) - args.cropF.left - args.cropF.right) ;
     step = args.arc < 1.0  ?  args.arc  :  args.arc / (nofProj-1);
     nshift = args.ashift/step;
@@ -474,7 +474,7 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  const Shape ish = ImageSizes(args.ims0.at(0));
+  const Shape<2> ish = ImageSizes(args.ims0.at(0));
 
   // Read DFs, BGs, GapMask
 

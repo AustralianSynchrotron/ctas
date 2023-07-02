@@ -81,7 +81,7 @@ class RingInThread : public InThread {
 
   const clargs & args;
   ReadVolumeBySlice ivolRd;
-  const Shape sh;
+  const Shape<2> sh;
   SaveVolumeBySlice * ovolSv;
   unordered_map<pthread_t, RingFilter*> filters;
   unordered_map<pthread_t, Map*> iomaps;

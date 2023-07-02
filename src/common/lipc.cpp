@@ -64,7 +64,7 @@ const string IPCprocess::modname = "IPC process";	///< Module name.
 
 
 
-IPCprocess::ForCLdev::ForCLdev(CLenv & _cl, const Shape & _sh, float _d2b)
+IPCprocess::ForCLdev::ForCLdev(CLenv & _cl, const Shape<2> & _sh, float _d2b)
   : sh(_sh)
   , msh(closest_factorable(sh(0), {2,3,5,7}),
         closest_factorable(sh(1), {2,3,5,7}))
@@ -182,7 +182,7 @@ cl_int IPCprocess::ForCLdev::clfftExec(clfftDirection dir) const {
 
 
 
-IPCprocess::IPCprocess(const Shape & _sh, float _d2b)
+IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b)
   : sh(_sh)
   , msh(closest_factorable(sh(0), {2,3,5,7}),
         closest_factorable(sh(1), {2,3,5,7}))
@@ -198,7 +198,7 @@ IPCprocess::IPCprocess(const Shape & _sh, float _d2b)
     return;
   if (sh(0) < 3 || sh(1) < 3)
     throw_error(modname, "Insufficient size requested: (" + toString(sh) + ")."
-                " Must be at least (" + toString(Shape(3,3)) + ").");
+                " Must be at least (" + toString(Shape<2>(3,3)) + ").");
 
   if (!CL_isReady())
     warn(modname, "OpenCL is not functional.");
@@ -349,10 +349,10 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
 
   const int zPad=3.0;
 
-  const Shape sh = tif.shape();
+  const Shape<2> sh = tif.shape();
   if (sh(0) < 3 || sh(1) < 3)
     throw_error("IPC simulation", "Insufficient size of the input data: (" + toString(sh) + ")."
-                " Must be at least (" + toString(Shape(3,3)) + ").");
+                " Must be at least (" + toString(Shape<2>(3,3)) + ").");
   if (out.shape() != sh)
     out.resize(sh);
   if (lambda<=0)
@@ -362,7 +362,7 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
   if (dd<=0)
     warn("IPC simulation", "The pixel size is less or equal to 0. Will use 1.0.");
 
-  const Shape ish(zPad*sh(0), zPad*sh(1));
+  const Shape<2> ish(zPad*sh(0), zPad*sh(1));
   CMap mid(ish);
   int mst0 = sh(0)*(zPad-1)/2, mst1 = sh(1)*(zPad-1)/2;
   blitz::Range r0(mst0, mst0+sh(0)-1), r1(mst1, mst1+sh(1)-1);
@@ -394,7 +394,7 @@ propagate(const CMap & tif, Map & out, float dd, float lambda,  float dist) {
 
 
 void
-simulateTif( CMap & tif, const Shape & sh, float d2b,
+simulateTif( CMap & tif, const Shape<2> & sh, float d2b,
              float theta, float dd, float lambda) {
 
   // Prepare spherical phantoms.

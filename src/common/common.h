@@ -351,7 +351,7 @@ typedef blitz::MyIndexType ArrIndex;
 
 template<class T1, class T2, int N>
 inline bool operator==( const blitz::TinyVector<T1,N> & t1
-               , const blitz::TinyVector<T2,N> & t2) {
+                      , const blitz::TinyVector<T2,N> & t2) {
   for (int dim=0; dim<N; dim++)
     if (t1[dim]!=t2[dim])
       return false;
@@ -360,7 +360,7 @@ inline bool operator==( const blitz::TinyVector<T1,N> & t1
 
 template<class T1, class T2, int N>
 inline bool operator!=( const blitz::TinyVector<T1,N> & t1
-               , const blitz::TinyVector<T2,N> & t2) {
+                      , const blitz::TinyVector<T2,N> & t2) {
   return ! (t1 == t2);
 }
 
@@ -390,7 +390,7 @@ struct Shape
     return *this;
   }
   // above template does not instantinate automatically to produce below assign operator
-  Shape& operator=(const Shape & other) { return this->operator=(other); }
+  Shape& operator=(const Shape & other) { return this->operator=<ArrIndex>(other); }
 };
 
 inline size_t area(const Shape<2> & sh) {

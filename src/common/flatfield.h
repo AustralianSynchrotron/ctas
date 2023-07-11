@@ -30,7 +30,7 @@
 #ifndef _H_BACKGROUND_H_
 #define _H_BACKGROUND_H_
 
-#include "../common/common.h"
+#include "../common/ctas.h"
 
 
 
@@ -145,8 +145,8 @@ flatfield(Map & result, const Map & fg, const Map & bg){
   if( sh != result.shape() )
     result.resize(sh);
   int sz=0;
-  for (ArrIndex icur=0; icur<sh(0); icur++)
-    for (ArrIndex jcur=0; jcur<sh(1); jcur++)
+  for (ssize_t icur=0; icur<sh(0); icur++)
+    for (ssize_t jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), 0.0, 0.0, 0.0);
 }
 
@@ -179,8 +179,8 @@ flatfield(Map & result, const Map & fg, const Map & bg, const Map & dc, const Ma
     throw_error("flat field", "Different shapes of the input arrays.");
   if( sh != result.shape() )
     result.resize(sh);
-  for (ArrIndex icur=0; icur<sh(0); icur++)
-    for (ArrIndex jcur=0; jcur<sh(1); jcur++)
+  for (ssize_t icur=0; icur<sh(0); icur++)
+    for (ssize_t jcur=0; jcur<sh(1); jcur++)
       result(icur,jcur) = flatfield( fg(icur,jcur), bg(icur,jcur), dc(icur,jcur), gf(icur,jcur), zer);
 }
 

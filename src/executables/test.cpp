@@ -1,6 +1,6 @@
 
 
-#include "../common/common.h"
+#include "../common/ctas.h"
 #include "../common/poptmx.h"
 
 
@@ -14,7 +14,8 @@ struct clargs {
   Path ms_name;               ///< Name of the input file.
   Path out_name;              ///< Name of the output file.
   float angle;
-  //Crop crp;                  ///< Crop input projection image
+  Crop<2> crp2;                  ///< Crop input projection image
+  Crop<3> crp3;                  ///< Crop input projection image
   //Binn bnn;                  ///< binning factor
   bool saveInt;
   bool beverbose;       ///< Be verbose flag
@@ -47,7 +48,8 @@ clargs(int argc, char *argv[])
     //.add(poptmx::OPTION, &coeff, 'c', "coefficient", "Some number", "")
     //.add(poptmx::OPTION, &arf, 'F', "anarg", "description", "Long description")
     .add(poptmx::OPTION, &angle, 'a', "angle", "Some number", "")
-    //.add(poptmx::OPTION, &crp, 0, "crop", "image crop", "")
+    .add(poptmx::OPTION, &crp2, 0, "crop2", "image crop", "")
+    .add(poptmx::OPTION, &crp3, 0, "crop3", "volume crop", CropOptionDesc)
     //.add(poptmx::OPTION, &bnn, 0, "binn", "image binn", "")
     .add(poptmx::OPTION, &saveInt, 'i', "int", "Output image(s) as integer.", IntOptionDesc)
     .add_standard_options(&beverbose)
@@ -55,15 +57,11 @@ clargs(int argc, char *argv[])
 
   if ( ! table.parse(argc,argv) )
     exit(0);
-  if ( ! table.count() ) {
-    table.usage();
-    exit(0);
-  }
   command = table.name();
 
   // <input> : one required argument.
-  if ( ! table.count(&in_name) )
-    exit_on_error(command, "Missing required argument: "+table.desc(&in_name)+".");
+  //if ( ! table.count(&in_name) )
+  //  exit_on_error(command, "Missing required argument: "+table.desc(&in_name)+".");
   // <output> : one more argument may or may not exist
   //if ( ! table.count(&out_name) )
   //  out_name = upgrade(in_name, "res-");
@@ -78,6 +76,18 @@ clargs(int argc, char *argv[])
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
+
+  Shape<2> sh2(1000,500);
+  Shape<3> sh3(1000,500,300);
+  cout << toString(sh2) << " " << toString(sh3) << "\n";
+  cout << toString(args.crp2) << " " << toString(args.crp3) << "\n";
+  cout << toString(args.crp2.apply(sh2)) << " " << toString(args.crp3.apply(sh3)) << "\n";
+  cout << toString(args.crp2.apply(sh2)) << " " << toString(args.crp3.apply(sh3)) << "\n";
+  cout << toString(args.crp2(1).size(10)) << " " << toString(args.crp2(0).size(10)) << "\n";
+  cout << toString(args.crp2(1).end(10)) << " " << toString(args.crp2(0).end(10
+  )) << "\n";
+  exit(0);
+
 
   Map arr;
   ReadImage(args.in_name, arr);

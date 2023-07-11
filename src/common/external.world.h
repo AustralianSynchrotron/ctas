@@ -1,11 +1,9 @@
 #ifndef EXTARNAL_WORLD_H
 #define EXTARNAL_WORLD_H
 
-#ifndef _H_CTAS_H_
-#pragma message "File" __FILE__ "is not supposed to be included implicitly."
-#pragma message "Expect compilation failure."
-#include "common.h"
-#endif
+
+#include "common.world.h"
+#include "matrix.world.h"
 
 
 
@@ -52,7 +50,7 @@ public:
 
 };
 
-inline int COMMON_API
+inline int
 _conversion (ImagePath* _val, const std::string & in) {
   *_val = ImagePath(in);
   return 1;
@@ -86,7 +84,7 @@ template<> struct hash<ImagePath> {
 ///
 /// @return pixel size in micron.
 ///
-float  COMMON_API
+float
 PixelSize(const ImagePath & filename);
 
 
@@ -98,7 +96,7 @@ PixelSize(const ImagePath & filename);
 ///
 /// @return Image sizes.
 ///
-Shape<2>  COMMON_API
+Shape<2>
 ImageSizes(const ImagePath & filename);
 
 
@@ -110,7 +108,7 @@ ImageSizes(const ImagePath & filename);
 /// @param filename Image filename.
 /// @param shp The expected shape.
 ///
-void COMMON_API
+void
 BadShape(const ImagePath & filename, const Shape<2> & shp);
 
 
@@ -124,13 +122,13 @@ BadShape(const ImagePath & filename, const Shape<2> & shp);
 /// @param storage  Array to load the image into.
 /// @param shp The expected shape.
 ///
-void COMMON_API
+void
 ReadImage( const ImagePath & filename, Map & storage
-         , const Crop & crp = Crop(), const Shape<2> & shp = Shape<2>());
+         , const Crop<2> & crp = Crop<2>(), const Shape<2> & shp = Shape<2>());
 
-inline void COMMON_API
+inline void
 ReadImage(const ImagePath & filename, Map & storage, const Shape<2> & shp) {
-  ReadImage(filename, storage, Crop(), shp);
+  ReadImage(filename, storage, Crop<2>(), shp);
 }
 
 
@@ -145,7 +143,7 @@ ReadImage(const ImagePath & filename, Map & storage, const Shape<2> & shp) {
 /// @param storage the array to be written to the image.
 /// @param saveint save image as 16-bit integer.
 ///
-void COMMON_API
+void
 SaveImage(const ImagePath & filename, const Map & storage, bool saveint=false);
 
 
@@ -160,7 +158,7 @@ SaveImage(const ImagePath & filename, const Map & storage, bool saveint=false);
 /// @param minval the value corresponding to black.
 /// @param maxval the value corresponding to white.
 ///
-void COMMON_API
+void
 SaveImage(const ImagePath & filename, const Map & storage, float minval, float maxval );
 
 
@@ -170,57 +168,57 @@ SaveImage(const ImagePath & filename, const Map & storage, float minval, float m
 
 
 /// Description of the output result mask.
-extern const std::string COMMON_API MaskDesc;
+extern const std::string  MaskDesc;
 
-void COMMON_API
+void
 ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbose=false);
 
-inline void COMMON_API
+inline void
 ReadVolume(const ImagePath & filename, Volume & storage, bool verbose=false) {
   ReadVolume(std::deque<ImagePath>(1, filename), storage, verbose );
 }
 
 
-void COMMON_API
+void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            bool verbose, const std::string & slicedesc, float mmin, float mmax);
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            bool verbose, const std::string & slicedesc) {
   SaveVolume(filedesc, storage, verbose, slicedesc, 0, 0);
 }
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            bool verbose) {
   SaveVolume(filedesc, storage, verbose, "", 0, 0);
 }
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            const std::string & slicedesc) {
   SaveVolume(filedesc, storage, false, slicedesc, 0, 0);
 }
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage) {
   SaveVolume(filedesc, storage, false, "", 0, 0);
 }
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            bool verbose, float mmin, float mmax) {
   SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
 }
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            const std::string & slicedesc, float mmin, float mmax) {
   SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
 }
 
-inline void COMMON_API
+inline void
 SaveVolume(const ImagePath & filedesc, Volume & storage,
            float mmin, float mmax) {
   SaveVolume(filedesc, storage, false, "", mmin, mmax);
@@ -242,7 +240,7 @@ public:
   ~ReadVolumeBySlice();
   void add(const std::deque<ImagePath> & filelist);
   void add(const ImagePath & fileind);
-  void read(uint sl, Map & trg, const Crop & crp = Crop());
+  void read(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
   bool write(uint sl, Map & out);
   size_t slices() const;
   Shape<2> face() const;
@@ -268,7 +266,7 @@ class ImageProc {
 private:
   const Shape<2> ish;
   const float ang;
-  const Crop crp;
+  const Crop<2> crp;
   const Binn bnn;
   const float reNAN;
   BinnProc bnnprc;
@@ -279,7 +277,7 @@ private:
 
 public:
 
-  ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape<2> & _ish, float _reNAN=NAN);
+  ImageProc(float _ang, const Crop<2> & _crp, const Binn & _bnn, const Shape<2> & _ish, float _reNAN=NAN);
   ImageProc(const ImageProc & other)
     : ImageProc(other.ang, other.crp, other.bnn, other.ish)
   {}
@@ -292,26 +290,26 @@ public:
     return outShape(ang, crp, bnn, ish);
   }
 
-  static Shape<2> outShape(float _ang, const Crop & _crp, const Binn & _bnn, const Shape<2> & _ish) {
-    return binn( crop( rotate(_ish, _ang), _crp), _bnn);
+  static Shape<2> outShape(float _ang, const Crop<2> & _crp, const Binn & _bnn, const Shape<2> & _ish) {
+    return binn( _crp.apply(rotate(_ish, _ang)), _bnn);
   }
 
   static void read(const ImagePath & filename, Map & storage
-                   , float _ang, const Crop & _crp, const Binn & _bnn
+                   , float _ang, const Crop<2> & _crp, const Binn & _bnn
                    , const Shape<2> _ish = Shape<2>()) {
     ImageProc(_ang, _crp, _bnn, area(_ish) ? _ish : ImageSizes(filename))
         .read(filename, storage);
   }
 
   static void read(ReadVolumeBySlice & volRd, uint sl, Map & storage
-                   , float _ang, const Crop & _crp, const Binn & _bnn
+                   , float _ang, const Crop<2> & _crp, const Binn & _bnn
                    , const Shape<2> _ish = Shape<2>()) {
     ImageProc(_ang, _crp, _bnn, area(_ish) ? _ish : volRd.face())
         .read(volRd, sl, storage);
   }
 
   static void proc(const Map & imap, Map & omap
-                   , float _ang, const Crop & _crp, const Binn & _bnn) {
+                   , float _ang, const Crop<2> & _crp, const Binn & _bnn) {
     ImageProc(_ang, _crp, _bnn, imap.shape())
         .proc(imap,omap);
   }
@@ -335,10 +333,10 @@ public:
 ///
 // Don't use the reference type "const Path &" here: will
 // not work on Windows
-void COMMON_API
+void
 LoadData(const Path filename, ... );
 
-void COMMON_API
+void
 LoadData ( const Path filename, Map & storage );
 
 
@@ -352,10 +350,24 @@ LoadData ( const Path filename, Map & storage );
 ///
 // Don't use the reference type "const Path &" here: will
 // not work on Windows
-void COMMON_API
+void
 SaveData(const Path filename, ... );
 
 /// @}
+
+
+
+
+/// Description of the -i, --int option used in many modules.
+extern const std::string
+IntOptionDesc;
+
+extern const std::string
+SliceOptionDesc;
+
+extern const std::string
+DimSliceOptionDesc;
+
 
 
 #endif // AAA_H

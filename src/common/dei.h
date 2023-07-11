@@ -30,7 +30,7 @@
 #ifndef _H_DEI_H_
 #define _H_DEI_H_
 
-#include "../common/common.h"
+#include "../common/ctas.h"
 #include "../common/poptmx.h"
 
 

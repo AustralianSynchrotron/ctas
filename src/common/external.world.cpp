@@ -1,4 +1,6 @@
-#include "common.h"
+#include "common.world.h"
+#include "external.world.h"
+#include "parallel.world.h"
 
 #include <tiffio.h>
 #include <hdf5.h>
@@ -8,14 +10,7 @@
 #include <fcntl.h> // for the libc "open" function see bug description in the SaveImageFP function.
 #include <sys/mman.h> // for mmap and related
 
-
-
 using namespace std;
-
-
-
-
-
 
 
 #ifdef _WIN32
@@ -264,7 +259,10 @@ protected :
     iosh[0]=_slices;
   }
 
-  hid_t local_fs(int idx, const Crop & crp = Crop()) {
+
+
+
+  hid_t local_fs(int idx, const Crop<2> & crp = Crop<2>()) {
     hid_t ret_fs=H5Scopy(filespace);
     if (ret_fs<0)
       throw_error("HDF i/o", "Failed to copy filespace accessing slice " +toString(idx)+ " from " + id() + ".");
@@ -275,8 +273,8 @@ protected :
         offs[dim]=idx;
         mcns[dim]=1;
       } else {
-        offs[dim]=crp(cdim,0);
-        mcns[dim]=cnts(dim) - crp(cdim);
+        offs[dim]=crp(cdim).begin();
+        mcns[dim]=crp(cdim).size(cnts(dim));
         cdim += sliceDim == blitz::thirdDim ? -1 : 1;
       }
     }
@@ -459,13 +457,13 @@ public :
   }
 
 
-  void read(uint idx, Map & storage, const Crop & crp = Crop()) {
+  void read(uint idx, Map & storage, const Crop<2> & crp = Crop<2>()) {
     if ( ! hdfFile )
       throw_error(modname, "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
       throw_error(modname, "Index is beyond slices to read from " + name + ".");
 
-    storage.resize(crop(face(),crp));
+    storage.resize(crp.apply(face()));
     const int idxme = indices.at(idx);
 
     if (dataMmap.size()) {
@@ -478,7 +476,7 @@ public :
       default:
         throw_error(modname, "Bad slice dimension. Should never happen.");
       }
-      crop(rd, storage, crp);
+      crp.apply(rd, storage);
 
     } else {
 
@@ -867,7 +865,7 @@ BadShape(const ImagePath & filename, const Shape<2> & shp){
 /// @param storage The array to store the image.
 ///
 static void
-ReadImage_HDF5 (const ImagePath & filedesc, Map & storage, const Crop & crp = Crop() ) {
+ReadImage_HDF5 (const ImagePath & filedesc, Map & storage, const Crop<2> & crp = Crop<2>() ) {
   try {
     HDFread(filedesc).read(0,storage,crp);
   } catch( ... ) {
@@ -924,7 +922,7 @@ safelyOpenTIFForThrow(TIFF **image, int *fd, const string modname, const Path & 
 ///
 
 static void
-ReadImage_TIFF (const Path & filename, Map & storage, const Crop & crp = Crop()) {
+ReadImage_TIFF (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2>()) {
 
   const string modname = "load image tiff";
 
@@ -951,10 +949,10 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop & crp = Crop())
     safelyCloseTIFFandThrow(image, fd, modname,
       "Image \"" + filename + "\" has unsupported sample format.");
 
-  const Shape<2> osh = crop(Shape<2>(height,width),crp);
+  const Shape<2> osh = crp.apply(Shape<2>(height,width));
   storage.resize(osh);
   tdata_t buf = _TIFFmalloc(TIFFScanlineSize(image));
-  for (uint curidx = crp.top; curidx < height - crp.bottom; curidx++) {
+  for (uint curidx = crp(0).begin(); curidx < crp(0).end(height); curidx++) {
 
     //pthread_mutex_lock(&mut);
     if ( TIFFReadScanline(image, buf, curidx) < 0 ) {
@@ -963,11 +961,11 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop & crp = Crop())
       safelyCloseTIFFandThrow(image, fd, modname,
         "Failed to read line " + toString(curidx) +" in image \"" + filename + "\".");
     }
-    Line ln(storage(curidx-crp.top, all));
+    Line ln(storage(curidx-crp(0).begin(), all));
     //pthread_mutex_unlock(&mut);
 
     #define blitzArrayFromData(type) \
-      blitz::Array<type,1> ( ((type*)buf) + crp.left, blitz::shape(osh(1)), blitz::neverDeleteData)
+      blitz::Array<type,1> ( ((type*)buf) + crp(0).begin(), blitz::shape(osh(1)), blitz::neverDeleteData)
     switch (fmt) {
     case SAMPLEFORMAT_UINT :
       if (bps==8)
@@ -1012,7 +1010,7 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop & crp = Crop())
 /// @param storage The array to store the image.
 ///
 static void
-ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
+ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2>() ){
 
   Magick::Image imag;
   try { imag.read(filename); }
@@ -1028,8 +1026,9 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
   const int
     width = imag.columns(),
     hight = imag.rows();
-  const Shape<2> osh = crop(Shape<2>(hight,width),crp);
+  const Shape<2> osh = crp.apply(Shape<2>(hight,width));
   storage.resize(osh);
+  storage(1,1);
 
   // below might be buggy - see notes in SaveImageINT_IM
   //const Magick::PixelPacket
@@ -1038,9 +1037,9 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
   //for ( int k = 0 ; k < hight*width ; k++ )
   //  *data++ = (float) Magick::ColorGray( *pixels++  ) .shade();
   // Replacement for the buggy block:
-  for (ArrIndex curh = crp.top ; curh < hight-crp.bottom ; curh++)
-    for (ArrIndex curw = crp.left ; curw < width-crp.right ; curw++)
-      storage(curh-crp.top, curw-crp.left) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
+  for (ssize_t curh = crp(0).begin() ; curh < crp(0).end(hight) ; curh++)
+    for (ssize_t curw = crp(1).begin() ; curw < crp(1).end(width) ; curw++)
+      storage(curh-crp(0).begin(), curw-crp(1).begin()) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
   // end replacement *
 
 }
@@ -1048,7 +1047,7 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop & crp = Crop() ){
 
 
 void
-ReadImage(const ImagePath & filename, Map & storage, const Crop & crp, const Shape<2> & shp){
+ReadImage(const ImagePath & filename, Map & storage, const Crop<2> & crp, const Shape<2> & shp){
   try {
     const string ext = lower(filename.ext());
     if (area(shp))
@@ -1141,7 +1140,7 @@ struct _ReadVolBySlice  {
       add(*curI);
   }
 
-  bool read (long int idx, Map & out, const Crop & crp = Crop()) {
+  bool read (long int idx, Map & out, const Crop<2> & crp = Crop<2>()) {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
       const ImagePath flnm = ilist[cfl];
@@ -1210,7 +1209,7 @@ class ReadVolInThread : public InThread {
   Shape<2> ish;
   Shape<2> sh;
   const float ang;
-  const Crop crp;
+  const Crop<2> crp;
   const Binn bnn;
   ReadVolumeBySlice reader;
   unordered_map< pthread_t, ImageProc* > rdprocs;
@@ -1219,7 +1218,7 @@ class ReadVolInThread : public InThread {
 public:
 
   ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & _storage,
-                  float _ang, Crop _crp, Binn _bnn, bool verbose=false)
+                  float _ang, Crop<2> _crp, Binn _bnn, bool verbose=false)
     : InThread(verbose , "reading volume")
     , storage(_storage)
     , ang(_ang)
@@ -1233,7 +1232,7 @@ public:
     }
     ish = ImageSizes(filelist[0]);
     sh = rotate(ish, ang);
-    sh = crop(sh, crp);
+    sh = crp.apply(sh);
     sh = binn(sh, bnn);
     bar.setSteps(reader.slices());
     storage.resize(reader.slices(), sh(0), sh(1));
@@ -1280,7 +1279,7 @@ public:
 
 void
 ReadVolume(const std::deque<ImagePath> & filelist, Volume & storage, bool verbose) {
-  ReadVolInThread(filelist, storage, 0, Crop(), Binn(), verbose).execute();
+  ReadVolInThread(filelist, storage, 0, Crop<2>(), Binn(), verbose).execute();
 }
 
 
@@ -1309,7 +1308,7 @@ ReadVolumeBySlice::~ReadVolumeBySlice() {
   delete (_ReadVolBySlice*) guts;
 }
 
-void ReadVolumeBySlice::read(uint sl, Map& trg, const Crop & crp) {
+void ReadVolumeBySlice::read(uint sl, Map& trg, const Crop<2> & crp) {
   ((_ReadVolBySlice*) guts)->read(sl, trg, crp);
 }
 
@@ -1327,16 +1326,13 @@ Shape<2> ReadVolumeBySlice::face() const {
 }
 
 
-
-
-
-ImageProc::ImageProc(float _ang, const Crop & _crp, const Binn & _bnn, const Shape<2> & _ish, float _reNAN)
+ImageProc::ImageProc(float _ang, const Crop<2> & _crp, const Binn & _bnn, const Shape<2> & _ish, float _reNAN)
   : ish(_ish)
   , ang(_ang)
   , crp(_crp)
   , bnn(_bnn)
   , reNAN(_reNAN)
-  , bnnprc(crop(rotate(ish,ang), crp),_bnn)
+  , bnnprc(crp.apply(rotate(ish,ang)),_bnn)
 {}
 
 void ImageProc::proc(Map & storage) {
@@ -1346,7 +1342,7 @@ void ImageProc::proc(Map & storage) {
         *itar = reNAN;
   if (ang != 0.0) {
     rotate(inmap, rotmap, ang);
-    crop(rotmap, crpmap, crp);
+    crp.apply(rotmap, crpmap);
   }
   bnnprc(crpmap,storage);
 }
@@ -1371,7 +1367,7 @@ void ImageProc::proc(const Map & imap, Map & omap) {
   inmap.resize(ish);
   inmap = imap;
   if (ang==0.0)
-    crop(imap, crpmap, crp);
+    crp.apply(imap, crpmap);
   proc(omap);
 
 }
@@ -1459,8 +1455,8 @@ public:
     if (sliceformat == "-") {
 
       string myText;
-      for (ArrIndex y = 0 ; y < storage.shape()(0) ; y++) {
-        for (ArrIndex x = 0 ; x < storage.shape()(1) ; x++)
+      for (ssize_t y = 0 ; y < storage.shape()(0) ; y++) {
+        for (ssize_t x = 0 ; x < storage.shape()(1) ; x++)
           myText += toString(storage(y,x)) + " ";
         if (storage.shape()(1)!=1)
           myText += " ";
@@ -1489,8 +1485,8 @@ public:
         slIdx = hdfFile->write(idx, storage);
       else {
         Map _stor(storage.shape());
-        for (ArrIndex y = 0 ; y < storage.shape()(0) ; y++) {
-          for (ArrIndex x = 0 ; x < storage.shape()(1) ; x++) {
+        for (ssize_t y = 0 ; y < storage.shape()(0) ; y++) {
+          for (ssize_t x = 0 ; x < storage.shape()(1) ; x++) {
             float val = storage(y,x);
             if (val < mincon)
               _stor(y,x) = mincon;
@@ -1940,10 +1936,48 @@ LoadData ( const Path filename, Map & storage ) {
 
   const Shape<2> data_shape(data_read.size(), data_read.size() ? data_read[0].size() : 0);
   storage.resize(data_shape);
-  for ( ArrIndex y=0 ; y < data_shape(0) ; y++)
-    for ( ArrIndex x=0 ; x < data_shape(1) ; x++)
+  for ( ssize_t y=0 ; y < data_shape(0) ; y++)
+    for ( ssize_t x=0 ; x < data_shape(1) ; x++)
       storage(y,x) = data_read[y][x];
 
 }
+
+
+
+const string IntOptionDesc =
+  "If this option is not set, the output format defaults to the"
+  " 32-bit float-point TIFF (regardless of the extension)."
+  " If it is set, the image format is derived from the output"
+  " file extension (TIFF if the extension does not correspond"
+  " to any format).";
+
+const string SliceOptionDesc=
+  "The string describing the slices in the image stack which are to be"
+  " processed. Must be a string consisting only of numbers, commas ','"
+  " minus signs '-' and the character 'n'. First the string is divided"
+  " into the substrings separated by comas and each substring is"
+  " processed on it's own:\n"
+  "    The string consisting only of numbers is read as the integer and"
+  " added to the list of the reconstructed slices.\n"
+  "    The string with the minus sign surrounded by the numbers adds all"
+  " slices in the range into the list.\n"
+  "    If the string starts with the minus then the range start is"
+  " assumed to be 0.\n"
+  "    If minus is the last character in the string then the range"
+  " finishes at the maximum slice number - 1.\n"
+  "    If the string has negation prefix 'n' then the slice(s) are"
+  " excluded from the previously formed list.\n"
+  "    If all substrings have 'n' prefix or the first substring contains"
+  " only it, then the meaning of the whole string is \"all except ...\".\n"
+  "    Two and more negations are interpreted as a single one.\n"
+  "    If no slice string is given then all slices are reconstructed.\n"
+  "For example the following string:\n"
+  "    9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915\n"
+  "requests processing of the slices with numbers 0, 1, 2, 4, 6, 9, 20 to 400,"
+  " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
+
+const string DimSliceOptionDesc = "[slice dimension][slice(s)],"
+" with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"
+" and [slice(s)]. " + SliceOptionDesc;
 
 

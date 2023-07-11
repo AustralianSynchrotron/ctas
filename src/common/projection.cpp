@@ -61,8 +61,8 @@ Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
   if (mm != 0.0 || MM != 1.0)
     mask = (mask-mm)/(MM-mm);
 
-  for (ArrIndex i = 0 ; i<mask.shape()(0) ; i++)
-    for (ArrIndex j = 0 ; j<mask.shape()(1) ; j++)
+  for (ssize_t i = 0 ; i<mask.shape()(0) ; i++)
+    for (ssize_t j = 0 ; j<mask.shape()(1) ; j++)
       if (bepicky && mask(i,j)<1.0 )
         mask(i,j)=0.0 ;
       else if (! bepicky && mask(i,j)>0.0 )
@@ -79,12 +79,12 @@ Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
     //const float usq = stp * step - 1 ;
     //const float fill = sqrt(1.0 - usq*usq);
 
-    for (ArrIndex i = 0 ; i<ish(0) ; i++)
-      for (ArrIndex j = 0 ; j<ish(1) ; j++)
+    for (ssize_t i = 0 ; i<ish(0) ; i++)
+      for (ssize_t j = 0 ; j<ish(1) ; j++)
 
         if ( mask(i,j) != 1.0 )
-          for (ArrIndex ii = i-1 ; ii <= i+1 ; ii++)
-            for (ArrIndex jj = j-1 ; jj <= j+1 ; jj++)
+          for (ssize_t ii = i-1 ; ii <= i+1 ; ii++)
+            for (ssize_t jj = j-1 ; jj <= j+1 ; jj++)
 
               if ( ii >= 0 && ii < ish(0) && jj >= 0 && jj < ish(1)
                    && mask(ii,jj) == 1.0 )
@@ -137,7 +137,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
          + (strl.origin1size-1)*abs(strl.origin1.x) + (strl.origin2size-1)*abs(strl.origin2.x) )
   , oshs( [&](){
       vector<Shape<2>> toRet;
-      const Shape<2> cssh = crop(ssh, strl.fcrp);
+      const Shape<2> cssh = strl.fcrp.apply(ssh);
       if ( strl.splits.empty() )
         toRet.push_back(cssh);
       else {
@@ -248,8 +248,8 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
 
     // prepare weights image
     Map wght(psh);
-    for (ArrIndex ycur = 0 ; ycur < psh(0) ; ycur++ )
-      for (ArrIndex xcur = 0 ; xcur < psh(1) ; xcur++ )
+    for (ssize_t ycur = 0 ; ycur < psh(0) ; ycur++ )
+      for (ssize_t xcur = 0 ; xcur < psh(1) ; xcur++ )
         wght(ycur, xcur) =   ( psh(0) - abs( 2*ycur - psh(0) + 1l ) )
                            * ( psh(1) - abs( 2*xcur - psh(1) + 1l ) );
 
@@ -290,7 +290,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
   if (msas.size()) {
     prepareMask(mskF, false);
     if (saveMasks.length()) {
-      Map mskSV(crop((const Map &)mskF, strl.fcrp));
+      Map mskSV(strl.fcrp.apply(mskF));
       if (strl.splits.empty())
         SaveDenan(saveMasks.dtitle() + ".tif", mskF);
       else {
@@ -484,8 +484,8 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
   }
 
   // final crop
-  final.reference(crop((const Map &)stitched, strl.fcrp));
-  if ( crop(ssh, strl.fcrp) != final.shape() )
+  final.reference(strl.fcrp.apply(stitched));
+  if ( strl.fcrp.apply(ssh) != final.shape() )
     throw_error(modname, "Shape of the results ("+toString(final.shape())+")"
                          " does not match expected ("+toString(ssh)+").");
 
@@ -690,16 +690,16 @@ void Denoiser::proc(Map & iom) const {
   if (thr == 0.0) {
     iom = tarr;
   } else if (thr<0) {
-    for (ArrIndex ycur = 0 ; ycur < sh(0) ; ycur++ )
-      for (ArrIndex xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+    for (ssize_t ycur = 0 ; ycur < sh(0) ; ycur++ )
+      for (ssize_t xcur = 0 ; xcur < sh(1) ; xcur++ ) {
         float & tval = tarr(ycur,xcur);
         float & ival = iom(ycur,xcur);
         if (ival == 0.0 || ( tval != 0.0  &&  abs((ival-tval)/tval) > -thr) )
           ival = tval;
       }
   } else {
-    for (ArrIndex ycur = 0 ; ycur < sh(0) ; ycur++ )
-      for (ArrIndex xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+    for (ssize_t ycur = 0 ; ycur < sh(0) ; ycur++ )
+      for (ssize_t xcur = 0 ; xcur < sh(1) ; xcur++ ) {
         float & tval = tarr(ycur,xcur);
         float & ival = iom(ycur,xcur);
         if (ival == 0.0 ||  abs(ival-tval) > thr)

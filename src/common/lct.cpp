@@ -31,7 +31,6 @@
 #define _USE_MATH_DEFINES // for M_PI
 
 #include "ct.h"
-#include "common.h"
 #include "poptmx.h"
 #include <algorithm>
 #include <numeric> /* partial_sum */
@@ -663,13 +662,13 @@ CTrec::reconstructOnCPU(Map & slice, float center) {
   switchToGPU=false;
   const int hp = ish(1) / 2 ;
   const float acent = fabs(center);
-  for (ArrIndex i = 0 ; i < osh(1) ; i++) {
+  for (ssize_t i = 0 ; i < osh(1) ; i++) {
     int ip2 = i-hp;
     ip2 *= ip2;
     if ( i <= acent  ||  i >= ish(1)-acent-1 )
        slice(all,i)=0;
     else {
-      for (ArrIndex j = 0 ; j < osh(0) ; j++) {
+      for (ssize_t j = 0 ; j < osh(0) ; j++) {
         float ijp2 = j-hp-center;
         ijp2 *= ijp2;
         ijp2 += ip2;
@@ -679,9 +678,9 @@ CTrec::reconstructOnCPU(Map & slice, float center) {
           slice(j,i)=0;
         } else {
           float total = 0.0f;
-          for (ArrIndex proj = 0; proj < ish(0); proj++)  {
+          for (ssize_t proj = 0; proj < ish(0); proj++)  {
             const cl_float2 & cossin = cossins(proj);
-            ArrIndex iS=   center + (1-cossin.x-cossin.y) * hp
+            ssize_t iS=   center + (1-cossin.x-cossin.y) * hp
                            + cossin.x * (j-center) + cossin.y * i;
             total += mysino(proj, iS);
           }
@@ -736,7 +735,7 @@ ts_add( Map &projection, Map &result, const Filter & filter,
   float plane_cos = (plane-center)*cur_sin;
   float Rcenter = pixels*0.5 + center;
 
-  for (ArrIndex ycur = 0 ; ycur < thetas ; ycur++) {
+  for (ssize_t ycur = 0 ; ycur < thetas ; ycur++) {
 
         Line ln = projection(ycur, all);
 
@@ -746,10 +745,10 @@ ts_add( Map &projection, Map &result, const Filter & filter,
     partial_sum( ln.begin(), ln.end(), ln.begin() );
 
   // projecting
-  for (ArrIndex xcur = 0 ; xcur < pixels ; xcur++) {
+  for (ssize_t xcur = 0 ; xcur < pixels ; xcur++) {
     float di = ( xcur - Rcenter )*cur_cos - plane_cos + Rcenter;
     di = (di < 0)  ?  0  :  (di >=pixels ) ? pixels - 1 : di;
-    result(ycur, xcur) += projection( ycur, (ArrIndex) di );
+    result(ycur, xcur) += projection( ycur, (ssize_t) di );
   }
 
   }
@@ -846,8 +845,8 @@ public:
 
     const float centre = axisR - 0.5*(ish(1)-1);
     ct.repeat(slice, centre);
-    const Crop crp = ct.recCrop(centre);
-    const Shape<2> oosh = crop(osh,crp);
+    const Crop<2> crp = ct.recCrop(centre);
+    const Shape<2> oosh = crp.apply(osh);
     if( osh == flt.shape() ){
       mid = blitz::cast< complex<float> >(slice);
       fftwf_execute(fft_f);
@@ -855,10 +854,10 @@ public:
       fftwf_execute(fft_b);
       slice = real(mid) / area(osh) ;
     }
-    Map cSlice(crop((const Map &) slice, crp));
+    Map cSlice(crp.apply(slice));
 
     derH=0;
-    Map cDerH (crop((const Map &) derH , crp));
+    Map cDerH (crp.apply(derH));
     cDerH(dstRa(oosh,-1,-1)) += -1 * cSlice(srcRa(oosh,-1,-1));
     cDerH(dstRa(oosh,-1, 0)) += -2 * cSlice(srcRa(oosh,-1, 0));
     cDerH(dstRa(oosh,-1, 1)) += -1 * cSlice(srcRa(oosh,-1, 1));
@@ -866,7 +865,7 @@ public:
     cDerH(dstRa(oosh, 1, 0)) +=  2 * cSlice(srcRa(oosh, 1, 0));
     cDerH(dstRa(oosh, 1, 1)) +=  1 * cSlice(srcRa(oosh, 1, 1));
     derV=0;
-    Map cDerV (crop((const Map &) derV , crp));
+    Map cDerV (crp.apply(derV));
     cDerV(dstRa(oosh,-1,-1)) += -1 * cSlice(srcRa(oosh,-1,-1));
     cDerV(dstRa(oosh, 0,-1)) += -2 * cSlice(srcRa(oosh, 0,-1));
     cDerV(dstRa(oosh, 1,-1)) += -1 * cSlice(srcRa(oosh, 1,-1));
@@ -1282,7 +1281,7 @@ float raxis(Map & proj0, Map & proj180) {
   fftwf_complex * midd = (fftwf_complex*)(void*) mid.data(); // Bad trick!
   fftwf_plan fft_f = fftwf_plan_dft_1d(ish(1), midd, midd, FFTW_FORWARD,  FFTW_ESTIMATE);
   fftwf_plan fft_b = fftwf_plan_dft_1d(ish(1), midd, midd, FFTW_BACKWARD, FFTW_ESTIMATE);
-  for (ArrIndex sl=0 ; sl<ish(0) ; sl++) {
+  for (ssize_t sl=0 ; sl<ish(0) ; sl++) {
     mid = blitz::cast< complex<float> >(proj0(sl, all));
     fftwf_execute(fft_f);
     mids=mid;

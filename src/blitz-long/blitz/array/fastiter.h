@@ -32,8 +32,6 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 #ifndef BZ_ARRAY_H
  #error <blitz/array/iter.h> must be included via <blitz/array.h>
 #endif
@@ -44,7 +42,7 @@ class ConstPointerStack {
 public:
     typedef P_numtype                T_numtype;
 
-    void operator=(const ConstPointerStack<P_numtype,N_rank>& rhs) 
+    void operator=(const ConstPointerStack<P_numtype,N_rank>& rhs)
     {
         for (int i=0; i<N_rank; ++i)
             stack_[i] = rhs.stack_[i];
@@ -54,7 +52,7 @@ public:
     {
         return stack_[position];
     }
-      
+
 private:
     const T_numtype *                stack_[N_rank];
 };
@@ -68,8 +66,8 @@ public:
     typedef const T_array& T_ctorArg1;
     typedef int            T_ctorArg2;    // dummy
 
-    static const int 
-        numArrayOperands = 1, 
+    static const int
+        numArrayOperands = 1,
         numIndexPlaceholders = 0,
         rank = N_rank;
 
@@ -97,10 +95,10 @@ public:
     { }
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
-    T_numtype operator()(TinyVector<MyIndexType, N_rank> i)
+    T_numtype operator()(TinyVector<ssize_t, N_rank> i)
     { return array_(i); }
 #else
-    T_numtype operator()(const TinyVector<MyIndexType, N_rank>& i)
+    T_numtype operator()(const TinyVector<ssize_t, N_rank>& i)
     { return array_(i); }
 #endif
 
@@ -120,44 +118,44 @@ public:
             return INT_MIN;   // tiny(int());
     }
 
-    MyIndexType lbound(int rank)
-    { 
+    ssize_t lbound(int rank)
+    {
         if (rank < N_rank)
-            return array_.lbound(rank); 
+            return array_.lbound(rank);
         else
-            return tiny(MyIndexType());
+            return tiny(ssize_t());
     }
 
-    MyIndexType ubound(int rank)
-    { 
+    ssize_t ubound(int rank)
+    {
         if (rank < N_rank)
-            return array_.ubound(rank); 
+            return array_.ubound(rank);
         else
-            return huge(MyIndexType());
+            return huge(ssize_t());
     }
 
     T_numtype operator*()
     { return *data_; }
 
-    T_numtype operator[](MyIndexType i)
+    T_numtype operator[](ssize_t i)
     { return data_[i * stride_]; }
 
-    T_numtype fastRead(MyIndexType i)
+    T_numtype fastRead(ssize_t i)
     { return data_[i]; }
 
-    MyIndexType suggestStride(int rank) const
+    ssize_t suggestStride(int rank) const
     { return array_.stride(rank); }
 
-    bool isStride(int rank, MyIndexType stride) const
+    bool isStride(int rank, ssize_t stride) const
     { return array_.stride(rank) == stride; }
 
-    void push(MyIndexType position)
+    void push(ssize_t position)
     {
         stack_[position] = data_;
     }
-  
-    void pop(MyIndexType position)
-    { 
+
+    void pop(ssize_t position)
+    {
         data_ = stack_[position];
     }
 
@@ -166,7 +164,7 @@ public:
         data_ += stride_;
     }
 
-    void advance(MyIndexType n)
+    void advance(ssize_t n)
     {
         data_ += n * stride_;
     }
@@ -182,7 +180,7 @@ public:
     void _bz_setData(const T_numtype* ptr)
     { data_ = ptr; }
 
-    MyIndexType stride() const
+    ssize_t stride() const
     { return stride_; }
 
     bool isUnitStride(int rank) const
@@ -194,7 +192,7 @@ public:
     bool canCollapse(int outerLoopRank, int innerLoopRank) const
     { return array_.canCollapse(outerLoopRank, innerLoopRank); }
 
-    void prettyPrint(BZ_STD_SCOPE(string) &str, 
+    void prettyPrint(BZ_STD_SCOPE(string) &str,
         prettyPrintFormat& format) const
     {
         if (format.tersePrintingSelected())
@@ -202,7 +200,7 @@ public:
         else if (format.dumpArrayShapesMode())
         {
 #ifdef BZ_HAVE_STD
-	    BZ_STD_SCOPE(ostringstream) ostr;
+      BZ_STD_SCOPE(ostringstream) ostr;
 #else
             ostrstream ostr;
 #endif
@@ -228,19 +226,19 @@ public:
 
 
     // Experimental
-    T_numtype& operator()(MyIndexType i)
+    T_numtype& operator()(ssize_t i)
     {
         return (T_numtype&)data_[i*array_.stride(0)];
     }
 
     // Experimental
-    T_numtype& operator()(MyIndexType i, MyIndexType j)
+    T_numtype& operator()(ssize_t i, ssize_t j)
     {
         return (T_numtype&)data_[i*array_.stride(0) + j*array_.stride(1)];
     }
 
     // Experimental
-    T_numtype& operator()(MyIndexType i, MyIndexType j, MyIndexType k)
+    T_numtype& operator()(ssize_t i, ssize_t j, ssize_t k)
     {
         return (T_numtype&)data_[i*array_.stride(0) + j*array_.stride(1)
           + k*array_.stride(2)];
@@ -248,22 +246,22 @@ public:
 
     // Experimental
 
-    void moveTo(MyIndexType i)
+    void moveTo(ssize_t i)
     {
         data_ = &const_cast<T_array&>(array_)(i);
     }
 
-    void moveTo(MyIndexType i, MyIndexType j)
+    void moveTo(ssize_t i, ssize_t j)
     {
         data_ = &const_cast<T_array&>(array_)(i,j);
     }
 
-    void moveTo(MyIndexType i, MyIndexType j, MyIndexType k)
+    void moveTo(ssize_t i, ssize_t j, ssize_t k)
     {
         data_ = &const_cast<T_array&>(array_)(i,j,k);
     }
 
-    void moveTo(const TinyVector<MyIndexType,N_rank>& i)
+    void moveTo(const TinyVector<ssize_t,N_rank>& i)
     {
         data_ = &const_cast<T_array&>(array_)(i);
     }
@@ -289,16 +287,16 @@ public:
     { return *data_; }
 
     // Experimental
-    T_numtype shift(MyIndexType offset, int dim)
+    T_numtype shift(ssize_t offset, int dim)
     {
         return data_[offset*array_.stride(dim)];
     }
 
     // Experimental
-    T_numtype shift(MyIndexType offset1, int dim1, MyIndexType offset2,
+    T_numtype shift(ssize_t offset1, int dim1, ssize_t offset2,
                     int dim2)
     {
-        return data_[offset1*array_.stride(dim1) 
+        return data_[offset1*array_.stride(dim1)
             + offset2*array_.stride(dim2)];
     }
 
@@ -306,7 +304,7 @@ private:
     const T_numtype * restrict          data_;
     const T_array&                      array_;
     ConstPointerStack<T_numtype,N_rank> stack_;
-    MyIndexType                         stride_;
+    ssize_t                         stride_;
 };
 
 BZ_NAMESPACE_END

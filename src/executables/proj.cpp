@@ -81,8 +81,8 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &out_name, 'o', "output", "Output image.", "", out_name)
     .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process. All if not used.",
          SliceOptionDesc + ". Only makes sense in multiple projections.", "all")
-    .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images: " + CropOptionDesc, "")
-    .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crops final image: " + CropOptionDesc, "")
+    .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images.", CropOptionDesc)
+    .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crop final image.", CropOptionDesc)
     .add(poptmx::OPTION, &st.bnn, 'b', "binn", BinnOptionDesc, "")
     .add(poptmx::OPTION, &zbinn, 'z', "zinn", "Binning over multiple input prrojections.",
          "If zero binn binns all outputs. Ignored for tests.")
@@ -347,7 +347,7 @@ class ProjInThread : public InThread {
     unlock();
 
     try {
-      for (ArrIndex curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
+      for (ssize_t curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
         allInRd[curI].read(idx, myAllIn[curI]);
         curDnz(myDnsr, curI).proc(myAllIn[curI]);
       }
@@ -469,8 +469,8 @@ int main(int argc, char *argv[]) {
       mscur = bgcur;
       if (bgdf.size())
         mscur -= bgdf[bgdf.size() > curms ? curms : 0];
-      for (ArrIndex ycur = 0 ; ycur < ish(0) ; ycur++ ) {
-        for (ArrIndex xcur = 0 ; xcur < ish(1) ; xcur++ ) {
+      for (ssize_t ycur = 0 ; ycur < ish(0) ; ycur++ ) {
+        for (ssize_t xcur = 0 ; xcur < ish(1) ; xcur++ ) {
           float val = mscur(ycur,xcur);
           mscur(ycur,xcur) = ( val <= 0.0 || ! fisok(val) ) ? 0 : 1.0;
         }
@@ -543,7 +543,7 @@ int main(int argc, char *argv[]) {
   // Test or process and save
   if ( args.testMe >= 0 ) { // test
     deque<Map> allIn;
-    for ( ArrIndex curI = 0 ; curI < nofIn ; curI++) {
+    for ( ssize_t curI = 0 ; curI < nofIn ; curI++) {
       allIn.emplace_back(ish);
       const int trd = args.zbinn * ( args.testMe >= 0  ?  args.testMe  :  projes[0] );
       allInRd[curI].read(trd, allIn[curI]);

@@ -27,7 +27,7 @@
 ///
 
 
-#include "../common/common.h"
+#include "../common/ctas.h"
 #include "../common/poptmx.h"
 #include <algorithm>
 #include <string.h>
@@ -42,7 +42,7 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   deque<ImagePath> images;        ///< input image
   ImagePath outmask;              ///< Name of the output image.
-  Crop3 crp;                  ///< Crop input projection image
+  Crop<3> crp;                  ///< Crop input projection image
   Binn3 bnn;                  ///< binning factor
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float mincon;         ///< Black intensity.
@@ -84,7 +84,7 @@ clargs(int argc, char *argv[])
          " All values below this will turn black.", "<minimum>")
     .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
          " All values above this will turn white.", "<maximum>")
-    .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume: " + Crop3OptionDesc, "")
+    .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume.", CropOptionDesc)
     .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
     .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
@@ -124,7 +124,7 @@ class SliceInThread : public InThread {
   unsigned bnz;
   Shape<2> ish, osh;
   unsigned isz, osz;
-  Crop crp;
+  Crop<2> crp;
   Binn bnn;
 
   // Class to accumulate slices in binning Z axis.
@@ -273,7 +273,7 @@ public:
     crp = args.crp;
     bnn = args.bnn;
     bnz = args.bnn.z ? args.bnn.z : isz;
-    osh = binn(crop(ish, crp), bnn);
+    osh = binn(crp.apply(ish), bnn);
     osz = binn(isz, bnz);
     if ( osh(0) <= 0 || osh(1) <= 0 || osz <=0 )
       throw_error(args.command, "Cropping or binning is larger than the shape of input volume.");
@@ -319,8 +319,8 @@ int main(int argc, char *argv[]) {
 
     Volume ivol;
     ReadVolume(args.images, ivol, args.beverbose);
-    crop(ivol,args.crp);
-    binn(ivol,args.bnn);
+    Volume cvol(args.crp.apply(ivol));
+    binn(cvol,args.bnn);
 
     if (toInt) {
       const float

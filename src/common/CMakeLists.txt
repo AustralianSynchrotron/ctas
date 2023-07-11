@@ -43,8 +43,11 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/common/config.h.in ${CMAKE_SOURCE_DIR}/sr
 add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED
-  common.h common.cpp
+  ctas.h
+  common.world.h common.world.cpp
+  matrix.world.h matrix.world.cpp
   parallel.world.h parallel.world.cpp
+  physical.world.h physical.world.cpp
   external.world.h external.world.cpp )
 target_clsrc(common binn.cl)
 target_link_libraries(common

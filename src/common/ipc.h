@@ -31,7 +31,9 @@
 #ifndef _H_IPC_H_
 #define _H_IPC_H_
 
-#include "common.h"
+#include "common.world.h"
+#include "matrix.world.h"
+#include "parallel.world.h"
 #include <complex>
 #include <fftw3.h>
 #include <list>

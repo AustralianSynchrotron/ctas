@@ -1,6 +1,5 @@
 
-#include <list>
-#include "common.h"
+#include "common.world.h"
 #include "flatfield.h"
 
 
@@ -11,8 +10,8 @@
 struct StitchRules {
 
   uint nofIn;
-  Crop crp;                  ///< Crop input projection image
-  Crop fcrp;                  ///< Crop final projection image
+  Crop<2> crp;                  ///< Crop input projection image
+  Crop<2> fcrp;                  ///< Crop final projection image
   Binn bnn;                  ///< binning factor
   float angle;                ///< Rotation angle.
   PointF2D origin1;            ///< Origin of the next image in the first stitch
@@ -26,6 +25,7 @@ struct StitchRules {
 
   StitchRules()
   : nofIn(0)
+  , crp()
   , angle(0)
   , origin1size(1)
   , origin2size(1)
@@ -89,17 +89,15 @@ public:
 
 
 
-/*
-
 class Trans {
 
 public:
 
   static const std::string modname;
 
-  const Shape ish;
+ const Shape<2> ish;
   const float angle;
-  const Crop crop;
+  const Crop<2> crop;
   const PointF2D binn; // negative binn to flip
   Map mask;
 
@@ -113,9 +111,9 @@ public:
 
 public:
 
-  Trans(const Shape & _ish,
+  Trans(const Shape<2> & _ish,
         float _angle,
-        const Crop & _crop,
+        const Crop<2> & _crop,
         const PointF2D & _binn,
         const Map & _mask = Map());
 
@@ -133,8 +131,8 @@ const std::string Trans::modname = "transform";
 struct Stitch {
 
   struct Rule {
-    Shape ish;
-    Crop crp;
+    Shape<2> ish;
+    Crop<2> crp;
     float angle;
     PointF2D origin;
     PointF2D scale; // negative scale to flip
@@ -159,7 +157,7 @@ struct Stitch {
 };
 
 
-*/
+
 
 
 

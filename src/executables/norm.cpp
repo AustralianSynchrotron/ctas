@@ -27,7 +27,7 @@
 ///
 
 
-#include "../common/common.h"
+#include "../common/ctas.h"
 #include "../common/poptmx.h"
 #include <math.h>
 
@@ -110,16 +110,16 @@ int main(int argc, char *argv[]) {
   deque<int> columns = slice_str2vec( args.columndesc, sh(1) );
 
   Line norm(sh(0));
-  for (ArrIndex rcur=0; rcur<sh(0); rcur++) {
+  for (ssize_t rcur=0; rcur<sh(0); rcur++) {
     float sum=0;
     for (int icur=0; icur<columns.size(); icur++ )
-      sum += arr(rcur, (ArrIndex) columns[icur]);
+      sum += arr(rcur, (ssize_t) columns[icur]);
     norm(rcur) = (sum==0.0) ? 1.0 : sum / columns.size() ;
   }
   const float averagenorm = (args.norm==0.0)  ?
                             sum(norm)/sh(0)  :  args.norm;
 
-  for (ArrIndex rcur=0; rcur<sh(0); rcur++)
+  for (ssize_t rcur=0; rcur<sh(0); rcur++)
     arr(rcur, all) *= averagenorm / norm(rcur) ;
 
   SaveImage(args.out_name, arr);

@@ -96,17 +96,6 @@ target_link_libraries(v2v
 
 
 
-add_executable(bctppl bctppl.cpp)
-target_clsrc(bctppl formframe.cl)
-target_link_libraries(bctppl
-  common
-  poptmx
-  lct
-  flatfield
-  lipc
-)
-
-
 
 
 
@@ -120,7 +109,7 @@ target_link_libraries(test
 
 
 set( all_targets
-  ipc dei edei norm ax ct ts rc2fd proj v2v bctppl ring
+  ipc dei edei norm ax ct ts rc2fd proj v2v ring
 )
 
 

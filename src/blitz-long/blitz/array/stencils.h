@@ -54,8 +54,8 @@
 
 #define BZ_END_STENCIL_WITH_SHAPE(MINS,MAXS) } \
     template<int N> \
-    void getExtent(BZ_BLITZ_SCOPE(TinyVector)<blitz::MyIndexType,N>& minb, \
-                   BZ_BLITZ_SCOPE(TinyVector)<blitz::MyIndexType,N>& maxb) const \
+    void getExtent(BZ_BLITZ_SCOPE(TinyVector)<blitz::ssize_t,N>& minb, \
+                   BZ_BLITZ_SCOPE(TinyVector)<blitz::ssize_t,N>& maxb) const \
     { \
         minb = MINS; \
         maxb = MAXS; \
@@ -143,8 +143,6 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 /*
  * dummyArray is used to provide "dummy" padding parameters to applyStencil(),
  * so that any number of arrays (up to 11) can be given as arguments.
@@ -184,13 +182,13 @@ public:
     _bz_typename multicomponent_traits<T>::T_element operator[](int i) const
     { return value_[i]; }
 
-    void loadStride(MyIndexType) { }
-    void moveTo(MyIndexType) { }
-    void moveTo(MyIndexType,MyIndexType) { }
-    void moveTo(MyIndexType,MyIndexType,MyIndexType) { }
-    void moveTo(MyIndexType,MyIndexType,MyIndexType,MyIndexType) { }
+    void loadStride(ssize_t) { }
+    void moveTo(ssize_t) { }
+    void moveTo(ssize_t,ssize_t) { }
+    void moveTo(ssize_t,ssize_t,ssize_t) { }
+    void moveTo(ssize_t,ssize_t,ssize_t,ssize_t) { }
     void advance() { }
-    T shift(MyIndexType,MyIndexType) { return T(); }
+    T shift(ssize_t,ssize_t) { return T(); }
 
 private:
     T value_;
@@ -215,20 +213,20 @@ public:
         max_ = 0;
     }
   
-    dummy<T_numtype> operator()(MyIndexType i)
+    dummy<T_numtype> operator()(ssize_t i)
     {
         update(0, i);
         return dummy<T_numtype>(1);
     }
  
-    dummy<T_numtype> operator()(MyIndexType i, MyIndexType j)
+    dummy<T_numtype> operator()(ssize_t i, ssize_t j)
     {
         update(0, i);
         update(1, j);
         return dummy<T_numtype>(1);
     }
 
-    dummy<T_numtype> operator()(MyIndexType i, MyIndexType j, MyIndexType k)
+    dummy<T_numtype> operator()(ssize_t i, ssize_t j, ssize_t k)
     {
         update(0, i);
         update(1, j);
@@ -236,14 +234,14 @@ public:
         return dummy<T_numtype>(1);
     }
 
-    dummy<T_numtype> shift(MyIndexType offset, int dim)
+    dummy<T_numtype> shift(ssize_t offset, int dim)
     {
         update(dim, offset);
         return dummy<T_numtype>(1);
     }
   
-    dummy<T_numtype> shift(MyIndexType offset1, int dim1,
-        MyIndexType offset2, int dim2)
+    dummy<T_numtype> shift(ssize_t offset1, int dim1,
+        ssize_t offset2, int dim2)
     {
         update(dim1, offset1);
         update(dim2, offset2);
@@ -257,7 +255,7 @@ public:
             (1);
     }
  
-    void update(int rank, MyIndexType offset)
+    void update(int rank, ssize_t offset)
     {
         if (offset < min_[rank])
             min_[rank] = offset;
@@ -279,16 +277,16 @@ public:
     void combine(const dummy<T_numtype2>&)
     { }
 
-    MyIndexType (min)(int i) const
+    ssize_t (min)(int i) const
     { return min_[i]; }
 
-    MyIndexType (max)(int i) const
+    ssize_t (max)(int i) const
     { return max_[i]; }
 
-    const TinyVector<MyIndexType,N_rank>& (min)() const
+    const TinyVector<ssize_t,N_rank>& (min)() const
     { return min_; }
 
-    const TinyVector<MyIndexType,N_rank>& (max)() const
+    const TinyVector<ssize_t,N_rank>& (max)() const
     { return max_; }
 
     template<typename T>
@@ -308,7 +306,7 @@ public:
     { return T_numtype(1); }
  
 private:
-    mutable TinyVector<MyIndexType,N_rank> min_, max_;
+    mutable TinyVector<ssize_t,N_rank> min_, max_;
 };
 
 

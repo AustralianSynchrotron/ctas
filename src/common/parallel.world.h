@@ -1,11 +1,8 @@
 #ifndef PARALLEL_WORLD_H
 #define PARALLEL_WORLD_H
 
-#ifndef _H_CTAS_H_
-#pragma message "File" __FILE__ "is not supposed to be included implicitly."
-#pragma message "Expect compilation failure."
-#include "common.h"
-#endif
+#include "common.world.h"
+#include "matrix.world.h"
 
 #include<functional>
 

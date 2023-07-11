@@ -94,8 +94,8 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
   else if (_df.size())
     bga -= _df;
 
-  for (ArrIndex ycur = 0 ; ycur < sh(0) ; ycur++ )
-    for (ArrIndex xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+  for (ssize_t ycur = 0 ; ycur < sh(0) ; ycur++ )
+    for (ssize_t xcur = 0 ; xcur < sh(1) ; xcur++ ) {
         float & val = bga(ycur,xcur);
         if (_ms.size() && _ms(ycur,xcur)==0.0)
           val = 0.0;

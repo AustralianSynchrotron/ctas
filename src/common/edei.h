@@ -35,7 +35,7 @@
 #ifndef _H_EDEI_H_
 #define _H_EDEI_H_
 
-#include "../common/common.h"
+#include "../common/ctas.h"
 #include "../common/poptmx.h"
 
 

@@ -33,7 +33,11 @@
 #ifndef _H_KERNEL_H_
 #define _H_KERNEL_H_
 
-#include "common.h"
+#include "common.world.h"
+#include "matrix.world.h"
+#include "parallel.world.h"
+#include "physical.world.h"
+
 #include <fftw3.h>
 #include <list>
 
@@ -329,9 +333,9 @@ public:
     return Shape<2>(osh(0)-2*ceil(abs(center)),osh(1));
   };
 
-  inline Crop recCrop(const float center=0.0) const {
+  inline Crop<2> recCrop(const float center=0.0) const {
     const float cacent = ceil(abs(center));
-    return Crop(0,cacent,0,cacent);
+    return Crop<2>(Segment(cacent,-cacent), Segment());
   };
 
   void setPhysics(float pixelSize=0.0, float lambda=0.0);

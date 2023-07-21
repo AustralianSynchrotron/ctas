@@ -128,7 +128,7 @@ public:
     , ovolSv(0)
   {
     if (!args.outmask.empty())
-      ovolSv = new SaveVolumeBySlice(args.outmask, sh, ivolRd.slices());
+      ovolSv = new SaveVolumeBySlice(args.outmask, ivolRd.shape());
     bar.setSteps(ivolRd.slices());
   }
 

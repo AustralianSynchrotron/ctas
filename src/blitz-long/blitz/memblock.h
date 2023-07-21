@@ -383,6 +383,13 @@ private:
 
     void operator=(const MemoryBlockReference<T_type>&)
     { }
+
+public:
+
+    int references() const {
+        return  block_ ? block_->references() : -1;
+    }
+
 };
 
 

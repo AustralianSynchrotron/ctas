@@ -114,13 +114,14 @@ IPCprocess::ForCLdev::extract(Map & in) {
       const string oclSource = {
         #include "ipc.cl.includeme"
       };
-      oclProgram = initProgram(oclSource, oclProgram, "IPC on OCL", cl.cont);
-      if (!oclProgram) {
+      try {
+        oclProgram = initProgram(oclSource, oclProgram, "IPC on OCL", cl.cont);
+      } catch (...) {
         warn(modname, "Failed to compile OCL program for IPC processing.");
         return false;
       }
 
-      clmid(clAllocArray<float>(area(msh)*2, cl.cont));
+      clmid(clAllocArray<float>(size(msh)*2, cl.cont));
       kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
       kernelApplyPhsFilter.setArg(0, clmid());
       kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
@@ -154,7 +155,7 @@ IPCprocess::ForCLdev::extract(Map & in) {
     cin = blitz::cast<complex<float>>(in);
     blitz2cl(cin, clmid(), cl.que);
     clfftExec(CLFFT_FORWARD);
-    kernelApplyPhsFilter.exec(area(msh), cl.que);
+    kernelApplyPhsFilter.exec(size(msh), cl.que);
     clfftExec(CLFFT_BACKWARD);
     cl2blitz(clmid(), cin, cl.que);
     in = real(cin);

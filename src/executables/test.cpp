@@ -77,16 +77,7 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  Shape<2> sh2(1000,500);
-  Shape<3> sh3(1000,500,300);
-  cout << toString(sh2) << " " << toString(sh3) << "\n";
-  cout << toString(args.crp2) << " " << toString(args.crp3) << "\n";
-  cout << toString(args.crp2.apply(sh2)) << " " << toString(args.crp3.apply(sh3)) << "\n";
-  cout << toString(args.crp2.apply(sh2)) << " " << toString(args.crp3.apply(sh3)) << "\n";
-  cout << toString(args.crp2(1).size(10)) << " " << toString(args.crp2(0).size(10)) << "\n";
-  cout << toString(args.crp2(1).end(10)) << " " << toString(args.crp2(0).end(10
-  )) << "\n";
-  exit(0);
+
 
 
   Map arr;
@@ -94,7 +85,7 @@ int main(int argc, char *argv[]) {
   Map mrr;
   ReadImage(args.ms_name, mrr);
   /*
-  Trans trans(arr.shape(), args.angle, Crop(), PointF2D(), mrr);
+  Trans trans(arr.shape(), args.angle, Crop(), PointF<2>(), mrr);
   prdn(trans.ish);
   prdn(Shape(trans.afterRotMask.shape()));
   SaveImage("rotmask.tif", trans.afterRotMask, args.saveInt);

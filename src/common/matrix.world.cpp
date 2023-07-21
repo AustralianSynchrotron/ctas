@@ -6,7 +6,7 @@ using namespace std;
 
 const string Segment::modname = "Segment";
 
-Segment::Segment(const string & str) {
+Segment::Segment(const string & str) : _from(0), _to(0) {
   static const string spltChars = "+-:";
   const size_t splt = str.find_first_of(spltChars);
   const string fromS = str.substr(0, splt);
@@ -57,17 +57,20 @@ template<int Dim>
 Crop<Dim>::Crop(const string & str) {
   if (str.empty())
     return;
-  const deque<string> subs = split(str, ",");
-  if ( Dim != subs.size() )
-    throw_error(modname, "Could not parse string \""+str+"\". Must contain " + toString(Dim)
-                         + " comma-delimited substrings, while " + toString(subs.size()) + " found.");
+  deque<string> subs = split(str, ",");
+  while ( Dim != subs.size() ) // adds missing dimensions.
+    subs.push_back("");
+  // // If above adding missing components is dangerous - replace it with the commened throw below.
+  //if ( Dim != subs.size() )
+  //  throw_error(modname, "Could not parse string \""+str+"\". Must contain " + toString(Dim)
+  //                       + " comma-delimited substrings, while " + toString(subs.size()) + " found.");
   for (uint curD=0; curD<Dim; ++curD)
     // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
     this->operator()(Dim-1-curD) = Segment(subs[curD]);
 }
 
 template<int Dim>
-Shape<Dim> Crop<Dim>::apply(const blitz::TinyVector<ssize_t,Dim> & ish) const {
+Shape<Dim> Crop<Dim>::apply(const Shape<Dim> & ish) const {
   Shape<Dim> osh;
   for (uint curD=0; curD<Dim; ++curD)
     osh(curD) = (*this)(curD).size(ish(curD));
@@ -75,10 +78,10 @@ Shape<Dim> Crop<Dim>::apply(const blitz::TinyVector<ssize_t,Dim> & ish) const {
 }
 
 template<int Dim>
-const blitz::Array<float,Dim> Crop<Dim>::apply(const blitz::Array<float,Dim> & iarr) const {
-  if (!(*this))
+ArrayF<Dim> Crop<Dim>::apply(const ArrayF<Dim> & iarr) const {
+  if (!bool(*this))
     return iarr;
-  const Shape<Dim> osh = this->apply(iarr.shape());
+  const Shape<Dim> osh = apply(iarr.shape());
   blitz::TinyVector<size_t,Dim> ubound;
   blitz::TinyVector<size_t,Dim> lbound;
   for (uint curD=0; curD<Dim; ++curD) {
@@ -86,13 +89,6 @@ const blitz::Array<float,Dim> Crop<Dim>::apply(const blitz::Array<float,Dim> & i
     lbound[curD] = ubound[curD] + osh[curD];
   }
   return iarr(blitz::RectDomain<Dim>(ubound, lbound));
-}
-
-template<int Dim>
-void Crop<Dim>::apply(const blitz::Array<float,Dim> & inarr, blitz::Array<float,Dim> & outarr) const {
-  const blitz::Array<float,Dim> oarr = this->apply(inarr);
-  outarr.resize(oarr.shape());
-  outarr = oarr;
 }
 
 
@@ -112,135 +108,328 @@ const string CropOptionDesc = "Each SEG describes the segment of the correspondi
 
 
 
-#ifdef OPENCL_FOUND
-cl_program binnProgram = 0;
-#endif
+class Binn2D {
 
+public:
 
-
-const string Binn3OptionDesc =
-  "3D Binning factor(s) X:Y:Z. If zero - averages over the whole dimension.";
-
-
-string
-type_desc (Binn3*) {
-  return "UINT[:UINT:UINT]";
-}
-
-int
-_conversion (Binn3* _val, const string & in) {
-
-  int x=0, y=0, z=0;
-
-  if ( in.find_first_of(",:") !=  string::npos ) {
-
-    int scanres = sscanf( in.c_str(), "%i:%i:%i", &x, &y, &z);
-    if (scanres != 3) // try , instead of :
-      scanres = sscanf( in.c_str(), "%i,%i,%i", &x, &y, &z);
-    if ( 3 != scanres || x<0 || y<0 || z<0)
-      return -1;
-
-  } else {
-    int xy;
-    if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<0 )
-      return -1;
-    x=xy;
-    y=xy;
-    z=xy;
-
-  }
-
-  *_val = Binn3(x, y, z);
-  return 1;
-
-}
-
-
-void
-binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
-
-  if ( ibnn.x == 1 && ibnn.y == 1 && ibnn.z == 1) {
-    outarr.reference(inarr);
-    return;
-  }
-  Binn3 bnn( ibnn.x ? ibnn.x : inarr.shape()(2) ,
-             ibnn.y ? ibnn.y : inarr.shape()(1) ,
-             ibnn.z ? ibnn.z : inarr.shape()(0) );
-  Shape<3> osh( inarr.shape()(0) / bnn.z
-            , inarr.shape()(1) / bnn.y
-            , inarr.shape()(2) / bnn.x);
-  outarr.resize(osh);
-
-#ifdef OPENCL_FOUND
-
-  static const string oclsrc = {
-    #include "binn.cl.includeme"
+  const Binn<2> bnn;
+  const Shape<2> ish;
+  static cl_program & binnProgram() {
+    if (clProgram)
+      return clProgram;
+    if (!CL_isReady())
+      throw_error(modname, "OpenCL is not functional.");
+    static const string oclsrc = {
+      #include "binn.cl.includeme"
+    };
+    clProgram = initProgram(oclsrc, clProgram, modname);
+    return clProgram;
   };
-  binnProgram = initProgram(oclsrc, binnProgram, "Binn on OCL");
-  if (!binnProgram)
-      throw 1;
+
+private:
+
+  const Shape<2> osh;
+  static cl_program clProgram; // =0;
+  static const string modname;
+
+  class ForCLdev {
+    const Shape<2> osh;
+    CLenv & cl;
+    CLkernel kernelBinn;
+    CLmem clinarr;
+    CLmem cloutarr;
+    pthread_mutex_t locker;
+  public:
+    ForCLdev(CLenv & cl, const Shape<2> & ish, const Binn<2> bnn)
+      : osh(bnn.apply(ish))
+      , cl(cl)
+      , locker(PTHREAD_MUTEX_INITIALIZER)
+    {
+      if (!CL_isReady())
+        throw_error(modname, "OpenCL is not functional.");
+      try {
+        kernelBinn(binnProgram(), "binn2");
+        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY));
+        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY));
+        if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
+          throw 1;
+        kernelBinn.setArg(0, clinarr());
+        kernelBinn.setArg(1, cloutarr());
+        kernelBinn.setArg(2, (cl_int) abs(bnn(1)));
+        kernelBinn.setArg(3, (cl_int) abs(bnn(0)));
+        kernelBinn.setArg(4, (cl_int) ish(1));
+        kernelBinn.setArg(5, (cl_int) ish(0));
+      } catch (...) {
+        kernelBinn.free();
+        clinarr.free();
+        cloutarr.free();
+        throw_error(modname, "Failed to prepare for operation.");
+      }
+    }
+
+    ~ForCLdev(){
+      pthread_mutex_destroy(&locker);
+    }
+
+    bool apply(const Map & imap, Map & omap) {
+      if ( ! binnProgram() || ! CL_isReady() )
+        throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
+      if( pthread_mutex_trylock(&locker) )
+        return false;
+      blitz2cl(imap, clinarr());
+      kernelBinn.exec(osh);
+      cl2blitz(cloutarr(), omap);
+      pthread_mutex_unlock(&locker);
+      return true;
+    }
+
+  };
+
+  std::list<ForCLdev>  envs;
+
+public:
+
+  Binn2D(const Shape<2> & _ish, const Binn<2> & _bnn)
+    : bnn( _bnn(0) ? _bnn(0) : _ish(0), _bnn(1) ? _bnn(1) : _ish(1) )
+    , ish(_ish)
+    , osh(bnn.apply(ish))
+  {
+    if (!size(ish))
+      throw_error(modname, "Zero inout size.");
+    if (!size(osh))
+      throw_error(modname, "Zero result of binning"
+                           " ("+toString(ish)+") by (" + toString(bnn) + ").");
+    if ( std::all_of( whole(bnn), [](const ssize_t & bn){return std::abs(bn) == 1;}) )
+      throw_bug(modname + ": tried to prepare OpenCL for trivial binning " + toString(_bnn) + ".");
+    CL_isReady();
+    for (CLenv & env : clenvs)
+      try{ envs.emplace_back(env, ish, bnn); } catch(...) {}
+    if (envs.empty())
+      warn(modname, "Binning will be performed on CPUs.");
+  }
+
+  void operator() (const Map & imap, Map & omap) {
+    if (imap.shape() != ish)
+      throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
+                           " with expected ("+toString(ish)+").");
+    if ( omap.shape() != osh)
+      throw_error(modname, "Missmatch of output shape ("+toString(omap.shape())+")"
+                           " with expected ("+toString(osh)+")."
+                           " Arrays are assumed to be ready before getting here." );
+    for (ForCLdev & env : envs)
+      if (env.apply(imap,omap))
+        return;
+    // Do on CPU
+    for (ssize_t y=0 ; y<osh(0) ; ++y) {
+      const int bby = y < osh(0) ? bnn(0) : ish(0) % bnn(0);
+      for (ssize_t x=0 ; x<osh(1) ; ++x) {
+        const int bbx = x < osh(1) ? bnn(1) : ish(1) % bnn(1);
+        float & val = omap(y,x);
+        val = 0;
+        for (int cy = 0 ; cy < bby ; cy++) {
+          const int yy = y*bnn(0) + cy;
+          for (int cx = 0 ; cx < bbx ; cx++)
+            val += imap(yy, x*bnn(1) + cx);
+        }
+        val /= bbx*bby;
+      }
+    }
+  }
+
+};
+
+const string Binn2D::modname = "BinnOCL";
+cl_program Binn2D::clProgram = 0;
+
+
+
+template<int Dim>
+const string Binn<Dim>::modname = toString(Dim)+"D-binning";
+
+template<int Dim>
+Binn<Dim>::Binn(const string & str)
+  : Binn( [](const string & str){
+      if (str.empty())
+        return Binn();
+      const deque<string> subs = split(str, ",");
+      int sbnn;
+      Binn toRet;
+      if ( 1 == subs.size() &&  1 != sscanf( str.c_str(), "%i", &sbnn ) )
+        throw_error(modname, "Could not parse string \""+str+"\" as integer number.");
+      if ( 1 != subs.size()  &&  Dim != subs.size() )
+        throw_error(modname, "Could not parse string \""+str+"\". Must contain single or " + toString(Dim)
+                             + " comma-delimited integers, while " + toString(subs.size()) + " found.");
+      for (uint curD=0; curD<Dim; ++curD) {
+        if ( Dim == subs.size() ) {
+          const string & curStr = subs.at(curD);
+          if (curStr.empty())
+            sbnn=1;
+          else if ( 1 != sscanf( curStr.c_str(), "%i", &sbnn ) )
+            throw_error(modname, "Could not parse string \""+curStr+"\" as integer number"
+                                 " for dimension " + toString(curD) + ".");
+        }
+        // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
+        toRet(Dim-1-curD) = sbnn ;
+      }
+      return toRet;
+    }(str) )
+{}
+
+template<int Dim>
+Binn<Dim>& Binn<Dim>::operator=(const Binn & other) {
+  if (guts)
+    specialize();
+  blitz::TinyVector<ssize_t,Dim>::operator=(other) ;
+  guts = other.guts;
+  return *this;
+}
+
+template<int Dim>
+Binn<Dim> Binn<Dim>::flipped() const {
+  Binn<Dim> toRet;
+  for (int dim=0; dim<Dim; dim++)
+    toRet(dim) = abs((*this)(dim));
+  return toRet;
+}
+
+template<int Dim>
+Shape<Dim> Binn<Dim>::apply(const Shape<Dim> & ish) const {
+  Shape<Dim> osh;
+  for (uint curD=0; curD<Dim; ++curD)
+    osh(curD) = binnOne( ish(curD), (*this)(curD) );
+  return osh;
+}
+
+template<int Dim>
+const ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr) const {
+  ArrayF<Dim> toRet;
+  apply(iarr,toRet);
+  return toRet;
+}
+
+template<> void Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) const {
+  throw_bug("1D Binning is not implemented yet.");
+  //oarr.resize(bnn.apply(iarr.shape()));
+  // TODO
+}
+
+template<> void Binn<2>::specialize(const Shape<2> ish) const {
+  Binn2D * proc = (Binn2D*) guts;
+  if (proc) {
+    if ( proc->ish == ish && proc->bnn != (*this) )
+      return;
+    else {
+      delete proc;
+      guts = 0;
+      proc = 0;
+    }
+  }
+  if ( flipOnly() || ! size(ish) )
+    return;
+  guts = new Binn2D(ish, *this);
+}
+
+template<int Dim> void Binn<Dim>::specialize(const Shape<Dim> ish) const {
+  warn(modname, "Binning specialization is implemented for 2D only.");
+  if (guts) { // Should never happen!
+    delete (Binn2D*)guts;
+    guts = 0;
+  }
+}
+
+template<> void Binn<2>::subapply( const ArrayF<2> & iarr, ArrayF<2> & oarr) const {
+  Binn2D * proc = (Binn2D*) guts;
+  if ( proc && proc->ish == iarr.shape() && proc->bnn == *this )
+    proc->operator()(iarr, oarr);
+  else
+    Binn2D(iarr.shape(), *this)(iarr, oarr);
+}
+
+template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) const {
+
+  const Shape<3> ish = iarr.shape();
+  const Shape<3> osh = oarr.shape();
+  const Binn<3> abnn(flipped());
+
+  #ifdef OPENCL_FOUND
 
   try {
 
-    CLmem clinarr(blitz2cl(inarr, CL_MEM_READ_ONLY));
-    CLmem cloutarr(clAllocArray<float>(outarr.size(), CL_MEM_WRITE_ONLY));
-    CLkernel kernelBinn3(binnProgram, "binn3");
+    CLmem clinarr(blitz2cl(iarr, CL_MEM_READ_ONLY));
+    CLmem cloutarr(clAllocArray<float>(oarr.size(), CL_MEM_WRITE_ONLY));
+    CLkernel kernelBinn3(Binn2D::binnProgram(), "binn3");
 
     kernelBinn3.setArg(0, clinarr());
     kernelBinn3.setArg(1, cloutarr());
-    kernelBinn3.setArg(2, (cl_int) bnn.x);
-    kernelBinn3.setArg(3, (cl_int) bnn.y);
-    kernelBinn3.setArg(4, (cl_int) bnn.z);
-    kernelBinn3.setArg(5, (cl_int) inarr.shape()(2));
-    kernelBinn3.setArg(6, (cl_int) inarr.shape()(1));
-    kernelBinn3.setArg(7, (cl_int) osh(2));
-    kernelBinn3.setArg(8, (cl_int) osh(1));
+    kernelBinn3.setArg(2, (cl_int) abnn(2));
+    kernelBinn3.setArg(3, (cl_int) abnn(1));
+    kernelBinn3.setArg(4, (cl_int) abnn(0));
+    kernelBinn3.setArg(5, (cl_int) ish(2));
+    kernelBinn3.setArg(6, (cl_int) ish(1));
+    kernelBinn3.setArg(7, (cl_int) ish(0));
 
     kernelBinn3.exec(osh);
-    cl2blitz(cloutarr(), outarr);
+    cl2blitz(cloutarr(), oarr);
 
-  }  catch (...) { // full volume was too big for the gpu
+  }  catch (...) { // probably full volume was too big for the gpu
 
-    warn("Binning", "Trying another method.");
-    Map inslice(inarr.shape()(1), inarr.shape()(0));
-    CLmem clinslice(clAllocArray<float>(inslice.size(), CL_MEM_READ_ONLY));
-    Map outslice(osh(1), osh(0));
-    CLmem cloutslice(clAllocArray<float>(outslice.size()));
-    Map tmpslice(osh(1), osh(0));
-    CLmem cltmpslice(clAllocArray<float>(outslice.size()));
+    warn("Binning", "Trying second method.");
+    const Shape<2> sish(copyMost<2>(ish));
+    const Binn<2> sbnn(copyMost<2>(abnn));
+    const ssize_t zbnn = abnn(0);
+    const Shape<2> sosh(copyMost<2>(osh));
+    const size_t sosz(size(osh));
 
-    CLkernel kernelBinn2(binnProgram, "binn2");
-    kernelBinn2.setArg(0, clinslice());
-    kernelBinn2.setArg(1, cltmpslice());
-    kernelBinn2.setArg(2, (cl_int) bnn.x);
-    kernelBinn2.setArg(3, (cl_int) bnn.y);
-    kernelBinn2.setArg(4, (cl_int) inslice.shape()(1));
-    kernelBinn2.setArg(5, (cl_int) outslice.shape()(1));
+    Map tmpslice(sosh);
+    CLmem cltmpslice(clAllocArray<float>(sosz));
+    Map outslice(sosh);
+    CLmem cloutslice(clAllocArray<float>(sosz));
+    CLmem clinslice;
+    CLkernel kernelBinn2(Binn2D::binnProgram(), "binn2");
 
-    CLkernel kernelAddTo(binnProgram, "addToSecond");
+    if (sbnn) {
+      clinslice(clAllocArray<float>(size(sish), CL_MEM_READ_ONLY));
+      kernelBinn2.setArg(0, clinslice());
+      kernelBinn2.setArg(1, cltmpslice());
+      kernelBinn2.setArg(2, (cl_int) sbnn(1));
+      kernelBinn2.setArg(3, (cl_int) sbnn(0));
+      kernelBinn2.setArg(4, (cl_int) sish(1));
+      kernelBinn2.setArg(5, (cl_int) sish(0));
+    }
+
+    CLkernel kernelAddTo(Binn2D::binnProgram(), "addToSecond");
     kernelAddTo.setArg(0, cltmpslice());
     kernelAddTo.setArg(1, cloutslice());
 
-    CLkernel kernelMulti(binnProgram, "multiplyArray");
+    CLkernel kernelMulti(Binn2D::binnProgram(), "multiplyArray");
     kernelMulti.setArg(0, cloutslice());
-    kernelMulti.setArg(1, (cl_float) bnn.z);
+    kernelMulti.setArg(1, (cl_float) zbnn);
 
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
-      fillClArray(cloutslice(), outslice.size(), 0);
-      for (int cz=0 ; cz<bnn.z ; cz++) {
-        inslice = inarr(z*bnn.z+cz, all, all);
-        blitz2cl(inslice, clinslice());
-        kernelBinn2.exec(outslice.shape());
-        kernelAddTo.exec(outslice.size());
+      fillClArray(cloutslice(), sosz, 0);
+      int cz;
+      for (cz=0 ; cz<zbnn && z*zbnn+cz < ish(0) ; cz++) {
+        Map inslice(iarr(z*zbnn+cz, all, all));
+        if (sbnn) {
+          blitz2cl(inslice, clinslice());
+          kernelBinn2.exec(sosh);
+        } else {
+          blitz2cl(inslice, cltmpslice());
+        }
+        kernelAddTo.exec(sosz);
       }
-      kernelMulti.exec(outslice.shape());
+      if (cz && cz != zbnn) // may happen only once for last slice
+        kernelMulti.setArg(1, (cl_float) cz);
+      kernelMulti.exec(sosh);
       cl2blitz(cloutslice(), outslice);
-      outarr(z, all, all) = outslice;
+      oarr(z, all, all) = outslice;
     }
 
   }
 
 #else // OPENCL_FOUND
+
+  throw_bug("Binning is implemented in OpenCL only.");
 
   const size_t bsz = bnn.x * bnn.y * bnn.z;
   for (ArrIndex zcur = 0 ; zcur < osh(0) ; zcur++ )
@@ -264,167 +453,43 @@ binn(const Volume & inarr, Volume & outarr, const Binn3 & ibnn) {
 
 }
 
-void
-binn(Volume & io_arr, const Binn3 & bnn) {
-  Volume outarr;
-  binn(io_arr, outarr, bnn);
-  if( io_arr.data() == outarr.data() )
-    return;
-  io_arr.resize(outarr.shape());
-  io_arr=outarr;
+
+template<int Dim>
+void Binn<Dim>::apply(const ArrayF<Dim> & iarr, ArrayF<Dim> & outarr) const {
+  const Shape<Dim> ish = iarr.shape();
+  const Shape<Dim> osh = apply(ish);
+  ArrayF<Dim> fiarr(iarr);
+  for (uint curD=0; curD<Dim; ++curD) // flipping
+    if ((*this)(curD) < 0)
+      fiarr.reverseSelf(curD);
+  Binn<Dim> fbnn(flipped());
+  if (flipOnly())
+    outarr.reference(fiarr);
+  else {
+    outarr.resize(osh);
+    subapply(fiarr, outarr);
+  }
 }
 
-
-
-
+template class Binn<1>;
+template class Binn<2>;
+template class Binn<3>;
 
 const string BinnOptionDesc =
-  "2D Binning factor(s) X:Y. If zero - averages over the whole dimension.";
-
-string
-type_desc (Binn*) {
-  return "UINT[:UINT]";
-}
-
-int
-_conversion (Binn* _val, const string & in) {
-
-  int x, y;
-
-  if ( in.find_first_of(",:") !=  string::npos ) {
-
-    int scanres = sscanf( in.c_str(), "%i:%i", &x, &y);
-    if (scanres != 2) // try , instead of :
-      scanres = sscanf( in.c_str(), "%i,%i", &x, &y);
-    if ( 2 != scanres || x<0 || y<0 )
-      return -1;
-
-  } else {
-
-    int xy;
-    if ( 1 != sscanf( in.c_str(), "%i", &xy ) || xy<0 )
-      return -1;
-    x=xy;
-    y=xy;
-
-  }
-
-  *_val = Binn(x, y);
-  return 1;
-
-}
-
-
-
-
-
-
-
-class _BinnProc {
-
-private:
-  const Binn bnn;
-  const Shape<2> ish;
-  const Shape<2> osh;
-  CLmem clinarr;
-  CLmem cloutarr;
-  CLkernel kernelBinn;
-
-  static const string modname;
-  static cl_program binnProgram;
-
-public:
-
-  _BinnProc(const Shape<2> & _ish, const Binn & _bnn)
-    : bnn( _bnn.x ? _bnn.x : _ish(1), _bnn.y ? _bnn.y : _ish(0) )
-    , ish(_ish)
-    , osh(binn(ish,bnn))
-    , kernelBinn(0)
-  {
-    if ( bnn.x == 1 && bnn.y == 1 )
-      return;
-    if (!area(ish))
-      throw_error(modname, "Zero input size.");
-    if (!area(osh))
-      throw_error(modname, "Zero result of binning"
-                           " ("+toString(ish)+") by (" + string(bnn) + ").");
-
-    static const string oclsrc = {
-      #include "binn.cl.includeme"
-    };
-    binnProgram = initProgram( oclsrc, binnProgram, modname);
-    if (!binnProgram)
-      throw_error(modname, "Could not initiate binning program.");
-    clinarr(clAllocArray<float>(area(ish), CL_MEM_READ_ONLY));
-    cloutarr(clAllocArray<float>(area(osh), CL_MEM_WRITE_ONLY));
-    kernelBinn(binnProgram, "binn2");
-    if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
-      throw_error(modname, "Failed to prepare for operation.");
-    kernelBinn.setArg(0, clinarr());
-    kernelBinn.setArg(1, cloutarr());
-    kernelBinn.setArg(2, (cl_int) bnn.x);
-    kernelBinn.setArg(3, (cl_int) bnn.y);
-    kernelBinn.setArg(4, (cl_int) ish(1));
-    kernelBinn.setArg(5, (cl_int) osh(1));
-
-  }
-
-
-  void operator() (const Map & imap, Map & omap) {
-    if ( bnn.x == 1 && bnn.y == 1 ) {
-      if (!omap.size())
-        omap.reference(imap);
-      else if (!areSame(omap, imap)){
-        omap.resize(ish);
-        omap = imap;
-      }
-      return;
-    }
-    if (imap.shape() != ish)
-      throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
-                           " with expected ("+toString(ish)+").");
-    blitz2cl(imap, clinarr());
-    kernelBinn.exec(osh);
-    omap.resize(osh);
-    cl2blitz(cloutarr(), omap);
-  }
-
-};
-
-const string _BinnProc::modname = "BinnOCL";
-cl_program _BinnProc::binnProgram = 0;
-
-
-BinnProc::BinnProc(const Shape<2> & ish, const Binn & bnn)
-  : guts(new _BinnProc(ish,bnn))
-{}
-
-BinnProc::~BinnProc() {
-  if (guts)
-    delete (_BinnProc*) guts;
-}
-
-void BinnProc::operator() (const Map & imap, Map & omap) {
-  if (guts)
-    ((_BinnProc*) guts)->operator()(imap, omap);
-}
-
-
-
-
-
-
-
+  "Same for all dimensions if only one provided."
+  " Reverses dimension if negative."
+  " Averages over the whole dimension if zero.";
 
 
 
 
 Shape<2> rotate(const Shape<2> & sh, float angle) {
-  if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) // close to a 90-deg step
+  if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
     if ( ! ( ((int) round(2*angle/M_PI)) % 2 ) )
       return sh;
     else
       return Shape<2>(sh(1),sh(0));
+  }
   const float cosa = cos(-angle), sina = sin(-angle);
   const int
     rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
@@ -473,16 +538,18 @@ void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
   for ( ssize_t x=0 ; x < osh(1) ; x++) {
     for ( ssize_t y=0 ; y < osh(0) ; y++) {
 
-      const float xf = x*cosa - y*sina + constinx;
-      const float yf = x*sina + y*cosa + constiny;
+      float xf = x*cosa - y*sina + constinx;
+      float yf = x*sina + y*cosa + constiny;
       const ssize_t flx = floor(xf), fly = floor(yf);
+      xf -= flx;
+      yf -= fly;
 
       if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
         outarr(y, x)=bg;
       } else {
-        float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * (xf-flx);
-        float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * (yf-fly);
-        outarr(y, x) = v0 + (v1-v0) * (yf-fly);
+        float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * xf;
+        float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * yf;
+        outarr(y, x) = v0 + (v1-v0) * yf;
       }
 
     }
@@ -499,4 +566,5 @@ rotate(Map & io_arr, float angle, float bg) {
   io_arr.resize(outarr.shape());
   io_arr=outarr.copy();
 }
+
 

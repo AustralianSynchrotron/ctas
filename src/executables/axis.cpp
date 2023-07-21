@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
         StitchRules rl; \
         rl.nofIn = 2; \
         rl.flip = true; \
-        rl.originF = PointF2D(2*cent,0); \
+        rl.originF = PointF<2>(2*cent,0); \
         std::deque<Map> emp; \
         ProcProj canonPP(rl, pr0.shape(), emp, emp, emp, emp); \
         std::deque<Map> allInR = {pr0.copy(), pr180.copy()}; \

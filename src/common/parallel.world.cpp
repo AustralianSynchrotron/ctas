@@ -1,4 +1,5 @@
 #include "parallel.world.h"
+#include "matrix.world.h"
 #include <unistd.h>
 #include <list>
 
@@ -383,11 +384,12 @@ bool CL_intialize() {
 
 
 
-cl_program initProgram(const string & src, const string & modname, cl_context context) {
+cl_program initProgram(const string & src, cl_context context) {
 
   if ( ! CL_intialize() )
     return 0;
 
+  const string modname = "OpenCL program";
   cl_int err = CL_SUCCESS;
   const size_t length = src.size();
   const char * csrc = src.data();
@@ -468,8 +470,10 @@ cl_program & initProgram(const string & src, cl_program & program, const string 
   static pthread_mutex_t protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_lock(&protectProgramCompilation);
   if (!program)
-    program = initProgram(src, modname, context);
+    program = initProgram(src, context);
   pthread_mutex_unlock(&protectProgramCompilation);
+  if (!program)
+    throw_error(modname, "Failed to compile OpenCL program.");
   return program;
 }
 
@@ -509,23 +513,11 @@ std::string CLkernel::name() const {
   return kernel_function;
 }
 
-cl_int CLkernel::exec(size_t size, cl_command_queue clque) const {
-  if (!kern)
-    return CL_SUCCESS;
-  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, 1, 0,  & size, 0, 0, 0, 0);
-  if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to execute OpenCL kernel " + toString("%p", kern) + "\"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(clque);
-  if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  return clerr;
-}
 
-cl_int CLkernel::exec(const Shape<2> & sh, cl_command_queue clque) const {
+cl_int CLkernel::exec(size_t dims, size_t * sizes, cl_command_queue clque) const {
   if (!kern)
     return CL_SUCCESS;
-  size_t sizes[2] = {size_t(sh(1)), size_t(sh(0))};
-  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, 2, 0, sizes, 0, 0, 0, 0);
+  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, sizes, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
     throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
   clerr = clFinish(clque);
@@ -533,20 +525,6 @@ cl_int CLkernel::exec(const Shape<2> & sh, cl_command_queue clque) const {
     throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
 }
-
-cl_int CLkernel::exec(const Shape<3> & sh, cl_command_queue clque) const {
-  if (!kern)
-    return CL_SUCCESS;
-  size_t sizes[3] = {size_t(sh(2)), size_t(sh(1)), size_t(sh(0))};
-  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, 3, 0, sizes, 0, 0, 0, 0);
-  if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  clerr = clFinish(clque);
-  if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
-  return clerr;
-}
-
 
 
 

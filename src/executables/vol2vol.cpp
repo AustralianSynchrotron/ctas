@@ -43,7 +43,7 @@ struct clargs {
   deque<ImagePath> images;        ///< input image
   ImagePath outmask;              ///< Name of the output image.
   Crop<3> crp;                  ///< Crop input projection image
-  Binn3 bnn;                  ///< binning factor
+  Binn<3> bnn;                  ///< binning factor
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float mincon;         ///< Black intensity.
   float maxcon;         ///< White intensity.
@@ -85,7 +85,7 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
          " All values above this will turn white.", "<maximum>")
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume.", CropOptionDesc)
-    .add(poptmx::OPTION, &bnn, 'b', "binn", Binn3OptionDesc, "")
+    .add(poptmx::OPTION, &bnn, 'b', "binn", "Binn factor(s).", BinnOptionDesc)
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
     .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
     .add(poptmx::OPTION, &reNAN,'N', "nan", "Replace NAN's with this number.", "")
@@ -118,20 +118,21 @@ class SliceInThread : public InThread {
 
   const clargs & args;
   ReadVolumeBySlice * ivolRd;
+  const Crop<2> crp;
+  const Binn<2> bnn;
+  const Shape<2> ish;
+  const unsigned isz;
+  ssize_t bnz;
+  const Shape<2> osh;
+  const unsigned osz;
+  const deque<int> indices;
   SaveVolumeBySlice * ovolSv;
-  deque<int> indices;
-
-  unsigned bnz;
-  Shape<2> ish, osh;
-  unsigned isz, osz;
-  Crop<2> crp;
-  Binn bnn;
 
   // Class to accumulate slices in binning Z axis.
   struct CLacc {
 
     const Shape<2> mish;
-    const unsigned bn;
+    size_t bn;
     int odx;
     unsigned cnt;
     CLmem resmem;
@@ -141,9 +142,9 @@ class SliceInThread : public InThread {
     CLkernel addKernel;
     CLkernel divKernel;
 
-    CLacc(Shape<2> _mish, unsigned _bn)
+    CLacc(Shape<2> _mish, ssize_t _bn)
       : mish(_mish)
-      , bn(_bn)
+      , bn(abs(_bn))
       , odx(-1)
       , cnt(0)
       , locker(PTHREAD_MUTEX_INITIALIZER)
@@ -157,14 +158,13 @@ class SliceInThread : public InThread {
         #include "../common/binn.cl.includeme"
       };
       binnProgram = initProgram( oclsrc, binnProgram, "Binn on OCL");
-      if (!binnProgram)
-        throw_error("Summ on CL", "Could not initiate summing program");
-      resmem(clAllocArray<float>(area(mish)));
-      addmem(clAllocArray<float>(area(mish), CL_MEM_READ_ONLY) );
+
+      resmem(clAllocArray<float>(size(mish)));
+      addmem(clAllocArray<float>(size(mish), CL_MEM_READ_ONLY) );
       addKernel(binnProgram, "addToSecond");
       addKernel.setArg(0, addmem());
       addKernel.setArg(1, resmem());
-      fillClArray<float>(resmem(), area(mish), 0);
+      fillClArray<float>(resmem(), size(mish), 0);
       divKernel(binnProgram, "multiplyArray");
       divKernel.setArg(0, resmem());
       divKernel.setArg(1, (float)1.0/bn);
@@ -174,25 +174,37 @@ class SliceInThread : public InThread {
       pthread_mutex_destroy(&locker);
     }
 
-    bool addme (Map & nmap) {
+    unsigned int addme (Map & nmap) {
       if (bn==1)
-        return false;
+        return 0;
       if (nmap.shape() != mish)
         throw_error("Sum on CL", "Wrong input image shape.");
       pthread_mutex_lock(&locker);
       blitz2cl(nmap, addmem());
-      addKernel.exec(area(mish));
+      addKernel.exec(size(mish));
       cnt++;
-      if (cnt==bn) {
-        divKernel.exec(area(mish));
-        cl2blitz(resmem(), nmap);
-        fillClArray<float>(resmem(), area(mish), 0);
-        cnt=0;
-        odx=-1;
-      }
+      if (cnt==bn)
+        getme(nmap);
       pthread_mutex_unlock(&locker);
       return cnt;
     }
+
+    unsigned int getme (Map & nmap) {
+      const unsigned int toRet = odx;
+      if ( ! cnt || bn==1 )
+        return toRet;
+      nmap.resize(mish);
+      if (cnt != bn) // will happen only for the last incomplete slice
+        divKernel.setArg(1, (float)1.0/cnt);
+      divKernel.exec(size(mish));
+      cl2blitz(resmem(), nmap);
+      if (cnt == bn)
+        fillClArray<float>(resmem(), size(mish), 0);
+      cnt=0;
+      odx=-1;
+      return toRet;
+    }
+
 
   };
 
@@ -203,8 +215,8 @@ class SliceInThread : public InThread {
 
   bool inThread(long int idx) {
 
-    const long int sodx = idx/bnz;
-    if ( sodx >= ovolSv->slices() )
+    const long int sodx =  idx/bnz + ( bnz > 0 ? 0 : ovolSv->slices() - 1 ) ;
+    if ( sodx < 0 || sodx >= ovolSv->slices() || idx >= ivolRd->slices() )
       return false;
     if ( find(indices.begin(), indices.end(), sodx) == indices.end() )
       return true;
@@ -225,9 +237,9 @@ class SliceInThread : public InThread {
 
     lock(1);
     if (!accs.size())
-      accs.emplace_back(osh, bnz);
+      accs.emplace_back(osh, abs(bnz));
     auto useacc = accs.begin();
-    if (bnz!=1) {
+    if (abs(bnz)!=1) {
       useacc = accs.end();
       for ( auto accsp  = accs.begin() ; accsp != accs.end() ; accsp++) {
         if (accsp->odx<0)
@@ -238,7 +250,7 @@ class SliceInThread : public InThread {
         }
       }
       if (useacc == accs.end()) {
-        accs.emplace_back(osh, bnz);
+        accs.emplace_back(osh, abs(bnz));
         useacc = accs.end();
         --useacc;
       }
@@ -248,10 +260,10 @@ class SliceInThread : public InThread {
     unlock(1);
 
     myrdproc.read(*ivolRd, idx, myrdmap);
-    if ( ! myacc.addme(myrdmap) )
+    if ( ! myacc.addme(myrdmap) ) {
       ovolSv->save(sodx, myrdmap);
-
-    bar.update();
+      bar.update();
+    }
     return true;
 
   }
@@ -261,33 +273,29 @@ public:
   SliceInThread(const clargs & _args)
     : InThread(_args.beverbose, "processing slices")
     , args(_args)
-    , ivolRd(0)
-    , ovolSv(0)
+    , ivolRd(new ReadVolumeBySlice(args.images))
+    , crp(copyMost<2>(args.crp))
+    , bnn(copyMost<2>(args.bnn))
+    , ish(ivolRd->face())
+    , isz(ivolRd->slices())
+    , bnz( bnn(0) ? bnn(0) : isz )
+    , osh( bnn.apply(crp.apply(ish)) )
+    , osz( binnOne(isz, bnz) )
+    , indices( [](string sindex, unsigned int _osz) {
+        if (sindex.size() && string("zZ").find(sindex.at(0)) != string::npos)
+          sindex.erase(0,1);
+        return slice_str2vec(sindex, _osz);
+      }(args.slicedesc, osz) )
+    , ovolSv( new SaveVolumeBySlice(args.outmask, Shape<3>(osz,osh(0),osh(1))
+                                   , fisok(args.mincon) ?  args.mincon : 0
+                                   , fisok(args.maxcon) ?  args.maxcon : 0)  )
   {
-
-    ivolRd = new ReadVolumeBySlice(args.images);
-    ish = ivolRd->face();
-    isz = ivolRd->slices();
     if (!isz)
       throw_error(args.command, "Empty volume to read.");
-    crp = args.crp;
-    bnn = args.bnn;
-    bnz = args.bnn.z ? args.bnn.z : isz;
-    osh = binn(crp.apply(ish), bnn);
-    osz = binn(isz, bnz);
-    if ( osh(0) <= 0 || osh(1) <= 0 || osz <=0 )
+    if ( size(osh) <= 0 )
       throw_error(args.command, "Cropping or binning is larger than the shape of input volume.");
-    string sindex = args.slicedesc;
-    if (sindex.size() && string("zZ").find(sindex.at(0)) != string::npos)
-      sindex.erase(0,1);
-    indices = slice_str2vec(sindex, osz);
-    ovolSv = new SaveVolumeBySlice(args.outmask, osh, osz
-                                   , fisok(args.mincon) ?  args.mincon : 0
-                                   , fisok(args.maxcon) ?  args.maxcon : 0);
-
     needMutexes(2);
-    bar.setSteps(indices.size()*bnz);
-
+    bar.setSteps(indices.size());
   }
 
   ~SliceInThread() {
@@ -297,6 +305,19 @@ public:
     delnul(ivolRd);
     delnul(ovolSv)
     #undef delnul
+  }
+
+  void execute(int nThreads=0) { // To deals with possible last incomplete slice
+    InThread::execute(nThreads);
+    if (abs(bnz)==1)
+      return;
+    Map last;
+    for ( CLacc & acc : accs ) {
+      const int odx = acc.getme(last);
+      if ( odx >= 0 ) // there can be only one incomplete sum
+        ovolSv->save(odx, last);
+    }
+    accs.clear();
   }
 
 
@@ -320,15 +341,15 @@ int main(int argc, char *argv[]) {
     Volume ivol;
     ReadVolume(args.images, ivol, args.beverbose);
     Volume cvol(args.crp.apply(ivol));
-    binn(cvol,args.bnn);
+    Volume bvol(args.bnn.apply(cvol));
 
     if (toInt) {
       const float
-        mincon  =  fisok(args.mincon) ?  args.mincon  :  min(ivol),
-        maxcon  =  fisok(args.maxcon) ?  args.maxcon  :  max(ivol);
-      SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc, mincon, maxcon);
+        mincon  =  fisok(args.mincon) ?  args.mincon  :  min(cvol),
+        maxcon  =  fisok(args.maxcon) ?  args.maxcon  :  max(cvol);
+      SaveVolume(args.outmask, cvol, args.beverbose, args.slicedesc, mincon, maxcon);
     } else {
-      SaveVolume(args.outmask, ivol, args.beverbose, args.slicedesc);
+      SaveVolume(args.outmask, cvol, args.beverbose, args.slicedesc);
     }
 
   } else {

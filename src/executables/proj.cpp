@@ -83,7 +83,7 @@ clargs(int argc, char *argv[])
          SliceOptionDesc + ". Only makes sense in multiple projections.", "all")
     .add(poptmx::OPTION, &st.crp, 'c', "crop", "Crop input images.", CropOptionDesc)
     .add(poptmx::OPTION, &st.fcrp, 'C', "crop-final", "Crop final image.", CropOptionDesc)
-    .add(poptmx::OPTION, &st.bnn, 'b', "binn", BinnOptionDesc, "")
+    .add(poptmx::OPTION, &st.bnn, 'b', "binn", "Binn factor(s).", BinnOptionDesc)
     .add(poptmx::OPTION, &zbinn, 'z', "zinn", "Binning over multiple input prrojections.",
          "If zero binn binns all outputs. Ignored for tests.")
     .add(poptmx::OPTION, &st.angle,'r', "rotate", "Rotation angle.", "")
@@ -537,7 +537,7 @@ int main(int argc, char *argv[]) {
     if (nofSplts > 1)
       filedescind =   filedescind.dtitle() + toString(spformat, curSplt)
                     + filedescind.ext() + filedescind.desc();
-    allOutSv.emplace_back(filedescind, outShapes[curSplt], nofOuts);
+    allOutSv.emplace_back(filedescind, Shape<3>(nofOuts, outShapes[curSplt](1), outShapes[curSplt](0)) );
   }
 
   // Test or process and save

@@ -317,11 +317,9 @@ bool CTrec::ForCLdev::checkReady() {
       #include "ct.cl.includeme"
     };
     program = initProgram( oclsrc, program, modname, cl.cont);
-    if (!program)
-      throw_error(modname, "Failed to compile CT CL program.");
 
-    clSlice(clAllocArray<float>(area(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
-    clSino(clAllocArray<float>(area(parent.ish), CL_MEM_READ_ONLY, cl.cont));
+    clSlice(clAllocArray<float>(size(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
+    clSino(clAllocArray<float>(size(parent.ish), CL_MEM_READ_ONLY, cl.cont));
     clAngles(blitz2cl(parent.cossins, CL_MEM_READ_ONLY, cl.que));
 
     kernelSino(program, "fbp");
@@ -801,7 +799,7 @@ public:
     , derH(osh)
     , derV(osh)
   {
-    if(!area(ish))
+    if(!size(ish))
       throw_error("Average gradient", "Empty input sinogram.");
     Map insin(sino.copy());
     ct.sino(insin);
@@ -852,7 +850,7 @@ public:
       fftwf_execute(fft_f);
       mid *= flt;
       fftwf_execute(fft_b);
-      slice = real(mid) / area(osh) ;
+      slice = real(mid) / size(osh) ;
     }
     Map cSlice(crp.apply(slice));
 

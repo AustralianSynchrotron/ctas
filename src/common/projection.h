@@ -12,13 +12,13 @@ struct StitchRules {
   uint nofIn;
   Crop<2> crp;                  ///< Crop input projection image
   Crop<2> fcrp;                  ///< Crop final projection image
-  Binn bnn;                  ///< binning factor
+  Binn<2> bnn;                  ///< binning factor
   float angle;                ///< Rotation angle.
-  PointF2D origin1;            ///< Origin of the next image in the first stitch
-  PointF2D origin2;            ///< Origin of the next image in the second stitch
+  PointF<2> origin1;            ///< Origin of the next image in the first stitch
+  PointF<2> origin2;            ///< Origin of the next image in the second stitch
   uint origin1size;
   uint origin2size;           ///< Nof images in the second stitch - needed only if it is requested (origin2)
-  PointF2D originF;            ///< Origin of the flipped portion
+  PointF<2> originF;            ///< Origin of the flipped portion
   bool flip;               ///< indicates if originF was given in options.
   std::deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
@@ -54,7 +54,7 @@ class ProcProj {
   const std::vector<Shape<2>> oshs; // split images
   std::deque<Map> wghts;
   Map swght;
-  std::deque<PointF2D> origins;
+  std::deque<PointF<2>> origins;
   Map mskF;
   CLmem maskCL;
 
@@ -95,10 +95,10 @@ public:
 
   static const std::string modname;
 
- const Shape<2> ish;
+  const Shape<2> ish;
   const float angle;
   const Crop<2> crop;
-  const PointF2D binn; // negative binn to flip
+  const PointF<2> binn; // negative binn to flip
   Map mask;
 
   Map afterRot;
@@ -114,11 +114,11 @@ public:
   Trans(const Shape<2> & _ish,
         float _angle,
         const Crop<2> & _crop,
-        const PointF2D & _binn,
+        const PointF<2> & _binn,
         const Map & _mask = Map());
 
   void process(const Map & in, Map & out) {
-    if (!area(ish))
+    if (!size(ish))
       return;
     if (in.shape() != ish)
       throw_error(modname, "Shape missmatch of process ("+toString(ish)+") and input ("+toString(in.shape())+").");
@@ -134,8 +134,8 @@ struct Stitch {
     Shape<2> ish;
     Crop<2> crp;
     float angle;
-    PointF2D origin;
-    PointF2D scale; // negative scale to flip
+    PointF<2> origin;
+    PointF<2> scale; // negative scale to flip
   };
 
   std::deque<Rule> rules;
@@ -189,7 +189,7 @@ public:
     , rad(other.rad)
     , thr(other.thr)
   {
-    if (!area(sh))
+    if (!size(sh))
       warn("denoiser", "empty input shape.");
   }
 

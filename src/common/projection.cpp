@@ -110,8 +110,6 @@ void ProcProj::initCL() {
     #include "projection.cl.includeme"
   };
   oclProgram = initProgram(oclsrc, oclProgram, "Projection in OCL");
-  if (!oclProgram)
-    throw_error(modname, "Failed to compile CL program.");
 
   iomCL(clAllocArray<float>(mskF.size()));
   if (!maskCL())
@@ -131,10 +129,10 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
   : strl(_st)
   , ish(_ish)
   , psh(ImageProc::outShape(strl.angle, strl.crp, strl.bnn, ish))
-  , ssh( psh(0) + strl.flip*abs(strl.originF.y)
-         + (strl.origin1size-1)*abs(strl.origin1.y) + (strl.origin2size-1)*abs(strl.origin2.y)
-       , psh(1) + strl.flip*abs(strl.originF.x)
-         + (strl.origin1size-1)*abs(strl.origin1.x) + (strl.origin2size-1)*abs(strl.origin2.x) )
+  , ssh( psh(0) + strl.flip*abs(strl.originF(0))
+         + (strl.origin1size-1)*abs(strl.origin1(0)) + (strl.origin2size-1)*abs(strl.origin2(0))
+       , psh(1) + strl.flip*abs(strl.originF(1))
+         + (strl.origin1size-1)*abs(strl.origin1(1)) + (strl.origin2size-1)*abs(strl.origin2(1)) )
   , oshs( [&](){
       vector<Shape<2>> toRet;
       const Shape<2> cssh = strl.fcrp.apply(ssh);
@@ -161,7 +159,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
   , doGapsFill(false)
 {
 
-  if ( ! area(ish) )
+  if ( ! size(ish) )
     throw_error(modname, "Zerro area to process.");
   if ( ! strl.nofIn )
     throw_error(modname, "Zerro images for input.");
@@ -218,21 +216,20 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
 
     // prepare origins for each input image
     int maxx(0), maxy(0), minx(0), miny(0);
-    const int maxXshift = abs(strl.origin1.x * (strl.origin1size-1)) + abs(strl.origin2.x * (strl.origin2size-1));
+    const int maxXshift = abs(strl.origin1(1) * (strl.origin1size-1)) + abs(strl.origin2(1) * (strl.origin2size-1));
     for (int curI = 0; curI < strl.nofIn ; curI++) {
       int cur1, cur2, curF;
       strl.slot(curI, &cur1, &cur2, &curF);
-      PointF2D curP;
-      curP.x = strl.origin1.x * cur1 + strl.origin2.x * cur2;
-      curP.y = strl.origin1.y * cur1 + strl.origin2.y * cur2;
+      PointF<2> curP( strl.origin1(0) * cur1 + strl.origin2(0) * cur2
+                    , strl.origin1(1) * cur1 + strl.origin2(1) * cur2);
       if (curF) {
-        curP.x = strl.originF.x + maxXshift - curP.x;
-        curP.y += strl.originF.y;
+        curP(1) = strl.originF(1) + maxXshift - curP(1);
+        curP(0) += strl.originF(0);
       }
       origins.push_back(curP);
       const float
-          orgx = curP.x,
-          orgy = curP.y,
+          orgx = curP(1),
+          orgy = curP(0),
           tilx = orgx + psh(1)-1,
           tily = orgy + psh(0)-1;
       if (orgx < minx) minx = orgx;
@@ -241,7 +238,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
       if (tily > maxy) maxy = tily;
     }
     for (int curI = 0; curI < strl.nofIn ; curI++)
-      origins[curI] -= PointF2D(minx, miny);
+      origins[curI] -= PointF<2>(minx, miny);
     if ( ssh != Shape<2>(maxy-miny+1, maxx-minx+1) )
       throw_bug(modname + " Mistake in calculating stitched shape: "
                 +toString(ssh)+" != "+toString(ssh)+".");
@@ -261,8 +258,8 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
       mskF=0.0;
     }
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
-      const blitz::Range r0(origins[acur].y, origins[acur].y + psh(0)-1)
-                       , r1(origins[acur].x, origins[acur].x + psh(1)-1);
+      const blitz::Range r0(origins[acur](0), origins[acur](0) + psh(0)-1)
+                       , r1(origins[acur](1), origins[acur](1) + psh(1)-1);
       if (msas.size()) {
         Map wghtI(wghts[ wghts.size()==1 ? 0 : acur ]);
         Map wghtIF( ! strl.flip || acur < strl.nofIn/2
@@ -368,8 +365,8 @@ void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool
         incur=allIn[acur];
       }
       incur *= wghts[wghts.size()==1 ? 0 : acur];
-      stitched( blitz::Range(origins[acur].y, origins[acur].y + psh(0)-1)
-              , blitz::Range(origins[acur].x, origins[acur].x + psh(1)-1))
+      stitched( blitz::Range(origins[acur](0), origins[acur](0) + psh(0)-1)
+              , blitz::Range(origins[acur](1), origins[acur](1) + psh(1)-1))
         +=  ! strl.flip || acur < strl.nofIn/2  // don't flipMe
             ?   incur  :  incur.reverse(blitz::secondDim);
     }
@@ -381,8 +378,8 @@ void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool
     sswght=0;
     stitched=0.0;
     for (int acur = 0 ; acur < strl.nofIn ; acur++ ) {
-      const blitz::Range r0(origins[acur].y, origins[acur].y + psh(0)-1);
-      const blitz::Range r1(origins[acur].x, origins[acur].x + psh(1)-1);
+      const blitz::Range r0(origins[acur](0), origins[acur](0) + psh(0)-1);
+      const blitz::Range r1(origins[acur](1), origins[acur](1) + psh(1)-1);
       if (addMe[acur]) {
         const bool flipMe = strl.flip && acur >= strl.nofIn/2;
         Map wght(wghts[wghts.size()==1 ? 0 : acur]);
@@ -518,7 +515,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
 Trans::Trans(const Shape & _ish,
              float _angle,
              const Crop & _crop,
-             const PointF2D & _binn,
+             const PointF<2> & _binn,
              const Map & _mask)
   : ish(_ish)
   , angle( [](float a, const Shape & s){
@@ -558,12 +555,12 @@ Trans::Trans(const Shape & _ish,
 void Trans::scale(const Map & in, Map & out) {
   if (!in.size() || !area(ish))
     return;
-  if (binn == PointF2D(1,1)) {
+  if (binn == PointF<2>(1,1)) {
     out.reference(in);
     return;
   }
   Map rin(in);
-  PointF2D rbinn(abs(binn.x),abs(binn.y));
+  PointF<2> rbinn(abs(binn.x),abs(binn.y));
   if (binn.x<0)
     rin.reverseSelf(blitz::secondDim);
   if (binn.y<0)
@@ -642,7 +639,7 @@ Denoiser::Denoiser(const Shape<2> & _sh, int _rad, float _threshold, const Map &
   , thr(_threshold)
   , mask(_mask)
 {
-  if ( !area(sh) || !rad )
+  if ( !size(sh) || !rad )
     return;
   const auto mssz=_mask.size();
   if ( mssz && _mask.shape() != sh)
@@ -670,7 +667,7 @@ Denoiser::Denoiser(const Shape<2> & _sh, int _rad, float _threshold, const Map &
 
 
 void Denoiser::proc(Map & iom) const {
-  if ( !area(sh) || !rad )
+  if ( !size(sh) || !rad )
     return;
   if ( iom.shape() != sh )
     throw_error("denoiser", "Non matching shape of input array.");

@@ -201,7 +201,7 @@ public:
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
   {
     if (!args.oname.empty())
-      allOut = new SaveVolumeBySlice(args.oname, sh, sz);
+      allOut = new SaveVolumeBySlice(args.oname, allIn.shape());
     bar.setSteps(sz);
   }
 

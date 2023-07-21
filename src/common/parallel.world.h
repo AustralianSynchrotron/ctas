@@ -79,7 +79,7 @@ public:
       pthread_mutex_destroy(&mylock);
   }
 
-  void execute(int nThreads=0);
+  virtual void execute(int nThreads=0);
   static void execute( std::function<bool()> _thread_routine, int nThreads=0 );
   static void execute( std::function<bool(long int)> _thread_routine, int nThreads=0 );
   static void execute( int from, int to, std::function<void(long int)> _thread_routine, int nThreads=0 );
@@ -136,6 +136,8 @@ public:
 
 class CLkernel {
   cl_kernel kern;
+private:
+  cl_int exec(size_t dims, size_t * sizes, cl_command_queue clque) const;
 public:
   inline CLkernel(cl_program program=0, const std::string & _name = std::string())
     : kern(0) { this->operator()(program, _name); }
@@ -144,9 +146,13 @@ public:
   CLkernel & operator()(cl_program program=0, const std::string & name = std::string());
   inline operator bool() const { return kern; }
   std::string name() const;
-  cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const;
-  cl_int exec(const Shape<2> & sh, cl_command_queue clque=CL_queue()) const;
-  cl_int exec(const Shape<3> & sh, cl_command_queue clque=CL_queue()) const ;
+  cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const { return exec(1, &size, clque);}
+  template <int Dim> cl_int exec(const Shape<Dim> & sh, cl_command_queue clque=CL_queue()) const {
+    size_t sizes[Dim];
+    for (uint curD=0; curD<Dim; ++curD)
+      sizes[curD] = size_t(sh(Dim-1-curD)) ;
+    return exec(Dim, sizes, clque);
+  }
   template <class T> cl_int setArg (cl_uint arg_idx, const T & val) const {
     cl_int clerr = clSetKernelArg (kern, arg_idx, sizeof(T), &val);
     if (clerr != CL_SUCCESS)
@@ -155,6 +161,8 @@ public:
     return clerr;
   }
 };
+
+
 
 
 cl_program & initProgram( const std::string & src, cl_program & program

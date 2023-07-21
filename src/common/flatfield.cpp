@@ -7,9 +7,9 @@
 Shape<2> shapeMe(std::vector<Shape<2>> shs) {
   Shape<2> firstSh(0,0);
   for (int idx=0 ; idx < shs.size() ; idx++) {
-    if ( ! area(firstSh) )
+    if ( ! size(firstSh) )
       firstSh = shs[idx];
-    if ( area(shs[idx]) && shs[idx] != firstSh )
+    if ( size(shs[idx]) && shs[idx] != firstSh )
       throw_error("FlatFieldProc", "Non matching init shapes.");
   }
   return firstSh;
@@ -81,7 +81,7 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
   , df(_df)
   , bga(_bg.shape())
 {
-  if (!area(sh))
+  if (!size(sh))
     return;
   if (!_bg.size()) {
     bga = 1.0;
@@ -110,13 +110,13 @@ FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
   , df(other.df)
   , bga(other.bga)
 {
-  if (!area(sh))
+  if (!size(sh))
     return;
 }
 
 
 Map & FlatFieldProc::process(Map & _io) const {
-  if (!area(sh))
+  if (!size(sh))
     return _io;
   if (_io.shape() != sh)
     throw_error("FlatFieldProc", "Non matching input shape");

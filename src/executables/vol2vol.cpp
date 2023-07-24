@@ -262,8 +262,8 @@ class SliceInThread : public InThread {
     myrdproc.read(*ivolRd, idx, myrdmap);
     if ( ! myacc.addme(myrdmap) ) {
       ovolSv->save(sodx, myrdmap);
-      bar.update();
     }
+    bar.update();
     return true;
 
   }
@@ -295,7 +295,7 @@ public:
     if ( size(osh) <= 0 )
       throw_error(args.command, "Cropping or binning is larger than the shape of input volume.");
     needMutexes(2);
-    bar.setSteps(indices.size());
+    bar.setSteps(indices.size()*bnz);
   }
 
   ~SliceInThread() {
@@ -314,8 +314,11 @@ public:
     Map last;
     for ( CLacc & acc : accs ) {
       const int odx = acc.getme(last);
-      if ( odx >= 0 ) // there can be only one incomplete sum
+      if ( odx >= 0 ) {
         ovolSv->save(odx, last);
+        bar.done();
+        break; // there can be only one incomplete sum
+      }
     }
     accs.clear();
   }

@@ -347,9 +347,9 @@ int main(int argc, char *argv[]) {
       const float
         mincon  =  fisok(args.mincon) ?  args.mincon  :  min(cvol),
         maxcon  =  fisok(args.maxcon) ?  args.maxcon  :  max(cvol);
-      SaveVolume(args.outmask, cvol, args.beverbose, args.slicedesc, mincon, maxcon);
+      SaveVolume(args.outmask, bvol, args.beverbose, args.slicedesc, mincon, maxcon);
     } else {
-      SaveVolume(args.outmask, cvol, args.beverbose, args.slicedesc);
+      SaveVolume(args.outmask, bvol, args.beverbose, args.slicedesc);
     }
 
   } else {

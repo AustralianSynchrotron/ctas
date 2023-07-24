@@ -639,26 +639,6 @@ public :
 //#endif
     if (hdfFile<=0) {
       complete();
-      if ( H5Fis_hdf5(name.c_str()) < 0 ) {
-//#ifdef H5F_ACC_SWMR_WRITE
-//        hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-//#else
-        hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-//#endif
-      }
-      if (hdfFile>0)
-        createNewGroup();
-      else {
-        complete();
-        if (isValidHDF()) {
-          hbool_t locking, ignored;
-          warn(modname, "Failed to open valid and existing HDF5 file \"" + name + "\".");
-          if ( H5Pget_file_locking(file_fapl, &locking, &ignored) >= 0  &&  locking )
-            warn(modname, "File \""+name+"\" is locked. You may remove it or disable locking by setting"
-                          " evironment variable HDF5_USE_FILE_LOCKING=FALSE.");
-        }
-        throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
-      }
     } else if ((dataset = H5Dopen(hdfFile, data.c_str(), H5P_DEFAULT))<=0) {
       createNewGroup();
     } else if (  (filespace = H5Dget_space(dataset)) <= 0
@@ -679,6 +659,26 @@ public :
            ) {
         complete();
         warn(modname, "Existing HDF data \"" + name+":"+data + "\". Will be overwritten.");
+      }
+    }
+    if (hdfFile<=0) {
+      //#ifdef H5F_ACC_SWMR_WRITE
+      //hdfFile = H5Fcreate(name.c_str(), H5F_ACC_SWMR_WRITE | H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      //#else
+      hdfFile = H5Fcreate(name.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+      //#endif
+      if (hdfFile>0)
+        createNewGroup();
+      else {
+        complete();
+        if (isValidHDF()) {
+          hbool_t locking, ignored;
+          warn(modname, "Failed to open valid and existing HDF5 file \"" + name + "\".");
+          if ( H5Pget_file_locking(file_fapl, &locking, &ignored) >= 0  &&  locking )
+            warn(modname, "File \""+name+"\" is locked. You may remove it or disable locking by setting"
+                          " evironment variable HDF5_USE_FILE_LOCKING=FALSE.");
+        }
+        throw_error(modname, "Failed to open HDF5 file " + name + " for writing.");
       }
     }
 
@@ -1540,15 +1540,15 @@ class SaveVolInThread : public InThread {
 private:
 
   const Volume & vol;
-  _SaveVolumeBySlice writer;
   int sliceDim;
   Shape<2> ssh;
+  _SaveVolumeBySlice *writer = 0;
   std::deque<int>indices;
   unordered_map<pthread_t,Map> maps;
 
   bool inThread (long int idx) {
 
-    if (idx >= indices.size())
+    if ( idx >= indices.size() || ! writer )
       return false;
 
     const pthread_t me = pthread_self();
@@ -1561,11 +1561,11 @@ private:
 
     const int idi = indices[idx];
     switch ( sliceDim ) {
-      case 2: cur = vol(all, all, idi); break;
-      case 1: cur = vol(all, idi, all); break;
-      case 0: cur = vol(idi, all, all); break;
+    case 2: cur = vol(all, all, idi); break;
+    case 1: cur = vol(all, idi, all); break;
+    case 0: cur = vol(idi, all, all); break;
     }
-    writer.save(idi, cur);
+    writer->save(idi, cur);
     bar.update();
     return true;
 
@@ -1577,7 +1577,6 @@ public:
   SaveVolInThread(const ImagePath & filedesc, const Volume & _vol, bool verbose,
                   const std::string & slicedesc, float mmin, float mmax)
     : vol(_vol)
-    , writer(filedesc, vol.shape(), mmin, mmax)
     , InThread(verbose , "saving volume")
   {
 
@@ -1604,8 +1603,16 @@ public:
         ssh = Shape<2>(vsh(1),vsh(2));
     }
     indices = slice_str2vec(sindex, vsh(sliceDim));
+    writer = new _SaveVolumeBySlice(filedesc, Shape<3>(vsh(sliceDim), ssh(0), ssh(1)), mmin, mmax);
     bar.setSteps(indices.size());
 
+  }
+
+  ~SaveVolInThread() {
+    if (writer) {
+      delete writer;
+      writer = 0;
+    }
   }
 
   static void execute(const ImagePath & filedesc, const Volume & _vol, bool verbose,

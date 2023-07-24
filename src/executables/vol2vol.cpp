@@ -278,7 +278,7 @@ public:
     , bnn(copyMost<2>(args.bnn))
     , ish(ivolRd->face())
     , isz(ivolRd->slices())
-    , bnz( bnn(0) ? bnn(0) : isz )
+    , bnz( args.bnn(0) ? args.bnn(0) : isz )
     , osh( bnn.apply(crp.apply(ish)) )
     , osz( binnOne(isz, bnz) )
     , indices( [](string sindex, unsigned int _osz) {

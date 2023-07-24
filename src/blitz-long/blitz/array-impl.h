@@ -59,6 +59,7 @@
 
 BZ_NAMESPACE(blitz)
 
+typedef ssize_t MyIndexType;
 #define BZ_SIZEOF_MYINDEXTYPE BZ_SIZEOF_SSIZE_T
 
 /*
@@ -84,7 +85,7 @@ template <typename P_numtype,int N_rank>
 void swap(Array<P_numtype,N_rank>&,Array<P_numtype,N_rank>&);
 
 template <typename P_numtype, int N_rank>
-void find(Array<TinyVector<ssize_t,N_rank>,1>&,
+void find(Array<TinyVector<MyIndexType,N_rank>,1>&,
           const Array<P_numtype,N_rank>&);
 
 /*
@@ -123,7 +124,7 @@ public:
      */
 
     typedef P_numtype                T_numtype;
-    typedef TinyVector<ssize_t, N_rank>  T_index;
+    typedef TinyVector<MyIndexType, N_rank>  T_index;
     typedef Array<T_numtype, N_rank> T_array;
     typedef FastArrayIterator<T_numtype, N_rank> T_iterator;
 
@@ -160,7 +161,7 @@ public:
     }
 
     explicit Array(
-        ssize_t length0,
+        MyIndexType length0,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -168,7 +169,7 @@ public:
         setupStorage(0);
     }
 
-    Array(ssize_t length0, ssize_t length1,
+    Array(MyIndexType length0, MyIndexType length1,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -182,7 +183,7 @@ public:
         setupStorage(1);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -193,8 +194,8 @@ public:
         setupStorage(2);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -206,8 +207,8 @@ public:
         setupStorage(3);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -220,8 +221,8 @@ public:
         setupStorage(4);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4, ssize_t length5,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4, MyIndexType length5,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -235,9 +236,9 @@ public:
         setupStorage(5);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4, ssize_t length5,
-          ssize_t length6,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4, MyIndexType length5,
+          MyIndexType length6,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -252,9 +253,9 @@ public:
         setupStorage(6);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4, ssize_t length5,
-          ssize_t length6, ssize_t length7,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4, MyIndexType length5,
+          MyIndexType length6, MyIndexType length7,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -270,9 +271,9 @@ public:
         setupStorage(7);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4, ssize_t length5,
-          ssize_t length6, ssize_t length7, ssize_t length8,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4, MyIndexType length5,
+          MyIndexType length6, MyIndexType length7, MyIndexType length8,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -289,10 +290,10 @@ public:
         setupStorage(8);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4, ssize_t length5,
-          ssize_t length6, ssize_t length7, ssize_t length8,
-          ssize_t length9,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4, MyIndexType length5,
+          MyIndexType length6, MyIndexType length7, MyIndexType length8,
+          MyIndexType length9,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -310,10 +311,10 @@ public:
         setupStorage(9);
     }
 
-    Array(ssize_t length0, ssize_t length1, ssize_t length2,
-          ssize_t length3, ssize_t length4, ssize_t length5,
-          ssize_t length6, ssize_t length7, ssize_t length8,
-          ssize_t length9, ssize_t length10,
+    Array(MyIndexType length0, MyIndexType length1, MyIndexType length2,
+          MyIndexType length3, MyIndexType length4, MyIndexType length5,
+          MyIndexType length6, MyIndexType length7, MyIndexType length8,
+          MyIndexType length9, MyIndexType length10,
           GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -336,7 +337,7 @@ public:
      * Construct an array from an existing block of memory.  Ownership
      * is not acquired (this is provided for backwards compatibility).
      */
-    Array(T_numtype* restrict dataFirst, TinyVector<ssize_t, N_rank> shape,
+    Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
       : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
           neverDeleteData),
@@ -354,8 +355,8 @@ public:
      * given set of strides.  Ownership is not acquired (i.e. the memory
      * block will not be freed by Blitz++).
      */
-    Array(T_numtype* restrict dataFirst, TinyVector<ssize_t, N_rank> shape,
-        TinyVector<ssize_t, N_rank> stride,
+    Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
+        TinyVector<MyIndexType, N_rank> stride,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
       : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
           neverDeleteData),
@@ -372,7 +373,7 @@ public:
     /*
      * Construct an array from an existing block of memory.
      */
-    Array(T_numtype* restrict dataFirst, TinyVector<ssize_t, N_rank> shape,
+    Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
         preexistingMemoryPolicy deletionPolicy,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
       : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
@@ -393,8 +394,8 @@ public:
      * Construct an array from an existing block of memory, with a
      * given set of strides.
      */
-    Array(T_numtype* restrict dataFirst, TinyVector<ssize_t, N_rank> shape,
-        TinyVector<ssize_t, N_rank> stride,
+    Array(T_numtype* restrict dataFirst, TinyVector<MyIndexType, N_rank> shape,
+        TinyVector<MyIndexType, N_rank> stride,
         preexistingMemoryPolicy deletionPolicy,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
       : MemoryBlockReference<T_numtype>(product(shape), dataFirst,
@@ -416,7 +417,7 @@ public:
      * This constructor takes an extent (length) vector and storage format.
      */
 
-    Array(const TinyVector<ssize_t, N_rank>& extent,
+    Array(const TinyVector<MyIndexType, N_rank>& extent,
         GeneralArrayStorage<N_rank> storage = GeneralArrayStorage<N_rank>())
         : storage_(storage)
     {
@@ -429,8 +430,8 @@ public:
      * extents.
      */
 
-    Array(const TinyVector<ssize_t, N_rank>& lbounds,
-        const TinyVector<ssize_t, N_rank>& extent,
+    Array(const TinyVector<MyIndexType, N_rank>& lbounds,
+        const TinyVector<MyIndexType, N_rank>& extent,
         const GeneralArrayStorage<N_rank>& storage
            = GeneralArrayStorage<N_rank>());
 
@@ -734,10 +735,10 @@ public:
      * These constructors are used for creating interlaced arrays (see
      * <blitz/arrayshape.h>
      */
-    Array(const TinyVector<ssize_t,N_rank-1>& shape,
-        ssize_t lastExtent, const GeneralArrayStorage<N_rank>& storage);
+    Array(const TinyVector<MyIndexType,N_rank-1>& shape,
+        MyIndexType lastExtent, const GeneralArrayStorage<N_rank>& storage);
     //Array(const TinyVector<Range,N_rank-1>& shape,
-    //    ssize_t lastExtent, const GeneralArrayStorage<N_rank>& storage);
+    //    MyIndexType lastExtent, const GeneralArrayStorage<N_rank>& storage);
 
     /*
      * These constructors make the array a view of a subportion of another
@@ -843,10 +844,10 @@ public:
     // Member functions
     //////////////////////////////////////////////
 
-    const TinyVector<ssize_t, N_rank>& base() const
+    const TinyVector<MyIndexType, N_rank>& base() const
     { return storage_.base(); }
 
-    ssize_t                        base(int rank) const
+    MyIndexType                        base(int rank) const
     { return storage_.base(rank); }
 
     iterator                           begin()
@@ -860,14 +861,14 @@ public:
 
     // Deprecated: now extractComponent(...)
     template<typename P_numtype2>
-    Array<P_numtype2,N_rank> chopComponent(P_numtype2 a, ssize_t compNum,
-                                           ssize_t numComponents) const
+    Array<P_numtype2,N_rank> chopComponent(P_numtype2 a, MyIndexType compNum,
+                                           MyIndexType numComponents) const
     { return extractComponent(a, compNum, numComponents); }
 
-    ssize_t                        cols() const
+    MyIndexType                        cols() const
     { return length_[1]; }
 
-    ssize_t                        columns() const
+    MyIndexType                        columns() const
     { return length_[1]; }
 
     T_array                            copy() const;
@@ -878,7 +879,7 @@ public:
     // element in the array (but note that it may not be
     // stored first in memory if some ranks are stored descending).
 
-    ssize_t                        dataOffset() const
+    MyIndexType                        dataOffset() const
     {
         return dot(storage_.base(), stride_);
     }
@@ -901,9 +902,9 @@ public:
     // These dataFirst() routines refer to the element in the
     // array which falls first in memory.
 
-    ssize_t                        dataFirstOffset() const
+    MyIndexType                        dataFirstOffset() const
     {
-        ssize_t pos = 0;
+        MyIndexType pos = 0;
 
         // Used to use tinyvector expressions:
         // return data_ + dot(storage_.base()
@@ -922,7 +923,7 @@ public:
     T_numtype* restrict               dataFirst()
     { return data_ + dataFirstOffset(); }
 
-    ssize_t                       depth() const
+    MyIndexType                       depth() const
     { return length_[2]; }
 
     int                               dimensions() const
@@ -939,10 +940,10 @@ public:
     const_iterator                    end() const
     { return const_iterator(*this,0); }
 
-    ssize_t                       extent(int rank) const
+    MyIndexType                       extent(int rank) const
     { return length_[rank]; }
 
-    const TinyVector<ssize_t,N_rank>& extent() const
+    const TinyVector<MyIndexType,N_rank>& extent() const
     { return length_; }
 
     template<typename P_numtype2>
@@ -964,19 +965,19 @@ public:
 
     bool isStorageContiguous() const;
 
-    ssize_t                    lbound(int rank) const
+    MyIndexType                    lbound(int rank) const
         { return base(rank); }
-    TinyVector<ssize_t,N_rank> lbound()         const
+    TinyVector<MyIndexType,N_rank> lbound()         const
         { return base(); }
 
-    ssize_t                    length(int rank) const
+    MyIndexType                    length(int rank) const
         { return length_[rank]; }
-    const TinyVector<ssize_t, N_rank>& length() const
+    const TinyVector<MyIndexType, N_rank>& length() const
         { return length_; }
 
     void makeUnique();
 
-    ssize_t numElements() const { return product(length_); }
+    MyIndexType numElements() const { return product(length_); }
 
     // NEEDS_WORK -- Expose the numReferences() method
     // MemoryBlockReference<T_numtype>::numReferences;
@@ -1004,35 +1005,35 @@ public:
     void                              weakReference(const T_array&);
 
     // Added by Derrick Bass
-    T_array reindex(const TinyVector<ssize_t,N_rank>&);
-    void reindexSelf(const TinyVector<ssize_t,N_rank>&);
+    T_array reindex(const TinyVector<MyIndexType,N_rank>&);
+    void reindexSelf(const TinyVector<MyIndexType,N_rank>&);
 
-    void resize(ssize_t extent);
-    void resize(ssize_t extent1, ssize_t extent2);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5, ssize_t extent6);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5, ssize_t extent6,
-                ssize_t extent7);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5, ssize_t extent6,
-                ssize_t extent7, ssize_t extent8);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5, ssize_t extent6,
-                ssize_t extent7, ssize_t extent8, ssize_t extent9);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5, ssize_t extent6,
-                ssize_t extent7, ssize_t extent8, ssize_t extent9,
-                ssize_t extent10);
-    void resize(ssize_t extent1, ssize_t extent2, ssize_t extent3,
-                ssize_t extent4, ssize_t extent5, ssize_t extent6,
-                ssize_t extent7, ssize_t extent8, ssize_t extent9,
-                ssize_t extent10, ssize_t extent11);
+    void resize(MyIndexType extent);
+    void resize(MyIndexType extent1, MyIndexType extent2);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5, MyIndexType extent6);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5, MyIndexType extent6,
+                MyIndexType extent7);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5, MyIndexType extent6,
+                MyIndexType extent7, MyIndexType extent8);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5, MyIndexType extent6,
+                MyIndexType extent7, MyIndexType extent8, MyIndexType extent9);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5, MyIndexType extent6,
+                MyIndexType extent7, MyIndexType extent8, MyIndexType extent9,
+                MyIndexType extent10);
+    void resize(MyIndexType extent1, MyIndexType extent2, MyIndexType extent3,
+                MyIndexType extent4, MyIndexType extent5, MyIndexType extent6,
+                MyIndexType extent7, MyIndexType extent8, MyIndexType extent9,
+                MyIndexType extent10, MyIndexType extent11);
 
 
     void                              resize(Range r1);
@@ -1062,46 +1063,46 @@ public:
                                         Range r7, Range r8, Range r9,
                                         Range r10, Range r11);
 
-    void resize(const TinyVector<ssize_t,N_rank>&);
+    void resize(const TinyVector<MyIndexType,N_rank>&);
 
 
-    void resizeAndPreserve(const TinyVector<ssize_t,N_rank>&);
-    void resizeAndPreserve(ssize_t extent);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5, ssize_t extent6);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5, ssize_t extent6,
-                           ssize_t extent7);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5, ssize_t extent6,
-                           ssize_t extent7, ssize_t extent8);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5, ssize_t extent6,
-                           ssize_t extent7, ssize_t extent8,
-                           ssize_t extent9);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5, ssize_t extent6,
-                           ssize_t extent7, ssize_t extent8,
-                           ssize_t extent9, ssize_t extent10);
-    void resizeAndPreserve(ssize_t extent1, ssize_t extent2,
-                           ssize_t extent3, ssize_t extent4,
-                           ssize_t extent5, ssize_t extent6,
-                           ssize_t extent7, ssize_t extent8,
-                           ssize_t extent9, ssize_t extent10,
-                           ssize_t extent11);
+    void resizeAndPreserve(const TinyVector<MyIndexType,N_rank>&);
+    void resizeAndPreserve(MyIndexType extent);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5, MyIndexType extent6);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5, MyIndexType extent6,
+                           MyIndexType extent7);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5, MyIndexType extent6,
+                           MyIndexType extent7, MyIndexType extent8);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5, MyIndexType extent6,
+                           MyIndexType extent7, MyIndexType extent8,
+                           MyIndexType extent9);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5, MyIndexType extent6,
+                           MyIndexType extent7, MyIndexType extent8,
+                           MyIndexType extent9, MyIndexType extent10);
+    void resizeAndPreserve(MyIndexType extent1, MyIndexType extent2,
+                           MyIndexType extent3, MyIndexType extent4,
+                           MyIndexType extent5, MyIndexType extent6,
+                           MyIndexType extent7, MyIndexType extent8,
+                           MyIndexType extent9, MyIndexType extent10,
+                           MyIndexType extent11);
 
     // NEEDS_WORK -- resizeAndPreserve(Range,...)
     // NEEDS_WORK -- resizeAndPreserve(const Domain<N_rank>&);
@@ -1109,76 +1110,76 @@ public:
     T_array                           reverse(int rank) const ;
     void                              reverseSelf(int rank);
 
-    ssize_t                       rows() const
+    MyIndexType                       rows() const
     { return length_[0]; }
 
     void                              setStorage(GeneralArrayStorage<N_rank>);
 
     void                              slice(int rank, Range r);
 
-    const TinyVector<ssize_t, N_rank>& shape() const
+    const TinyVector<MyIndexType, N_rank>& shape() const
     { return length_; }
 
-    ssize_t                       size() const
+    MyIndexType                       size() const
     { return numElements(); }
 
-    const TinyVector<ssize_t, N_rank>& stride() const
+    const TinyVector<MyIndexType, N_rank>& stride() const
     { return stride_; }
 
-    ssize_t                       stride(int rank) const
+    MyIndexType                       stride(int rank) const
     { return stride_[rank]; }
 
-    ssize_t                       ubound(int rank) const
+    MyIndexType                       ubound(int rank) const
     { return base(rank) + length_(rank) - 1; }
 
     bool threadLocal(bool disableLock = true) const
         { return T_base::lockReferenceCount(!disableLock); }
 
-    TinyVector<ssize_t, N_rank>   ubound() const
+    TinyVector<MyIndexType, N_rank>   ubound() const
     {
-        TinyVector<ssize_t, N_rank> ub;
+        TinyVector<MyIndexType, N_rank> ub;
         for (int i=0; i < N_rank; ++i)
           ub(i) = base(i) + extent(i) - 1;
         // WAS: ub = base() + extent() - 1;
         return ub;
     }
 
-    ssize_t                       zeroOffset() const
+    MyIndexType                       zeroOffset() const
     { return zeroOffset_; }
 
     //////////////////////////////////////////////
     // Debugging routines
     //////////////////////////////////////////////
 
-    bool isInRangeForDim(ssize_t i, int d) const {
+    bool isInRangeForDim(MyIndexType i, int d) const {
         return i >= base(d) && (i - base(d)) < length_[d];
     }
 
-    bool isInRange(ssize_t i0) const {
+    bool isInRange(MyIndexType i0) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
             && i3 >= base(3) && (i3 - base(3)) < length_[3];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1186,8 +1187,8 @@ public:
             && i4 >= base(4) && (i4 - base(4)) < length_[4];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4, ssize_t i5) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4, MyIndexType i5) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1196,9 +1197,9 @@ public:
             && i5 >= base(5) && (i5 - base(5)) < length_[5];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4, ssize_t i5,
-                   ssize_t i6) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4, MyIndexType i5,
+                   MyIndexType i6) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1208,9 +1209,9 @@ public:
             && i6 >= base(6) && (i6 - base(6)) < length_[6];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4, ssize_t i5,
-                   ssize_t i6, ssize_t i7) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4, MyIndexType i5,
+                   MyIndexType i6, MyIndexType i7) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1221,9 +1222,9 @@ public:
             && i7 >= base(7) && (i7 - base(7)) < length_[7];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4, ssize_t i5,
-                   ssize_t i6, ssize_t i7, ssize_t i8) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4, MyIndexType i5,
+                   MyIndexType i6, MyIndexType i7, MyIndexType i8) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1235,10 +1236,10 @@ public:
             && i8 >= base(8) && (i8 - base(8)) < length_[8];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4, ssize_t i5,
-                   ssize_t i6, ssize_t i7, ssize_t i8,
-                   ssize_t i9) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4, MyIndexType i5,
+                   MyIndexType i6, MyIndexType i7, MyIndexType i8,
+                   MyIndexType i9) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1251,10 +1252,10 @@ public:
             && i9 >= base(9) && (i9 - base(9)) < length_[9];
     }
 
-    bool isInRange(ssize_t i0, ssize_t i1, ssize_t i2,
-                   ssize_t i3, ssize_t i4, ssize_t i5,
-                   ssize_t i6, ssize_t i7, ssize_t i8,
-                   ssize_t i9, ssize_t i10) const {
+    bool isInRange(MyIndexType i0, MyIndexType i1, MyIndexType i2,
+                   MyIndexType i3, MyIndexType i4, MyIndexType i5,
+                   MyIndexType i6, MyIndexType i7, MyIndexType i8,
+                   MyIndexType i9, MyIndexType i10) const {
         return i0 >= base(0) && (i0 - base(0)) < length_[0]
             && i1 >= base(1) && (i1 - base(1)) < length_[1]
             && i2 >= base(2) && (i2 - base(2)) < length_[2]
@@ -1283,15 +1284,15 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0)) const {
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0)) const {
         BZPRECHECK(isInRange(i0), "Array index out of range: " << i0
             << endl << "Lower bounds: " << storage_.base() << endl
             <<         "Length:       " << length_ << endl);
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1)) const {
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1)) const {
         BZPRECHECK(isInRange(i0,i1), "Array index out of range: ("
             << i0 << ", " << i1 << ")"
             << endl << "Lower bounds: " << storage_.base() << endl
@@ -1299,9 +1300,9 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2), "Array index out of range: ("
             << i0 << ", " << i1 << ", " << i2 << ")"
@@ -1310,10 +1311,10 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3), "Array index out of range: ("
             << i0 << ", " << i1 << ", " << i2 << ", " << i3 << ")"
@@ -1322,11 +1323,11 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4), "Array index out of range: ("
             << i0 << ", " << i1 << ", " << i2 << ", " << i3
@@ -1336,12 +1337,12 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4),
-                       ssize_t BZ_DEBUG_PARAM(i5)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4),
+                       MyIndexType BZ_DEBUG_PARAM(i5)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5), "Array index out of range: ("
             << i0 << ", " << i1 << ", " << i2 << ", " << i3
@@ -1351,13 +1352,13 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4),
-                       ssize_t BZ_DEBUG_PARAM(i5),
-                       ssize_t BZ_DEBUG_PARAM(i6)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4),
+                       MyIndexType BZ_DEBUG_PARAM(i5),
+                       MyIndexType BZ_DEBUG_PARAM(i6)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6),
             "Array index out of range: ("
@@ -1368,14 +1369,14 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4),
-                       ssize_t BZ_DEBUG_PARAM(i5),
-                       ssize_t BZ_DEBUG_PARAM(i6),
-                       ssize_t BZ_DEBUG_PARAM(i7)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4),
+                       MyIndexType BZ_DEBUG_PARAM(i5),
+                       MyIndexType BZ_DEBUG_PARAM(i6),
+                       MyIndexType BZ_DEBUG_PARAM(i7)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6,i7),
             "Array index out of range: ("
@@ -1386,15 +1387,15 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4),
-                       ssize_t BZ_DEBUG_PARAM(i5),
-                       ssize_t BZ_DEBUG_PARAM(i6),
-                       ssize_t BZ_DEBUG_PARAM(i7),
-                       ssize_t BZ_DEBUG_PARAM(i8)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4),
+                       MyIndexType BZ_DEBUG_PARAM(i5),
+                       MyIndexType BZ_DEBUG_PARAM(i6),
+                       MyIndexType BZ_DEBUG_PARAM(i7),
+                       MyIndexType BZ_DEBUG_PARAM(i8)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6,i7,i8),
             "Array index out of range: ("
@@ -1406,16 +1407,16 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4),
-                       ssize_t BZ_DEBUG_PARAM(i5),
-                       ssize_t BZ_DEBUG_PARAM(i6),
-                       ssize_t BZ_DEBUG_PARAM(i7),
-                       ssize_t BZ_DEBUG_PARAM(i8),
-                       ssize_t BZ_DEBUG_PARAM(i9)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4),
+                       MyIndexType BZ_DEBUG_PARAM(i5),
+                       MyIndexType BZ_DEBUG_PARAM(i6),
+                       MyIndexType BZ_DEBUG_PARAM(i7),
+                       MyIndexType BZ_DEBUG_PARAM(i8),
+                       MyIndexType BZ_DEBUG_PARAM(i9)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6,i7,i8,i9),
             "Array index out of range: ("
@@ -1427,17 +1428,17 @@ public:
         return true;
     }
 
-    bool assertInRange(ssize_t BZ_DEBUG_PARAM(i0),
-                       ssize_t BZ_DEBUG_PARAM(i1),
-                       ssize_t BZ_DEBUG_PARAM(i2),
-                       ssize_t BZ_DEBUG_PARAM(i3),
-                       ssize_t BZ_DEBUG_PARAM(i4),
-                       ssize_t BZ_DEBUG_PARAM(i5),
-                       ssize_t BZ_DEBUG_PARAM(i6),
-                       ssize_t BZ_DEBUG_PARAM(i7),
-                       ssize_t BZ_DEBUG_PARAM(i8),
-                       ssize_t BZ_DEBUG_PARAM(i9),
-                       ssize_t BZ_DEBUG_PARAM(i10)) const
+    bool assertInRange(MyIndexType BZ_DEBUG_PARAM(i0),
+                       MyIndexType BZ_DEBUG_PARAM(i1),
+                       MyIndexType BZ_DEBUG_PARAM(i2),
+                       MyIndexType BZ_DEBUG_PARAM(i3),
+                       MyIndexType BZ_DEBUG_PARAM(i4),
+                       MyIndexType BZ_DEBUG_PARAM(i5),
+                       MyIndexType BZ_DEBUG_PARAM(i6),
+                       MyIndexType BZ_DEBUG_PARAM(i7),
+                       MyIndexType BZ_DEBUG_PARAM(i8),
+                       MyIndexType BZ_DEBUG_PARAM(i9),
+                       MyIndexType BZ_DEBUG_PARAM(i10)) const
     {
         BZPRECHECK(isInRange(i0,i1,i2,i3,i4,i5,i6,i7,i8,i9,i10),
             "Array index out of range: ("
@@ -1455,7 +1456,7 @@ public:
 
     template<int N_rank2>
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,N_rank2>& index) const
+        const TinyVector<MyIndexType,N_rank2>& index) const
     {
         assertInRange(index);
         return data_[dot(index, stride_)];
@@ -1463,44 +1464,44 @@ public:
 
     template<int N_rank2>
     T_numtype& restrict operator()(
-        const TinyVector<ssize_t,N_rank2>& index)
+        const TinyVector<MyIndexType,N_rank2>& index)
     {
         assertInRange(index);
         return data_[dot(index, stride_)];
     }
 
-    const T_numtype& restrict operator()(TinyVector<ssize_t,1> index) const
+    const T_numtype& restrict operator()(TinyVector<MyIndexType,1> index) const
     {
         assertInRange(index[0]);
         return data_[index[0] * stride_[0]];
     }
 
-    T_numtype& operator()(TinyVector<ssize_t,1> index)
+    T_numtype& operator()(TinyVector<MyIndexType,1> index)
     {
         assertInRange(index[0]);
         return data_[index[0] * stride_[0]];
     }
 
-    const T_numtype& restrict operator()(TinyVector<ssize_t,2> index) const
+    const T_numtype& restrict operator()(TinyVector<MyIndexType,2> index) const
     {
         assertInRange(index[0], index[1]);
         return data_[index[0] * stride_[0] + index[1] * stride_[1]];
     }
 
-    T_numtype& operator()(TinyVector<ssize_t,2> index)
+    T_numtype& operator()(TinyVector<MyIndexType,2> index)
     {
         assertInRange(index[0], index[1]);
         return data_[index[0] * stride_[0] + index[1] * stride_[1]];
     }
 
-    const T_numtype& restrict operator()(TinyVector<ssize_t,3> index) const
+    const T_numtype& restrict operator()(TinyVector<MyIndexType,3> index) const
     {
         assertInRange(index[0], index[1], index[2]);
         return data_[index[0] * stride_[0] + index[1] * stride_[1]
             + index[2] * stride_[2]];
     }
 
-    T_numtype& operator()(TinyVector<ssize_t,3> index)
+    T_numtype& operator()(TinyVector<MyIndexType,3> index)
     {
         assertInRange(index[0], index[1], index[2]);
         return data_[index[0] * stride_[0] + index[1] * stride_[1]
@@ -1508,14 +1509,14 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,4>& index) const
+        const TinyVector<MyIndexType,4>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3]);
         return data_[index[0] * stride_[0] + index[1] * stride_[1]
             + index[2] * stride_[2] + index[3] * stride_[3]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,4>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,4>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3]);
         return data_[index[0] * stride_[0] + index[1] * stride_[1]
@@ -1523,7 +1524,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,5>& index) const
+        const TinyVector<MyIndexType,5>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4]);
@@ -1532,7 +1533,7 @@ public:
             + index[4] * stride_[4]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,5>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,5>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4]);
@@ -1542,7 +1543,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,6>& index) const
+        const TinyVector<MyIndexType,6>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5]);
@@ -1551,7 +1552,7 @@ public:
             + index[4] * stride_[4] + index[5] * stride_[5]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,6>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,6>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5]);
@@ -1561,7 +1562,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,7>& index) const
+        const TinyVector<MyIndexType,7>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6]);
@@ -1571,7 +1572,7 @@ public:
             + index[6] * stride_[6]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,7>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,7>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6]);
@@ -1582,7 +1583,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,8>& index) const
+        const TinyVector<MyIndexType,8>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7]);
@@ -1592,7 +1593,7 @@ public:
             + index[6] * stride_[6] + index[7] * stride_[7]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,8>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,8>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7]);
@@ -1603,7 +1604,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,9>& index) const
+        const TinyVector<MyIndexType,9>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7], index[8]);
@@ -1614,7 +1615,7 @@ public:
             + index[8] * stride_[8]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,9>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,9>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7], index[8]);
@@ -1626,7 +1627,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,10>& index) const
+        const TinyVector<MyIndexType,10>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7], index[8], index[9]);
@@ -1637,7 +1638,7 @@ public:
             + index[8] * stride_[8] + index[9] * stride_[9]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,10>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,10>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7], index[8], index[9]);
@@ -1649,7 +1650,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        const TinyVector<ssize_t,11>& index) const
+        const TinyVector<MyIndexType,11>& index) const
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7], index[8], index[9],
@@ -1662,7 +1663,7 @@ public:
             + index[10] * stride_[10]];
     }
 
-    T_numtype& operator()(const TinyVector<ssize_t,11>& index)
+    T_numtype& operator()(const TinyVector<MyIndexType,11>& index)
     {
         assertInRange(index[0], index[1], index[2], index[3],
             index[4], index[5], index[6], index[7], index[8], index[9],
@@ -1680,7 +1681,7 @@ public:
  *  operator() for direct indexing up to dim 11 using integer indices
  *  to avoid that the end user has to explicitely give longs as indices on
  *  64Bit machines. This is nevertheless ugly! Mixed types are not supported.
- *  - If not given, we get an ambiguity between the ssize_t variants and
+ *  - If not given, we get an ambiguity between the MyIndexType variants and
  *    the full template for mixed parameters
  *-------------------------------------------------------------------------*/
     const T_numtype& restrict operator()(int i0) const
@@ -1871,56 +1872,40 @@ public:
 /*-------------------------------------------------------------------------
  *  operator() for direct indexing up to dim 11 using machine length indices
  *-------------------------------------------------------------------------*/
-    const T_numtype& restrict operator()(ssize_t i0) const
+    const T_numtype& restrict operator()(MyIndexType i0) const
     {
         assertInRange(i0);
         return data_[i0 * stride_[0]];
     }
 
-    T_numtype& restrict operator()(ssize_t i0)
+    T_numtype& restrict operator()(MyIndexType i0)
     {
         assertInRange(i0);
         return data_[i0 * stride_[0]];
     }
 
-    template< typename T1, typename T2
-            , std::enable_if_t<  std::is_integral<T1>::value &&
-                                 std::is_integral<T2>::value
-                              , bool> = true >
-    const T_numtype& restrict operator()(T1 i0, T2 i1) const
+    const T_numtype& restrict operator()(MyIndexType i0, MyIndexType i1) const
     {
         assertInRange(i0, i1);
         return data_[i0 * stride_[0] + i1 * stride_[1]];
     }
 
-    template< typename T1, typename T2
-            , std::enable_if_t<  std::is_integral<T1>::value &&
-                                 std::is_integral<T2>::value
-                              , bool> = true >
-    T_numtype& restrict operator()(T1 i0, T2 i1)
+    T_numtype& restrict operator()(MyIndexType i0, MyIndexType i1)
     {
         assertInRange(i0, i1);
         return data_[i0 * stride_[0] + i1 * stride_[1]];
     }
 
-    template< typename T1, typename T2, typename T3
-            , std::enable_if_t<  std::is_integral<T1>::value &&
-                                 std::is_integral<T2>::value &&
-                                 std::is_integral<T3>::value
-                              , bool> = true >
-    const T_numtype& restrict operator()(T1 i0, T2 i1, T3 i2) const
+    const T_numtype& restrict operator()(
+        MyIndexType i0, MyIndexType i1, MyIndexType i2) const
     {
         assertInRange(i0, i1, i2);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2]];
     }
 
-    template< typename T1, typename T2, typename T3
-            , std::enable_if_t<  std::is_integral<T1>::value &&
-                                 std::is_integral<T2>::value &&
-                                 std::is_integral<T3>::value
-                              , bool> = true >
-    T_numtype& restrict operator()(T1 i0, T2 i1, T3 i2)
+    T_numtype& restrict operator()(
+        MyIndexType i0, MyIndexType i1, MyIndexType i2)
     {
         assertInRange(i0, i1, i2);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1928,7 +1913,7 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3) const
     {
         assertInRange(i0, i1, i2, i3);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1936,7 +1921,7 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3)
     {
         assertInRange(i0, i1, i2, i3);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1944,8 +1929,8 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4) const
     {
         assertInRange(i0, i1, i2, i3, i4);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1953,8 +1938,8 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4)
     {
         assertInRange(i0, i1, i2, i3, i4);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1962,8 +1947,8 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1972,8 +1957,8 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5)
     {
         assertInRange(i0, i1, i2, i3, i4, i5);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1982,8 +1967,8 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1992,8 +1977,8 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2002,8 +1987,8 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2012,8 +1997,8 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2022,9 +2007,9 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
+        MyIndexType i8) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2034,9 +2019,9 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
+        MyIndexType i8)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2046,9 +2031,9 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
+        MyIndexType i8, MyIndexType i9) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2058,9 +2043,9 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
+        MyIndexType i8, MyIndexType i9)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2070,9 +2055,9 @@ public:
     }
 
     const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9, ssize_t i10) const
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
+        MyIndexType i8, MyIndexType i9, MyIndexType i10) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
             i9, i10);
@@ -2083,9 +2068,9 @@ public:
     }
 
     T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9, ssize_t i10)
+        MyIndexType i0, MyIndexType i1, MyIndexType i2, MyIndexType i3,
+        MyIndexType i4, MyIndexType i5, MyIndexType i6, MyIndexType i7,
+        MyIndexType i8, MyIndexType i9, MyIndexType i10)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
             i9, i10);
@@ -2175,23 +2160,23 @@ public:
         return T_array(noConst(), r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10);
     }
 
-    // Allow any mixture of Range, ssize_t and Vector<ssize_t>
+    // Allow any mixture of Range, MyIndexType and Vector<MyIndexType>
     // objects as operands for operator():   A(Range(3,7), 5, Range(2,4))
 
     /*
-     * These versions of operator() allow any combination of ssize_t
-     * and Range operands to be used.  Each ssize_t operand reduces
+     * These versions of operator() allow any combination of MyIndexType
+     * and Range operands to be used.  Each MyIndexType operand reduces
      * the rank of the resulting array by one.
      *
      * e.g.  Array<int,4> A(20,20,20,20);
      *       Array<int,2> B = A(Range(5,15), 3, 5, Range(8,9));
      *
      * SliceInfo is a helper class defined in <blitz/arrayslice.h>.
-     * It counts the number of Range vs. ssize_t arguments and does some
+     * It counts the number of Range vs. MyIndexType arguments and does some
      * other helpful things.
      *
      * Once partial specialization becomes widely implemented, these
-     * operators may be expanded to accept Vector<ssize_t> arguments
+     * operators may be expanded to accept Vector<MyIndexType> arguments
      * and produce ArrayPick<T,N> objects.
      *
      * This operator() is not provided with a single argument because
@@ -2200,10 +2185,7 @@ public:
 
 #ifdef BZ_HAVE_PARTIAL_ORDERING
 
-    template<typename T1, typename T2
-              , std::enable_if_t< ! std::is_integral<T1>::value ||
-                                  ! std::is_integral<T2>::value
-                                , bool> = true>
+    template<typename T1, typename T2>
     typename SliceInfo<T_numtype,T1,T2>::T_slice
     operator()(T1 r1, T2 r2) const
     {
@@ -2214,12 +2196,7 @@ public:
                      nilArraySection());
     }
 
-
-    template<typename T1, typename T2, typename T3
-    , std::enable_if_t< ! std::is_integral<T1>::value ||
-                        ! std::is_integral<T2>::value ||
-                        ! std::is_integral<T3>::value
-                      , bool> = true>
+    template<typename T1, typename T2, typename T3>
     typename SliceInfo<T_numtype,T1,T2,T3>::T_slice
     operator()(T1 r1, T2 r2, T3 r3) const
     {
@@ -2699,7 +2676,7 @@ protected:
         TinyVector<int,N_rank2>& rankMap, int sourceRank);
 
     template<int N_rank2>
-    void slice(int& setRank, ssize_t i, Array<T_numtype,N_rank2>& array,
+    void slice(int& setRank, MyIndexType i, Array<T_numtype,N_rank2>& array,
         TinyVector<int,N_rank2>& rankMap, int sourceRank);
 
     template<int N_rank2>
@@ -2732,9 +2709,9 @@ protected:
      *           (0,0,...,0).
      */
     GeneralArrayStorage<N_rank> storage_;
-    TinyVector<ssize_t, N_rank> length_;
-    TinyVector<ssize_t, N_rank> stride_;
-    ssize_t zeroOffset_;
+    TinyVector<MyIndexType, N_rank> length_;
+    TinyVector<MyIndexType, N_rank> stride_;
+    MyIndexType zeroOffset_;
 };
 
 /*
@@ -2742,11 +2719,11 @@ protected:
  * from Fortran.  To make code more readable, the following constants
  * may help.  Example: instead of
  *
- * ssize_t firstRankExtent = A.extent(0);
+ * MyIndexType firstRankExtent = A.extent(0);
  *
  * One can write:
  *
- * ssize_t firstRankExtent = A.extent(firstRank);
+ * MyIndexType firstRankExtent = A.extent(firstRank);
  */
 
 const int firstRank    = 0;
@@ -2794,18 +2771,18 @@ void swap(Array<P_numtype,N_rank>& a,Array<P_numtype,N_rank>& b) {
 }
 
 template <typename P_expr>
-void find(Array<TinyVector<ssize_t,P_expr::rank>,1>& indices,
+void find(Array<TinyVector<MyIndexType,P_expr::rank>,1>& indices,
           const _bz_ArrayExpr<P_expr>& expr) {
     find(indices,
          static_cast< Array<typename P_expr::T_numtype,P_expr::rank> >(expr));
 }
 
 template <typename P_numtype, int N_rank>
-void find(Array<TinyVector<ssize_t,N_rank>,1>& indices,
+void find(Array<TinyVector<MyIndexType,N_rank>,1>& indices,
           const Array<P_numtype,N_rank>& exprVals) {
     indices.resize(exprVals.size());
     typename Array<P_numtype,N_rank>::const_iterator it, end = exprVals.end();
-    ssize_t j=0;
+    MyIndexType j=0;
     for (it = exprVals.begin(); it != end; ++it)
         if (*it)
             indices(j++) = it.position();

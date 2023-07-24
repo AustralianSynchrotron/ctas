@@ -29,6 +29,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 // NEEDS_WORK???
 // This version of operator<< is updated on August 2005
 // by Sergei Mingaleev <mingaleev@gmail.com>.
@@ -42,7 +44,7 @@ ostream& operator<<(ostream& os, const Array<T_numtype,1>& x)
   os << "(" << x.lbound(0) << "," << x.ubound(0) << ")";
   os << endl << "[ ";
 
-  for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+  for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
     os << x(i1) << " ";
   }
   os << "]" << endl;
@@ -67,17 +69,17 @@ ostream& operator<<(ostream& os, const Array<T_numtype,N_rank>& x)
 
   switch (N_rank) {
     case 2:  
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
-        for (ssize_t i2=x.lbound(1); i2<=x.ubound(1); i2++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+        for (MyIndexType i2=x.lbound(1); i2<=x.ubound(1); i2++) {
           os << x(i1,i2) << " ";
         }
         if (i1 != x.ubound(0)) os << endl << "  ";
       }
       break;
     case 3:
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
-	for (ssize_t i2=x.lbound(1); i2<=x.ubound(1); i2++) {
-          for (ssize_t i3=x.lbound(2); i3<=x.ubound(2); i3++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+	for (MyIndexType i2=x.lbound(1); i2<=x.ubound(1); i2++) {
+          for (MyIndexType i3=x.lbound(2); i3<=x.ubound(2); i3++) {
               os << x(i1,i2,i3) << " ";
 	  }
 	  if (i1 != x.ubound(0) || i2 != x.ubound(1)) os << endl << "  ";
@@ -85,10 +87,10 @@ ostream& operator<<(ostream& os, const Array<T_numtype,N_rank>& x)
       }
       break;
     case 4:
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
-	for (ssize_t i2=x.lbound(1); i2<=x.ubound(1); i2++) {
-          for (ssize_t i3=x.lbound(2); i3<=x.ubound(2); i3++) {
-            for (ssize_t i4=x.lbound(3); i4<=x.ubound(3); i4++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+	for (MyIndexType i2=x.lbound(1); i2<=x.ubound(1); i2++) {
+          for (MyIndexType i3=x.lbound(2); i3<=x.ubound(2); i3++) {
+            for (MyIndexType i4=x.lbound(3); i4<=x.ubound(3); i4++) {
                 os << x(i1,i2,i3,i4) << " ";
 	    }
 	    if (i1 != x.ubound(0) || i2 != x.ubound(1) || i3 != x.ubound(2)) 
@@ -115,7 +117,7 @@ ostream& operator<<(ostream& os, const Array<T_numtype,N_rank>& x)
 template<typename T_numtype, int N_rank>
 istream& operator>>(istream& is, Array<T_numtype,N_rank>& x)
 {
-  TinyVector<ssize_t,N_rank> lower_bounds, upper_bounds, extent;
+  TinyVector<MyIndexType,N_rank> lower_bounds, upper_bounds, extent;
   char sep;
 
   // Read the extent vector: this is separated by 'x's, e.g.
@@ -155,23 +157,23 @@ Array \n (expected '[' before beginning of Array data)");
 
   switch (N_rank) {
     case 1:
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
         BZPRECHECK(!is.bad(), "Premature end of input while scanning Array");
 	is >> x(i1);
       }
       break;
     case 2:
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
-        for (ssize_t i2=x.lbound(1); i2<=x.ubound(1); i2++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+        for (MyIndexType i2=x.lbound(1); i2<=x.ubound(1); i2++) {
           BZPRECHECK(!is.bad(), "Premature end of input while scanning Array");
 	  is >> x(i1,i2);
 	}
       }
       break;
     case 3:
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
-	for (ssize_t i2=x.lbound(1); i2<=x.ubound(1); i2++) {
-          for (ssize_t i3=x.lbound(2); i3<=x.ubound(2); i3++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+	for (MyIndexType i2=x.lbound(1); i2<=x.ubound(1); i2++) {
+          for (MyIndexType i3=x.lbound(2); i3<=x.ubound(2); i3++) {
             BZPRECHECK(!is.bad(), "Premature end of input while scanning Array");
 	    is >> x(i1,i2,i3);
 	  }
@@ -179,10 +181,10 @@ Array \n (expected '[' before beginning of Array data)");
       }
       break;
     case 4:
-      for (ssize_t i1=x.lbound(0); i1<=x.ubound(0); i1++) {
-	for (ssize_t i2=x.lbound(1); i2<=x.ubound(1); i2++) {
-          for (ssize_t i3=x.lbound(2); i3<=x.ubound(2); i3++) {
-            for (ssize_t i4=x.lbound(3); i4<=x.ubound(3); i4++) {
+      for (MyIndexType i1=x.lbound(0); i1<=x.ubound(0); i1++) {
+	for (MyIndexType i2=x.lbound(1); i2<=x.ubound(1); i2++) {
+          for (MyIndexType i3=x.lbound(2); i3<=x.ubound(2); i3++) {
+            for (MyIndexType i4=x.lbound(3); i4<=x.ubound(3); i4++) {
               BZPRECHECK(!is.bad(), "Premature end of input while scanning Array");
   	      is >> x(i1,i2,i3,i4);
 	    }

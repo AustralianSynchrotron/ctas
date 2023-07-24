@@ -86,7 +86,7 @@ ArrayF<Dim> Crop<Dim>::apply(const ArrayF<Dim> & iarr) const {
   blitz::TinyVector<size_t,Dim> lbound;
   for (uint curD=0; curD<Dim; ++curD) {
     ubound[curD] = (*this)[curD].begin();
-    lbound[curD] = ubound[curD] + osh[curD];
+    lbound[curD] = ubound[curD] + osh[curD] - 1;
   }
   return iarr(blitz::RectDomain<Dim>(ubound, lbound));
 }
@@ -223,12 +223,12 @@ public:
     for (ssize_t y=0 ; y<osh(0) ; ++y) {
       const int bby = y < osh(0) ? bnn(0) : ish(0) % bnn(0);
       for (ssize_t x=0 ; x<osh(1) ; ++x) {
-        const int bbx = x < osh(1) ? bnn(1) : ish(1) % bnn(1);
+        const ssize_t bbx = x < osh(1) ? bnn(1) : ish(1) % bnn(1);
         float & val = omap(y,x);
         val = 0;
-        for (int cy = 0 ; cy < bby ; cy++) {
-          const int yy = y*bnn(0) + cy;
-          for (int cx = 0 ; cx < bbx ; cx++)
+        for (ssize_t cy = 0 ; cy < bby ; cy++) {
+          const ssize_t yy = y*bnn(0) + cy;
+          for (ssize_t cx = 0 ; cx < bbx ; cx++)
             val += imap(yy, x*bnn(1) + cx);
         }
         val /= bbx*bby;

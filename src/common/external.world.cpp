@@ -1037,7 +1037,6 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     hight = imag.rows();
   const Shape<2> osh = crp.apply(Shape<2>(hight,width));
   storage.resize(osh);
-  storage(1,1);
 
   // below might be buggy - see notes in SaveImageINT_IM
   //const Magick::PixelPacket

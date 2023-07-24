@@ -42,6 +42,7 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
 
 template<typename P_sourcetype,
          typename P_resulttype = BZ_SUMTYPE(P_sourcetype)>
@@ -240,7 +241,7 @@ class ReduceMinIndex {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef ssize_t  T_resulttype;
+    typedef MyIndexType  T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = true, canProvideInitialValue = true;
@@ -297,7 +298,7 @@ class ReduceMinIndexVector {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef TinyVector<ssize_t,N> T_resulttype;
+    typedef TinyVector<MyIndexType,N> T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = true, canProvideInitialValue = true;
@@ -338,7 +339,7 @@ public:
     void reset()
     {
         min_ = huge(T_sourcetype());
-        index_ = tiny(ssize_t());
+        index_ = tiny(MyIndexType());
     }
 
     void reset(const T_resulttype& index)
@@ -360,7 +361,7 @@ class ReduceMaxIndex {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef ssize_t  T_resulttype;
+    typedef MyIndexType  T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = true, canProvideInitialValue = true;
@@ -417,7 +418,7 @@ class ReduceMaxIndexVector {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef TinyVector<ssize_t,N_rank> T_resulttype;
+    typedef TinyVector<MyIndexType,N_rank> T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = true, canProvideInitialValue = true;
@@ -452,7 +453,7 @@ public:
     void reset()
     {
         max_ = neghuge(T_sourcetype());
-        index_ = tiny(ssize_t());
+        index_ = tiny(MyIndexType());
     }
 
     void reset(const T_resulttype& index)
@@ -474,7 +475,7 @@ class ReduceFirst {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef ssize_t  T_resulttype;
+    typedef MyIndexType  T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = true, canProvideInitialValue = false;
@@ -530,7 +531,7 @@ class ReduceLast {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef ssize_t  T_resulttype;
+    typedef MyIndexType  T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = true, canProvideInitialValue = false;
@@ -630,7 +631,7 @@ class ReduceCount {
 
 public:
     typedef P_sourcetype T_sourcetype;
-    typedef ssize_t  T_resulttype;
+    typedef MyIndexType  T_resulttype;
     typedef T_resulttype T_numtype;
 
     static const bool needIndex = false, canProvideInitialValue = true;

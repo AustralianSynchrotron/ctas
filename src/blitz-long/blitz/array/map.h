@@ -46,6 +46,7 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
 
 /*
  * _bz_doArrayIndexMapping is a helper class.  It is specialized for
@@ -56,8 +57,8 @@ template<int N_rank>
 struct _bz_doArrayIndexMapping {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
-        const Array<T_numtype, N_rank>&,
-        const TinyVector<ssize_t,N_destRank>&, int, int, int, int, int,
+        const Array<T_numtype, N_rank>&, 
+        const TinyVector<MyIndexType,N_destRank>&, int, int, int, int, int,
         int, int, int, int, int, int)
     {
         // If you try to use an array index mapping on an array with
@@ -72,7 +73,7 @@ template<>
 struct _bz_doArrayIndexMapping<1> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(const Array<T_numtype, 1>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int, int, int,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int, int, int,
         int, int, int, int, int, int, int)
     {
         return array(index[i0]);
@@ -84,7 +85,7 @@ template<>
 struct _bz_doArrayIndexMapping<2> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(const Array<T_numtype, 2>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1, int,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1, int, 
         int, int, int, int, int, int, int, int)
     {
         return array(index[i0], index[i1]);
@@ -96,7 +97,7 @@ struct _bz_doArrayIndexMapping<3> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 3>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int, int, int, int, int, int, int, int)
     {
         return array(index[i0], index[i1], index[i2]);
@@ -108,7 +109,7 @@ struct _bz_doArrayIndexMapping<4> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 4>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int, int, int, int, int, int, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3]);
@@ -120,7 +121,7 @@ struct _bz_doArrayIndexMapping<5> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 5>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int, int, int, int, int, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3], index[i4]);
@@ -132,7 +133,7 @@ struct _bz_doArrayIndexMapping<6> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 6>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int i5, int, int, int, int, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3], index[i4],
@@ -145,7 +146,7 @@ struct _bz_doArrayIndexMapping<7> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 7>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int i5, int i6, int, int, int, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3], index[i4],
@@ -158,7 +159,7 @@ struct _bz_doArrayIndexMapping<8> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 8>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int i5, int i6, int i7, int, int, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3], index[i4],
@@ -171,7 +172,7 @@ struct _bz_doArrayIndexMapping<9> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 9>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int i5, int i6, int i7, int i8, int, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3], index[i4],
@@ -184,7 +185,7 @@ struct _bz_doArrayIndexMapping<10> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 10>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int i5, int i6, int i7, int i8, int i9, int)
     {
         return array(index[i0], index[i1], index[i2], index[i3], index[i4],
@@ -197,7 +198,7 @@ struct _bz_doArrayIndexMapping<11> {
     template<typename T_numtype, int N_destRank>
     static T_numtype map(
         const Array<T_numtype, 11>& array,
-        const TinyVector<ssize_t,N_destRank>& index, int i0, int i1,
+        const TinyVector<MyIndexType,N_destRank>& index, int i0, int i1,
         int i2, int i3, int i4, int i5, int i6, int i7, int i8, int i9,
         int i10)
     {
@@ -220,7 +221,7 @@ public:
      * This enum block finds the maximum of the N_map0, N_map1, ..., N_map10
      * parameters and stores it in maxRank10.  The rank of the expression is
      * then maxRank10 + 1, since the IndexPlaceholders start at 0 rather than
-     * 1.
+     * 1.  
      */
     static const int
         maxRank1 = (N_map0 > N_map1) ? N_map0 : N_map1,
@@ -234,26 +235,26 @@ public:
         maxRank9 = (N_map9 > maxRank8) ? N_map9 : maxRank8,
         maxRank10 = (N_map10 > maxRank9) ? N_map10 : maxRank9;
 
-    static const int
-        numArrayOperands = 1,
+    static const int 
+        numArrayOperands = 1, 
         numIndexPlaceholders = 1,
         rank = maxRank10 + 1;
 
     ArrayIndexMapping(const Array<T_numtype, N_rank>& array)
         : array_(array)
-    {
+    { 
     }
 
     ArrayIndexMapping(const ArrayIndexMapping<T_numtype,N_rank,N_map0,
         N_map1,N_map2,N_map3,N_map4,N_map5,N_map6,N_map7,N_map8,N_map9,
         N_map10>& z)
         : array_(z.array_)
-    {
+    { 
     }
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_destRank>
-    T_numtype operator()(TinyVector<ssize_t, N_destRank> i)
+    T_numtype operator()(TinyVector<MyIndexType, N_destRank> i)
     {
         return _bz_doArrayIndexMapping<N_rank>::map(array_, i,
             N_map0, N_map1, N_map2, N_map3, N_map4, N_map5, N_map6,
@@ -261,7 +262,7 @@ public:
     }
 #else
     template<int N_destRank>
-    T_numtype operator()(const TinyVector<ssize_t, N_destRank>& i)
+    T_numtype operator()(const TinyVector<MyIndexType, N_destRank>& i)
     {
         return _bz_doArrayIndexMapping<N_rank>::map(array_, i,
             N_map0, N_map1, N_map2, N_map3, N_map4, N_map5, N_map6,
@@ -329,9 +330,9 @@ public:
             return INT_MIN;   // tiny(int());
     }
 
-    ssize_t lbound(int rank)
-    {
-        if (N_map0 == rank)
+    MyIndexType lbound(int rank)
+    { 
+        if (N_map0 == rank)    
             return array_.lbound(0);
         else if ((N_map1 == rank) && (N_rank > 1))
             return array_.lbound(1);
@@ -354,11 +355,11 @@ public:
         else if ((N_map10 == rank) && (N_rank > 10))
             return array_.lbound(10);
         else
-            return tiny(ssize_t());
+            return tiny(MyIndexType());
     }
 
-    ssize_t ubound(int rank)
-    {
+    MyIndexType ubound(int rank)
+    {   
         if (N_map0 == rank)
             return array_.ubound(0);
         else if ((N_map1 == rank) && (N_rank > 1))
@@ -382,7 +383,7 @@ public:
         else if ((N_map10 == rank) && (N_rank > 10))
             return array_.ubound(10);
         else
-            return huge(ssize_t());
+            return huge(MyIndexType());
     }
 
     // If you have a precondition failure on this routine, it means
@@ -396,13 +397,13 @@ public:
     }
 
     // See operator*() note
-    void push(ssize_t)
+    void push(MyIndexType)
     {
         BZPRECONDITION(0);
     }
 
     // See operator*() note
-    void pop(ssize_t)
+    void pop(MyIndexType)
     {
         BZPRECONDITION(0);
     }
@@ -414,7 +415,7 @@ public:
     }
 
     // See operator*() note
-    void advance(ssize_t)
+    void advance(MyIndexType)
     {
         BZPRECONDITION(0);
     }
@@ -439,32 +440,32 @@ public:
     bool canCollapse(int,int) const
     {   BZPRECONDITION(0);  return false; }
 
-    T_numtype operator[](ssize_t)
+    T_numtype operator[](MyIndexType)
+    {   
+        BZPRECONDITION(0);
+        return T_numtype();
+    }
+
+    T_numtype fastRead(MyIndexType)
     {
         BZPRECONDITION(0);
         return T_numtype();
     }
 
-    T_numtype fastRead(ssize_t)
-    {
-        BZPRECONDITION(0);
-        return T_numtype();
-    }
-
-    ssize_t suggestStride(int) const
+    MyIndexType suggestStride(int) const
     {
         BZPRECONDITION(0);
         return 0;
     }
 
-    bool isStride(int,ssize_t) const
+    bool isStride(int,MyIndexType) const
     {
         BZPRECONDITION(0);
         return true;
     }
 
     template<int N_rank2>
-    void moveTo(const TinyVector<ssize_t,N_rank2>&)
+    void moveTo(const TinyVector<MyIndexType,N_rank2>&)
     {
         BZPRECONDITION(0);
         return ;
@@ -478,9 +479,9 @@ public:
 
     template<typename T_shape>
     bool shapeCheck(const T_shape&) const
-    {
+    { 
         // NEEDS_WORK-- do a real shape check (tricky)
-        return true;
+        return true; 
     }
 
 private:

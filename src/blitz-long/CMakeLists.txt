@@ -11,6 +11,6 @@ ExternalProject_Add(blitz-long
 )
 
 FILE(GLOB_RECURSE Headers "*.h")
-add_custom_target(.blitzheaders SOURCES ${Headers})
+add_custom_target(.headers.blitz SOURCES ${Headers})
 FILE(GLOB_RECURSE Sources "*.cc")
-add_custom_target(.blitzsources SOURCES ${Sources})
+add_custom_target(.sources.blitz SOURCES ${Sources})

@@ -54,6 +54,7 @@ execom() {
       egrep --line-buffered -a -v 'Warning:  Program terminating, but clFFT resources not freed.' |
       egrep --line-buffered -a -v 'Please consider explicitly calling clfftTeardown' \
       >&2)
+    return $?
 }
 
 showusage() {
@@ -102,6 +103,7 @@ esac
 
 if checkcom $comm  ; then
     execom $comm $@
+    exit $?
 else
     echo "The packege does not provide command '$comm'."
     exit 1;

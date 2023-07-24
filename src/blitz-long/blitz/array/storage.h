@@ -25,6 +25,8 @@
 
 BZ_NAMESPACE(blitz)
 
+typedef ssize_t MyIndexType;
+
 /*
  * Declaration of class GeneralStorage<N_rank>
  *
@@ -33,7 +35,7 @@ BZ_NAMESPACE(blitz)
  * a C-style row major array or Fortran-style column major array, or
  * something else entirely).  Each dimension can be stored in either
  * ascending (the most common) or descending order.  Each dimension
- * can have its own base (starting index value: e.g. 0 for C-style arrays,
+ * can have its own base (starting index value: e.g. 0 for C-style arrays, 
  * 1 for Fortran arrays).
  *
  * GeneralArrayStorage<N> defaults to C-style arrays.  To implement
@@ -65,7 +67,7 @@ public:
     GeneralArrayStorage(const GeneralArrayStorage<N_rank>& x)
         : ordering_(x.ordering_), ascendingFlag_(x.ascendingFlag_),
           base_(x.base_)
-    {
+    { 
     }
 
     GeneralArrayStorage(TinyVector<int,N_rank> ordering,
@@ -96,7 +98,7 @@ public:
     int ordering(int i) const
     { return ordering_[i]; }
 
-    void setOrdering(int i, int order)
+    void setOrdering(int i, int order) 
     { ordering_[i] = order; }
 
     bool allRanksStoredAscending() const
@@ -109,28 +111,28 @@ public:
     bool isRankStoredAscending(int i) const
     { return ascendingFlag_[i]; }
 
-    TinyVector<bool, N_rank>& ascendingFlag()
+    TinyVector<bool, N_rank>& ascendingFlag() 
     { return ascendingFlag_; }
 
     const TinyVector<bool, N_rank>& ascendingFlag() const
     { return ascendingFlag_; }
 
-    void setAscendingFlag(int i, bool ascendingFlag)
+    void setAscendingFlag(int i, bool ascendingFlag) 
     { ascendingFlag_[i] = ascendingFlag; }
 
-    TinyVector<ssize_t, N_rank>& base()
+    TinyVector<MyIndexType, N_rank>& base()
     { return base_; }
 
-    const TinyVector<ssize_t, N_rank>& base() const
+    const TinyVector<MyIndexType, N_rank>& base() const
     { return base_; }
 
-    ssize_t base(int i) const
+    MyIndexType base(int i) const
     { return base_[i]; }
 
-    void setBase(int i, ssize_t base)
+    void setBase(int i, MyIndexType base)
     { base_[i] = base; }
 
-    void setBase(const TinyVector<ssize_t, N_rank>& base)
+    void setBase(const TinyVector<MyIndexType, N_rank>& base)
     { base_ = base; }
 
 protected:
@@ -144,10 +146,10 @@ protected:
      *
      * ascendingFlag_[] indicates whether the data in a rank is stored
      * in ascending or descending order.  Most of the time these values
-     * will all be true (indicating ascending order).  Some peculiar
-     * formats (e.g. MS-Windows BMP image format) store the data in
+     * will all be true (indicating ascending order).  Some peculiar 
+     * formats (e.g. MS-Windows BMP image format) store the data in 
      * descending order.
-     *
+     *  
      * base_[] gives the first valid index for each rank.  For a C-style
      * array, all the base_ elements will be zero; for a Fortran-style
      * array, they will be one.  base_[] can be set arbitrarily using
@@ -157,7 +159,7 @@ protected:
      */
     TinyVector<int,  N_rank> ordering_;
     TinyVector<bool, N_rank> ascendingFlag_;
-    TinyVector<ssize_t,  N_rank> base_;
+    TinyVector<MyIndexType,  N_rank> base_;
 };
 
 /*

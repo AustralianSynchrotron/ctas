@@ -238,7 +238,7 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
       if (tily > maxy) maxy = tily;
     }
     for (int curI = 0; curI < strl.nofIn ; curI++)
-      origins[curI] -= PointF<2>(minx, miny);
+      origins[curI] -= PointF<2>(miny, minx);
     if ( ssh != Shape<2>(maxy-miny+1, maxx-minx+1) )
       throw_bug(modname + " Mistake in calculating stitched shape: "
                 +toString(ssh)+" != "+toString(ssh)+".");
@@ -481,10 +481,11 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
   }
 
   // final crop
+  const Shape<2> fssh(strl.fcrp.apply(ssh));
   final.reference(strl.fcrp.apply(stitched));
-  if ( strl.fcrp.apply(ssh) != final.shape() )
+  if ( fssh != final.shape() )
     throw_error(modname, "Shape of the results ("+toString(final.shape())+")"
-                         " does not match expected ("+toString(ssh)+").");
+                         " does not match expected ("+toString(fssh)+").");
 
   // splits
   if ( strl.splits.empty() ) {

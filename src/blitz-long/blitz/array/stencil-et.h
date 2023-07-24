@@ -26,6 +26,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 template<typename T_ArrayNumtype, int N_rank, typename T_result>
 class StencilExpr 
 {
@@ -55,22 +57,22 @@ public:
     int ordering(int rank)
     { return iter_.ordering(rank); }
  
-    ssize_t lbound(int rank)
+    MyIndexType lbound(int rank)
     { return iter_.lbound(rank); }
 
-    ssize_t ubound(int rank)
+    MyIndexType ubound(int rank)
     { return iter_.ubound(rank); }
 
-    void push(ssize_t position)
+    void push(MyIndexType position)
     { iter_.push(position); }
 
-    void pop(ssize_t position)
+    void pop(MyIndexType position)
     { iter_.pop(position); }
 
     void advance()
     { iter_.advance(); }
 
-    void advance(ssize_t n)
+    void advance(MyIndexType n)
     { iter_.advance(n); }
 
     void loadStride(int rank)
@@ -88,14 +90,14 @@ public:
         return iter_.canCollapse(outerLoopRank, innerLoopRank);
     }
 
-    // T_numtype operator[](ssize_t i)   -- don't know how to do that.
+    // T_numtype operator[](MyIndexType i)   -- don't know how to do that.
 
-    // T_numtype fastRead(ssize_t i)     -- ditto
+    // T_numtype fastRead(MyIndexType i)     -- ditto
 
-    ssize_t suggestStride(int rank) const
+    MyIndexType suggestStride(int rank) const
     { return iter_.suggestStride(rank); }
 
-    bool isStride(int rank, ssize_t stride) const
+    bool isStride(int rank, MyIndexType stride) const
     { return iter_.isStride(rank,stride); }
 
     void prettyPrint(BZ_STD_SCOPE(string) &str) const
@@ -110,7 +112,7 @@ public:
     bool shapeCheck(const T_shape& shape)
     { return iter_.shapeCheck(shape); }
 
-    void moveTo(const TinyVector<ssize_t,N_rank>& i)
+    void moveTo(const TinyVector<MyIndexType,N_rank>& i)
     {
         iter_.moveTo(i);
     }
@@ -133,9 +135,9 @@ public:                                                                       \
     { }                                                                       \
     result operator*()                                                        \
     { return name(iter_); }                                                   \
-    result operator()(const TinyVector<ssize_t,N_rank>& a)                \
+    result operator()(const TinyVector<MyIndexType,N_rank>& a)                \
     { iter_.moveTo(a); return name(iter_); }                                  \
-    result fastRead(ssize_t i)                                            \
+    result fastRead(MyIndexType i)                                            \
     {                                                                         \
       const P_numtype* tmp = iter_.data();                                    \
       iter_._bz_setData(tmp + i);                                             \
@@ -178,9 +180,9 @@ public:                                                                       \
     { }                                                                       \
     result operator*()                                                        \
     { return name(iter_); }                                                   \
-    result operator()(const TinyVector<ssize_t,N_rank>& a)                \
+    result operator()(const TinyVector<MyIndexType,N_rank>& a)                \
     { iter_.moveTo(a); return name(iter_); }                                  \
-    result fastRead(ssize_t i)                                            \
+    result fastRead(MyIndexType i)                                            \
     {                                                                         \
       const P_numtype* tmp = iter_.data();                                    \
       iter_._bz_setData(tmp + i);                                             \
@@ -218,9 +220,9 @@ public:                                                                       \
     { }                                                                       \
     result operator*()                                                        \
     { return name(iter_); }                                                   \
-    result operator()(const TinyVector<ssize_t,N_rank>& a)                \
+    result operator()(const TinyVector<MyIndexType,N_rank>& a)                \
     { iter_.moveTo(a); return name(iter_); }                                  \
-    result fastRead(ssize_t i)                                            \
+    result fastRead(MyIndexType i)                                            \
     {                                                                         \
       const P_numtype* tmp = iter_.data();                                    \
       iter_._bz_setData(tmp + i);                                             \
@@ -259,9 +261,9 @@ public:                                                                       \
     { }                                                                       \
     result operator*()                                                        \
     { return name(iter_); }                                                   \
-    result operator()(const TinyVector<ssize_t,N_rank>& a)                \
+    result operator()(const TinyVector<MyIndexType,N_rank>& a)                \
     { iter_.moveTo(a); return name(iter_); }                                  \
-    result fastRead(ssize_t i)                                            \
+    result fastRead(MyIndexType i)                                            \
     {                                                                         \
       const P_numtype* tmp = iter_.data();                                    \
       iter_._bz_setData(tmp + i);                                             \
@@ -297,9 +299,9 @@ public:                                                                       \
     { }                                                                       \
     P_numtype operator*()                                                     \
     { return name(iter_,dim_); }                                              \
-    P_numtype operator()(const TinyVector<ssize_t,N_rank>& a)             \
+    P_numtype operator()(const TinyVector<MyIndexType,N_rank>& a)             \
     { iter_.moveTo(a); return name(iter_,dim_); }                             \
-    P_numtype fastRead(ssize_t i)                                         \
+    P_numtype fastRead(MyIndexType i)                                         \
     {                                                                         \
       const P_numtype* tmp = iter_.data();                                    \
       iter_._bz_setData(tmp + i);                                             \
@@ -337,9 +339,9 @@ public:                                                                       \
     { }                                                                       \
     P_numtype operator*()                                                     \
     { return name(iter_,dim1_,dim2_); }                                       \
-    P_numtype operator()(const TinyVector<ssize_t,N_rank>& a)             \
+    P_numtype operator()(const TinyVector<MyIndexType,N_rank>& a)             \
     { iter_.moveTo(a); return name(iter_,dim1_,dim2_); }                      \
-    P_numtype fastRead(ssize_t i)                                         \
+    P_numtype fastRead(MyIndexType i)                                         \
     {                                                                         \
       const P_numtype* tmp = iter_.data();                                    \
       iter_._bz_setData(tmp + i);                                             \

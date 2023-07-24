@@ -34,6 +34,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 template<bool initIndex>
 struct _bz_ReduceReset;
 
@@ -87,31 +89,31 @@ public:
     int ordering(int r)
     { return ordering_[r]; }
 
-    ssize_t lbound(int r)
+    MyIndexType lbound(int r)
     { return iter_.lbound(r); }
 
-    ssize_t ubound(int r)
+    MyIndexType ubound(int r)
     { return iter_.ubound(r); }
 
     template<int N_destRank>
-    T_numtype operator()(const TinyVector<ssize_t, N_destRank>& destIndex)
+    T_numtype operator()(const TinyVector<MyIndexType, N_destRank>& destIndex)
     {
         BZPRECHECK(N_destRank == N_index,  
             "Array reduction performed over rank " << N_index 
             << " to produce a rank " << N_destRank << " expression." << endl
             << "You must reduce over rank " << N_destRank << " instead.");
 
-        TinyVector<ssize_t, N_destRank + 1> index;
+        TinyVector<MyIndexType, N_destRank + 1> index;
 
         // This metaprogram copies elements 0..N-1 of destIndex into index
         _bz_meta_vecAssign<N_index, 0>::assign(index, destIndex, 
-            _bz_update<ssize_t,ssize_t>());
+            _bz_update<MyIndexType,MyIndexType>());
 
-        ssize_t lbound = iter_.lbound(N_index);
-        ssize_t ubound = iter_.ubound(N_index);
+        MyIndexType lbound = iter_.lbound(N_index);
+        MyIndexType ubound = iter_.ubound(N_index);
 
-        BZPRECHECK((lbound != tiny(ssize_t())) &&
-                   (ubound != huge(ssize_t())),
+        BZPRECHECK((lbound != tiny(MyIndexType())) &&
+                   (ubound != huge(MyIndexType())),
            "Array reduction performed over rank " << N_index
            << " is unbounded." << endl 
            << "There must be an array object in the expression being reduced"
@@ -142,13 +144,13 @@ public:
     }
 
     // See operator*() note
-    void push(ssize_t)
+    void push(MyIndexType)
     {
         BZPRECONDITION(0);
     }
 
     // See operator*() note
-    void pop(ssize_t)
+    void pop(MyIndexType)
     {
         BZPRECONDITION(0);
     }
@@ -160,7 +162,7 @@ public:
     }
 
     // See operator*() note
-    void advance(ssize_t)
+    void advance(MyIndexType)
     {
         BZPRECONDITION(0);
     }
@@ -185,32 +187,32 @@ public:
     bool canCollapse(int,int) const
     {   BZPRECONDITION(0); return false; }
 
-    T_numtype operator[](ssize_t)
+    T_numtype operator[](MyIndexType)
     {
         BZPRECONDITION(0);
         return T_numtype();
     }
 
-    T_numtype fastRead(ssize_t)
+    T_numtype fastRead(MyIndexType)
     {
         BZPRECONDITION(0);
         return T_numtype();
     }
 
-    ssize_t suggestStride(int) const
+    MyIndexType suggestStride(int) const
     {
         BZPRECONDITION(0);
         return 0;
     }
 
-    bool isStride(int,ssize_t) const
+    bool isStride(int,MyIndexType) const
     {
         BZPRECONDITION(0);
         return true;
     }
 
     template<int N_rank>
-    void moveTo(const TinyVector<ssize_t,N_rank>&)
+    void moveTo(const TinyVector<MyIndexType,N_rank>&)
     {
         BZPRECONDITION(0);
         return;

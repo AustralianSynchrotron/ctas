@@ -27,17 +27,19 @@
 #ifndef BZ_INDEXEXPR_H
 #define BZ_INDEXEXPR_H
 
-#include "blitz/numinquire.h" // For tiny(ssize_t())
+#include "blitz/numinquire.h" // For tiny(MyIndexType())
 #include "blitz/tinyvec.h"
 #include "blitz/prettyprint.h"
 #include "blitz/etbase.h"
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 template<int N>
-class IndexPlaceholder
+class IndexPlaceholder 
 #ifdef BZ_NEW_EXPRESSION_TEMPLATES
-  : public ETBase<IndexPlaceholder<N> >
+  : public ETBase<IndexPlaceholder<N> > 
 #endif
 {
 public:
@@ -63,70 +65,70 @@ public:
     typedef int T_ctorArg1;     // Dummy; not used
     typedef int T_ctorArg2;     // Ditto
 
-    static const int
-        numArrayOperands = 0,
+    static const int 
+        numArrayOperands = 0, 
         numIndexPlaceholders = 1,
         rank = N+1;
 
     // If you have a precondition failure on this routine, it means
     // you are trying to use stack iteration mode on an expression
-    // which contains an index placeholder.  You must use index
+    // which contains an index placeholder.  You must use index 
     // iteration mode instead.
-    int operator*() {
-        BZPRECONDITION(0);
+    int operator*() { 
+        BZPRECONDITION(0); 
         return 0;
     }
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_rank>
-    T_numtype operator()(TinyVector<ssize_t, N_rank> i) { return i[N]; }
+    T_numtype operator()(TinyVector<MyIndexType, N_rank> i) { return i[N]; }
 #else
     template<int N_rank>
-    T_numtype operator()(const TinyVector<ssize_t, N_rank>& i)
+    T_numtype operator()(const TinyVector<MyIndexType, N_rank>& i)
         { return i[N]; }
 #endif
 
     int ascending(int) const { return INT_MIN; }
     int ordering(int)  const { return INT_MIN; }
-    ssize_t lbound(int)    const { return tiny(ssize_t()); }
-    ssize_t ubound(int)    const { return huge(ssize_t()); }
+    MyIndexType lbound(int)    const { return tiny(MyIndexType()); }
+    MyIndexType ubound(int)    const { return huge(MyIndexType()); }
 
     // See operator*() note
 
-    void push(ssize_t)       { BZPRECONDITION(0); }
-    void pop(ssize_t)        { BZPRECONDITION(0); }
+    void push(MyIndexType)       { BZPRECONDITION(0); }
+    void pop(MyIndexType)        { BZPRECONDITION(0); }
     void advance()       { BZPRECONDITION(0); }
-    void advance(ssize_t)    { BZPRECONDITION(0); }
+    void advance(MyIndexType)    { BZPRECONDITION(0); }
     void loadStride(int) { BZPRECONDITION(0); }
 
-    bool isUnitStride(int) const {
+    bool isUnitStride(int) const { 
         BZPRECONDITION(0);
         return false;
     }
 
     void advanceUnitStride() { BZPRECONDITION(0); }
 
-    bool canCollapse(int,int) const {
-        BZPRECONDITION(0);
-        return false;
+    bool canCollapse(int,int) const {   
+        BZPRECONDITION(0); 
+        return false; 
     }
 
-    T_numtype operator[](ssize_t) {
-        BZPRECONDITION(0);
-        return T_numtype();
-    }
-
-    T_numtype fastRead(ssize_t) {
+    T_numtype operator[](MyIndexType) {
         BZPRECONDITION(0);
         return T_numtype();
     }
 
-    ssize_t suggestStride(int) const {
+    T_numtype fastRead(MyIndexType) {
+        BZPRECONDITION(0);
+        return T_numtype();
+    }
+
+    MyIndexType suggestStride(int) const {
         BZPRECONDITION(0);
         return 0;
     }
 
-    bool isStride(int,ssize_t) const {
+    bool isStride(int,MyIndexType) const {
         BZPRECONDITION(0);
         return true;
     }

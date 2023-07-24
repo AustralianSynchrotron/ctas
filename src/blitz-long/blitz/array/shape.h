@@ -29,6 +29,8 @@
 
 BZ_NAMESPACE(blitz)
 
+typedef ssize_t MyIndexType;
+
 /*
  * These routines make it easier to create shape parameters on
  * the fly: instead of having to write
@@ -40,57 +42,57 @@ BZ_NAMESPACE(blitz)
  * A.resize(shape(8,8,8,12));
  *
  */
-inline TinyVector<ssize_t,1> shape(ssize_t n1)
-{ return TinyVector<ssize_t,1>(n1); }
+inline TinyVector<MyIndexType,1> shape(MyIndexType n1)
+{ return TinyVector<MyIndexType,1>(n1); }
 
-inline TinyVector<ssize_t,2> shape(ssize_t n1, ssize_t n2)
-{ return TinyVector<ssize_t,2>(n1,n2); }
+inline TinyVector<MyIndexType,2> shape(MyIndexType n1, MyIndexType n2)
+{ return TinyVector<MyIndexType,2>(n1,n2); }
 
-inline TinyVector<ssize_t,3> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3)
-{ return TinyVector<ssize_t,3>(n1,n2,n3); }
+inline TinyVector<MyIndexType,3> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3)
+{ return TinyVector<MyIndexType,3>(n1,n2,n3); }
 
-inline TinyVector<ssize_t,4> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4)
-{ return TinyVector<ssize_t,4>(n1,n2,n3,n4); }
+inline TinyVector<MyIndexType,4> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4)
+{ return TinyVector<MyIndexType,4>(n1,n2,n3,n4); }
 
-inline TinyVector<ssize_t,5> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5)
-{ return TinyVector<ssize_t,5>(n1,n2,n3,n4,n5); }
+inline TinyVector<MyIndexType,5> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5)
+{ return TinyVector<MyIndexType,5>(n1,n2,n3,n4,n5); }
 
-inline TinyVector<ssize_t,6> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5, ssize_t n6)
-{ return TinyVector<ssize_t,6>(n1,n2,n3,n4,n5,n6); }
+inline TinyVector<MyIndexType,6> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5, MyIndexType n6)
+{ return TinyVector<MyIndexType,6>(n1,n2,n3,n4,n5,n6); }
 
-inline TinyVector<ssize_t,7> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5, ssize_t n6, ssize_t n7)
-{ return TinyVector<ssize_t,7>(n1,n2,n3,n4,n5,n6,n7); }
+inline TinyVector<MyIndexType,7> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5, MyIndexType n6, MyIndexType n7)
+{ return TinyVector<MyIndexType,7>(n1,n2,n3,n4,n5,n6,n7); }
 
-inline TinyVector<ssize_t,8> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5, ssize_t n6, ssize_t n7, ssize_t n8)
-{ return TinyVector<ssize_t,8>(n1,n2,n3,n4,n5,n6,n7,n8); }
+inline TinyVector<MyIndexType,8> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5, MyIndexType n6, MyIndexType n7, MyIndexType n8)
+{ return TinyVector<MyIndexType,8>(n1,n2,n3,n4,n5,n6,n7,n8); }
 
-inline TinyVector<ssize_t,9> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5, ssize_t n6, ssize_t n7, ssize_t n8,
-    ssize_t n9)
-{ return TinyVector<ssize_t,9>(n1,n2,n3,n4,n5,n6,n7,n8,n9); }
+inline TinyVector<MyIndexType,9> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5, MyIndexType n6, MyIndexType n7, MyIndexType n8,
+    MyIndexType n9)
+{ return TinyVector<MyIndexType,9>(n1,n2,n3,n4,n5,n6,n7,n8,n9); }
 
-inline TinyVector<ssize_t,10> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5, ssize_t n6, ssize_t n7, ssize_t n8,
-    ssize_t n9, ssize_t n10)
-{ return TinyVector<ssize_t,10>(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10); }
+inline TinyVector<MyIndexType,10> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5, MyIndexType n6, MyIndexType n7, MyIndexType n8,
+    MyIndexType n9, MyIndexType n10)
+{ return TinyVector<MyIndexType,10>(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10); }
 
-inline TinyVector<ssize_t,11> shape(
-    ssize_t n1, ssize_t n2, ssize_t n3, ssize_t n4,
-    ssize_t n5, ssize_t n6, ssize_t n7, ssize_t n8,
-    ssize_t n9, ssize_t n10, ssize_t n11)
-{ return TinyVector<ssize_t,11>(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11); }
+inline TinyVector<MyIndexType,11> shape(
+    MyIndexType n1, MyIndexType n2, MyIndexType n3, MyIndexType n4,
+    MyIndexType n5, MyIndexType n6, MyIndexType n7, MyIndexType n8,
+    MyIndexType n9, MyIndexType n10, MyIndexType n11)
+{ return TinyVector<MyIndexType,11>(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11); }
 
 BZ_NAMESPACE_END
 

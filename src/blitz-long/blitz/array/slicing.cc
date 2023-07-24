@@ -29,6 +29,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 /*
  * These routines make the array a view of a portion of another array.
  * They all work by first referencing the other array, and then slicing.
@@ -282,7 +284,7 @@ cout << "slice(" << setRank << ", [" << r.first(array.lbound(sourceRank))
  * int parameters, which reduce the dimensionality by one.
  */
 template<typename P_numtype, int N_rank> template<int N_rank2>
-void Array<P_numtype, N_rank>::slice(int&, ssize_t i,
+void Array<P_numtype, N_rank>::slice(int&, MyIndexType i,
     Array<T_numtype,N_rank2>& array, TinyVector<int,N_rank2>& rankMap,
     int sourceRank)
 {
@@ -316,9 +318,9 @@ void Array<P_numtype, N_rank>::slice(int rank, Range r)
 {
     BZPRECONDITION((rank >= 0) && (rank < N_rank));
 
-    ssize_t first = r.first(lbound(rank));
-    ssize_t last  = r.last(ubound(rank));
-    ssize_t stride = r.stride();
+    MyIndexType first = r.first(lbound(rank));
+    MyIndexType last  = r.last(ubound(rank));
+    MyIndexType stride = r.stride();
 
 #ifdef BZ_DEBUG_SLICE
 cout << "slice(" << rank << ", Range):" << endl

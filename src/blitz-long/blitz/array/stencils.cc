@@ -29,6 +29,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 // NEEDS_WORK:
 // o Need to allow scalar arguments as well as arrays
 // o Unit stride optimization
@@ -131,7 +133,7 @@ RectDomain<N_rank> interiorDomain(const T_stencil& stencil,
         _dummyArray, _dummyArray);
 
     // Shrink the domain according to the stencil size
-    TinyVector<ssize_t,N_rank> lbound, ubound;
+    TinyVector<MyIndexType,N_rank> lbound, ubound;
     lbound = domain.lbound() - (At.min)();
     ubound = domain.ubound() - (At.max)();
     return RectDomain<N_rank>(lbound,ubound);
@@ -144,8 +146,8 @@ template<int N_rank,
     class T_array3, typename T_array4, typename T_array5, typename T_array6,
     class T_array7, typename T_array8, typename T_array9, typename T_array10,
     class T_array11>
-static void getStencilExtent(TinyVector<ssize_t,N_rank>& minb,
-    TinyVector<ssize_t,N_rank>& maxb,
+static void getStencilExtent(TinyVector<MyIndexType,N_rank>& minb,
+    TinyVector<MyIndexType,N_rank>& maxb,
     const T_stencil& stencil, Array<T_numtype1,N_rank>& A,
     T_array2& B, T_array3& C, T_array4& D, T_array5& E, T_array6& F,
     T_array7& G, T_array8& H, T_array9& I, T_array10& J, T_array11& K)
@@ -165,8 +167,8 @@ template<int N_rank,
     class T_array3, typename T_array4, typename T_array5, typename T_array6,
     class T_array7, typename T_array8, typename T_array9, typename T_array10,
     class T_array11>
-static inline void getStencilExtent(TinyVector<ssize_t,N_rank>& minb,
-    TinyVector<ssize_t,N_rank>& maxb,
+static inline void getStencilExtent(TinyVector<MyIndexType,N_rank>& minb,
+    TinyVector<MyIndexType,N_rank>& maxb,
     const T_stencil& stencil, Array<T_numtype1,N_rank>&,
     T_array2&, T_array3&, T_array4&, T_array5&, T_array6&,
     T_array7&, T_array8&, T_array9&, T_array10&, T_array11&)
@@ -180,8 +182,8 @@ template<int N_rank,
     class T_array3, typename T_array4, typename T_array5, typename T_array6,
     class T_array7, typename T_array8, typename T_array9, typename T_array10,
     class T_array11>
-inline void getStencilExtent(TinyVector<ssize_t,N_rank>& minb,
-    TinyVector<ssize_t,N_rank>& maxb,
+inline void getStencilExtent(TinyVector<MyIndexType,N_rank>& minb,
+    TinyVector<MyIndexType,N_rank>& maxb,
     const T_stencil& stencil, Array<T_numtype1,N_rank>& A,
     T_array2& B, T_array3& C, T_array4& D, T_array5& E, T_array6& F,
     T_array7& G, T_array8& H, T_array9& I, T_array10& J, T_array11& K)
@@ -206,32 +208,32 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,3>& A,
     checkShapes(A,B,C,D,E,F,G,H,I,J,K);
  
     // Determine stencil extent
-    TinyVector<ssize_t,3> minb, maxb;
+    TinyVector<MyIndexType,3> minb, maxb;
     getStencilExtent(minb, maxb, stencil, A, B, C, D, E, F, G, H, I, J, K);
 
     // Now determine the subdomain over which the stencil
     // can be applied without worrying about overrunning the
     // boundaries of the array
-    ssize_t stencil_lbound0 = minb(0);
-    ssize_t stencil_lbound1 = minb(1);
-    ssize_t stencil_lbound2 = minb(2);
+    MyIndexType stencil_lbound0 = minb(0);
+    MyIndexType stencil_lbound1 = minb(1);
+    MyIndexType stencil_lbound2 = minb(2);
 
-    ssize_t stencil_ubound0 = maxb(0);
-    ssize_t stencil_ubound1 = maxb(1);
-    ssize_t stencil_ubound2 = maxb(2);
+    MyIndexType stencil_ubound0 = maxb(0);
+    MyIndexType stencil_ubound1 = maxb(1);
+    MyIndexType stencil_ubound2 = maxb(2);
 
-    ssize_t lbound0 = (minmax::max)(A.lbound(0), A.lbound(0) -
+    MyIndexType lbound0 = (minmax::max)(A.lbound(0), A.lbound(0) -
                                         stencil_lbound0);
-    ssize_t lbound1 = (minmax::max)(A.lbound(1), A.lbound(1) -
+    MyIndexType lbound1 = (minmax::max)(A.lbound(1), A.lbound(1) -
                                         stencil_lbound1);
-    ssize_t lbound2 = (minmax::max)(A.lbound(2), A.lbound(2) -
+    MyIndexType lbound2 = (minmax::max)(A.lbound(2), A.lbound(2) -
                                         stencil_lbound2);
 
-    ssize_t ubound0 = (minmax::min)(A.ubound(0), A.ubound(0) -
+    MyIndexType ubound0 = (minmax::min)(A.ubound(0), A.ubound(0) -
                                         stencil_ubound0);
-    ssize_t ubound1 = (minmax::min)(A.ubound(1), A.ubound(1) -
+    MyIndexType ubound1 = (minmax::min)(A.ubound(1), A.ubound(1) -
                                         stencil_ubound1);
-    ssize_t ubound2 = (minmax::min)(A.ubound(2), A.ubound(2) -
+    MyIndexType ubound2 = (minmax::min)(A.ubound(2), A.ubound(2) -
                                         stencil_ubound2);
 
 #if 0
@@ -267,9 +269,9 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,3>& A,
     Jiter.loadStride(2);
     Kiter.loadStride(2);
 
-    for (ssize_t i=lbound0; i <= ubound0; ++i)
+    for (MyIndexType i=lbound0; i <= ubound0; ++i)
     {
-      for (ssize_t j=lbound1; j <= ubound1; ++j)
+      for (MyIndexType j=lbound1; j <= ubound1; ++j)
       {
         Aiter.moveTo(i,j,lbound2);
         Biter.moveTo(i,j,lbound2);
@@ -283,7 +285,7 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,3>& A,
         Jiter.moveTo(i,j,lbound2);
         Kiter.moveTo(i,j,lbound2);
 
-        for (ssize_t k=lbound2; k <= ubound2; ++k)
+        for (MyIndexType k=lbound2; k <= ubound2; ++k)
         {
             stencil.apply(Aiter, Biter, Citer, Diter, Eiter, Fiter, Giter,
                 Hiter, Iiter, Jiter, Kiter);
@@ -320,26 +322,26 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,2>& A,
     checkShapes(A,B,C,D,E,F,G,H,I,J,K);
 
     // Determine stencil extent
-    TinyVector<ssize_t,2> minb, maxb;
+    TinyVector<MyIndexType,2> minb, maxb;
     getStencilExtent(minb, maxb, stencil, A, B, C, D, E, F, G, H, I, J, K);
 
     // Now determine the subdomain over which the stencil
     // can be applied without worrying about overrunning the
     // boundaries of the array
-    ssize_t stencil_lbound0 = minb(0);
-    ssize_t stencil_lbound1 = minb(1);
+    MyIndexType stencil_lbound0 = minb(0);
+    MyIndexType stencil_lbound1 = minb(1);
 
-    ssize_t stencil_ubound0 = maxb(0);
-    ssize_t stencil_ubound1 = maxb(1);
+    MyIndexType stencil_ubound0 = maxb(0);
+    MyIndexType stencil_ubound1 = maxb(1);
 
-    ssize_t lbound0 = (minmax::max)(A.lbound(0), A.lbound(0) -
+    MyIndexType lbound0 = (minmax::max)(A.lbound(0), A.lbound(0) -
                                         stencil_lbound0);
-    ssize_t lbound1 = (minmax::max)(A.lbound(1), A.lbound(1) -
+    MyIndexType lbound1 = (minmax::max)(A.lbound(1), A.lbound(1) -
                                         stencil_lbound1);
 
-    ssize_t ubound0 = (minmax::min)(A.ubound(0), A.ubound(0) -
+    MyIndexType ubound0 = (minmax::min)(A.ubound(0), A.ubound(0) -
                                         stencil_ubound0);
-    ssize_t ubound1 = (minmax::min)(A.ubound(1), A.ubound(1) -
+    MyIndexType ubound1 = (minmax::min)(A.ubound(1), A.ubound(1) -
                                         stencil_ubound1);
 
 #if 0
@@ -374,7 +376,7 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,2>& A,
     Jiter.loadStride(1);
     Kiter.loadStride(1);
 
-    for (ssize_t i=lbound0; i <= ubound0; ++i)
+    for (MyIndexType i=lbound0; i <= ubound0; ++i)
     {
         Aiter.moveTo(i,lbound1);
         Biter.moveTo(i,lbound1);
@@ -388,7 +390,7 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,2>& A,
         Jiter.moveTo(i,lbound1);
         Kiter.moveTo(i,lbound1);
 
-        for (ssize_t k=lbound1; k <= ubound1; ++k)
+        for (MyIndexType k=lbound1; k <= ubound1; ++k)
         {
             stencil.apply(Aiter, Biter, Citer, Diter, Eiter, Fiter, Giter,
                 Hiter, Iiter, Jiter, Kiter);
@@ -424,18 +426,18 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,1>& A,
     checkShapes(A,B,C,D,E,F,G,H,I,J,K);
 
     // Determine stencil extent
-    TinyVector<ssize_t,1> minb, maxb;
+    TinyVector<MyIndexType,1> minb, maxb;
     getStencilExtent(minb, maxb, stencil, A, B, C, D, E, F, G, H, I, J, K);
 
     // Now determine the subdomain over which the stencil
     // can be applied without worrying about overrunning the
     // boundaries of the array
-    ssize_t stencil_lbound0 = minb(0);
-    ssize_t stencil_ubound0 = maxb(0);
+    MyIndexType stencil_lbound0 = minb(0);
+    MyIndexType stencil_ubound0 = maxb(0);
 
-    ssize_t lbound0 = (minmax::max)(A.lbound(0), A.lbound(0) -
+    MyIndexType lbound0 = (minmax::max)(A.lbound(0), A.lbound(0) -
                                         stencil_lbound0);
-    ssize_t ubound0 = (minmax::min)(A.ubound(0), A.ubound(0) -
+    MyIndexType ubound0 = (minmax::min)(A.ubound(0), A.ubound(0) -
                                         stencil_ubound0);
 
 #if 0
@@ -482,7 +484,7 @@ void applyStencil_imp(const T_stencil& stencil, Array<T_numtype1,1>& A,
     Jiter.moveTo(lbound0);
     Kiter.moveTo(lbound0);
 
-    for (ssize_t i=lbound0; i <= ubound0; ++i)
+    for (MyIndexType i=lbound0; i <= ubound0; ++i)
     {
         stencil.apply(Aiter, Biter, Citer, Diter, Eiter, Fiter, Giter,
             Hiter, Iiter, Jiter, Kiter);

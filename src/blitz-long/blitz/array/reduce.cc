@@ -26,6 +26,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 template<typename T_expr, typename T_reduction>
 _bz_typename T_reduction::T_resulttype
 _bz_ArrayExprFullReduce(T_expr expr, T_reduction reduction)
@@ -69,7 +71,7 @@ _bz_reduceWithIndexTraversal(T_expr expr, T_reduction reduction)
 
     const int rank = T_expr::rank;
 
-    TinyVector<ssize_t,T_expr::rank> index, first, last;
+    TinyVector<MyIndexType,T_expr::rank> index, first, last;
 
     size_t count = 1;
 
@@ -81,11 +83,11 @@ _bz_reduceWithIndexTraversal(T_expr expr, T_reduction reduction)
         count *= last(i) - first(i);
     }
 
-    const ssize_t maxRank = rank - 1;
-    ssize_t lastlbound = expr.lbound(maxRank);
-    ssize_t lastubound = expr.ubound(maxRank);
+    const MyIndexType maxRank = rank - 1;
+    MyIndexType lastlbound = expr.lbound(maxRank);
+    MyIndexType lastubound = expr.ubound(maxRank);
 
-    ssize_t lastIndex = lastubound + 1;
+    MyIndexType lastIndex = lastubound + 1;
 
     reduction.reset();
 
@@ -124,7 +126,7 @@ _bz_reduceWithIndexVectorTraversal(T_expr expr, T_reduction reduction)
 
     const int rank = T_expr::rank;
 
-    TinyVector<ssize_t,T_expr::rank> index, first, last;
+    TinyVector<MyIndexType,T_expr::rank> index, first, last;
 
     unsigned long count = 1;
 
@@ -137,10 +139,10 @@ _bz_reduceWithIndexVectorTraversal(T_expr expr, T_reduction reduction)
     }
 
     const int maxRank = rank - 1;
-    ssize_t lastlbound = expr.lbound(maxRank);
-    ssize_t lastubound = expr.ubound(maxRank);
+    MyIndexType lastlbound = expr.lbound(maxRank);
+    MyIndexType lastubound = expr.ubound(maxRank);
 
-    ssize_t lastIndex = lastubound + 1;
+    MyIndexType lastIndex = lastubound + 1;
 
 // we are doing minIndex/maxIndex, so initialize with lower bound
     reduction.reset(first);

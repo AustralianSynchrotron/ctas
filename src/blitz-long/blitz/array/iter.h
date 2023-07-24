@@ -44,6 +44,8 @@
 
 BZ_NAMESPACE(blitz)
 
+    typedef ssize_t MyIndexType;
+
 template<typename T, int N>
 class ConstArrayIterator {
 private:
@@ -116,13 +118,13 @@ public:
     }
 
     // get the current position of the Array iterator in index space
-    const TinyVector<ssize_t,N>& position() const {
+    const TinyVector<MyIndexType,N>& position() const {
         CheckIteratorValidity("Array<T,N>::iterator::position() called on",0);
         return pos_;
     }
 
 private:
-    TinyVector<ssize_t,N> dataincr_, lbound_, ubound_;
+    TinyVector<MyIndexType,N> dataincr_, lbound_, ubound_;
     TinyVector<int,N> order_;
 
     static T* end_value(const Array<T,N>& array) {
@@ -134,7 +136,7 @@ private:
     }
 
 protected:
-    TinyVector<ssize_t,N> pos_;
+    TinyVector<MyIndexType,N> pos_;
     T * restrict data_;
 #if defined(BZ_DEBUG)
     const T* restrict beg_;

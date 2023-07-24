@@ -30,6 +30,7 @@ add_subdirectory(executables)
 
 CONFIGURE_FILE(ctas.in ctas @ONLY)
 install(PROGRAMS ${CMAKE_BINARY_DIR}/src/ctas DESTINATION bin)
+add_custom_target(.ctas SOURCES ctas.in)
 
 
 install(FILES "ctas.1" DESTINATION "${MAN_DESTINATION}")

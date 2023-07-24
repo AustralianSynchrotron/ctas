@@ -33,10 +33,12 @@
 
 BZ_NAMESPACE(blitz)
 
+typedef ssize_t MyIndexType;
+
 template<int N_rank>
 class RectDomain {
 
-    typedef TinyVector<ssize_t,N_rank> Bounds;
+    typedef TinyVector<MyIndexType,N_rank> Bounds;
 
 public:
 
@@ -52,37 +54,37 @@ public:
 
     // NEEDS_WORK: better constructors
     // RectDomain(Range, Range, ...)
-    // RectDomain with any combination of Range and ssize_t
+    // RectDomain with any combination of Range and MyIndexType
 
           Bounds& lbound()       { return lbound_; }
           Bounds& ubound()       { return ubound_; }
     const Bounds& lbound() const { return lbound_; }
     const Bounds& ubound() const { return ubound_; }
 
-    ssize_t& lbound(const int i)       { return lbound_(i); }
-    ssize_t& ubound(const int i)       { return ubound_(i); }
-    ssize_t  lbound(const int i) const { return lbound_(i); }
-    ssize_t  ubound(const int i) const { return ubound_(i); }
+    MyIndexType& lbound(const int i)       { return lbound_(i); }
+    MyIndexType& ubound(const int i)       { return ubound_(i); }
+    MyIndexType  lbound(const int i) const { return lbound_(i); }
+    MyIndexType  ubound(const int i) const { return ubound_(i); }
 
     Range operator[](const int rank) const
         { return Range(lbound_(rank), ubound_(rank)); }
 
-    void shrink(const ssize_t amount) {
+    void shrink(const MyIndexType amount) {
         lbound_ += amount;
         ubound_ -= amount;
     }
 
-    void shrink(const int dim,const ssize_t amount) {
+    void shrink(const int dim,const MyIndexType amount) {
         lbound_(dim) += amount;
         ubound_(dim) -= amount;
     }
 
-    void expand(const ssize_t amount) {
+    void expand(const MyIndexType amount) {
         lbound_ -= amount;
         ubound_ += amount;
     }
 
-    void expand(const int dim,const ssize_t amount) {
+    void expand(const int dim,const MyIndexType amount) {
         lbound_(dim) -= amount;
         ubound_(dim) += amount;
     }
@@ -100,8 +102,8 @@ private:
 template<int N_rank>
 class StridedDomain {
 
-    typedef TinyVector<ssize_t,N_rank> Bounds;
-    typedef TinyVector<ssize_t,N_rank> Strides;
+    typedef TinyVector<MyIndexType,N_rank> Bounds;
+    typedef TinyVector<MyIndexType,N_rank> Strides;
 
 public:
 
@@ -111,35 +113,35 @@ public:
 
     // NEEDS_WORK: better constructors
     // StridedDomain(Range, Range, ...)
-    // StridedDomain with any combination of Range and ssize_t
+    // StridedDomain with any combination of Range and MyIndexType
 
     const Bounds&  lbound() const { return lbound_; }
     const Bounds&  ubound() const { return ubound_; }
     const Strides& stride() const { return stride_; }
 
-    ssize_t lbound(const int i) const { return lbound_(i); }
-    ssize_t ubound(const int i) const { return ubound_(i); }
-    ssize_t stride(const int i) const { return stride_(i); }
+    MyIndexType lbound(const int i) const { return lbound_(i); }
+    MyIndexType ubound(const int i) const { return ubound_(i); }
+    MyIndexType stride(const int i) const { return stride_(i); }
 
     Range operator[](const int rank) const
         { return Range(lbound_(rank),ubound_(rank),stride_(rank)); }
 
-    void shrink(const ssize_t amount) {
+    void shrink(const MyIndexType amount) {
         lbound_ += amount*stride_;
         ubound_ -= amount*stride_;
     }
 
-    void shrink(const int dim,const ssize_t amount) {
+    void shrink(const int dim,const MyIndexType amount) {
         lbound_(dim) += amount*stride_(dim);
         ubound_(dim) -= amount*stride_(dim);
     }
 
-    void expand(const ssize_t amount) {
+    void expand(const MyIndexType amount) {
         lbound_ -= amount*stride_;
         ubound_ += amount*stride_;
     }
 
-    void expand(const int dim,const ssize_t amount) {
+    void expand(const int dim,const MyIndexType amount) {
         lbound_(dim) -= amount*stride_(dim);
         ubound_(dim) += amount*stride_(dim);
     }
@@ -154,11 +156,11 @@ private:
 
 template<int N_rank>
 inline RectDomain<N_rank>
-strip(const TinyVector<ssize_t,N_rank>& startPosition,const int stripDimension,const ssize_t ubound) {
+strip(const TinyVector<MyIndexType,N_rank>& startPosition,const int stripDimension,const MyIndexType ubound) {
     BZPRECONDITION((stripDimension >= 0) && (stripDimension < N_rank));
     BZPRECONDITION(ubound >= startPosition(stripDimension));
 
-    TinyVector<ssize_t,N_rank> endPosition = startPosition;
+    TinyVector<MyIndexType,N_rank> endPosition = startPosition;
     endPosition(stripDimension) = ubound;
     return RectDomain<N_rank>(startPosition, endPosition);
 }

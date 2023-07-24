@@ -39,7 +39,9 @@
 
 BZ_NAMESPACE(blitz)
 
-// Examples:
+    typedef ssize_t MyIndexType;
+
+// Examples: 
 // Vector<double> x(7);
 // Range::all()                    [0,1,2,3,4,5,6]
 // Range(3,5)                      [3,4,5]
@@ -51,8 +53,8 @@ BZ_NAMESPACE(blitz)
 //        wrong. This enum workaround prevented problems with the
 //        constants below, but is not usable any more
 // enum { fromStart = INT_MIN, toEnd = INT_MAX };
-const ssize_t fromStart = LONG_MIN; // assuming LONG_MIN == tiny(ssize_t());
-const ssize_t toEnd = LONG_MAX; // assuming LONG_MAX == huge(ssize_t());
+const MyIndexType fromStart = LONG_MIN; // assuming LONG_MIN == tiny(MyIndexType());
+const MyIndexType toEnd = LONG_MAX; // assuming LONG_MAX == huge(MyIndexType());
 
 // Class Range
 class Range {
@@ -62,10 +64,10 @@ public:
     // used with the new indexing ranges. Additionally LONG_MIN and LONG_MAX
     // may return wrong values, although they are better than INT_MIN and
     // INT_MAX. Any suggestions are welcome!
-    static const ssize_t fromStart = LONG_MIN; // assuming LONG_MIN == tiny(ssize_t());
-    static const ssize_t toEnd = LONG_MAX; // assuming LONG_MAX == huge(ssize_t());
+    static const MyIndexType fromStart = LONG_MIN; // assuming LONG_MIN == tiny(MyIndexType());
+    static const MyIndexType toEnd = LONG_MAX; // assuming LONG_MAX == huge(MyIndexType());
 
-    typedef ssize_t T_numtype;
+    typedef MyIndexType T_numtype;
 
 // FIXME: Due to the new indexing the old INT_MIN and INT_MAX bounds were
 //        wrong. This enum workaround prevented problems with the above
@@ -89,16 +91,16 @@ public:
     }
 #endif
 
-    explicit Range(ssize_t slicePosition)
+    explicit Range(MyIndexType slicePosition)
     {
         first_ = slicePosition;
         last_ = slicePosition;
         stride_ = 1;
     }
 
-    Range(ssize_t first, ssize_t last, ssize_t stride=1)
+    Range(MyIndexType first, MyIndexType last, MyIndexType stride=1)
         : first_(first), last_(last), stride_(stride)
-    {
+    { 
         BZPRECHECK((first == fromStart) || (last == toEnd) ||
                        (first < last) && (stride > 0) ||
                        (first > last) && (stride < 0) ||
@@ -108,21 +110,21 @@ public:
             (*this) << ": the stride must evenly divide the range");
     }
 
-    ssize_t first(ssize_t lowRange = 0) const
-    {
+    MyIndexType first(MyIndexType lowRange = 0) const
+    { 
         if (first_ == fromStart)
             return lowRange;
-        return first_;
+        return first_; 
     }
 
-    ssize_t last(ssize_t highRange = 0) const
+    MyIndexType last(MyIndexType highRange = 0) const
     {
         if (last_ == toEnd)
             return highRange;
         return last_;
     }
 
-    size_t length(ssize_t = 0) const
+    size_t length(MyIndexType = 0) const
     {
         BZPRECONDITION(first_ != fromStart);
         BZPRECONDITION(last_ != toEnd);
@@ -130,7 +132,7 @@ public:
         return static_cast<size_t>((last_ - first_) / stride_ + 1);
     }
 
-    ssize_t stride() const
+    MyIndexType stride() const
     { return stride_; }
 
     bool isAscendingContiguous() const
@@ -138,7 +140,7 @@ public:
         return ((first_ < last_) && (stride_ == 1) || (first_ == last_));
     }
 
-    void setRange(ssize_t first, ssize_t last, ssize_t stride=1)
+    void setRange(MyIndexType first, MyIndexType last, MyIndexType stride=1)
     {
         BZPRECONDITION((first < last) && (stride > 0) ||
                        (first > last) && (stride < 0) ||
@@ -149,33 +151,33 @@ public:
         stride_ = stride;
     }
 
-    static Range all()
+    static Range all() 
     { return Range(fromStart,toEnd,1); }
 
     bool isUnitStride() const
     { return stride_ == 1; }
 
     // Operators
-    Range operator-(ssize_t shift) const
-    {
+    Range operator-(MyIndexType shift) const
+    { 
         BZPRECONDITION(first_ != fromStart);
         BZPRECONDITION(last_ != toEnd);
-        return Range(first_ - shift, last_ - shift, stride_);
+        return Range(first_ - shift, last_ - shift, stride_); 
     }
 
-    Range operator+(ssize_t shift) const
-    {
+    Range operator+(MyIndexType shift) const
+    { 
         BZPRECONDITION(first_ != fromStart);
         BZPRECONDITION(last_ != toEnd);
-        return Range(first_ + shift, last_ + shift, stride_);
+        return Range(first_ + shift, last_ + shift, stride_); 
     }
 
-    ssize_t operator[](size_t i) const
+    MyIndexType operator[](size_t i) const
     {
         return first_ + i * stride_;
     }
 
-    ssize_t operator()(size_t i) const
+    MyIndexType operator()(size_t i) const
     {
         return first_ + i * stride_;
     }
@@ -194,7 +196,7 @@ public:
     // disappear in future releases.
     /////////////////////////////////////////////
 
-    static const ssize_t
+    static const MyIndexType
         _bz_staticLengthCount = 0,
         _bz_dynamicLengthCount = 0,
         _bz_staticLength = 0;
@@ -206,7 +208,7 @@ public:
     { return first_ + i; }
 
     size_t _bz_suggestLength() const
-    {
+    { 
         return length();
     }
 
@@ -214,7 +216,7 @@ public:
     { return _bz_VecExpr<Range>(*this); }
 
 private:
-    ssize_t first_, last_, stride_;
+    MyIndexType first_, last_, stride_;
 };
 
 BZ_NAMESPACE_END

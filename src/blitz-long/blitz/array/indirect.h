@@ -29,6 +29,8 @@
 
 BZ_NAMESPACE(blitz)
 
+typedef ssize_t MyIndexType;
+
 template<typename T_array, typename T_index>
 class IndirectArray {
 
@@ -80,7 +82,7 @@ inline void applyOverSubdomain(const T_array& BZ_DEBUG_PARAM(array),
                                T_subdomain subdomain, T_expr expr)
 {
     BZPRECHECK(array.isInRange(subdomain),
-        "In indirection using an STL container of TinyVector<ssize_t,"
+        "In indirection using an STL container of TinyVector<MyIndexType,"
         << array.rank() << ">, one of the" << endl << "positions is out of"
         " range: " << endl << subdomain << endl
         << "Array lower bounds: " << array.lbound() << endl
@@ -159,15 +161,15 @@ inline void applyOverSubdomain(const T_array& BZ_DEBUG_PARAM(array),
     bool useUnitStride = arrayIter.isUnitStride(stripDim)
           && expr.isUnitStride(stripDim);
 
-    ssize_t lbound = subdomain.lbound(stripDim); 
-    ssize_t ubound = subdomain.ubound(stripDim);
+    MyIndexType lbound = subdomain.lbound(stripDim); 
+    MyIndexType ubound = subdomain.ubound(stripDim);
 
     if (useUnitStride)
     {
         T_numtype* restrict data = const_cast<T_numtype*>(arrayIter.data());
 
-        ssize_t length = ubound - lbound + 1;
-        for (ssize_t i=0; i < length; ++i)
+        MyIndexType length = ubound - lbound + 1;
+        for (MyIndexType i=0; i < length; ++i)
             *data++ = expr.fastRead(i);
     }
     else {
@@ -176,7 +178,7 @@ inline void applyOverSubdomain(const T_array& BZ_DEBUG_PARAM(array),
     arrayIter.loadStride(stripDim);
     expr.loadStride(stripDim);
 
-    for (ssize_t i=lbound; i <= ubound; ++i)
+    for (MyIndexType i=lbound; i <= ubound; ++i)
     {
         *const_cast<_bz_typename T_arrayiter::T_numtype*>(arrayIter.data()) 
             = *expr;
@@ -191,31 +193,31 @@ inline void applyOverSubdomain(const T_array& BZ_DEBUG_PARAM(array),
 
 // Global functions for cartesian product of index sets
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,2>,T_container,2>
+CartesianProduct<TinyVector<MyIndexType,2>,T_container,2>
 indexSet(const T_container& container0, const T_container& container1)
 {
-    return CartesianProduct<TinyVector<ssize_t,2>,T_container,2>(
+    return CartesianProduct<TinyVector<MyIndexType,2>,T_container,2>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1));
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,3>,T_container,3>
+CartesianProduct<TinyVector<MyIndexType,3>,T_container,3>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2)
 {
-    return CartesianProduct<TinyVector<ssize_t,3>,T_container,3>(
+    return CartesianProduct<TinyVector<MyIndexType,3>,T_container,3>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2));
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,4>,T_container,4>
+CartesianProduct<TinyVector<MyIndexType,4>,T_container,4>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3)
 {
-    return CartesianProduct<TinyVector<ssize_t,4>,T_container,4>(
+    return CartesianProduct<TinyVector<MyIndexType,4>,T_container,4>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -223,12 +225,12 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,5>,T_container,5>
+CartesianProduct<TinyVector<MyIndexType,5>,T_container,5>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4)
 {
-    return CartesianProduct<TinyVector<ssize_t,5>,T_container,5>(
+    return CartesianProduct<TinyVector<MyIndexType,5>,T_container,5>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -237,12 +239,12 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,6>,T_container,6>
+CartesianProduct<TinyVector<MyIndexType,6>,T_container,6>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4, const T_container& container5)
 {
-    return CartesianProduct<TinyVector<ssize_t,6>,T_container,6>(
+    return CartesianProduct<TinyVector<MyIndexType,6>,T_container,6>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -252,13 +254,13 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,7>,T_container,7>
+CartesianProduct<TinyVector<MyIndexType,7>,T_container,7>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4, const T_container& container5,
     const T_container& container6)
 {
-    return CartesianProduct<TinyVector<ssize_t,7>,T_container,7>(
+    return CartesianProduct<TinyVector<MyIndexType,7>,T_container,7>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -269,13 +271,13 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,8>,T_container,8>
+CartesianProduct<TinyVector<MyIndexType,8>,T_container,8>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4, const T_container& container5,
     const T_container& container6, const T_container& container7)
 {
-    return CartesianProduct<TinyVector<ssize_t,8>,T_container,8>(
+    return CartesianProduct<TinyVector<MyIndexType,8>,T_container,8>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -287,14 +289,14 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,9>,T_container,9>
+CartesianProduct<TinyVector<MyIndexType,9>,T_container,9>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4, const T_container& container5,
     const T_container& container6, const T_container& container7,
     const T_container& container8)
 {
-    return CartesianProduct<TinyVector<ssize_t,9>,T_container,9>(
+    return CartesianProduct<TinyVector<MyIndexType,9>,T_container,9>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -307,14 +309,14 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,10>,T_container,10>
+CartesianProduct<TinyVector<MyIndexType,10>,T_container,10>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4, const T_container& container5,
     const T_container& container6, const T_container& container7,
     const T_container& container8, const T_container& container9)
 {
-    return CartesianProduct<TinyVector<ssize_t,10>,T_container,10>(
+    return CartesianProduct<TinyVector<MyIndexType,10>,T_container,10>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -328,7 +330,7 @@ indexSet(const T_container& container0, const T_container& container1,
 }
 
 template<typename T_container>
-CartesianProduct<TinyVector<ssize_t,11>,T_container,11>
+CartesianProduct<TinyVector<MyIndexType,11>,T_container,11>
 indexSet(const T_container& container0, const T_container& container1,
     const T_container& container2, const T_container& container3,
     const T_container& container4, const T_container& container5,
@@ -336,7 +338,7 @@ indexSet(const T_container& container0, const T_container& container1,
     const T_container& container8, const T_container& container9,
     const T_container& container10)
 {
-    return CartesianProduct<TinyVector<ssize_t,11>,T_container,11>(
+    return CartesianProduct<TinyVector<MyIndexType,11>,T_container,11>(
         const_cast<T_container&>(container0), 
         const_cast<T_container&>(container1), 
         const_cast<T_container&>(container2),
@@ -361,18 +363,18 @@ indexSet(const T_container& container0, const T_container& container1,
 //      cp_findContainerType<int,deque<int>,deque<int>>::T_container 
 //        is deque<int>
 
-template<typename T1, typename T2, typename T3=ssize_t,
-         typename T4=ssize_t, typename T5=ssize_t,
-         typename T6=ssize_t, typename T7=ssize_t,
-         typename T8=ssize_t, typename T9=ssize_t,
-         typename T10=ssize_t, typename T11=ssize_t>
+template<typename T1, typename T2, typename T3=MyIndexType,
+         typename T4=MyIndexType, typename T5=MyIndexType,
+         typename T6=MyIndexType, typename T7=MyIndexType,
+         typename T8=MyIndexType, typename T9=MyIndexType,
+         typename T10=MyIndexType, typename T11=MyIndexType>
 struct cp_findContainerType {
     typedef T1 T_container;
 };
 
 template<typename T2, typename T3, typename T4, typename T5, typename T6,
          typename T7, typename T8, typename T9, typename T10, typename T11>
-struct cp_findContainerType<ssize_t,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11> {
+struct cp_findContainerType<MyIndexType,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11> {
     typedef _bz_typename
         cp_findContainerType<T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>::T_container
         T_container;
@@ -397,10 +399,10 @@ struct cp_traits {
 };
 
 template<typename T2>
-struct cp_traits<ssize_t,T2> {
+struct cp_traits<MyIndexType,T2> {
     typedef T2 T_container;
 
-    static T2 make(ssize_t x)
+    static T2 make(MyIndexType x)
     { 
         T2 singleton;
         singleton.push_back(x);
@@ -413,41 +415,41 @@ struct cp_traits<ssize_t,T2> {
 // specified.
 
 template<typename T1, typename T2>
-CartesianProduct<TinyVector<ssize_t,2>, _bz_typename 
+CartesianProduct<TinyVector<MyIndexType,2>, _bz_typename 
     cp_findContainerType<T1,T2>::T_container,2> 
 indexSet(const T1& c1, const T2& c2)
 {
     typedef _bz_typename cp_findContainerType<T1,T2>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,2>, T_container, 2>(
+    return CartesianProduct<TinyVector<MyIndexType,2>, T_container, 2>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2));
 }
 
 template<typename T1, typename T2, typename T3>
-CartesianProduct<TinyVector<ssize_t,3>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,3>, _bz_typename
     cp_findContainerType<T1,T2,T3>::T_container, 3>
 indexSet(const T1& c1, const T2& c2, const T3& c3)
 {
     typedef _bz_typename cp_findContainerType<T1,T2,T3>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,3>, T_container, 3>(
+    return CartesianProduct<TinyVector<MyIndexType,3>, T_container, 3>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3));
 }
 
 template<typename T1, typename T2, typename T3, typename T4>
-CartesianProduct<TinyVector<ssize_t,4>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,4>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4>::T_container, 4>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4)
 {
     typedef _bz_typename cp_findContainerType<T1,T2,T3,T4>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,4>, T_container, 4>(
+    return CartesianProduct<TinyVector<MyIndexType,4>, T_container, 4>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -455,14 +457,14 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4)
 }
 
 template<typename T1, typename T2, typename T3, typename T4, typename T5>
-CartesianProduct<TinyVector<ssize_t,5>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,5>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5>::T_container, 5>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5)
 {
     typedef _bz_typename cp_findContainerType<T1,T2,T3,T4,T5>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,5>, T_container, 5>(
+    return CartesianProduct<TinyVector<MyIndexType,5>, T_container, 5>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -472,7 +474,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5)
 
 template<typename T1, typename T2, typename T3, typename T4, typename T5,
          typename T6>
-CartesianProduct<TinyVector<ssize_t,6>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,6>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5,T6>::T_container, 6>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     const T6& c6)
@@ -480,7 +482,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     typedef _bz_typename cp_findContainerType<T1,T2,T3,T4,T5,T6>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,6>, T_container, 6>(
+    return CartesianProduct<TinyVector<MyIndexType,6>, T_container, 6>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -491,7 +493,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
 
 template<typename T1, typename T2, typename T3, typename T4, typename T5,
          typename T6, typename T7>
-CartesianProduct<TinyVector<ssize_t,7>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,7>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5,T6,T7>::T_container, 7>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     const T6& c6, const T7& c7)
@@ -500,7 +502,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
         cp_findContainerType<T1,T2,T3,T4,T5,T6,T7>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,7>, T_container, 7>(
+    return CartesianProduct<TinyVector<MyIndexType,7>, T_container, 7>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -512,7 +514,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
 
 template<typename T1, typename T2, typename T3, typename T4, typename T5,
          typename T6, typename T7, typename T8>
-CartesianProduct<TinyVector<ssize_t,8>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,8>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8>::T_container, 8>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     const T6& c6, const T7& c7, const T8& c8)
@@ -521,7 +523,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
         cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,8>, T_container, 8>(
+    return CartesianProduct<TinyVector<MyIndexType,8>, T_container, 8>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -534,7 +536,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
 
 template<typename T1, typename T2, typename T3, typename T4, typename T5,
          typename T6, typename T7, typename T8, typename T9>
-CartesianProduct<TinyVector<ssize_t,9>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,9>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8,T9>::T_container, 9>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     const T6& c6, const T7& c7, const T8& c8, const T9& c9)
@@ -543,7 +545,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
         cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8,T9>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,9>, T_container, 9>(
+    return CartesianProduct<TinyVector<MyIndexType,9>, T_container, 9>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -557,7 +559,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
 
 template<typename T1, typename T2, typename T3, typename T4, typename T5,
          typename T6, typename T7, typename T8, typename T9, typename T10>
-CartesianProduct<TinyVector<ssize_t,10>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,10>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>::T_container, 10>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     const T6& c6, const T7& c7, const T8& c8, const T9& c9, const T10& c10)
@@ -566,7 +568,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
         cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,10>, T_container, 10>(
+    return CartesianProduct<TinyVector<MyIndexType,10>, T_container, 10>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),
@@ -582,7 +584,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
 template<typename T1, typename T2, typename T3, typename T4, typename T5,
          typename T6, typename T7, typename T8, typename T9, typename T10,
          typename T11>
-CartesianProduct<TinyVector<ssize_t,11>, _bz_typename
+CartesianProduct<TinyVector<MyIndexType,11>, _bz_typename
     cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>::T_container, 11>
 indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
     const T6& c6, const T7& c7, const T8& c8, const T9& c9, const T10& c10,
@@ -592,7 +594,7 @@ indexSet(const T1& c1, const T2& c2, const T3& c3, const T4& c4, const T5& c5,
         cp_findContainerType<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>::T_container
         T_container;
 
-    return CartesianProduct<TinyVector<ssize_t,11>, T_container, 11>(
+    return CartesianProduct<TinyVector<MyIndexType,11>, T_container, 11>(
           cp_traits<T1,T_container>::make(c1),
           cp_traits<T2,T_container>::make(c2),
           cp_traits<T3,T_container>::make(c3),

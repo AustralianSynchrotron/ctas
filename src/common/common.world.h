@@ -252,7 +252,7 @@ bool parse_num(const std::string & in, T * val) {
              inval < std::numeric_limits<T>::min() ||
              inval > std::numeric_limits<T>::max() ) )
     warn(modname, "String \""+in+"\" contains integer value outside type range.");
-  else if (std::is_floating_point<T>() && (
+  else if (std::is_floating_point<T>() && inval != 0.0L && (
              inval > std::numeric_limits<T>::max() ||
              fabsl(inval) < std::numeric_limits<T>::min() ) )
     warn(modname, "String \""+in+"\" contains float-point value outside type range.");

@@ -112,32 +112,24 @@ public:
 
   const Binn<2> bnn;
   const Shape<2> ish;
-  static cl_program & binnProgram() {
-    if (clProgram)
-      return clProgram;
-    if (!CL_isReady())
-      throw_error(modname, "OpenCL is not functional.");
-    static const string oclsrc = {
-      #include "binn.cl.includeme"
-    };
-    clProgram = initProgram(oclsrc, clProgram, modname);
-    return clProgram;
-  };
 
 private:
 
   const Shape<2> osh;
-  static cl_program clProgram; // =0;
   static const string modname;
 
   class ForCLdev {
+
     const Shape<2> osh;
     CLenv & cl;
+    cl_program binnProgram = 0;
     CLkernel kernelBinn;
     CLmem clinarr;
     CLmem cloutarr;
     pthread_mutex_t locker;
+
   public:
+
     ForCLdev(CLenv & cl, const Shape<2> & ish, const Binn<2> bnn)
       : osh(bnn.apply(ish))
       , cl(cl)
@@ -146,9 +138,13 @@ private:
       if (!CL_isReady())
         throw_error(modname, "OpenCL is not functional.");
       try {
-        kernelBinn(binnProgram(), "binn2");
-        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY));
-        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY));
+        static const string oclsrc = {
+          #include "binn.cl.includeme"
+        };
+        binnProgram = initProgram(oclsrc, binnProgram, modname, cl.cont);
+        kernelBinn(binnProgram, "binn2");
+        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
+        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
         if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
           throw 1;
         kernelBinn.setArg(0, clinarr());
@@ -170,13 +166,13 @@ private:
     }
 
     bool apply(const Map & imap, Map & omap) {
-      if ( ! binnProgram() || ! CL_isReady() )
+      if ( ! binnProgram || ! CL_isReady() )
         throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
       if( pthread_mutex_trylock(&locker) )
         return false;
-      blitz2cl(imap, clinarr());
-      kernelBinn.exec(osh);
-      cl2blitz(cloutarr(), omap);
+      blitz2cl(imap, clinarr(), cl.que);
+      kernelBinn.exec(osh, cl.que);
+      cl2blitz(cloutarr(), omap, cl.que);
       pthread_mutex_unlock(&locker);
       return true;
     }
@@ -237,7 +233,6 @@ public:
 };
 
 const string Binn2D::modname = "BinnOCL";
-cl_program Binn2D::clProgram = 0;
 
 
 
@@ -351,11 +346,19 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
 
   #ifdef OPENCL_FOUND
 
+  if (!CL_isReady())
+    throw_error(modname, "OpenCL is not functional.");
+  static const string oclsrc = {
+    #include "binn.cl.includeme"
+  };
+  cl_program binnProgram = 0;
+  initProgram(oclsrc, binnProgram, modname);
+
   try {
 
     CLmem clinarr(blitz2cl(iarr, CL_MEM_READ_ONLY));
     CLmem cloutarr(clAllocArray<float>(oarr.size(), CL_MEM_WRITE_ONLY));
-    CLkernel kernelBinn3(Binn2D::binnProgram(), "binn3");
+    CLkernel kernelBinn3(binnProgram, "binn3");
 
     kernelBinn3.setArg(0, clinarr());
     kernelBinn3.setArg(1, cloutarr());
@@ -383,7 +386,7 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
     Map outslice(sosh);
     CLmem cloutslice(clAllocArray<float>(sosz));
     CLmem clinslice;
-    CLkernel kernelBinn2(Binn2D::binnProgram(), "binn2");
+    CLkernel kernelBinn2(binnProgram, "binn2");
 
     if (sbnn) {
       clinslice(clAllocArray<float>(size(sish), CL_MEM_READ_ONLY));
@@ -395,11 +398,11 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
       kernelBinn2.setArg(5, (cl_int) sish(0));
     }
 
-    CLkernel kernelAddTo(Binn2D::binnProgram(), "addToSecond");
+    CLkernel kernelAddTo(binnProgram, "addToSecond");
     kernelAddTo.setArg(0, cltmpslice());
     kernelAddTo.setArg(1, cloutslice());
 
-    CLkernel kernelMulti(Binn2D::binnProgram(), "multiplyArray");
+    CLkernel kernelMulti(binnProgram, "multiplyArray");
     kernelMulti.setArg(0, cloutslice());
     kernelMulti.setArg(1, (cl_float) zbnn);
 
@@ -424,6 +427,8 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
     }
 
   }
+
+  clReleaseProgram(binnProgram);
 
 #else // OPENCL_FOUND
 

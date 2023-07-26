@@ -537,7 +537,7 @@ int main(int argc, char *argv[]) {
     if (nofSplts > 1)
       filedescind =   filedescind.dtitle() + toString(spformat, curSplt)
                     + filedescind.ext() + filedescind.desc();
-    allOutSv.emplace_back(filedescind, Shape<3>(nofOuts, outShapes[curSplt](1), outShapes[curSplt](0)) );
+    allOutSv.emplace_back(filedescind, Shape<3>(nofOuts, outShapes[curSplt](0), outShapes[curSplt](1)) );
   }
 
   // Test or process and save

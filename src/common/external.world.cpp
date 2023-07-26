@@ -62,16 +62,6 @@ initImageIO(){
 static const bool imageIOinited = initImageIO();
 
 
-/*
-Path imageFile(const std::string & filedesc) {
-  return filedesc.substr(0 , filedesc.find(":"));
-}
-*/
-
-
-
-
-
 
 
 struct HDFdesc {

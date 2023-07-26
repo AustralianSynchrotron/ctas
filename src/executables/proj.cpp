@@ -414,7 +414,7 @@ public:
   }
 
   ~ProjInThread() {
-    auto dlnl = [&](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
+    auto dlnl = [](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
     for (auto celem : dnsrs)       dlnl(celem.second) ;
     for (auto celem : procs)       dlnl(celem.second) ;
     for (auto celem : allInMaps)   dlnl(celem.second) ;

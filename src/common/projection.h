@@ -88,7 +88,7 @@ public:
 };
 
 
-
+/*
 class Trans {
 
 public:
@@ -157,7 +157,7 @@ struct Stitch {
 };
 
 
-
+*/
 
 
 

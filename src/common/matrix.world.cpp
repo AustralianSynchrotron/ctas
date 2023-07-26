@@ -58,12 +58,11 @@ Crop<Dim>::Crop(const string & str) {
   if (str.empty())
     return;
   deque<string> subs = split(str, ",");
-  while ( Dim != subs.size() ) // adds missing dimensions.
+  while ( Dim > subs.size() ) // adds missing dimensions.
     subs.push_back("");
-  // // If above adding missing components is dangerous - replace it with the commened throw below.
-  //if ( Dim != subs.size() )
-  //  throw_error(modname, "Could not parse string \""+str+"\". Must contain " + toString(Dim)
-  //                       + " comma-delimited substrings, while " + toString(subs.size()) + " found.");
+  if ( Dim != subs.size() )
+    throw_error(modname, "Could not parse string \""+str+"\". Must contain " + toString(Dim)
+                         + " comma-delimited substrings, while " + toString(subs.size()) + " found.");
   for (uint curD=0; curD<Dim; ++curD)
     // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
     this->operator()(Dim-1-curD) = Segment(subs[curD]);

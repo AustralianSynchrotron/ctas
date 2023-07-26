@@ -137,6 +137,8 @@ std::ostream & operator<<(std::ostream & o, const std::vector<T> & x) {
 std::deque<std::string>
 split (const std::string & str, const std::string & delimiter);
 
+std::deque<std::string>
+splits (const std::string & str, const std::string & delimiters);
 
 
 
@@ -212,6 +214,52 @@ exit_on_error(const std::string & mod, const std::string & msg);
 /// @}
 
 
+template<class T,
+         class = typename std::enable_if< std::is_integral<T>::value &&
+                                          std::is_signed<T>::value >::type >
+long long int spec_conversion(const std::string & in, char ** tail) {
+  return strtoll(in.c_str(), tail, 0);
+}
+
+template<class T,
+         class = typename std::enable_if< std::is_integral<T>::value &&
+                                          std::is_unsigned<T>::value >::type >
+unsigned long long int spec_conversion(const std::string & in, char ** tail) {
+  return strtoull(in.c_str(), tail, 0);
+}
+
+template<class T,
+         class = typename std::enable_if<std::is_floating_point<T>::value>::type>
+long double spec_conversion(const std::string & in, char ** tail) {
+  return strtold(in.c_str(), tail);
+}
+
+template<class T,
+         class = typename std::enable_if<std::is_arithmetic<T>::value>::type >
+bool parse_num(const std::string & in, T * val) {
+  const std::string modname="numeric conversion";
+  char * tail = 0 ;
+  errno = 0;
+  auto inval = spec_conversion<T>(in, &tail);
+  *val = (T)(inval);
+  if (errno)
+    warn(modname, "Failed to convert string \""+in+"\" (errno: "+toString(errno)+")");
+  else if (tail == in.c_str())
+    warn(modname, "String \""+in+"\" does not represent a numeric value");
+  else if (tail && *tail)
+    warn(modname, "String \""+in+"\" contains tail \"" + std::string(tail) + "\".");
+  else if (std::is_integral<T>() && (
+             inval < std::numeric_limits<T>::min() ||
+             inval > std::numeric_limits<T>::max() ) )
+    warn(modname, "String \""+in+"\" contains integer value outside type range.");
+  else if (std::is_floating_point<T>() && (
+             inval > std::numeric_limits<T>::max() ||
+             fabsl(inval) < std::numeric_limits<T>::min() ) )
+    warn(modname, "String \""+in+"\" contains float-point value outside type range.");
+  else
+    return true;
+  return false;
+}
 
 
 

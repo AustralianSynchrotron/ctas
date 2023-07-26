@@ -161,8 +161,8 @@ private:
   ssize_t _to; // 0 or negative stands for "from the end"
   void check_throw();
 public:
-  Segment(ssize_t _from, ssize_t _to) : _from(_from), _to(_to) {check_throw();}
-  Segment(const std::string & str=std::string());
+  Segment(ssize_t _from=0, ssize_t _to=0) : _from(_from), _to(_to) {check_throw();}
+  Segment(const std::string & str);
   ssize_t begin() const {return _from;}
   ssize_t end(size_t orgsz=0) const { return _from + size(orgsz); }
   ssize_t size(size_t orgsz=0) const;
@@ -284,7 +284,7 @@ int _conversion (PointF<Dim>* _val, const std::string & in) {
   float flt;
   for (uint curD=0; curD<Dim; ++curD) {
     const std::string & curStr = subs.at(curD);
-    if ( 1 != sscanf( curStr.c_str(), "%f", &flt ) ) {
+    if ( ! parse_num(curStr, &flt) ) {
       warn(modname, "Could not parse string \""+curStr+"\" as float point value."
                     " for dimension " + toString(curD) + ".");
       return -1;

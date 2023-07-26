@@ -6,26 +6,25 @@ using namespace std;
 
 const string Segment::modname = "Segment";
 
-Segment::Segment(const string & str) : _from(0), _to(0) {
+Segment::Segment(const string & str) : Segment() {
+  if (!str.size())
+    return;
   static const string spltChars = "+-:";
-  const size_t splt = str.find_first_of(spltChars);
-  const string fromS = str.substr(0, splt);
-  const string toS = splt==string::npos
-    ?  string() : str.substr(splt+1, string::npos);
-  size_t scorto;
-  try {
-    _from = fromS.empty() ? 0 : stoul(fromS);
-    scorto = toS.empty() ? 0 : stoul(toS);
-  } catch (...) {
+  deque<string> subs = splits(str, spltChars);
+  if (1==subs.size())
+    subs.push_back("");
+  if ( 2 != subs.size() || ( ! subs[0].empty() && ! parse_num(subs[0], &_from) )
+                        || ( ! subs[1].empty() && ! parse_num(subs[1], &_to) ) )
     throw_error(modname, "Could not parse string \""+str+"\"."
                          " Must follow pattern [UINT][<"+spltChars+">UINT].");
-  }
-  switch (splt==string::npos ? '-' : str[splt]) {
-    case '+': _to = _from+scorto; break;
-    case ':': _to = scorto; break;
-    case '-': _to = -scorto; break;
-    default: throw_bug(modname + " parsing of \"" + str + "\".");
-  }
+  const size_t splt = str.find_first_of(spltChars);
+  const char spltUsed = splt==string::npos ? '-' : str[splt];
+  if ('+'==spltUsed)
+    _to += _from;
+  else if ('-'==spltUsed)
+    _to *= -1;
+  else if (':'!=spltUsed)
+    throw_bug(modname + " parsing of \"" + str + "\".");
   check_throw();
 }
 
@@ -253,7 +252,7 @@ Binn<Dim>::Binn(const string & str)
       const deque<string> subs = split(str, ",");
       int sbnn;
       Binn toRet;
-      if ( 1 == subs.size() &&  1 != sscanf( str.c_str(), "%i", &sbnn ) )
+      if ( 1 == subs.size() && !parse_num(str, &sbnn ) )
         throw_error(modname, "Could not parse string \""+str+"\" as integer number.");
       if ( 1 != subs.size()  &&  Dim != subs.size() )
         throw_error(modname, "Could not parse string \""+str+"\". Must contain single or " + toString(Dim)
@@ -263,7 +262,7 @@ Binn<Dim>::Binn(const string & str)
           const string & curStr = subs.at(curD);
           if (curStr.empty())
             sbnn=1;
-          else if ( 1 != sscanf( curStr.c_str(), "%i", &sbnn ) )
+          else if ( ! parse_num(curStr, &sbnn ) )
             throw_error(modname, "Could not parse string \""+curStr+"\" as integer number"
                                  " for dimension " + toString(curD) + ".");
         }

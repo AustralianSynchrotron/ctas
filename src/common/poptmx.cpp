@@ -37,6 +37,9 @@
 #include<string.h>
 #include<stdlib.h>
 #include<stdio.h>
+#include<cstdlib>
+#include<cmath>
+
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -1321,68 +1324,53 @@ type_desc(unsigned char*){
 
 
 
-template<class BClass> static inline int
-_int_conversion(BClass * _val, const string & in) {
+template<class T,
+         class = typename std::enable_if< std::is_integral<T>::value &&
+                                          std::is_signed<T>::value >::type >
+long long int spec_conversion(const std::string & in, char ** tail) {
+  return strtoll(in.c_str(), tail, 0);
+}
 
-  char * tail = 0 ;
+template<class T,
+         class = typename std::enable_if< std::is_integral<T>::value &&
+                                          std::is_unsigned<T>::value >::type >
+unsigned long long int spec_conversion(const std::string & in, char ** tail) {
+  return strtoull(in.c_str(), tail, 0);
+}
 
-  errno = 0;
-  long int inval = strtol(in.c_str(), &tail, 0);
-  if (errno) {
-    warn_parse(type_desc(_val), in, "value overflow");
-    return -1;
-  }
-  if (tail == in.c_str()) {
-    warn_parse(type_desc(_val), in, "does not represent a short value");
-    return -1;
-  }
-
-  if (*tail != 0)
-    warn_parse(type_desc(_val), in, "contains tail \"" + string(tail) + "\"");
-
-  if (inval < (numeric_limits<BClass>::min)() ||
-      inval > (numeric_limits<BClass>::max)() ) {
-    warn_parse(type_desc(_val), in,
-               "parsed integer value is out of the type range");
-    return -1;
-  }
-
-  *_val = (BClass) inval;
-  return 1;
+template<class T,
+         class = typename std::enable_if<std::is_floating_point<T>::value>::type>
+long double spec_conversion(const std::string & in, char ** tail) {
+  return strtold(in.c_str(), tail);
 }
 
 
-template<class BClass> static inline int
-_uint_conversion(BClass * _val, const string & in) {
-
+template<class T,
+         class = typename std::enable_if<std::is_arithmetic<T>::value>::type >
+bool num_conversion(T * _val, const std::string & in) {
+  const std::string modname="numeric conversion";
   char * tail = 0 ;
-
   errno = 0;
-  unsigned long int inval = strtoul(in.c_str(), &tail, 0);
-  if (errno) {
-    warn_parse(type_desc(_val), in, "value overflow");
-    return -1;
-  }
-  if (tail == in.c_str()) {
-    warn_parse(type_desc(_val), in, "does not represent a short value");
-    return -1;
-  }
-
-  if (*tail != 0)
-    warn_parse(type_desc(_val), in, "contains tail \"" + string(tail) + "\"");
-
-  if (inval < (numeric_limits<BClass>::min)() ||
-      inval > (numeric_limits<BClass>::max)() ) {
-    warn_parse(type_desc(_val), in,
-               "parsed integer value is out of the type range");
-    return -1;
-  }
-
-  *_val = (BClass) inval;
-  return 1;
+  auto inval = spec_conversion<T>(in, &tail);
+  *_val = (T)(inval);
+  if (errno)
+    warn(modname, "Failed to convert string \""+in+"\": value overflow");
+  else if (tail == in.c_str())
+    warn(modname, "String \""+in+"\" does not represent a numeric value");
+  else if (tail && *tail)
+    warn(modname, "String \""+in+"\" contains tail \"" + std::string(tail) + "\".");
+  else if (std::is_integral<T>() && (
+             inval < std::numeric_limits<T>::min() ||
+             inval > std::numeric_limits<T>::max() ) )
+    warn(modname, "String \""+in+"\" contains integer value outside type range.");
+  else if (std::is_floating_point<T>() && (
+             inval > std::numeric_limits<T>::max() ||
+             fabsl(inval) < std::numeric_limits<T>::min() ) )
+    warn(modname, "String \""+in+"\" contains float-point value outside type range.");
+  else
+    return true;
+  return false;
 }
-
-
 
 
 
@@ -1395,7 +1383,7 @@ _uint_conversion(BClass * _val, const string & in) {
 ///
 int
 _conversion(short * _val, const string & in){
-  return _int_conversion(_val,in);
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1416,7 +1404,7 @@ type_desc(short*){
 ///
 int
 _conversion(unsigned short * _val, const string & in){
-  return _uint_conversion(_val,in);
+  return num_conversion(_val,in);
 }
 
 /// Prints type name.
@@ -1439,7 +1427,7 @@ type_desc(unsigned short*){
 ///
 int
 _conversion(int * _val, const string & in){
-  return _int_conversion(_val,in);
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1461,7 +1449,7 @@ type_desc(int*){
 ///
 int
 _conversion(unsigned int * _val, const string & in){
-  return _uint_conversion(_val,in);
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1485,7 +1473,7 @@ type_desc(unsigned int*){
 ///
 int
 _conversion(long* _val, const string & in){
-  return _int_conversion(_val,in);
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1506,7 +1494,7 @@ type_desc(long*){
 ///
 int
 _conversion(unsigned long* _val, const string & in){
-  return _uint_conversion(_val,in);
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1528,33 +1516,7 @@ type_desc(unsigned long*){
 ///
 int
 _conversion(long long* _val, const string & in){
-
-  char * tail = 0 ;
-
-  errno = 0;
-  long long int inval = strtoll(in.c_str(), &tail, 0);
-  if (errno) {
-    warn_parse("long long", in, "value overflow");
-    return -1;
-  }
-  if (tail == in.c_str()) {
-    warn_parse("long long", in, "does not represent an integer");
-    return -1;
-  }
-
-  if (*tail != 0)
-    warn_parse("long long", in, "contains tail \"" + string(tail) + "\"");
-
-  if (inval < numeric_limits<long long>::min() ||
-      inval > numeric_limits<long long>::max() ) {
-    warn_parse("long long", in,
-               "parsed integer _value is out of the type range");
-    return -1;
-  }
-
-  *_val = (long long) inval;
-  return 1;
-
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1576,33 +1538,7 @@ type_desc(long long*){
 ///
 int
 _conversion(unsigned long long* _val, const string & in){
-
-  char * tail = 0 ;
-
-  errno = 0;
-  unsigned long long int inval = strtoull(in.c_str(), &tail, 0);
-  if (errno) {
-    warn_parse("unsigned long long", in, "value overflow");
-    return -1;
-  }
-  if (tail == in.c_str()) {
-    warn_parse("unsigned long long", in, "does not represent an integer");
-    return -1;
-  }
-
-  if (*tail != 0)
-    warn_parse("unsigned long long", in, "contains tail \"" + string(tail) + "\"");
-
-  if (inval < numeric_limits<unsigned long long>::min() ||
-      inval > numeric_limits<unsigned long long>::max() ) {
-    warn_parse("unsigned long long", in,
-               "parsed integer _value is out of the type range");
-    return -1;
-  }
-
-  *_val = (unsigned long long) inval;
-  return 1;
-
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1625,26 +1561,7 @@ type_desc(unsigned long long*){
 ///
 int
 _conversion(float* _val, const string & in){
-
-  char * tail = 0 ;
-
-  errno = 0;
-  double inval = strtod (in.c_str(), &tail);
-  if (errno) {
-    warn_parse("float", in, "value overflow");
-    return -1;
-  }
-  if (tail == in.c_str()) {
-    warn_parse("float", in, "does not represent a float number");
-    return -1;
-  }
-
-  if (*tail != 0)
-    warn_parse("float", in, "contains tail \"" + string(tail) + "\"");
-
-  *_val = (float) inval;
-  return 1;
-
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.
@@ -1665,26 +1582,7 @@ type_desc(float*){
 ///
 int
 _conversion(double* _val, const string & in){
-
-  char * tail = 0 ;
-
-  errno = 0;
-  double inval = strtod (in.c_str(), &tail);
-  if (errno) {
-    warn_parse("double", in, "value overflow");
-    return -1;
-  }
-  if (tail == in.c_str()) {
-    warn_parse("double", in, "does not represent a double number");
-    return -1;
-  }
-
-  if (*tail != 0)
-    warn_parse("double", in, "contains tail \"" + string(tail) + "\"");
-
-  *_val = (double) inval;
-  return 1;
-
+  return num_conversion(_val, in);
 }
 
 /// Prints type name.

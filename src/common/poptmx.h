@@ -394,14 +394,7 @@ public:
 
 
 
-
-
-
-
-
-
-
-int POPTMX_API _conversion (bool* _val, const std::string &);
+int POPTMX_API _conversion(bool* _val, const std::string &);
 std::string POPTMX_API type_desc (bool*);
 
 int POPTMX_API _conversion (std::string * _val, const std::string & in);

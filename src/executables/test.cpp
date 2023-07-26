@@ -77,14 +77,26 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
+  bool ret;
+  float fval;
+  ret = parse_num(args.in_name, &fval);
+  cout << ret << " " << fval << "\n";
+
+  int ival;
+  ret = parse_num(args.in_name, &ival);
+  cout << ret << " " << ival << "\n";
+
+  unsigned uval;
+  ret = parse_num(args.in_name, &uval);
+  cout << ret << " " << uval << "\n";
 
 
 
+  /*
   Map arr;
   ReadImage(args.in_name, arr);
   Map mrr;
   ReadImage(args.ms_name, mrr);
-  /*
   Trans trans(arr.shape(), args.angle, Crop(), PointF<2>(), mrr);
   prdn(trans.ish);
   prdn(Shape(trans.afterRotMask.shape()));

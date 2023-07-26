@@ -196,6 +196,18 @@ deque<string> split (const string & str, const string & delimiter) {
   return res;
 }
 
+deque<string> splits (const string & str, const string & delimiters) {
+  size_t pos_start = 0, pos_end;
+  deque<string> res;
+  while ((pos_end = str.find_first_of(delimiters, pos_start)) != string::npos) {
+    res.push_back (str.substr(pos_start, pos_end - pos_start));
+    pos_start = pos_end + 1;
+  }
+  res.push_back (str.substr (pos_start));
+  return res;
+}
+
+
 
 
 #ifdef _WIN32

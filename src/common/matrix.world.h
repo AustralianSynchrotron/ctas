@@ -224,6 +224,8 @@ public:
   Binn(const std::string & str);
   ~Binn() { if (guts) specialize(); }
   Binn<Dim> & operator=(const Binn & other);
+  //bool operator==(const Binn & other) {return (blitz::TinyVector<ssize_t,Dim>)other == (blitz::TinyVector<ssize_t,Dim>)(*this); }
+  //bool operator!=(const Binn & other) {return (blitz::TinyVector<ssize_t,Dim>)other != (blitz::TinyVector<ssize_t,Dim>)(*this); }
   explicit operator bool() const { return std::any_of( whole(*this), [](const ssize_t & bnn){return bnn != 1;}); }
   void specialize(const Shape<Dim> ish = Shape<Dim>()) const;
   Shape<Dim> apply(const Shape<Dim> & ish) const ;

@@ -309,7 +309,7 @@ template<> void Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) con
 template<> void Binn<2>::specialize(const Shape<2> ish) const {
   Binn2D * proc = (Binn2D*) guts;
   if (proc) {
-    if ( proc->ish == ish && proc->bnn != (*this) )
+    if ( proc->ish == ish && proc->bnn == (*this) )
       return;
     else {
       delete proc;

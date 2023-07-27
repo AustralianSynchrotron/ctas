@@ -138,7 +138,7 @@ class SliceInThread : public InThread {
     CLmem resmem;
     CLmem addmem;
     pthread_mutex_t locker;
-    static cl_program binnProgram;
+    CLprogram binnProgram;
     CLkernel addKernel;
     CLkernel divKernel;
 
@@ -157,8 +157,7 @@ class SliceInThread : public InThread {
       static const string oclsrc = {
         #include "../common/binn.cl.includeme"
       };
-      binnProgram = initProgram( oclsrc, binnProgram, "Binn on OCL");
-
+      binnProgram(oclsrc);
       resmem(clAllocArray<float>(size(mish)));
       addmem(clAllocArray<float>(size(mish), CL_MEM_READ_ONLY) );
       addKernel(binnProgram, "addToSecond");
@@ -168,6 +167,7 @@ class SliceInThread : public InThread {
       divKernel(binnProgram, "multiplyArray");
       divKernel.setArg(0, resmem());
       divKernel.setArg(1, (float)1.0/bn);
+
     }
 
     ~CLacc() {
@@ -325,9 +325,6 @@ public:
 
 
 };
-cl_program SliceInThread::CLacc::binnProgram = 0;
-
-
 
 
 /// \MAIN{projection}

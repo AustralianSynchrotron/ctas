@@ -312,24 +312,15 @@ bool CTrec::ForCLdev::checkReady() {
     return false;
 
   try {
-
-    static const std::string oclsrc = {
-      #include "ct.cl.includeme"
-    };
-    program = initProgram( oclsrc, program, modname, cl.cont);
-
     clSlice(clAllocArray<float>(size(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
     clSino(clAllocArray<float>(size(parent.ish), CL_MEM_READ_ONLY, cl.cont));
     clAngles(blitz2cl(parent.cossins, CL_MEM_READ_ONLY, cl.que));
-
-    kernelSino(program, "fbp");
     kernelSino.setArg(0, clSino());
     kernelSino.setArg(1, clSlice());
     kernelSino.setArg(2, (cl_int) parent.ish(1));
     kernelSino.setArg(3, (cl_int) parent.ish(0));
     kernelSino.setArg(4, clAngles());
     kernelSino.setArg(6, recCof);
-
   }  catch (...)  {
     kernelSino.free();
     clAngles.free();
@@ -408,6 +399,9 @@ CTrec::ForCLdev::repeat(Map & slice, float center) {
   return toRet;
 }
 
+const string CTrec::ForCLdev::oclsrc({
+  #include "ct.cl.includeme"
+});
 
 
 const string CTrec::modname = "reconstruction";

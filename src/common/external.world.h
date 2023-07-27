@@ -265,10 +265,12 @@ public:
 class ImageProc {
 
 private:
+
   const Shape<2> ish;
   const float ang;
   const Crop<2> crp;
   const Binn<2> bnn;
+  BinnProc bnnProc;
   const float reNAN;
   Map inmap;
   Map rotmap;
@@ -277,10 +279,8 @@ private:
 
 public:
 
-  ImageProc(float _ang, const Crop<2> & _crp, const Binn<2> & _bnn, const Shape<2> & _ish, float _reNAN=NAN);
-  ImageProc(const ImageProc & other)
-    : ImageProc(other.ang, other.crp, other.bnn, other.ish)
-  {}
+  ImageProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN=NAN);
+  ImageProc(const ImageProc & other);
 
   void read(const ImagePath & filename, Map & storage);
   void read(ReadVolumeBySlice & volRd, uint sl, Map & storage);

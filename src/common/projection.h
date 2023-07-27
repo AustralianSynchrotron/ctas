@@ -44,7 +44,6 @@ struct StitchRules {
 class ProcProj {
 
   static const std::string modname;
-  static cl_program oclProgram;
 
   // shared, all const except in the constructor.
   const StitchRules & strl;
@@ -65,6 +64,7 @@ class ProcProj {
   Map stitched, final;
   std::deque<Map> res; // will all reference final
   bool doGapsFill;
+  CLprogram oclProgram;
   CLkernel gaussCL;
   CLmem iomCL;
 

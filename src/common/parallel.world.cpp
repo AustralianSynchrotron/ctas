@@ -383,104 +383,109 @@ bool CL_intialize() {
 
 
 
+CLprogram & CLprogram::operator()(const string & source, cl_context context) {
 
-cl_program initProgram(const string & src, cl_context context) {
-
-  if ( ! CL_intialize() )
-    return 0;
-
-  const string modname = "OpenCL program";
-  cl_int err = CL_SUCCESS;
-  const size_t length = src.size();
-  const char * csrc = src.data();
-
-  cl_uint numdev;
-  err = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &numdev, 0);
-  if (err != CL_SUCCESS) {
-    warn(modname, "Could not get number of OpenCL devices from context: " + toString(err) );
-    return 0;
-  }
-  if (numdev != 1) {
-    warn(modname, "Context with non-single device.");
-    return 0;
-  }
-  cl_device_id cldev;
-  err = clGetContextInfo(context, CL_CONTEXT_DEVICES, sizeof(cl_device_id), &cldev, 0);
-  if (err != CL_SUCCESS) {
-    warn(modname, "Could not get OpenCL device from context: " + toString(err) );
-    return 0;
-  }
-
-
-  cl_program program = clCreateProgramWithSource(context, 1, &csrc, &length, &err);
-  if (err != CL_SUCCESS) {
-    warn(modname, "Could not load OpenCL program: " + toString(err) );
-    return 0;
-  }
-
-  err = clBuildProgram( program, 0, 0, "", 0, 0);
-  if (err != CL_SUCCESS) {
-
-    warn(modname, (string) "Could not build OpenCL program: " + toString(err) +
-    ". More detailsd below:" );
-
-    cl_build_status stat;
-    err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_STATUS,
-                                sizeof(cl_build_status), &stat, 0);
-    if (err != CL_SUCCESS)
-      warn(modname, "Could not get OpenCL program build status: " + toString(err) );
-    else
-      warn(modname, "   Build status: " + toString(stat));
-
-    size_t len=0;
-    err=clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_OPTIONS, 0, 0, &len);
-    char * buildOptions = (char*) calloc(len, sizeof(char));
-    if (buildOptions)
-      err=clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_OPTIONS, len, buildOptions, 0);
-    if (err != CL_SUCCESS)
-      warn(modname, "Could not get OpenCL program build options: " + toString(err) );
-    else
-      warn(modname, "   Build options: \"" + string(buildOptions, len) + "\"");
-    if (buildOptions)
-      free(buildOptions);
-
-    err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_LOG, 0, 0, &len);
-    char * buildLog = (char*) calloc(len, sizeof(char));
-    if (buildLog)
-      err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_LOG, len, buildLog, 0);
-    if (err != CL_SUCCESS)
-      warn(modname, "Could not get OpenCL program build log: " + toString(err) );
-    else
-      warn(modname, "   Build log:\n" + string(buildLog, len));
-    if (buildLog)
-      free(buildLog);
-
-    warn(modname, "\n");
-
-    return 0;
-
-  }
-
-  return program;
-
-}
-
-
-cl_program & initProgram(const string & src, cl_program & program, const string & modname, cl_context context) {
+  static const string modname = "OpenCL program";
   static pthread_mutex_t protectProgramCompilation = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_lock(&protectProgramCompilation);
-  if (!program)
-    program = initProgram(src, context);
+
+  prog = [&source,context] () -> cl_program {
+
+    if ( ! CL_intialize() )
+      return 0;
+
+    cl_int err = CL_SUCCESS;
+    const size_t length = source.size();
+    const char * csrc = source.data();
+
+    cl_uint numdev;
+    err = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(cl_uint), &numdev, 0);
+    if (err != CL_SUCCESS) {
+      warn(modname, "Could not get number of OpenCL devices from context: " + toString(err) );
+      return 0;
+    }
+    if (numdev != 1) {
+      warn(modname, "Context with non-single device.");
+      return 0;
+    }
+    cl_device_id cldev;
+    err = clGetContextInfo(context, CL_CONTEXT_DEVICES, sizeof(cl_device_id), &cldev, 0);
+    if (err != CL_SUCCESS) {
+      warn(modname, "Could not get OpenCL device from context: " + toString(err) );
+      return 0;
+    }
+
+
+    cl_program program = clCreateProgramWithSource(context, 1, &csrc, &length, &err);
+    if (err != CL_SUCCESS) {
+      warn(modname, "Could not load OpenCL program: " + toString(err) );
+      return 0;
+    }
+
+    err = clBuildProgram( program, 0, 0, "", 0, 0);
+    if (err != CL_SUCCESS) {
+
+      warn(modname, (string) "Could not build OpenCL program: " + toString(err) +
+      ". More detailsd below:" );
+
+      cl_build_status stat;
+      err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_STATUS,
+                                  sizeof(cl_build_status), &stat, 0);
+      if (err != CL_SUCCESS)
+        warn(modname, "Could not get OpenCL program build status: " + toString(err) );
+      else
+        warn(modname, "   Build status: " + toString(stat));
+
+      size_t len=0;
+      err=clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_OPTIONS, 0, 0, &len);
+      char * buildOptions = (char*) calloc(len, sizeof(char));
+      if (buildOptions)
+        err=clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_OPTIONS, len, buildOptions, 0);
+      if (err != CL_SUCCESS)
+        warn(modname, "Could not get OpenCL program build options: " + toString(err) );
+      else
+        warn(modname, "   Build options: \"" + string(buildOptions, len) + "\"");
+      if (buildOptions)
+        ::free(buildOptions);
+
+      err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_LOG, 0, 0, &len);
+      char * buildLog = (char*) calloc(len, sizeof(char));
+      if (buildLog)
+        err = clGetProgramBuildInfo(program, cldev, CL_PROGRAM_BUILD_LOG, len, buildLog, 0);
+      if (err != CL_SUCCESS)
+        warn(modname, "Could not get OpenCL program build log: " + toString(err) );
+      else
+        warn(modname, "   Build log:\n" + string(buildLog, len));
+      if (buildLog)
+        ::free(buildLog);
+
+      warn(modname, "\n");
+
+      return 0;
+
+    }
+
+    return program;
+
+  }();
+
   pthread_mutex_unlock(&protectProgramCompilation);
-  if (!program)
-    throw_error(modname, "Failed to compile OpenCL program.");
-  return program;
+  if (!prog)
+    throw_error(modname, "Failed to compile.");
+  return *this;
+
+}
+
+void CLprogram::free() {
+  cl_program toDel = prog;
+  prog=0;
+  if (toDel)
+    clReleaseProgram(toDel);
 }
 
 
 
-
-CLkernel & CLkernel::operator()(cl_program program, const std::string & name) {
+CLkernel & CLkernel::operator()(const CLprogram & program, const std::string & name) {
   if ( ! program || name.empty() ) {
     if (kern)
       clReleaseKernel(kern) ;
@@ -488,7 +493,7 @@ CLkernel & CLkernel::operator()(cl_program program, const std::string & name) {
     return *this;
   }
   cl_int clerr;
-  kern = clCreateKernel ( program, name.c_str(), &clerr);
+  kern = clCreateKernel ( program(), name.c_str(), &clerr);
   if (clerr != CL_SUCCESS) {
     kern = 0;
     throw_error("CLkernel",

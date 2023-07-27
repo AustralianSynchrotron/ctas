@@ -134,16 +134,34 @@ public:
 };
 
 
+
+class CLprogram {
+    cl_program prog = 0;
+public:
+    inline CLprogram() {};
+    inline explicit CLprogram(const std::string & source, cl_context context=CL_context()) {
+      this->operator()(source, context);
+    };
+    inline ~CLprogram() {free();}
+    CLprogram & operator()(const std::string & source, cl_context context=CL_context());
+    inline const cl_program & operator()() const { return prog; }
+    inline operator bool() const { return prog; }
+    void free();
+};
+
+
 class CLkernel {
-  cl_kernel kern;
+  cl_kernel kern = 0;
 private:
   cl_int exec(size_t dims, size_t * sizes, cl_command_queue clque) const;
 public:
-  inline CLkernel(cl_program program=0, const std::string & _name = std::string())
-    : kern(0) { this->operator()(program, _name); }
+  inline CLkernel() {}
+  inline CLkernel(const CLprogram & program, const std::string & _name = std::string()){
+    this->operator()(program, _name);
+  }
   inline ~CLkernel() { free(); }
   void free() {if (kern) clReleaseKernel(kern) ; kern=0;}
-  CLkernel & operator()(cl_program program=0, const std::string & name = std::string());
+  CLkernel & operator()(const CLprogram & program, const std::string & name = std::string());
   inline operator bool() const { return kern; }
   std::string name() const;
   cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const { return exec(1, &size, clque);}
@@ -162,11 +180,6 @@ public:
   }
 };
 
-
-
-
-cl_program & initProgram( const std::string & src, cl_program & program
-                        , const std::string & modname, cl_context context=CL_context());
 
 
 template <typename T>

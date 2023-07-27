@@ -270,9 +270,10 @@ private:
 
   class ForCLdev {
 
+    static const std::string oclsrc;
     CLenv & cl;
     const CTrec & parent;
-    cl_program program;
+    CLprogram program;
     CLkernel kernelSino;
     CLmem clSlice;
     CLmem clSino;
@@ -284,11 +285,11 @@ private:
 
   public:
 
-    ForCLdev(CLenv & _cl, const CTrec & _parent)
-      : cl(_cl)
+    ForCLdev(CLenv & cl, const CTrec & _parent)
+      : cl(cl)
       , parent(_parent)
-      , program(0)
-      , kernelSino(0)
+      , program(oclsrc, cl.cont)
+      , kernelSino(program, "fbp")
       , clAngles(0)
       , clSino(0)
       , clSlice(0)

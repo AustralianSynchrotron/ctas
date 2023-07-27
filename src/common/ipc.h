@@ -130,14 +130,15 @@ private:
     CLenv & cl;
     CMap cin;
     CLmem clmid;                 ///< Internally used array for the zero-padded data.
-    cl_program oclProgram;
+    CLprogram oclProgram;
     CLkernel kernelApplyPhsFilter;
     clfftPlanHandle clfft_plan;
     CLmem clfftTmpBuff;
     cl_int clfftExec(clfftDirection dir) const;
     pthread_mutex_t locker;
+    static const std::string oclsrc;
   public:
-    ForCLdev(CLenv & _cl, const Shape<2> & _sh, float _d2b);
+    ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b);
     ~ForCLdev();
     bool extract(Map & in);
   };

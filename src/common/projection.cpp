@@ -98,7 +98,6 @@ Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
 
 
 const string ProcProj::modname="ProcProj";
-cl_program ProcProj::oclProgram = 0;
 
 
 void ProcProj::initCL() {
@@ -109,7 +108,7 @@ void ProcProj::initCL() {
   static const string oclsrc = {
     #include "projection.cl.includeme"
   };
-  oclProgram = initProgram(oclsrc, oclProgram, "Projection in OCL");
+  oclProgram(oclsrc);
 
   iomCL(clAllocArray<float>(mskF.size()));
   if (!maskCL())

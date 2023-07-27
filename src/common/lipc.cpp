@@ -66,14 +66,15 @@ const string IPCprocess::modname = "IPC process";	///< Module name.
 
 
 
-IPCprocess::ForCLdev::ForCLdev(CLenv & _cl, const Shape<2> & _sh, float _d2b)
-  : sh(_sh)
+IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b)
+  : sh(sh)
   , msh(closest_factorable(sh(0), {2,3,5,7}),
         closest_factorable(sh(1), {2,3,5,7}))
-  , d2b(_d2b)
-  , cl(_cl)
+  , d2b(d2b)
+  , cl(cl)
   , clmid(0)
-  , oclProgram(0)
+  , oclProgram(oclsrc, cl.cont)
+  , kernelApplyPhsFilter(oclProgram, "applyPhsFilter")
   , clfft_plan(0)
   , clfftTmpBuff(0)
   , locker(PTHREAD_MUTEX_INITIALIZER)
@@ -111,18 +112,7 @@ IPCprocess::ForCLdev::extract(Map & in) {
     if ( !clfft_plan ) {
 
       cin.resize(msh);
-      const string oclSource = {
-        #include "ipc.cl.includeme"
-      };
-      try {
-        oclProgram = initProgram(oclSource, oclProgram, "IPC on OCL", cl.cont);
-      } catch (...) {
-        warn(modname, "Failed to compile OCL program for IPC processing.");
-        return false;
-      }
-
       clmid(clAllocArray<float>(size(msh)*2, cl.cont));
-      kernelApplyPhsFilter(oclProgram, "applyPhsFilter");
       kernelApplyPhsFilter.setArg(0, clmid());
       kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
       kernelApplyPhsFilter.setArg(2, (cl_int) msh(0));
@@ -182,6 +172,10 @@ cl_int IPCprocess::ForCLdev::clfftExec(clfftDirection dir) const {
   return err;
 }
 
+
+const string IPCprocess::ForCLdev::oclsrc({
+  #include "ipc.cl.includeme"
+});
 
 
 

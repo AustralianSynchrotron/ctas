@@ -208,31 +208,23 @@ int _conversion (Crop<Dim>* _val, const std::string & in) {
 extern const std::string CropOptionDesc;
 
 
-
 template<int Dim>
 class Binn : public blitz::TinyVector<ssize_t,Dim> {
-  using blitz::TinyVector<ssize_t,Dim>::TinyVector; // negative flips
+  using blitz::TinyVector<ssize_t,Dim>::TinyVector;
 private:
   static const std::string modname;
-  mutable void * guts = 0;
   Binn<Dim> flipped() const;
   void subapply(const ArrayF<Dim> & iarr, ArrayF<Dim> & oarr) const;
-  bool flipOnly() const { return std::all_of( whole(*this), [](const ssize_t & bnn){return std::abs(bnn) == 1;}); }
 public:
   Binn() : blitz::TinyVector<ssize_t,Dim>(1) {}
-  Binn(const blitz::TinyVector<ssize_t,Dim> & other) : blitz::TinyVector<ssize_t,Dim>(other) {  }
+  Binn(const blitz::TinyVector<ssize_t,Dim> & other) : blitz::TinyVector<ssize_t,Dim>(other) {}
   Binn(const std::string & str);
-  ~Binn() { if (guts) specialize(); }
-  Binn<Dim> & operator=(const Binn & other);
-  //bool operator==(const Binn & other) {return (blitz::TinyVector<ssize_t,Dim>)other == (blitz::TinyVector<ssize_t,Dim>)(*this); }
-  //bool operator!=(const Binn & other) {return (blitz::TinyVector<ssize_t,Dim>)other != (blitz::TinyVector<ssize_t,Dim>)(*this); }
   explicit operator bool() const { return std::any_of( whole(*this), [](const ssize_t & bnn){return bnn != 1;}); }
-  void specialize(const Shape<Dim> ish = Shape<Dim>()) const;
   Shape<Dim> apply(const Shape<Dim> & ish) const ;
   const ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
   void apply(const ArrayF<Dim> & inarr, ArrayF<Dim> & outarr) const ;
+  bool flipOnly() const { return std::all_of( whole(*this), [](const ssize_t & bnn){return std::abs(bnn) == 1;}); }
 };
-
 
 inline ssize_t binnOne(ssize_t sz, ssize_t bnn) {
   return bnn ? (sz + abs(bnn) - 1) / abs(bnn)  :  1 ;
@@ -254,8 +246,28 @@ int _conversion (Binn<Dim>* _val, const std::string & in) {
 }
 
 
+
+
+class BinnProc {
+public:
+  const Binn<2> bnn;
+  const Shape<2> ish;
+  const Shape<2> osh;
+  static const std::string modname;
+private:
+  class ForCLdev;
+  std::list<ForCLdev*>  _envs;
+  std::list<ForCLdev*> & envs;
+public:
+  BinnProc(const Shape<2> & ish, const Binn<2> & bnn);
+  BinnProc(const BinnProc & other);
+  ~BinnProc();
+  void operator() (const Map & imap, Map & omap);
+};
+
 extern const std::string
 BinnOptionDesc;
+
 
 
 template<int Dim>

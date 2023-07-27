@@ -102,180 +102,187 @@ const string CropOptionDesc = "Each SEG describes the segment of the correspondi
 ;
 
 
-
-
-
-
-class Binn2D {
-
-public:
-
-  const Binn<2> bnn;
-  const Shape<2> ish;
-
-private:
-
-  const Shape<2> osh;
-  static const string modname;
-
-  class ForCLdev {
-
-    const Shape<2> osh;
-    CLenv & cl;
-    cl_program binnProgram = 0;
-    CLkernel kernelBinn;
-    CLmem clinarr;
-    CLmem cloutarr;
-    pthread_mutex_t locker;
-
-  public:
-
-    ForCLdev(CLenv & cl, const Shape<2> & ish, const Binn<2> bnn)
-      : osh(bnn.apply(ish))
-      , cl(cl)
-      , locker(PTHREAD_MUTEX_INITIALIZER)
-    {
-      if (!CL_isReady())
-        throw_error(modname, "OpenCL is not functional.");
-      try {
-        static const string oclsrc = {
+static const string binnOCLsrc() {
+  static const string toRet = {
           #include "binn.cl.includeme"
-        };
-        binnProgram = initProgram(oclsrc, binnProgram, modname, cl.cont);
-        kernelBinn(binnProgram, "binn2");
-        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
-        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
-        if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
-          throw 1;
-        kernelBinn.setArg(0, clinarr());
-        kernelBinn.setArg(1, cloutarr());
-        kernelBinn.setArg(2, (cl_int) abs(bnn(1)));
-        kernelBinn.setArg(3, (cl_int) abs(bnn(0)));
-        kernelBinn.setArg(4, (cl_int) ish(1));
-        kernelBinn.setArg(5, (cl_int) ish(0));
-      } catch (...) {
-        kernelBinn.free();
-        clinarr.free();
-        cloutarr.free();
-        throw_error(modname, "Failed to prepare for operation.");
-      }
-    }
-
-    ~ForCLdev(){
-      pthread_mutex_destroy(&locker);
-    }
-
-    bool apply(const Map & imap, Map & omap) {
-      if ( ! binnProgram || ! CL_isReady() )
-        throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
-      if( pthread_mutex_trylock(&locker) )
-        return false;
-      blitz2cl(imap, clinarr(), cl.que);
-      kernelBinn.exec(osh, cl.que);
-      cl2blitz(cloutarr(), omap, cl.que);
-      pthread_mutex_unlock(&locker);
-      return true;
-    }
-
   };
+  return toRet;
+};
 
-  std::list<ForCLdev>  envs;
+
+class BinnProc::ForCLdev {
+
+  static const std::string modname;
+  const Shape<2> osh;
+  CLenv & cl;
+  CLprogram binnProgram;
+  CLkernel kernelBinn;
+  CLmem clinarr;
+  CLmem cloutarr;
+  pthread_mutex_t locker;
 
 public:
 
-  Binn2D(const Shape<2> & _ish, const Binn<2> & _bnn)
-    : bnn( _bnn(0) ? _bnn(0) : _ish(0), _bnn(1) ? _bnn(1) : _ish(1) )
-    , ish(_ish)
-    , osh(bnn.apply(ish))
+  ForCLdev(CLenv & cl, const Shape<2> & ish, const Binn<2> & bnn)
+    : osh(bnn.apply(ish))
+    , cl(cl)
+    , binnProgram(binnOCLsrc(), cl.cont)
+    , kernelBinn(binnProgram, "binn2")
+    , locker(PTHREAD_MUTEX_INITIALIZER)
   {
-    if (!size(ish))
-      throw_error(modname, "Zero inout size.");
-    if (!size(osh))
-      throw_error(modname, "Zero result of binning"
-                           " ("+toString(ish)+") by (" + toString(bnn) + ").");
-    if ( std::all_of( whole(bnn), [](const ssize_t & bn){return std::abs(bn) == 1;}) )
-      throw_bug(modname + ": tried to prepare OpenCL for trivial binning " + toString(_bnn) + ".");
-    CL_isReady();
-    for (CLenv & env : clenvs)
-      try{ envs.emplace_back(env, ish, bnn); } catch(...) {}
-    if (envs.empty())
-      warn(modname, "Binning will be performed on CPUs.");
+    if (!CL_isReady())
+      throw_error(modname, "OpenCL is not functional.");
+    try {
+      kernelBinn(binnProgram, "binn2");
+      clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
+      cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
+      if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
+        throw 1;
+      kernelBinn.setArg(0, clinarr());
+      kernelBinn.setArg(1, cloutarr());
+      kernelBinn.setArg(2, (cl_int) abs(bnn(1)));
+      kernelBinn.setArg(3, (cl_int) abs(bnn(0)));
+      kernelBinn.setArg(4, (cl_int) ish(1));
+      kernelBinn.setArg(5, (cl_int) ish(0));
+    } catch (...) {
+      kernelBinn.free();
+      clinarr.free();
+      cloutarr.free();
+      throw_error(modname, "Failed to prepare for operation.");
+    }
   }
 
-  void operator() (const Map & imap, Map & omap) {
-    if (imap.shape() != ish)
-      throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
-                           " with expected ("+toString(ish)+").");
-    if ( omap.shape() != osh)
-      throw_error(modname, "Missmatch of output shape ("+toString(omap.shape())+")"
-                           " with expected ("+toString(osh)+")."
-                           " Arrays are assumed to be ready before getting here." );
-    for (ForCLdev & env : envs)
-      if (env.apply(imap,omap))
-        return;
-    // Do on CPU
-    for (ssize_t y=0 ; y<osh(0) ; ++y) {
-      const int bby = y < osh(0) ? bnn(0) : ish(0) % bnn(0);
-      for (ssize_t x=0 ; x<osh(1) ; ++x) {
-        const ssize_t bbx = x < osh(1) ? bnn(1) : ish(1) % bnn(1);
-        float & val = omap(y,x);
-        val = 0;
-        for (ssize_t cy = 0 ; cy < bby ; cy++) {
-          const ssize_t yy = y*bnn(0) + cy;
-          for (ssize_t cx = 0 ; cx < bbx ; cx++)
-            val += imap(yy, x*bnn(1) + cx);
-        }
-        val /= bbx*bby;
-      }
-    }
+  ~ForCLdev(){
+    pthread_mutex_destroy(&locker);
+  }
+
+  bool apply(const Map & imap, Map & omap) {
+    if ( ! binnProgram || ! CL_isReady() )
+      throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
+    if( pthread_mutex_trylock(&locker) )
+      return false;
+    blitz2cl(imap, clinarr(), cl.que);
+    kernelBinn.exec(osh, cl.que);
+    cl2blitz(cloutarr(), omap, cl.que);
+    pthread_mutex_unlock(&locker);
+    return true;
   }
 
 };
+const string BinnProc::ForCLdev::modname = "BinnOCL";
 
-const string Binn2D::modname = "BinnOCL";
+
+BinnProc::BinnProc(const Shape<2> & ish, const Binn<2> & bnn)
+  : bnn(bnn)
+  , ish(ish)
+  , osh(bnn.apply(ish))
+  , envs(_envs)
+{
+  if (!size(ish)) {
+    warn(modname, "Zero input size to binn.");
+    return;
+  }
+  if (!size(osh)) {
+    warn(modname, "Zero result of binning"
+                  " ("+toString(ish)+") by (" + toString(bnn) + ").");
+    return;
+  }
+  if (bnn.flipOnly()) // Trivial binning. No need OpenCL.
+    return;
+  if (!CL_isReady())
+    warn(modname, "OpenCL is not functional.");
+  for (CLenv & env : clenvs)
+    try{ _envs.emplace_back( new ForCLdev(env, ish, bnn) ); } catch(...) {}
+}
+
+BinnProc::BinnProc(const BinnProc & other)
+  : bnn(other.bnn)
+  , ish(other.ish)
+  , osh(other.bnn)
+  , envs(other.envs)
+{}
+
+BinnProc::~BinnProc() {
+  for (ForCLdev * env : _envs)
+    if (env)
+      delete env;
+}
+
+void BinnProc::operator() (const Map & imap, Map & omap) {
+  if (!size(ish) || !size(osh))
+    return;
+  if (imap.shape() != ish)
+    throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
+                         " with expected ("+toString(ish)+").");
+  if (bnn.flipOnly()) {
+    bnn.apply(imap,omap);
+    return;
+  }
+  if (!omap.size())
+    omap.resize(osh);
+  if ( omap.shape() != osh )
+    throw_error(modname, "Missmatch of output shape ("+toString(omap.shape())+")"
+                         " with expected ("+toString(osh)+")."
+                         " Arrays are assumed to be ready before getting here." );
+  for (ForCLdev * env : envs)
+    if (env->apply(imap,omap))
+      return;
+  // Do on CPU
+  for (ssize_t y=0 ; y<osh(0) ; ++y) {
+    const int bby = y < osh(0) ? bnn(0) : ish(0) % bnn(0);
+    for (ssize_t x=0 ; x<osh(1) ; ++x) {
+      const ssize_t bbx = x < osh(1) ? bnn(1) : ish(1) % bnn(1);
+      float & val = omap(y,x);
+      val = 0;
+      for (ssize_t cy = 0 ; cy < bby ; cy++) {
+        const ssize_t yy = y*bnn(0) + cy;
+        for (ssize_t cx = 0 ; cx < bbx ; cx++)
+          val += imap(yy, x*bnn(1) + cx);
+      }
+      val /= bbx*bby;
+    }
+  }
+}
+
+const string BinnProc::modname = "BinnProc";
+
+
+
+
+
+
 
 
 
 template<int Dim>
 const string Binn<Dim>::modname = toString(Dim)+"D-binning";
 
-template<int Dim>
-Binn<Dim>::Binn(const string & str)
-  : Binn( [](const string & str){
-      if (str.empty())
-        return Binn();
-      const deque<string> subs = split(str, ",");
-      int sbnn;
-      Binn toRet;
-      if ( 1 == subs.size() && !parse_num(str, &sbnn ) )
-        throw_error(modname, "Could not parse string \""+str+"\" as integer number.");
-      if ( 1 != subs.size()  &&  Dim != subs.size() )
-        throw_error(modname, "Could not parse string \""+str+"\". Must contain single or " + toString(Dim)
-                             + " comma-delimited integers, while " + toString(subs.size()) + " found.");
-      for (uint curD=0; curD<Dim; ++curD) {
-        if ( Dim == subs.size() ) {
-          const string & curStr = subs.at(curD);
-          if (curStr.empty())
-            sbnn=1;
-          else if ( ! parse_num(curStr, &sbnn ) )
-            throw_error(modname, "Could not parse string \""+curStr+"\" as integer number"
-                                 " for dimension " + toString(curD) + ".");
-        }
-        // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
-        toRet(Dim-1-curD) = sbnn ;
-      }
-      return toRet;
-    }(str) )
-{}
 
 template<int Dim>
-Binn<Dim>& Binn<Dim>::operator=(const Binn & other) {
-  if (guts)
-    specialize();
-  blitz::TinyVector<ssize_t,Dim>::operator=(other) ;
-  guts = other.guts;
-  return *this;
+Binn<Dim>::Binn(const string & str) {
+  if (str.empty())
+    return;
+  const deque<string> subs = split(str, ",");
+  int sbnn;
+  if ( 1 == subs.size() && !parse_num(str, &sbnn ) )
+    throw_error(modname, "Could not parse string \""+str+"\" as integer number.");
+  if ( 1 != subs.size()  &&  Dim != subs.size() )
+    throw_error(modname, "Could not parse string \""+str+"\". Must contain single or " + toString(Dim)
+                         + " comma-delimited integers, while " + toString(subs.size()) + " found.");
+  for (uint curD=0; curD<Dim; ++curD) {
+    if ( Dim == subs.size() ) {
+      const string & curStr = subs.at(curD);
+      if (curStr.empty())
+        sbnn=1;
+      else if ( ! parse_num(curStr, &sbnn ) )
+        throw_error(modname, "Could not parse string \""+curStr+"\" as integer number"
+                             " for dimension " + toString(curD) + ".");
+    }
+    // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
+    (*this)(Dim-1-curD) = sbnn ;
+  }
 }
+
 
 template<int Dim>
 Binn<Dim> Binn<Dim>::flipped() const {
@@ -306,36 +313,8 @@ template<> void Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) con
   // TODO
 }
 
-template<> void Binn<2>::specialize(const Shape<2> ish) const {
-  Binn2D * proc = (Binn2D*) guts;
-  if (proc) {
-    if ( proc->ish == ish && proc->bnn == (*this) )
-      return;
-    else {
-      delete proc;
-      guts = 0;
-      proc = 0;
-    }
-  }
-  if ( flipOnly() || ! size(ish) )
-    return;
-  guts = new Binn2D(ish, *this);
-}
-
-template<int Dim> void Binn<Dim>::specialize(const Shape<Dim> ish) const {
-  warn(modname, "Binning specialization is implemented for 2D only.");
-  if (guts) { // Should never happen!
-    delete (Binn2D*)guts;
-    guts = 0;
-  }
-}
-
 template<> void Binn<2>::subapply( const ArrayF<2> & iarr, ArrayF<2> & oarr) const {
-  Binn2D * proc = (Binn2D*) guts;
-  if ( proc && proc->ish == iarr.shape() && proc->bnn == *this )
-    proc->operator()(iarr, oarr);
-  else
-    Binn2D(iarr.shape(), *this)(iarr, oarr);
+  BinnProc(iarr.shape(), *this)(iarr, oarr);
 }
 
 template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) const {
@@ -348,11 +327,7 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
 
   if (!CL_isReady())
     throw_error(modname, "OpenCL is not functional.");
-  static const string oclsrc = {
-    #include "binn.cl.includeme"
-  };
-  cl_program binnProgram = 0;
-  initProgram(oclsrc, binnProgram, modname);
+  CLprogram binnProgram(binnOCLsrc());
 
   try {
 
@@ -427,8 +402,6 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
     }
 
   }
-
-  clReleaseProgram(binnProgram);
 
 #else // OPENCL_FOUND
 

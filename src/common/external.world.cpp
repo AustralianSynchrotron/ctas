@@ -1329,15 +1329,24 @@ Shape<3> ReadVolumeBySlice::shape() const {
 
 
 
-ImageProc::ImageProc(float _ang, const Crop<2> & _crp, const Binn<2> & _bnn, const Shape<2> & _ish, float _reNAN)
-  : ish(_ish)
-  , ang(_ang)
-  , crp(_crp)
-  , bnn(_bnn)
-  , reNAN(_reNAN)
-{
-  bnn.specialize(crp.apply(rotate(ish,ang)));
-}
+ImageProc::ImageProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN)
+  : ish(ish)
+  , ang(ang)
+  , crp(crp)
+  , bnn(bnn)
+  , bnnProc(crp.apply(rotate(ish,ang)), bnn)
+  , reNAN(reNAN)
+{}
+
+ImageProc::ImageProc(const ImageProc & other)
+  : ish(other.ish)
+  , ang(other.ang)
+  , crp(other.crp)
+  , bnn(other.bnn)
+  , bnnProc(other.bnnProc)
+  , reNAN(other.reNAN)
+{}
+
 
 void ImageProc::proc(Map & storage) {
   if ( fisok(reNAN) )

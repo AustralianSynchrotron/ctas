@@ -155,7 +155,7 @@ class SliceInThread : public InThread {
         return;
 
       static const string oclsrc = {
-        #include "../common/binn.cl.includeme"
+        #include "../common/matrix.cl.includeme"
       };
       binnProgram(oclsrc);
       resmem(clAllocArray<float>(size(mish)));

@@ -268,6 +268,7 @@ private:
 
   const Shape<2> ish;
   const float ang;
+  RotateProc rotProc;
   const Crop<2> crp;
   const Binn<2> bnn;
   BinnProc bnnProc;
@@ -291,7 +292,7 @@ public:
   }
 
   static Shape<2> outShape(float _ang, const Crop<2> & _crp, const Binn<2> & _bnn, const Shape<2> & _ish) {
-    return _bnn.apply(_crp.apply(rotate(_ish, _ang)));
+    return _bnn.apply(_crp.apply(RotateProc::apply(_ish, _ang)));
   }
 
   static void read(const ImagePath & filename, Map & storage

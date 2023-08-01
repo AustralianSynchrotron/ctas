@@ -7,8 +7,6 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 /*
  * Assign an expression to an array.  For performance reasons, there are
  * several traversal mechanisms:
@@ -62,7 +60,7 @@ struct _bz_tryFastTraversal<true> {
         // Nth dimension column corresponding to each point on the curve
         // is traversed in the normal fashion.
         TraversalOrderCollection<N_rank-1> traversals;
-        TinyVector<MyIndexType, N_rank - 1> traversalGridSize;
+        TinyVector<ssize_t, N_rank - 1> traversalGridSize;
 
         for (int i=0; i < N_rank - 1; ++i)
             traversalGridSize[i] = array.length(array.ordering(i+1));
@@ -212,7 +210,7 @@ Array<T_numtype, N_rank>::evaluate(T_expr expr,
             //    3 arrays involved in stencil
             //    Uniform data type in arrays (all T_numtype)
             
-            MyIndexType cacheNeeded =
+            ssize_t cacheNeeded =
                 3 * 3 * sizeof(T_numtype) * length(ordering(0));
             if (cacheNeeded > BZ_L1_CACHE_ESTIMATED_SIZE)
                 return evaluateWithTiled2DTraversal(expr, T_update());
@@ -247,7 +245,7 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversal1(
           && expr.isUnitStride(firstRank);
 
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
-    MyIndexType commonStride = expr.suggestStride(firstRank);
+    ssize_t commonStride = expr.suggestStride(firstRank);
     if (iter.suggestStride(firstRank) > commonStride)
         commonStride = iter.suggestStride(firstRank);
     bool useCommonStride = iter.isStride(firstRank,commonStride)
@@ -259,7 +257,7 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversal1(
         << useCommonStride);
  #endif
 #else
-    MyIndexType commonStride = 1;
+    ssize_t commonStride = 1;
     bool useCommonStride = false;
 #endif
 
@@ -273,17 +271,17 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversal1(
 #ifdef BZ_DEBUG_TRAVERSE
     BZ_DEBUG_MESSAGE("BZ_USE_FAST_READ_ARRAY_EXPR with commonStride");
 #endif
-        MyIndexType ubound = length(firstRank) * commonStride;
+        ssize_t ubound = length(firstRank) * commonStride;
         T_numtype* restrict data = const_cast<T_numtype*>(iter.data());
 
         if (commonStride == 1)
         {
  #ifndef BZ_ARRAY_STACK_TRAVERSAL_UNROLL
-            for (MyIndexType i=0; i < ubound; ++i)
+            for (ssize_t i=0; i < ubound; ++i)
                 T_update::update(*data++, expr.fastRead(i));
  #else
-            MyIndexType n1 = ubound & 3;
-            MyIndexType i = 0;
+            ssize_t n1 = ubound & 3;
+            ssize_t i = 0;
             for (; i < n1; ++i)
                 T_update::update(*data++, expr.fastRead(i));
            
@@ -295,9 +293,9 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversal1(
                 T_update::update(*data++, expr.fastRead(i+2));
                 T_update::update(*data++, expr.fastRead(i+3));
 #else
-                const MyIndexType t1 = i+1;
-                const MyIndexType t2 = i+2;
-                const MyIndexType t3 = i+3;
+                const ssize_t t1 = i+1;
+                const ssize_t t2 = i+2;
+                const ssize_t t3 = i+3;
 
                 _bz_typename T_expr::T_numtype tmp1, tmp2, tmp3, tmp4;
 
@@ -319,24 +317,24 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversal1(
         else {
 
   #ifndef BZ_ARRAY_STACK_TRAVERSAL_UNROLL
-            for (MyIndexType i=0; i != ubound; i += commonStride)
+            for (ssize_t i=0; i != ubound; i += commonStride)
                 T_update::update(data[i], expr.fastRead(i));
   #else
-            MyIndexType n1 = (length(firstRank) & 3) * commonStride;
+            ssize_t n1 = (length(firstRank) & 3) * commonStride;
 
-            MyIndexType i = 0;
+            ssize_t i = 0;
             for (; i != n1; i += commonStride)
                 T_update::update(data[i], expr.fastRead(i));
 
-            MyIndexType strideInc = 4 * commonStride;
+            ssize_t strideInc = 4 * commonStride;
             for (; i != ubound; i += strideInc)
             {
                 T_update::update(data[i], expr.fastRead(i));
-                MyIndexType i2 = i + commonStride;
+                ssize_t i2 = i + commonStride;
                 T_update::update(data[i2], expr.fastRead(i2));
-                MyIndexType i3 = i + 2 * commonStride;
+                ssize_t i3 = i + 2 * commonStride;
                 T_update::update(data[i3], expr.fastRead(i3));
-                MyIndexType i4 = i + 3 * commonStride;
+                ssize_t i4 = i + 3 * commonStride;
                 T_update::update(data[i4], expr.fastRead(i4));
             }
   #endif  // BZ_ARRAY_STACK_TRAVERSAL_UNROLL
@@ -376,9 +374,9 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversalN(
     /*
      * A stack traversal replaces the usual nested loops:
      *
-     * for (MyIndexType i=A.lbound(firstDim); i <= A.ubound(firstDim); ++i)
-     *   for (MyIndexType j=A.lbound(secondDim); j <= A.ubound(secondDim); ++j)
-     *     for (MyIndexType k=A.lbound(thirdDim); k <= A.ubound(thirdDim); ++k)
+     * for (ssize_t i=A.lbound(firstDim); i <= A.ubound(firstDim); ++i)
+     *   for (ssize_t j=A.lbound(secondDim); j <= A.ubound(secondDim); ++j)
+     *     for (ssize_t k=A.lbound(thirdDim); k <= A.ubound(thirdDim); ++k)
      *       A(i,j,k) = 0;
      *
      * with a stack data structure.  The stack allows this single
@@ -443,7 +441,7 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversalN(
      * if this optimization has been enabled).
      */
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
-    MyIndexType commonStride = expr.suggestStride(maxRank);
+    ssize_t commonStride = expr.suggestStride(maxRank);
     if (iter.suggestStride(maxRank) > commonStride)
         commonStride = iter.suggestStride(maxRank);
     bool useCommonStride = iter.isStride(maxRank,commonStride)
@@ -456,7 +454,7 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversalN(
 #endif
 
 #else
-    MyIndexType commonStride = 1;
+    ssize_t commonStride = 1;
     bool useCommonStride = false;
 #endif
 
@@ -470,7 +468,7 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversalN(
     for (i=1; i < N_rank; ++i)
         last[i] = iter.data() + length(ordering(i)) * stride(ordering(i));
 
-    MyIndexType lastLength = length(maxRank);
+    ssize_t lastLength = length(maxRank);
     int firstNoncollapsedLoop = 1;
 
 #ifdef BZ_COLLAPSE_LOOPS
@@ -543,7 +541,7 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversalN(
              */
 
             // Calculate the end of the innermost loop
-            MyIndexType ubound = lastLength * commonStride;
+            ssize_t ubound = lastLength * commonStride;
 
             /*
              * This is a real kludge.  I didn't want to have to write
@@ -560,12 +558,12 @@ Array<T_numtype, N_rank>::evaluateWithStackTraversalN(
              */
             if (commonStride == 1)
             {
-                for (MyIndexType i=0; i < ubound; ++i)
+                for (ssize_t i=0; i < ubound; ++i)
                     T_update::update(*data++, expr.fastRead(i));
             }
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
             else {
-                for (MyIndexType i=0; i != ubound; i += commonStride)
+                for (ssize_t i=0; i != ubound; i += commonStride)
                     T_update::update(data[i], expr.fastRead(i));
             }
 #endif
@@ -663,12 +661,12 @@ inline Array<T_numtype, N_rank>&
 Array<T_numtype, N_rank>::evaluateWithIndexTraversal1(
     T_expr expr, T_update)
 {
-    TinyVector<MyIndexType,N_rank> index;
+    TinyVector<ssize_t,N_rank> index;
 
     if (stride(firstRank) == 1)
     {
         T_numtype * restrict iter = data_ + lbound(firstRank);
-        MyIndexType last = ubound(firstRank);
+        ssize_t last = ubound(firstRank);
 
         for (index[0] = lbound(firstRank); index[0] <= last;
             ++index[0])
@@ -679,7 +677,7 @@ Array<T_numtype, N_rank>::evaluateWithIndexTraversal1(
     else {
         FastArrayIterator<T_numtype, N_rank> iter(*this);
         iter.loadStride(0);
-        MyIndexType last = ubound(firstRank);
+        ssize_t last = ubound(firstRank);
 
         for (index[0] = lbound(firstRank); index[0] <= last;
             ++index[0])
@@ -717,14 +715,14 @@ Array<T_numtype, N_rank>::evaluateWithIndexTraversalN(
 
     iter.loadStride(maxRank);
 
-    TinyVector<MyIndexType,N_rank> index, last;
+    TinyVector<ssize_t,N_rank> index, last;
 
     index = storage_.base();
 
     for (int i=0; i < N_rank; ++i)
       last(i) = storage_.base(i) + length_(i);
 
-    // MyIndexType lastLength = length(maxRank);
+    // ssize_t lastLength = length(maxRank);
 
     while (true) {
 
@@ -797,17 +795,17 @@ Array<T_numtype, N_rank>::evaluateWithFastTraversal(
                           && expr.isUnitStride(maxRank);
 
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
-    MyIndexType commonStride = expr.suggestStride(maxRank);
+    ssize_t commonStride = expr.suggestStride(maxRank);
     if (iter.suggestStride(maxRank) > commonStride)
         commonStride = iter.suggestStride(maxRank);
     bool useCommonStride = iter.isStride(maxRank,commonStride)
         && expr.isStride(maxRank,commonStride);
 #else
-    MyIndexType commonStride = 1;
+    ssize_t commonStride = 1;
     bool useCommonStride = false;
 #endif
 
-    MyIndexType lastLength = length(maxRank);
+    ssize_t lastLength = length(maxRank);
 
     for (int i=0; i < order.length(); ++i)
     {
@@ -823,7 +821,7 @@ Array<T_numtype, N_rank>::evaluateWithFastTraversal(
             iter.loadStride(ordering(j));
             expr.loadStride(ordering(j));
 
-            MyIndexType offset = order[i][j-1];
+            ssize_t offset = order[i][j-1];
             iter.advance(offset);
             expr.advance(offset);
         }
@@ -836,17 +834,17 @@ Array<T_numtype, N_rank>::evaluateWithFastTraversal(
         if ((useUnitStride) || (useCommonStride))
         {
 #ifdef BZ_USE_FAST_READ_ARRAY_EXPR
-            MyIndexType ubound = lastLength * commonStride;
+            ssize_t ubound = lastLength * commonStride;
             T_numtype* restrict data = const_cast<T_numtype*>(iter.data());
 
             if (commonStride == 1)
             {            
  #ifndef BZ_ARRAY_FAST_TRAVERSAL_UNROLL
-                for (MyIndexType i=0; i < ubound; ++i)
+                for (ssize_t i=0; i < ubound; ++i)
                     T_update::update(*data++, expr.fastRead(i));
  #else
-                MyIndexType n1 = ubound & 3;
-                MyIndexType i=0;
+                ssize_t n1 = ubound & 3;
+                ssize_t i=0;
                 for (; i < n1; ++i)
                     T_update::update(*data++, expr.fastRead(i));
 
@@ -861,7 +859,7 @@ Array<T_numtype, N_rank>::evaluateWithFastTraversal(
             }
  #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
             else {
-                for (MyIndexType i=0; i < ubound; i += commonStride)
+                for (ssize_t i=0; i < ubound; i += commonStride)
                     T_update::update(data[i], expr.fastRead(i));
             }
  #endif // BZ_ARRAY_EXPR_USE_COMMON_STRIDE
@@ -919,40 +917,40 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
     expr.push(0);
 
 #ifdef BZ_2D_STENCIL_DEBUG
-    MyIndexType count = 0;
+    ssize_t count = 0;
 #endif
 
     bool useUnitStride = iter.isUnitStride(minorRank)
                           && expr.isUnitStride(minorRank);
 
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
-    MyIndexType commonStride = expr.suggestStride(minorRank);
+    ssize_t commonStride = expr.suggestStride(minorRank);
     if (iter.suggestStride(minorRank) > commonStride)
         commonStride = iter.suggestStride(minorRank);
     bool useCommonStride = iter.isStride(minorRank,commonStride)
         && expr.isStride(minorRank,commonStride);
 #else
-    MyIndexType commonStride = 1;
+    ssize_t commonStride = 1;
     bool useCommonStride = false;
 #endif
 
     // Determine if a common major stride exists
-    MyIndexType commonMajorStride = expr.suggestStride(majorRank);
+    ssize_t commonMajorStride = expr.suggestStride(majorRank);
     if (iter.suggestStride(majorRank) > commonMajorStride)
         commonMajorStride = iter.suggestStride(majorRank);
     bool haveCommonMajorStride = iter.isStride(majorRank,commonMajorStride)
         && expr.isStride(majorRank,commonMajorStride);
 
 
-    MyIndexType maxi = length(majorRank);
-    MyIndexType maxj = length(minorRank);
+    ssize_t maxi = length(majorRank);
+    ssize_t maxj = length(minorRank);
 
-    const MyIndexType tileHeight = 16, tileWidth = 3;
+    const ssize_t tileHeight = 16, tileWidth = 3;
 
-    MyIndexType bi, bj;
+    ssize_t bi, bj;
     for (bi=0; bi < maxi; bi += tileHeight)
     {
-        MyIndexType ni = bi + tileHeight;
+        ssize_t ni = bi + tileHeight;
         if (ni > maxi)
             ni = maxi;
 
@@ -988,18 +986,18 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
 
                 if ((useUnitStride) && (haveCommonMajorStride))
                 {
-                    MyIndexType offset = 0;
+                    ssize_t offset = 0;
                     T_numtype* restrict data = const_cast<T_numtype*>
                         (iter.data());
 
-                    for (MyIndexType i=bi; i < ni; ++i)
+                    for (ssize_t i=bi; i < ni; ++i)
                     {
                         _bz_typename T_expr::T_numtype tmp1, tmp2, tmp3;
 
                         // Common subexpression elimination -- compilers
                         // won't necessarily do this on their own.
-                        MyIndexType t1 = offset+1;
-                        MyIndexType t2 = offset+2;
+                        ssize_t t1 = offset+1;
+                        ssize_t t2 = offset+2;
 
                         tmp1 = expr.fastRead(offset);
                         tmp2 = expr.fastRead(t1);
@@ -1019,7 +1017,7 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
                 }
                 else {
 
-                    for (MyIndexType i=bi; i < ni; ++i)
+                    for (ssize_t i=bi; i < ni; ++i)
                     {
                         iter.loadStride(minorRank);
                         expr.loadStride(minorRank);
@@ -1057,12 +1055,12 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
                 // This code handles partial tiles at the bottom of the
                 // array.
 
-                for (MyIndexType j=bj; j < maxj; ++j)
+                for (ssize_t j=bj; j < maxj; ++j)
                 {
                     iter.loadStride(majorRank);
                     expr.loadStride(majorRank);
 
-                    for (MyIndexType i=bi; i < ni; ++i)
+                    for (ssize_t i=bi; i < ni; ++i)
                     {
                         T_update::update(*const_cast<T_numtype*>(iter.data()),
                             *expr);
@@ -1123,29 +1121,29 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
                           && expr.isUnitStride(minorRank);
 
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
-    MyIndexType commonStride = expr.suggestStride(minorRank);
+    ssize_t commonStride = expr.suggestStride(minorRank);
     if (iter.suggestStride(minorRank) > commonStride)
         commonStride = iter.suggestStride(minorRank);
     bool useCommonStride = iter.isStride(minorRank,commonStride)
         && expr.isStride(minorRank,commonStride);
 #else
-    MyIndexType commonStride = 1;
+    ssize_t commonStride = 1;
     bool useCommonStride = false;
 #endif
 
-    MyIndexType maxi = length(majorRank);
-    MyIndexType maxj = length(minorRank);
+    ssize_t maxi = length(majorRank);
+    ssize_t maxj = length(minorRank);
 
-    MyIndexType bi, bj;
+    ssize_t bi, bj;
     for (bi=0; bi < maxi; bi += blockSize)
     {
-        MyIndexType ni = bi + blockSize;
+        ssize_t ni = bi + blockSize;
         if (ni > maxi)
             ni = maxi;
 
         for (bj=0; bj < maxj; bj += blockSize)
         {
-            MyIndexType nj = bj + blockSize;
+            ssize_t nj = bj + blockSize;
             if (nj > maxj)
                 nj = maxj;
 
@@ -1165,7 +1163,7 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
             expr.advance(bj);
 
             // Loop through tile rows
-            for (MyIndexType i=bi; i < ni; ++i)
+            for (ssize_t i=bi; i < ni; ++i)
             {
                 // Save the beginning of this tile row
                 iter.push(1);
@@ -1180,23 +1178,23 @@ Array<T_numtype, N_rank>::evaluateWithTiled2DTraversal(
                     T_numtype* restrict data = const_cast<T_numtype*>
                         (iter.data());
 
-                    MyIndexType ubound = (nj-bj);
-                    for (MyIndexType j=0; j < ubound; ++j)
+                    ssize_t ubound = (nj-bj);
+                    for (ssize_t j=0; j < ubound; ++j)
                         T_update::update(*data++, expr.fastRead(j));
                 }
 #ifdef BZ_ARRAY_EXPR_USE_COMMON_STRIDE
                 else if (useCommonStride)
                 {
-                    MyIndexType ubound = (nj-bj) * commonStride;
+                    ssize_t ubound = (nj-bj) * commonStride;
                     T_numtype* restrict data = const_cast<T_numtype*>
                         (iter.data());
 
-                    for (MyIndexType j=0; j < ubound; j += commonStride)
+                    for (ssize_t j=0; j < ubound; j += commonStride)
                         T_update::update(data[j], expr.fastRead(j));
                 }
 #endif
                 else {
-                    for (MyIndexType j=bj; j < nj; ++j)
+                    for (ssize_t j=bj; j < nj; ++j)
                     {
                         // Loop through current row elements
                         T_update::update(*const_cast<T_numtype*>(iter.data()), 

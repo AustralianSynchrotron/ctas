@@ -7,14 +7,12 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 template<typename P_numtype, int N_rank> template<typename T_expr>
 Array<P_numtype,N_rank>::Array(_bz_ArrayExpr<T_expr> expr)
 {
     // Determine extent of the array expression
 
-    TinyVector<MyIndexType,N_rank> lbound, extent, ordering;
+    TinyVector<ssize_t,N_rank> lbound, extent, ordering;
     TinyVector<bool,N_rank> ascendingFlag;
     TinyVector<bool,N_rank> in_ordering;
     in_ordering = false;
@@ -23,7 +21,7 @@ Array<P_numtype,N_rank>::Array(_bz_ArrayExpr<T_expr> expr)
     for (int i=0; i < N_rank; ++i)
     {
         lbound(i) = expr.lbound(i);
-        MyIndexType ubound = expr.ubound(i);
+        ssize_t ubound = expr.ubound(i);
         extent(i) = ubound - lbound(i) + 1;
         int orderingj = expr.ordering(i);
         if (orderingj != tiny(int()) && orderingj < N_rank &&
@@ -35,8 +33,8 @@ Array<P_numtype,N_rank>::Array(_bz_ArrayExpr<T_expr> expr)
         ascendingFlag(i) = (ascending == 1);
 
 #ifdef BZ_DEBUG
-        if ((lbound(i) == tiny(MyIndexType())) ||
-            (ubound == huge(MyIndexType()))
+        if ((lbound(i) == tiny(ssize_t())) ||
+            (ubound == huge(ssize_t()))
           || (ordering(i) == tiny(int())) || (ascending == tiny(int())))
         {
           BZPRECHECK(0,
@@ -65,8 +63,8 @@ Array<P_numtype,N_rank>::Array(_bz_ArrayExpr<T_expr> expr)
 }
 
 template<typename P_numtype, int N_rank>
-Array<P_numtype,N_rank>::Array(const TinyVector<MyIndexType, N_rank>& lbounds,
-    const TinyVector<MyIndexType, N_rank>& extent,
+Array<P_numtype,N_rank>::Array(const TinyVector<ssize_t, N_rank>& lbounds,
+    const TinyVector<ssize_t, N_rank>& extent,
     const GeneralArrayStorage<N_rank>& storage)
     : storage_(storage)
 {
@@ -87,7 +85,7 @@ _bz_inline2 void Array<P_numtype, N_rank>::computeStrides()
 {
     if (N_rank > 1)
     {
-      MyIndexType stride = 1;
+      ssize_t stride = 1;
 
       // This flag simplifies the code in the loop, encouraging
       // compile-time computation of strides through constant folding.
@@ -97,7 +95,7 @@ _bz_inline2 void Array<P_numtype, N_rank>::computeStrides()
       int n;
       for (n=0; n < N_rank; ++n)
       {
-          MyIndexType strideSign = +1;
+          ssize_t strideSign = +1;
 
           // If this rank is stored in descending order, then the stride
           // will be negative.
@@ -161,11 +159,11 @@ bool Array<P_numtype, N_rank>::isStorageContiguous() const
 
     for (int i=0; i < N_rank; ++i)
     {
-        MyIndexType stride = BZ_MATHFN_SCOPE(abs)(stride_[i]);
+        ssize_t stride = BZ_MATHFN_SCOPE(abs)(stride_[i]);
         if (stride == 1)
             haveUnitStride = true;
 
-        MyIndexType vi = stride * length_[i];
+        ssize_t vi = stride * length_[i];
 
         int j = 0;
         for (j=0; j < N_rank; ++j)
@@ -267,7 +265,7 @@ _bz_inline2 void Array<P_numtype, N_rank>::setupStorage(int lastRankInitialized)
     computeStrides();
 
     // Allocate a block of memory
-    MyIndexType numElem = numElements();
+    ssize_t numElem = numElements();
     if (numElem==0)
         T_base::changeToNullBlock();
     else
@@ -373,7 +371,7 @@ void Array<P_numtype, N_rank>::reverseSelf(int rank)
 
     storage_.setAscendingFlag(rank, !isRankStoredAscending(rank));
 
-    MyIndexType adjustment = stride_[rank] * (lbound(rank) + ubound(rank));
+    ssize_t adjustment = stride_[rank] * (lbound(rank) + ubound(rank));
     zeroOffset_ += adjustment;
     data_ += adjustment;
     stride_[rank] *= -1;
@@ -394,7 +392,7 @@ Array<P_numtype2,N_rank> Array<P_numtype,N_rank>::extractComponent(P_numtype2,
     BZPRECONDITION((componentNumber >= 0)
         && (componentNumber < numComponents));
 
-    TinyVector<MyIndexType,N_rank> stride2;
+    TinyVector<ssize_t,N_rank> stride2;
     for (int i=0; i < N_rank; ++i)
       stride2(i) = stride_(i) * numComponents;
     const P_numtype2* dataFirst2 =
@@ -411,9 +409,9 @@ Array<P_numtype2,N_rank> Array<P_numtype,N_rank>::extractComponent(P_numtype2,
  */
 template<typename P_numtype, int N_rank>
 _bz_inline2 void Array<P_numtype, N_rank>::reindexSelf(const
-    TinyVector<MyIndexType, N_rank>& newBase)
+    TinyVector<ssize_t, N_rank>& newBase)
 {
-    MyIndexType delta = 0;
+    ssize_t delta = 0;
     for (int i=0; i < N_rank; ++i)
       delta += (base(i) - newBase(i)) * stride_(i);
 
@@ -428,7 +426,7 @@ _bz_inline2 void Array<P_numtype, N_rank>::reindexSelf(const
 template<typename P_numtype, int N_rank>
 _bz_inline2 Array<P_numtype, N_rank>
 Array<P_numtype, N_rank>::reindex(
-    const TinyVector<MyIndexType, N_rank>& newBase)
+    const TinyVector<ssize_t, N_rank>& newBase)
 {
     T_array B(*this);
     B.reindexSelf(newBase);

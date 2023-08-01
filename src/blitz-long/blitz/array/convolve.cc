@@ -26,21 +26,19 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 template<typename T>
 Array<T,1> convolve(const Array<T,1>& B, const Array<T,1>& C)
 {
-    MyIndexType Bl = B.lbound(0), Bh = B.ubound(0);
-    MyIndexType Cl = C.lbound(0), Ch = C.ubound(0);
+    ssize_t Bl = B.lbound(0), Bh = B.ubound(0);
+    ssize_t Cl = C.lbound(0), Ch = C.ubound(0);
 
-    MyIndexType lbound = Bl + Cl;
-    MyIndexType ubound = Bh + Ch;
+    ssize_t lbound = Bl + Cl;
+    ssize_t ubound = Bh + Ch;
     
     Array<T,1> A(Range(lbound,ubound));
 
     T result;
-    for (MyIndexType i=lbound; i <= ubound; ++i)
+    for (ssize_t i=lbound; i <= ubound; ++i)
     {
         int jl = i - Ch;
         if (jl < Bl)

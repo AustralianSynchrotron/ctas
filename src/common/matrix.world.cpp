@@ -124,8 +124,8 @@ static const CLprogram & matrixOCLprogram(const cl_context cont=CL_context()) {
 class BinnProc::ForCLdev {
 
   static const std::string modname;
-  const Binn<2> bnn;
   const Shape<2> ish;
+  const Binn<2> abnn;
   const Shape<2> osh;
   CLenv & cl;
   CLkernel kernelBinn;
@@ -135,13 +135,22 @@ class BinnProc::ForCLdev {
 
 public:
 
-  ForCLdev(CLenv & cl, const Shape<2> & ish, const Binn<2> & bnn)
-    : bnn(bnn)
-    , ish(ish)
-    , osh(bnn.apply(ish))
+  ForCLdev(CLenv & cl, const Shape<2> & _ish, const Binn<2> & _bnn)
+    : abnn( [&_ish,_bnn](){
+        Binn<2>toRet;
+        // flipping, if needed, must happen outside CL
+        for (int dim=0; dim<2; dim++)
+          toRet(dim) = _bnn(dim) ? abs(_bnn(dim)) : _ish(dim) ;
+        return toRet;
+      }() )
+    , ish(_ish)
+    , osh(abnn.apply(ish))
     , cl(cl)
     , locker(PTHREAD_MUTEX_INITIALIZER)
-  {  }
+  {
+    if (!abnn)
+      throw_bug(modname+" Not intended for trivial binnings.");
+  }
 
   ~ForCLdev(){
     pthread_mutex_destroy(&locker);
@@ -149,8 +158,13 @@ public:
 
   bool apply(const Map & imap, Map & omap) {
 
-    if (!kernelBinn) // OpenCL infrastructure is created on first call.
-      try {
+    if( pthread_mutex_trylock(&locker) )
+      return false;
+
+    bool done = false;
+    try {
+
+      if (!kernelBinn) { // OpenCL infrastructure is created on first call.
         kernelBinn(matrixOCLprogram(cl.cont), "binn2");
         clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
         cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
@@ -158,25 +172,24 @@ public:
           throw 1;
         kernelBinn.setArg(0, clinarr());
         kernelBinn.setArg(1, cloutarr());
-        kernelBinn.setArg(2, (cl_int) abs(bnn(1)));
-        kernelBinn.setArg(3, (cl_int) abs(bnn(0)));
+        kernelBinn.setArg(2, (cl_int) abnn(1));
+        kernelBinn.setArg(3, (cl_int) abnn(0));
         kernelBinn.setArg(4, (cl_int) ish(1));
         kernelBinn.setArg(5, (cl_int) ish(0));
-      } catch (...) {
-        kernelBinn.free();
-        clinarr.free();
-        cloutarr.free();
-        throw_error(modname, "Failed to prepare for operation.");
       }
 
-    if( pthread_mutex_trylock(&locker) )
-      return false;
-    cl_command_queue que = clenv(kernelBinn.context()).que;
-    blitz2cl(imap, clinarr(), que);
-    kernelBinn.exec(osh, que);
-    cl2blitz(cloutarr(), omap, que);
+      cl_command_queue que = clenv(kernelBinn.context()).que;
+      blitz2cl(imap, clinarr(), que);
+      kernelBinn.exec(osh, que);
+      cl2blitz(cloutarr(), omap, que);
+      done = true;
+
+    } catch (...) {}
+
     pthread_mutex_unlock(&locker);
-    return true;
+    if (!done)
+      throw_error(modname, "Failed to binn.");
+    return done;
 
   }
 
@@ -203,8 +216,9 @@ BinnProc::BinnProc(const Shape<2> & ish, const Binn<2> & bnn)
     return;
   if (!CL_isReady())
     warn(modname, "OpenCL is not functional.");
-  for (CLenv & env : clenvs)
-    try{ _envs.emplace_back( new ForCLdev(env, ish, bnn) ); } catch(...) {}
+  else
+    for (CLenv & env : clenvs)
+      try{ _envs.emplace_back( new ForCLdev(env, ish, bnn) ); } catch(...) {}
 }
 
 BinnProc::BinnProc(const BinnProc & other)
@@ -220,16 +234,25 @@ BinnProc::~BinnProc() {
       delete env;
 }
 
-void BinnProc::operator() (const Map & imap, Map & omap) {
-  if (!size(ish) || !size(osh))
-    return;
+Map BinnProc::operator() (const Map & imap, Map & omap) {
+
+  if (!bnn)
+    return imap;
   if (imap.shape() != ish)
     throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
                          " with expected ("+toString(ish)+").");
-  if (bnn.flipOnly()) { // Trivial binning. No need OpenCL.
-    bnn.apply(imap,omap);
-    return;
-  }
+  if (!size(ish) || !size(osh))
+    return imap;
+  if (bnn.flipOnly())
+    return bnn.apply(imap);
+
+  Map fimap(imap);
+  for (uint curD=0; curD<2; ++curD) // flipping
+    if (bnn(curD) < 0)
+      fimap.reverseSelf(curD);
+  if (bnn.flipOnly())
+    return fimap;
+
   if (!omap.size())
     omap.resize(osh);
   if ( omap.shape() != osh )
@@ -237,8 +260,8 @@ void BinnProc::operator() (const Map & imap, Map & omap) {
                          " with expected ("+toString(osh)+")."
                          " Arrays are assumed to be ready before getting here." );
   for (ForCLdev * env : envs)
-    if (env->apply(imap,omap))
-      return;
+    if (env->apply(fimap,omap))
+      return omap;
   // Do on CPU
   for (ssize_t y=0 ; y<osh(0) ; ++y) {
     const int bby = y < osh(0) ? bnn(0) : ish(0) % bnn(0);
@@ -249,11 +272,12 @@ void BinnProc::operator() (const Map & imap, Map & omap) {
       for (ssize_t cy = 0 ; cy < bby ; cy++) {
         const ssize_t yy = y*bnn(0) + cy;
         for (ssize_t cx = 0 ; cx < bbx ; cx++)
-          val += imap(yy, x*bnn(1) + cx);
+          val += fimap(yy, x*bnn(1) + cx);
       }
       val /= bbx*bby;
     }
   }
+  return omap;
 }
 
 const string BinnProc::modname = "BinnProc";
@@ -308,7 +332,7 @@ Shape<Dim> Binn<Dim>::apply(const Shape<Dim> & ish) const {
 }
 
 template<int Dim>
-const ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr) const {
+ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr) const {
   ArrayF<Dim> toRet;
   apply(iarr,toRet);
   return toRet;
@@ -321,7 +345,7 @@ template<> void Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) con
 }
 
 template<> void Binn<2>::subapply( const ArrayF<2> & iarr, ArrayF<2> & oarr) const {
-  BinnProc(iarr.shape(), *this)(iarr, oarr);
+  BinnProc(iarr.shape(), flipped())(iarr, oarr);
 }
 
 template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) const {
@@ -438,20 +462,27 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
 
 
 template<int Dim>
-void Binn<Dim>::apply(const ArrayF<Dim> & iarr, ArrayF<Dim> & outarr) const {
-  const Shape<Dim> ish = iarr.shape();
-  const Shape<Dim> osh = apply(ish);
+ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr, ArrayF<Dim> & outarr) const {
+
+  if (!(*this))
+    return iarr;
   ArrayF<Dim> fiarr(iarr);
   for (uint curD=0; curD<Dim; ++curD) // flipping
     if ((*this)(curD) < 0)
       fiarr.reverseSelf(curD);
-  Binn<Dim> fbnn(flipped());
   if (flipOnly())
-    outarr.reference(fiarr);
-  else {
+    return fiarr;
+
+  const Shape<Dim> ish = iarr.shape();
+  const Shape<Dim> osh = apply(ish);
+  if (!outarr.size())
     outarr.resize(osh);
-    subapply(fiarr, outarr);
-  }
+  if (outarr.shape() != osh)
+    throw_error(modname, "Output array of incorrect shape ["+toString(outarr.shape())+"];"
+                         " expecting ["+toString(osh)+"].");
+  subapply(fiarr, outarr);
+  return outarr;
+
 }
 
 template class Binn<1>;
@@ -470,59 +501,73 @@ const string BinnOptionDesc =
 class RotateProc::ForCLdev {
 
   static const std::string modname;
-  const Shape<2> osh;
+  const RotateProc * parent;
+  CLenv & cl;
+  CLkernel kernelRotate;
   CLmem clinarr;
   CLmem cloutarr;
   CLmem clxf;
   CLmem clyf;
   CLmem clflx;
   CLmem clfly;
-  CLkernel kernelRotate;
   pthread_mutex_t locker;
 
 public:
 
   ForCLdev(CLenv & cl, const RotateProc * parent)
-    : osh(parent->osh)
-    , clinarr(clAllocArray<float>(size(parent->ish), CL_MEM_READ_ONLY, cl.cont))
-    , cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont))
-    , clxf(blitz2cl(parent->xf, cl.que))
-    , clyf(blitz2cl(parent->yf, cl.que))
-    , clflx(blitz2cl(parent->flx, cl.que))
-    , clfly(blitz2cl(parent->fly, cl.que))
-    , kernelRotate(matrixOCLprogram(cl.cont), "rotate")
+    : parent(parent)
+    , cl(cl)
     , locker(PTHREAD_MUTEX_INITIALIZER)
 
   {
-    if (  ! kernelRotate || ! clinarr() || ! cloutarr()
-       || ! clxf || ! clyf || ! clflx || ! clfly )
-      throw_error(modname, "Failed to prepare for operation.");
-    kernelRotate.setArg(0, clinarr());
-    kernelRotate.setArg(1, cloutarr());
-    kernelRotate.setArg(2, (cl_int) 0);
-    kernelRotate.setArg(3, (cl_int) parent->ish(1));
-    kernelRotate.setArg(4, (cl_int) parent->ish(0));
-    kernelRotate.setArg(5, (cl_int) osh(1));
-    kernelRotate.setArg(6, clxf());
-    kernelRotate.setArg(7, clyf());
-    kernelRotate.setArg(8, clflx());
-    kernelRotate.setArg(9, clfly());
+    if (!parent)
+      throw_bug("Zerro pointer to RotateProc");
   }
 
   ~ForCLdev(){
     pthread_mutex_destroy(&locker);
   }
 
-  bool apply(const Map & imap, Map & omap) {
-//    if ( ! binnProgram || ! CL_isReady() )
-//      throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
-//    if( pthread_mutex_trylock(&locker) )
-//      return false;
-//    blitz2cl(imap, clinarr(), cl.que);
-//    kernelRotate.exec(osh, cl.que);
-//    cl2blitz(cloutarr(), omap, cl.que);
-//    pthread_mutex_unlock(&locker);
-//    return true;
+  bool apply(const Map & imap, Map & omap, const float bg) {
+
+    if( pthread_mutex_trylock(&locker) )
+      return false;
+
+    try {
+
+      if (!kernelRotate) { // OpenCL infrastructure is created on first call.
+        kernelRotate(matrixOCLprogram(cl.cont), "rotate");
+        clinarr(clAllocArray<float>(size(parent->ish), CL_MEM_READ_ONLY, cl.cont));
+        cloutarr(clAllocArray<float>(size(parent->osh), CL_MEM_WRITE_ONLY, cl.cont));
+        clxf(blitz2cl(parent->xf, cl.que));
+        clyf(blitz2cl(parent->yf, cl.que));
+        clflx(blitz2cl(parent->flx, cl.que));
+        clfly(blitz2cl(parent->fly, cl.que));
+        kernelRotate.setArg(0, clinarr());
+        kernelRotate.setArg(1, cloutarr());
+        //kernelRotate.setArg(2, (cl_float) 0.0); // BG
+        kernelRotate.setArg(3, (cl_int) parent->ish(1));
+        kernelRotate.setArg(4, (cl_int) parent->ish(0));
+        kernelRotate.setArg(5, (cl_int) parent->osh(1));
+        kernelRotate.setArg(6, clxf());
+        kernelRotate.setArg(7, clyf());
+        kernelRotate.setArg(8, clflx());
+        kernelRotate.setArg(9, clfly());
+      }
+
+      kernelRotate.setArg(2, (cl_float) bg);
+      cl_command_queue que = clenv(kernelRotate.context()).que;
+      blitz2cl(imap, clinarr(), que);
+      kernelRotate.exec(parent->osh, que);
+      cl2blitz(cloutarr(), omap, que);
+
+    } catch (...) {
+      pthread_mutex_unlock(&locker);
+      throw_error(modname, "Failed operation.");
+    }
+    pthread_mutex_unlock(&locker);
+    return true;
+
   }
 
 };
@@ -533,20 +578,7 @@ const string RotateProc::ForCLdev::modname = "RotateOCL";
 RotateProc::RotateProc(const Shape<2> & ish, float ang)
   : ang(ang)
   , ish(ish)
-  , osh( [&ish,ang](){
-      if (!size(ish))
-        return Shape<2>(0l);
-      else if ( abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ) { // close to a 90-deg step
-        if ( ! ( ((int) round(2*ang/M_PI)) % 2 ) )
-          return ish;
-        else
-          return Shape<2>(ish(1),ish(0));
-      } else {
-        const float cosa = cos(-ang), sina = sin(-ang);
-        return Shape<2>( abs(ish(1)*sina) + abs(ish(0)*cosa)
-                       , abs(ish(1)*cosa) + abs(ish(0)*sina) );
-      }
-    }() )
+  , osh(apply(ish,ang))
   , envs(_envs)
   , xf(osh)
   , yf(osh)
@@ -596,7 +628,24 @@ RotateProc::~RotateProc() {
       delete env;
 }
 
-void RotateProc::operator() (const Map & imap, Map & omap, float bg) {
+
+Shape<2> RotateProc::apply(const Shape<2> & ish, float ang) {
+  if (!size(ish))
+    return Shape<2>(0l);
+  else if ( abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ) { // close to a 90-deg step
+    if ( ! ( ((int) round(2*ang/M_PI)) % 2 ) )
+      return ish;
+    else
+      return Shape<2>(ish(1),ish(0));
+  } else {
+    const float cosa = cos(-ang), sina = sin(-ang);
+    return Shape<2>( abs(ish(1)*sina) + abs(ish(0)*cosa)
+                   , abs(ish(1)*cosa) + abs(ish(0)*sina) );
+  }
+}
+
+
+Map RotateProc::operator() (const Map & imap, Map & omap, float bg) {
 
   if (imap.shape() != ish)
     throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
@@ -604,21 +653,27 @@ void RotateProc::operator() (const Map & imap, Map & omap, float bg) {
 
   if ( isTrivial() ) { // close to a 90-deg step
     const int nof90 = round(2*ang/M_PI);
-    if ( ! (nof90%4)  ) { // 360deg
-      omap.reference(imap);
-      return;
+    if ( ! (nof90%4)  ) // 360deg
+      return imap;
+    Map toRet(imap);
+    if ( ! (nof90%2) ) { //180deg
+      toRet.reverseSelf(blitz::firstDim);
+      toRet.reverseSelf(blitz::secondDim);
+    } else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) ) {  // 270deg
+      toRet.transposeSelf(blitz::firstDim, blitz::secondDim);
+      toRet.reverseSelf(blitz::secondDim);
+    } else { // 90deg
+      toRet.transposeSelf(blitz::firstDim, blitz::secondDim);
+      toRet.reverseSelf(blitz::firstDim);
     }
-    omap.resize(osh);
-    if ( ! (nof90%2) ) //180deg
-      omap=imap.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
-    else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) )  // 270deg
-      omap=imap.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);
-    else // 90deg
-      omap=imap.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);
-    return;
+    return toRet;
   }
 
-  omap.resize(osh);
+  if (!omap.size())
+    omap.resize(osh);
+  if (omap.shape() != osh)
+    throw_error(modname, "Output array of incorrect shape ["+toString(omap.shape())+"];"
+                         " expecting ["+toString(osh)+"].");
 
   if ( ! isnormal(bg) ) {
     bg = 0;
@@ -628,7 +683,10 @@ void RotateProc::operator() (const Map & imap, Map & omap, float bg) {
     bg += mean( imap( ish(0)-1, all ) );
     bg /= 4.0;
   }
-
+  for (ForCLdev * env : envs)
+    if (env->apply(imap, omap, bg))
+      return omap;
+  // Do on CPU
   for ( ssize_t y=0 ; y < osh(0) ; y++) {
     for ( ssize_t x=0 ; x < osh(1) ; x++) {
       if ( flx(y,x) < 1 || flx(y,x) >= ish(1)-1 || fly(y,x) < 1  || fly(y,x) >= ish(0)-1 ) {
@@ -638,9 +696,9 @@ void RotateProc::operator() (const Map & imap, Map & omap, float bg) {
         float v1 = imap(fly(y,x)+1,flx(y,x)) + ( imap(fly(y,x)+1,flx(y,x)+1) - imap(fly(y,x)+1,flx(y,x)) ) * yf(y,x);
         omap(y,x) = v0 + (v1-v0) * yf(y,x);
       }
-
     }
   }
+  return omap;
 
 }
 
@@ -649,93 +707,5 @@ const string RotateProc::modname = "RotateProc";
 
 
 
-
-
-
-Shape<2> rotate(const Shape<2> & sh, float angle) {
-  if (!size(sh))
-    return Shape<2>(0l);
-  if ( abs( remainder(angle, M_PI/2) ) < 1.0/diag(sh) ) { // close to a 90-deg step
-    if ( ! ( ((int) round(2*angle/M_PI)) % 2 ) )
-      return sh;
-    else
-      return Shape<2>(sh(1),sh(0));
-  }
-  const float cosa = cos(-angle), sina = sin(-angle);
-  const int
-    rwidth = abs( sh(1)*cosa ) + abs( sh(0)*sina),
-    rheight = abs( sh(1)*sina ) + abs( sh(0)*cosa);
-  return Shape<2>(rheight, rwidth);
-}
-
-
-void rotate(const Map & inarr, Map & outarr, float angle, float bg) {
-
-  const Shape<2> sh = inarr.shape();
-  const Shape<2> osh = rotate(sh, angle);
-
-  if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
-    const int nof90 = round(2*angle/M_PI);
-    if ( ! (nof90%4)  ) { // 360deg
-      outarr.reference(inarr);
-      return;
-    }
-    outarr.resize(osh);
-    if ( ! (nof90%2) ) //180deg
-      outarr=inarr.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
-    else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) )  // 270deg
-      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);
-    else // 90deg
-      outarr=inarr.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);
-    return;
-  }
-
-  const float cosa = cos(-angle), sina = sin(-angle);
-  outarr.resize(osh);
-
-  if ( ! isnormal(bg) ) {
-    bg=0;
-    bg += mean( inarr( all, 0 ) );
-    bg += mean( inarr( 0, all ) );
-    bg += mean( inarr( all, sh(1)-1 ) );
-    bg += mean( inarr( sh(0)-1, all ) );
-    bg /= 4.0;
-  }
-
-  const float
-    constinx = ( sh(1) + osh(0)*sina - osh(1)*cosa ) / 2.0,
-    constiny = ( sh(0) - osh(1)*sina - osh(0)*cosa ) / 2.0;
-
-  for ( ssize_t x=0 ; x < osh(1) ; x++) {
-    for ( ssize_t y=0 ; y < osh(0) ; y++) {
-
-      float xf = x*cosa - y*sina + constinx;
-      float yf = x*sina + y*cosa + constiny;
-      const ssize_t flx = floor(xf), fly = floor(yf);
-      xf -= flx;
-      yf -= fly;
-
-      if ( flx < 1 || flx >= sh(1)-1 || fly < 1  || fly >= sh(0)-1 ) {
-        outarr(y, x)=bg;
-      } else {
-        float v0 = inarr(fly,flx) + ( inarr(fly,flx+1) - inarr(fly,flx) ) * xf;
-        float v1 = inarr(fly+1,flx) + ( inarr(fly+1,flx+1) - inarr(fly+1,flx) ) * yf;
-        outarr(y, x) = v0 + (v1-v0) * yf;
-      }
-
-    }
-  }
-
-}
-
-void
-rotate(Map & io_arr, float angle, float bg) {
-  Map outarr;
-  rotate(io_arr, outarr, angle, bg);
-  if( io_arr.data() == outarr.data() )
-    return;
-  io_arr.resize(outarr.shape());
-  io_arr=outarr.copy();
-}
 
 

@@ -31,10 +31,8 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 template<typename T_numtype, int N_rank>
-void Array<T_numtype, N_rank>::resize(MyIndexType extent0)
+void Array<T_numtype, N_rank>::resize(ssize_t extent0)
 {
     BZPRECONDITION(extent0 >= 0);
     BZPRECONDITION(N_rank == 1);
@@ -47,7 +45,7 @@ void Array<T_numtype, N_rank>::resize(MyIndexType extent0)
 }
 
 template<typename T_numtype, int N_rank>
-void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1)
+void Array<T_numtype, N_rank>::resize(ssize_t extent0, ssize_t extent1)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0));
     BZPRECONDITION(N_rank == 2);
@@ -61,8 +59,8 @@ void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1)
 }
 
 template<typename T_numtype, int N_rank>
-void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1,
-    MyIndexType extent2)
+void Array<T_numtype, N_rank>::resize(ssize_t extent0, ssize_t extent1,
+    ssize_t extent2)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0));
     BZPRECONDITION(N_rank == 3);
@@ -79,8 +77,8 @@ void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1,
 
 
 template<typename T_numtype, int N_rank>
-void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1,
-    MyIndexType extent2, MyIndexType extent3)
+void Array<T_numtype, N_rank>::resize(ssize_t extent0, ssize_t extent1,
+    ssize_t extent2, ssize_t extent3)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0));
@@ -98,8 +96,8 @@ void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1,
 }
 
 template<typename T_numtype, int N_rank>
-void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1,
-    MyIndexType extent2, MyIndexType extent3, MyIndexType extent4)
+void Array<T_numtype, N_rank>::resize(ssize_t extent0, ssize_t extent1,
+    ssize_t extent2, ssize_t extent3, ssize_t extent4)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0));
@@ -120,8 +118,8 @@ void Array<T_numtype, N_rank>::resize(MyIndexType extent0, MyIndexType extent1,
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    MyIndexType extent0, MyIndexType extent1, MyIndexType extent2,
-    MyIndexType extent3, MyIndexType extent4, MyIndexType extent5)
+    ssize_t extent0, ssize_t extent1, ssize_t extent2,
+    ssize_t extent3, ssize_t extent4, ssize_t extent5)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0) && (extent5 >= 0));
@@ -143,9 +141,9 @@ void Array<T_numtype, N_rank>::resize(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    MyIndexType extent0, MyIndexType extent1, MyIndexType extent2,
-    MyIndexType extent3, MyIndexType extent4, MyIndexType extent5,
-    MyIndexType extent6)
+    ssize_t extent0, ssize_t extent1, ssize_t extent2,
+    ssize_t extent3, ssize_t extent4, ssize_t extent5,
+    ssize_t extent6)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0) && (extent5 >= 0)
@@ -170,9 +168,9 @@ void Array<T_numtype, N_rank>::resize(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    MyIndexType extent0, MyIndexType extent1, MyIndexType extent2,
-    MyIndexType extent3, MyIndexType extent4, MyIndexType extent5,
-    MyIndexType extent6, MyIndexType extent7)
+    ssize_t extent0, ssize_t extent1, ssize_t extent2,
+    ssize_t extent3, ssize_t extent4, ssize_t extent5,
+    ssize_t extent6, ssize_t extent7)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0) && (extent5 >= 0)
@@ -198,9 +196,9 @@ void Array<T_numtype, N_rank>::resize(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    MyIndexType extent0, MyIndexType extent1, MyIndexType extent2,
-    MyIndexType extent3, MyIndexType extent4, MyIndexType extent5,
-    MyIndexType extent6, MyIndexType extent7, MyIndexType extent8)
+    ssize_t extent0, ssize_t extent1, ssize_t extent2,
+    ssize_t extent3, ssize_t extent4, ssize_t extent5,
+    ssize_t extent6, ssize_t extent7, ssize_t extent8)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0) && (extent5 >= 0)
@@ -229,10 +227,10 @@ void Array<T_numtype, N_rank>::resize(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    MyIndexType extent0, MyIndexType extent1, MyIndexType extent2,
-    MyIndexType extent3, MyIndexType extent4, MyIndexType extent5,
-    MyIndexType extent6, MyIndexType extent7, MyIndexType extent8,
-    MyIndexType extent9)
+    ssize_t extent0, ssize_t extent1, ssize_t extent2,
+    ssize_t extent3, ssize_t extent4, ssize_t extent5,
+    ssize_t extent6, ssize_t extent7, ssize_t extent8,
+    ssize_t extent9)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0) && (extent5 >= 0)
@@ -262,10 +260,10 @@ void Array<T_numtype, N_rank>::resize(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    MyIndexType extent0, MyIndexType extent1, MyIndexType extent2,
-    MyIndexType extent3, MyIndexType extent4, MyIndexType extent5,
-    MyIndexType extent6, MyIndexType extent7, MyIndexType extent8,
-    MyIndexType extent9, MyIndexType extent10)
+    ssize_t extent0, ssize_t extent1, ssize_t extent2,
+    ssize_t extent3, ssize_t extent4, ssize_t extent5,
+    ssize_t extent6, ssize_t extent7, ssize_t extent8,
+    ssize_t extent9, ssize_t extent10)
 {
     BZPRECONDITION((extent0 >= 0) && (extent1 >= 0) && (extent2 >= 0)
         && (extent3 >= 0) && (extent4 >= 0) && (extent5 >= 0)
@@ -594,7 +592,7 @@ void Array<T_numtype, N_rank>::resize(Range r0, Range r1, Range r2, Range r3,
 
 
 template<typename T_numtype, int N_rank>
-void Array<T_numtype, N_rank>::resizeAndPreserve(MyIndexType length0)
+void Array<T_numtype, N_rank>::resizeAndPreserve(ssize_t length0)
 {
     BZPRECONDITION(length0 > 0);
     BZPRECONDITION(N_rank == 1);
@@ -632,7 +630,7 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(MyIndexType length0)
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1)
+    ssize_t length0, ssize_t length1)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0));
     BZPRECONDITION(N_rank == 2);
@@ -655,7 +653,7 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2)
+    ssize_t length0, ssize_t length1, ssize_t length2)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0));
     BZPRECONDITION(N_rank == 3);
@@ -682,8 +680,8 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0));
@@ -714,8 +712,8 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0));
@@ -749,8 +747,8 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4, MyIndexType length5)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4, ssize_t length5)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0) && (length5 > 0));
@@ -788,9 +786,9 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 /* Added by Julian Cummings */
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4, MyIndexType length5,
-    MyIndexType length6)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4, ssize_t length5,
+    ssize_t length6)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0) && (length5 > 0) && (length6 > 0));
@@ -832,9 +830,9 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 /* Added by Julian Cummings */
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4, MyIndexType length5,
-    MyIndexType length6, MyIndexType length7)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4, ssize_t length5,
+    ssize_t length6, ssize_t length7)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0) && (length5 > 0) && (length6 > 0)
@@ -879,9 +877,9 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 /* Added by Julian Cummings */
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4, MyIndexType length5,
-    MyIndexType length6, MyIndexType length7, MyIndexType length8)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4, ssize_t length5,
+    ssize_t length6, ssize_t length7, ssize_t length8)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0) && (length5 > 0) && (length6 > 0)
@@ -929,10 +927,10 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 /* Added by Julian Cummings */
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4, MyIndexType length5,
-    MyIndexType length6, MyIndexType length7, MyIndexType length8,
-    MyIndexType length9)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4, ssize_t length5,
+    ssize_t length6, ssize_t length7, ssize_t length8,
+    ssize_t length9)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0) && (length5 > 0) && (length6 > 0)
@@ -983,10 +981,10 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 /* Added by Julian Cummings */
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    MyIndexType length0, MyIndexType length1, MyIndexType length2,
-    MyIndexType length3, MyIndexType length4, MyIndexType length5,
-    MyIndexType length6, MyIndexType length7, MyIndexType length8,
-    MyIndexType length9, MyIndexType length10)
+    ssize_t length0, ssize_t length1, ssize_t length2,
+    ssize_t length3, ssize_t length4, ssize_t length5,
+    ssize_t length6, ssize_t length7, ssize_t length8,
+    ssize_t length9, ssize_t length10)
 {
     BZPRECONDITION((length0 > 0) && (length1 > 0) && (length2 > 0)
         && (length3 > 0) && (length4 > 0) && (length5 > 0) && (length6 > 0)
@@ -1035,7 +1033,7 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resize(
-    const TinyVector<MyIndexType,N_rank>& extent)
+    const TinyVector<ssize_t,N_rank>& extent)
 {
 // NEEDS_WORK -- don't resize if unnecessary
 //    BZPRECONDITION(all(extent > 0));
@@ -1051,7 +1049,7 @@ void Array<T_numtype, N_rank>::resize(
 /* Added by Julian Cummings */
 template<typename T_numtype, int N_rank>
 void Array<T_numtype, N_rank>::resizeAndPreserve(
-    const TinyVector<MyIndexType,N_rank>& extent)
+    const TinyVector<ssize_t,N_rank>& extent)
 {
 // NEEDS_WORK -- don't resize if unnecessary
 //    BZPRECONDITION(all(extent > 0));
@@ -1066,7 +1064,7 @@ void Array<T_numtype, N_rank>::resizeAndPreserve(
 
     if (numElements())
     {
-      TinyVector<MyIndexType,N_rank> ub;
+      TinyVector<ssize_t,N_rank> ub;
       for (int d=0; d < N_rank; ++d)
         ub(d) = (minmax::min)(B.ubound(d),ubound(d));
       RectDomain<N_rank> overlap(lbound(),ub);

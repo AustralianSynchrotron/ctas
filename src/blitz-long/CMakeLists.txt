@@ -9,8 +9,3 @@ ExternalProject_Add(blitz-long
   BUILD_COMMAND "continue"
   INSTALL_COMMAND "continue"
 )
-
-FILE(GLOB_RECURSE Headers "*.h")
-add_custom_target(.headers.blitz SOURCES ${Headers})
-FILE(GLOB_RECURSE Sources "*.cc")
-add_custom_target(.sources.blitz SOURCES ${Sources})

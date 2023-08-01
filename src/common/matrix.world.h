@@ -276,10 +276,10 @@ public:
   Binn(const blitz::TinyVector<ssize_t,Dim> & other) : blitz::TinyVector<ssize_t,Dim>(other) {}
   Binn(const std::string & str);
   explicit operator bool() const { return std::any_of( whole(*this), [](const ssize_t & bnn){return bnn != 1;}); }
-  Shape<Dim> apply(const Shape<Dim> & ish) const ;
-  const ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
-  void apply(const ArrayF<Dim> & inarr, ArrayF<Dim> & outarr) const ;
   bool flipOnly() const { return std::all_of( whole(*this), [](const ssize_t & bnn){return std::abs(bnn) == 1;}); }
+  Shape<Dim> apply(const Shape<Dim> & ish) const ;
+  ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
+  ArrayF<Dim> apply(const ArrayF<Dim> & inarr, ArrayF<Dim> & outarr) const ;
 };
 
 inline ssize_t binnOne(ssize_t sz, ssize_t bnn) {
@@ -316,7 +316,7 @@ public:
   BinnProc(const Shape<2> & ish, const Binn<2> & bnn);
   BinnProc(const BinnProc & other);
   ~BinnProc();
-  void operator() (const Map & imap, Map & omap);
+  Map operator() (const Map & imap, Map & omap);
 };
 
 extern const std::string
@@ -342,34 +342,10 @@ public:
   RotateProc(const RotateProc & other);
   ~RotateProc();
   Shape<2> operator()() const {return osh;}
-  void operator()(const Map & imap, Map & omap, float bg=NAN);
+  Map operator()(const Map & imap, Map & omap, float bg=NAN);
+  static Shape<2> apply(const Shape<2> & ish, float ang);
 };
 
-
-
-
-Shape<2> rotate(const Shape<2> & sh, float angle);
-
-/// \brief Rotate the array.
-///
-/// @param inarr Input array.
-/// @param outarr Output array. Input and output must be different arrays.
-/// @param angle Rotation angle.
-/// @param bg Values for the pixels in the resulting image not existing in
-///        original.
-///
-void
-rotate(const Map & inarr, Map & outarr, float angle, float bg=NAN);
-
-/// \brief Rotate the array.
-///
-/// @param io_arr Input/output array.
-/// @param angle Rotation angle.
-/// @param bg Values for the pixels in the resulting image not existing in
-///        original.
-///
-void
-rotate(Map & io_arr, float angle, float bg=NAN);
 
 
 

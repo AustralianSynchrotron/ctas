@@ -26,18 +26,17 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
 
 template<typename T_numtype>
 void dump(const char* name, Array<T_numtype,3>& A)
 {
     T_numtype normA = 0;
 
-    for (MyIndexType i=A.lbound(0); i <= A.ubound(0); ++i)
+    for (ssize_t i=A.lbound(0); i <= A.ubound(0); ++i)
     {
-      for (MyIndexType j=A.lbound(1); j <= A.ubound(1); ++j)
+      for (ssize_t j=A.lbound(1); j <= A.ubound(1); ++j)
       {
-        for (MyIndexType k=A.lbound(2); k <= A.ubound(2); ++k)
+        for (ssize_t k=A.lbound(2); k <= A.ubound(2); ++k)
         {
             T_numtype tmp = A(i,j,k);
             normA += BZ_MATHFN_SCOPE(fabs)(tmp);

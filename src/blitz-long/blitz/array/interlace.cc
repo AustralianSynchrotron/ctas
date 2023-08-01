@@ -33,8 +33,6 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 /*
  * This header provides two collections of routines:
  *
@@ -68,7 +66,7 @@ BZ_NAMESPACE(blitz)
 
 template<typename T_numtype>
 void makeInterlacedArray(Array<T_numtype,2>& mainArray,
-    Array<T_numtype,1>& subarray, MyIndexType slice)
+    Array<T_numtype,1>& subarray, ssize_t slice)
 {
     Array<T_numtype,1> tmp = mainArray(Range::all(), slice);
     subarray.reference(tmp);
@@ -76,7 +74,7 @@ void makeInterlacedArray(Array<T_numtype,2>& mainArray,
 
 template<typename T_numtype>
 void makeInterlacedArray(Array<T_numtype,3>& mainArray,
-    Array<T_numtype,2>& subarray, MyIndexType slice)
+    Array<T_numtype,2>& subarray, ssize_t slice)
 {
     Array<T_numtype,2> tmp = mainArray(Range::all(), Range::all(), 
         slice);
@@ -85,7 +83,7 @@ void makeInterlacedArray(Array<T_numtype,3>& mainArray,
 
 template<typename T_numtype>
 void makeInterlacedArray(Array<T_numtype,4>& mainArray,
-    Array<T_numtype,3>& subarray, MyIndexType slice)
+    Array<T_numtype,3>& subarray, ssize_t slice)
 {
     Array<T_numtype,3> tmp = mainArray(Range::all(), Range::all(), 
         Range::all(), slice);
@@ -94,7 +92,7 @@ void makeInterlacedArray(Array<T_numtype,4>& mainArray,
 
 // These routines always allocate interlaced arrays
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2)
 {
     GeneralArrayStorage<N_rank+1> storage;
@@ -104,7 +102,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3)
 {
@@ -116,7 +114,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4)
 {
@@ -129,7 +127,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5)
@@ -144,7 +142,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6)
@@ -160,7 +158,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -178,7 +176,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -197,7 +195,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -218,7 +216,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -240,7 +238,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void interlaceArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -271,7 +269,7 @@ void interlaceArrays(const TinyVector<MyIndexType,N_rank>& shape,
 // whether it is advantageous for this platform.
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2)
 {
 #ifdef BZ_INTERLACE_ARRAYS
@@ -283,7 +281,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3)
 {
@@ -297,7 +295,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4)
 {
@@ -312,7 +310,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5)
@@ -329,7 +327,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6)
@@ -347,7 +345,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -367,7 +365,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -388,7 +386,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -411,7 +409,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -435,7 +433,7 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 }
 
 template<typename T_numtype, int N_rank>
-void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
+void allocateArrays(const TinyVector<ssize_t,N_rank>& shape,
     Array<T_numtype,N_rank>& a1, Array<T_numtype,N_rank>& a2,
     Array<T_numtype,N_rank>& a3, Array<T_numtype,N_rank>& a4,
     Array<T_numtype,N_rank>& a5, Array<T_numtype,N_rank>& a6,
@@ -464,8 +462,8 @@ void allocateArrays(const TinyVector<MyIndexType,N_rank>& shape,
 
 // This constructor is used to create interlaced arrays.
 template<typename T_numtype, int N_rank>
-Array<T_numtype,N_rank>::Array(const TinyVector<MyIndexType,N_rank-1>& shape,
-    MyIndexType lastExtent, const GeneralArrayStorage<N_rank>& storage)
+Array<T_numtype,N_rank>::Array(const TinyVector<ssize_t,N_rank-1>& shape,
+    ssize_t lastExtent, const GeneralArrayStorage<N_rank>& storage)
     : storage_(storage)
 {
     // Create an array with the given shape, plus an extra dimension
@@ -499,7 +497,7 @@ Array<T_numtype,N_rank>::Array(const TinyVector<MyIndexType,N_rank-1>& shape,
 #if 0
 template<typename T_numtype, int N_rank>
 Array<T_numtype,N_rank>::Array(const TinyVector<Range,N_rank-1>& shape,
-    MyIndexType lastExtent, const GeneralArrayStorage<N_rank>& storage)
+    ssize_t lastExtent, const GeneralArrayStorage<N_rank>& storage)
     : storage_(storage)
 {
 #ifdef BZ_DEBUG

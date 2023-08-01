@@ -88,7 +88,7 @@ target_link_libraries(proj
 
 
 add_executable(v2v vol2vol.cpp)
-target_clsrc(v2v ../common/binn.cl)
+target_clsrc(v2v ../common/matrix.cl)
 target_link_libraries(v2v
   common
   poptmx

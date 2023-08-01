@@ -50,8 +50,6 @@
 
 BZ_NAMESPACE(blitz)
 
-    typedef ssize_t MyIndexType;
-
 template<typename T1, typename T2>
 class _bz_ExprPair {
 public:
@@ -77,7 +75,7 @@ inline _bz_ExprPair<T1,T2> makeExprPair(const T1& a, const T2& b)
 }
 
 template<typename P_expr>
-class _bz_ArrayExpr 
+class _bz_ArrayExpr
 #ifdef BZ_NEW_EXPRESSION_TEMPLATES
     : public ETBase<_bz_ArrayExpr<P_expr> >
 #endif
@@ -89,7 +87,7 @@ public:
     typedef T_expr T_ctorArg1;
     typedef int    T_ctorArg2;    // dummy
 
-    static const int 
+    static const int
         numArrayOperands = T_expr::numArrayOperands,
         numIndexPlaceholders = T_expr::numIndexPlaceholders,
         rank = T_expr::rank;
@@ -144,11 +142,11 @@ public:
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_rank>
-    T_numtype operator()(TinyVector<MyIndexType, N_rank> i)
+    T_numtype operator()(TinyVector<ssize_t, N_rank> i)
     { return iter_(i); }
 #else
     template<int N_rank>
-    T_numtype operator()(const TinyVector<MyIndexType, N_rank>& i)
+    T_numtype operator()(const TinyVector<ssize_t, N_rank>& i)
     { return iter_(i); }
 #endif
 
@@ -158,22 +156,22 @@ public:
     int ordering(int rank)
     { return iter_.ordering(rank); }
 
-    MyIndexType lbound(int rank)
+    ssize_t lbound(int rank)
     { return iter_.lbound(rank); }
 
-    MyIndexType ubound(int rank)
+    ssize_t ubound(int rank)
     { return iter_.ubound(rank); }
 
-    void push(MyIndexType position)
+    void push(ssize_t position)
     { iter_.push(position); }
 
-    void pop(MyIndexType position)
+    void pop(ssize_t position)
     { iter_.pop(position); }
 
     void advance()
     { iter_.advance(); }
 
-    void advance(MyIndexType n)
+    void advance(ssize_t n)
     { iter_.advance(n); }
 
     void loadStride(int rank)
@@ -186,21 +184,21 @@ public:
     { iter_.advanceUnitStride(); }
 
     bool canCollapse(int outerLoopRank, int innerLoopRank) const
-    { 
+    {
         // BZ_DEBUG_MESSAGE("_bz_ArrayExpr<>::canCollapse()");
-        return iter_.canCollapse(outerLoopRank, innerLoopRank); 
+        return iter_.canCollapse(outerLoopRank, innerLoopRank);
     }
 
-    T_numtype operator[](MyIndexType i)
+    T_numtype operator[](ssize_t i)
     { return iter_[i]; }
 
-    T_numtype fastRead(MyIndexType i)
+    T_numtype fastRead(ssize_t i)
     { return iter_.fastRead(i); }
 
-    MyIndexType suggestStride(int rank) const
+    ssize_t suggestStride(int rank) const
     { return iter_.suggestStride(rank); }
 
-    bool isStride(int rank, MyIndexType stride) const
+    bool isStride(int rank, ssize_t stride) const
     { return iter_.isStride(rank,stride); }
 
     void prettyPrint(BZ_STD_SCOPE(string) &str) const
@@ -209,7 +207,7 @@ public:
         iter_.prettyPrint(str, format);
     }
 
-    void prettyPrint(BZ_STD_SCOPE(string) &str, 
+    void prettyPrint(BZ_STD_SCOPE(string) &str,
         prettyPrintFormat& format) const
     { iter_.prettyPrint(str, format); }
 
@@ -217,7 +215,7 @@ public:
     bool shapeCheck(const T_shape& shape)
     { return iter_.shapeCheck(shape); }
 
-    void moveTo(const TinyVector<MyIndexType,_bz_ArrayExpr::rank>& i)
+    void moveTo(const TinyVector<ssize_t,_bz_ArrayExpr::rank>& i)
     {
         iter_.moveTo(i);
     }
@@ -245,8 +243,8 @@ struct bounds {
             return ascending1;
 
         BZ_DEBUG_MESSAGE("Two array operands have different"
-            << endl << "ascending flags: for rank " << rank 
-            << ", the flags are " << ascending1 << " and " 
+            << endl << "ascending flags: for rank " << rank
+            << ", the flags are " << ascending1 << " and "
             << ascending2 << endl);
         BZ_PRE_FAIL;
         return 0;
@@ -274,19 +272,19 @@ struct bounds {
         return 0;
     }
 
-    static MyIndexType compute_lbound(int BZ_DEBUG_PARAM(rank),
-                                  MyIndexType lbound1, MyIndexType lbound2)
+    static ssize_t compute_lbound(int BZ_DEBUG_PARAM(rank),
+                                  ssize_t lbound1, ssize_t lbound2)
     {
-        // The value tiny(MyIndexType()) indicates that there are no arrays
+        // The value tiny(ssize_t()) indicates that there are no arrays
         // in a subtree of the expression.  This logic returns
         // whichever lbound is available.  If there are two
         // conflicting lbound values, this is an error.
 
         if (lbound1 == lbound2)
             return lbound1;
-        else if (lbound1 == tiny(MyIndexType()))
+        else if (lbound1 == tiny(ssize_t()))
             return lbound2;
-        else if (lbound2 == tiny(MyIndexType()))
+        else if (lbound2 == tiny(ssize_t()))
             return lbound1;
 
         BZ_DEBUG_MESSAGE("Two array operands have different"
@@ -296,19 +294,19 @@ struct bounds {
         return 0;
     }
 
-    static MyIndexType compute_ubound(int BZ_DEBUG_PARAM(rank),
-                                  MyIndexType ubound1, MyIndexType ubound2)
+    static ssize_t compute_ubound(int BZ_DEBUG_PARAM(rank),
+                                  ssize_t ubound1, ssize_t ubound2)
     {
-        // The value huge(MyIndexType()) indicates that there are no arrays
+        // The value huge(ssize_t()) indicates that there are no arrays
         // in a subtree of the expression.  This logic returns
         // whichever ubound is available.  If there are two
         // conflicting ubound values, this is an error.
 
         if (ubound1 == ubound2)
             return ubound1;
-        else if (ubound1 == huge(MyIndexType()))
+        else if (ubound1 == huge(ssize_t()))
             return ubound2;
-        else if (ubound2 == huge(MyIndexType()))
+        else if (ubound2 == huge(ssize_t()))
             return ubound1;
 
         BZ_DEBUG_MESSAGE("Two array operands have different"
@@ -329,7 +327,7 @@ public:
     typedef T_expr T_ctorArg1;
     typedef int    T_ctorArg2;    // dummy
 
-    static const int 
+    static const int
         numArrayOperands = T_expr::numArrayOperands,
         numIndexPlaceholders = T_expr::numIndexPlaceholders,
         rank = T_expr::rank;
@@ -359,10 +357,10 @@ public:
     int ordering(int rank)
     { return iter_.ordering(rank); }
 
-    MyIndexType lbound(int rank)
+    ssize_t lbound(int rank)
     { return iter_.lbound(rank); }
 
-    MyIndexType ubound(int rank)
+    ssize_t ubound(int rank)
     { return iter_.ubound(rank); }
 
     T_numtype operator*()
@@ -370,20 +368,20 @@ public:
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_rank>
-    T_numtype operator()(TinyVector<MyIndexType, N_rank> i)
+    T_numtype operator()(TinyVector<ssize_t, N_rank> i)
     { return T_op::apply(iter_(i)); }
 #else
     template<int N_rank>
-    T_numtype operator()(const TinyVector<MyIndexType, N_rank>& i)
+    T_numtype operator()(const TinyVector<ssize_t, N_rank>& i)
     { return T_op::apply(iter_(i)); }
 #endif
 
-    void push(MyIndexType position)
+    void push(ssize_t position)
     {
         iter_.push(position);
     }
 
-    void pop(MyIndexType position)
+    void pop(ssize_t position)
     {
         iter_.pop(position);
     }
@@ -393,7 +391,7 @@ public:
         iter_.advance();
     }
 
-    void advance(MyIndexType n)
+    void advance(ssize_t n)
     {
         iter_.advance(n);
     }
@@ -411,30 +409,30 @@ public:
         iter_.advanceUnitStride();
     }
 
-    void moveTo(const TinyVector<MyIndexType,_bz_ArrayExprUnaryOp::rank>& i)
+    void moveTo(const TinyVector<ssize_t,_bz_ArrayExprUnaryOp::rank>& i)
     {
         iter_.moveTo(i);
     }
 
     bool canCollapse(int outerLoopRank, int innerLoopRank) const
-    { 
+    {
         // BZ_DEBUG_MESSAGE("_bz_ArrayExprUnaryOp<>::canCollapse");
-        return iter_.canCollapse(outerLoopRank, innerLoopRank); 
+        return iter_.canCollapse(outerLoopRank, innerLoopRank);
     }
 
-    T_numtype operator[](MyIndexType i)
+    T_numtype operator[](ssize_t i)
     { return T_op::apply(iter_[i]); }
 
-    T_numtype fastRead(MyIndexType i)
+    T_numtype fastRead(ssize_t i)
     { return T_op::apply(iter_.fastRead(i)); }
 
-    MyIndexType suggestStride(int rank) const
+    ssize_t suggestStride(int rank) const
     { return iter_.suggestStride(rank); }
 
-    bool isStride(int rank, MyIndexType stride) const
+    bool isStride(int rank, ssize_t stride) const
     { return iter_.isStride(rank,stride); }
 
-    void prettyPrint(BZ_STD_SCOPE(string) &str, 
+    void prettyPrint(BZ_STD_SCOPE(string) &str,
         prettyPrintFormat& format) const
     { T_op::prettyPrint(str, format, iter_); }
 
@@ -461,12 +459,12 @@ public:
     typedef T_expr1 T_ctorArg1;
     typedef T_expr2 T_ctorArg2;
 
-    static const int 
+    static const int
         numArrayOperands = T_expr1::numArrayOperands
                          + T_expr2::numArrayOperands,
         numIndexPlaceholders = T_expr1::numIndexPlaceholders
                              + T_expr2::numIndexPlaceholders,
-        rank = (T_expr1::rank > T_expr2::rank) 
+        rank = (T_expr1::rank > T_expr2::rank)
              ? T_expr1::rank : T_expr2::rank;
 
     _bz_ArrayExprBinaryOp(
@@ -484,11 +482,11 @@ public:
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_rank>
-    T_numtype operator()(TinyVector<MyIndexType, N_rank> i)
+    T_numtype operator()(TinyVector<ssize_t, N_rank> i)
     { return T_op::apply(iter1_(i), iter2_(i)); }
 #else
     template<int N_rank>
-    T_numtype operator()(const TinyVector<MyIndexType, N_rank>& i)
+    T_numtype operator()(const TinyVector<ssize_t, N_rank>& i)
     { return T_op::apply(iter1_(i), iter2_(i)); }
 #endif
 
@@ -504,89 +502,89 @@ public:
             iter2_.ordering(rank));
     }
 
-    MyIndexType lbound(int rank)
-    { 
+    ssize_t lbound(int rank)
+    {
         return bounds::compute_lbound(rank, iter1_.lbound(rank),
             iter2_.lbound(rank));
     }
 
-    MyIndexType ubound(int rank)
+    ssize_t ubound(int rank)
     {
         return bounds::compute_ubound(rank, iter1_.ubound(rank),
             iter2_.ubound(rank));
     }
 
-    void push(MyIndexType position)
-    { 
-        iter1_.push(position); 
+    void push(ssize_t position)
+    {
+        iter1_.push(position);
         iter2_.push(position);
     }
 
-    void pop(MyIndexType position)
-    { 
-        iter1_.pop(position); 
+    void pop(ssize_t position)
+    {
+        iter1_.pop(position);
         iter2_.pop(position);
     }
 
     void advance()
-    { 
-        iter1_.advance(); 
+    {
+        iter1_.advance();
         iter2_.advance();
     }
 
-    void advance(MyIndexType n)
+    void advance(ssize_t n)
     {
         iter1_.advance(n);
         iter2_.advance(n);
     }
 
     void loadStride(int rank)
-    { 
-        iter1_.loadStride(rank); 
+    {
+        iter1_.loadStride(rank);
         iter2_.loadStride(rank);
     }
-    
+
     bool isUnitStride(int rank) const
     { return iter1_.isUnitStride(rank) && iter2_.isUnitStride(rank); }
 
     void advanceUnitStride()
-    { 
-        iter1_.advanceUnitStride(); 
+    {
+        iter1_.advanceUnitStride();
         iter2_.advanceUnitStride();
     }
 
     bool canCollapse(int outerLoopRank, int innerLoopRank) const
-    { 
+    {
         // BZ_DEBUG_MESSAGE("_bz_ArrayExprBinaryOp<>::canCollapse");
         return iter1_.canCollapse(outerLoopRank, innerLoopRank)
             && iter2_.canCollapse(outerLoopRank, innerLoopRank);
-    } 
+    }
 
-    T_numtype operator[](MyIndexType i)
+    T_numtype operator[](ssize_t i)
     { return T_op::apply(iter1_[i], iter2_[i]); }
 
-    T_numtype fastRead(MyIndexType i)
+    T_numtype fastRead(ssize_t i)
     { return T_op::apply(iter1_.fastRead(i), iter2_.fastRead(i)); }
 
-    MyIndexType suggestStride(int rank) const
+    ssize_t suggestStride(int rank) const
     {
         int stride1 = iter1_.suggestStride(rank);
         int stride2 = iter2_.suggestStride(rank);
         return (stride1 > stride2) ? stride1 : stride2;
     }
 
-    bool isStride(int rank, MyIndexType stride) const
+    bool isStride(int rank, ssize_t stride) const
     {
         return iter1_.isStride(rank,stride) && iter2_.isStride(rank,stride);
     }
 
-    void moveTo(const TinyVector<MyIndexType,_bz_ArrayExprBinaryOp::rank>& i)
+    void moveTo(const TinyVector<ssize_t,_bz_ArrayExprBinaryOp::rank>& i)
     {
         iter1_.moveTo(i);
         iter2_.moveTo(i);
     }
 
-    void prettyPrint(BZ_STD_SCOPE(string) &str, 
+    void prettyPrint(BZ_STD_SCOPE(string) &str,
         prettyPrintFormat& format) const
     {
         T_op::prettyPrint(str, format, iter1_, iter2_);
@@ -600,7 +598,7 @@ protected:
     _bz_ArrayExprBinaryOp() { }
 
     T_expr1 iter1_;
-    T_expr2 iter2_; 
+    T_expr2 iter2_;
 };
 
 template<typename P_expr1, typename P_expr2, typename P_expr3, typename P_op>
@@ -618,17 +616,17 @@ public:
     typedef T_expr2 T_ctorArg2;
     typedef T_expr3 T_ctorArg3;
 
-    static const int 
+    static const int
         numArrayOperands = T_expr1::numArrayOperands
                          + T_expr2::numArrayOperands
                          + T_expr3::numArrayOperands,
         numIndexPlaceholders = T_expr1::numIndexPlaceholders
                              + T_expr2::numIndexPlaceholders
                              + T_expr3::numIndexPlaceholders,
-        rank = (T_expr1::rank > T_expr2::rank) 
+        rank = (T_expr1::rank > T_expr2::rank)
              ? ((T_expr1::rank > T_expr3::rank)
                 ? T_expr1::rank : T_expr3::rank)
-             : ((T_expr2::rank > T_expr3::rank) 
+             : ((T_expr2::rank > T_expr3::rank)
                 ? T_expr2::rank : T_expr3::rank);
 
     _bz_ArrayExprTernaryOp(
@@ -646,11 +644,11 @@ public:
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_rank>
-    T_numtype operator()(TinyVector<MyIndexType, N_rank> i)
+    T_numtype operator()(TinyVector<ssize_t, N_rank> i)
     { return T_op::apply(iter1_(i), iter2_(i), iter3_(i)); }
 #else
     template<int N_rank>
-    T_numtype operator()(const TinyVector<MyIndexType, N_rank>& i)
+    T_numtype operator()(const TinyVector<ssize_t, N_rank>& i)
     { return T_op::apply(iter1_(i), iter2_(i), iter3_(i)); }
 #endif
 
@@ -668,42 +666,42 @@ public:
             iter3_.ordering(rank));
     }
 
-    MyIndexType lbound(int rank)
-    { 
+    ssize_t lbound(int rank)
+    {
         return bounds::compute_lbound(rank, bounds::compute_lbound(
-            rank, iter1_.lbound(rank), iter2_.lbound(rank)), 
+            rank, iter1_.lbound(rank), iter2_.lbound(rank)),
             iter3_.lbound(rank));
     }
 
-    MyIndexType ubound(int rank)
+    ssize_t ubound(int rank)
     {
         return bounds::compute_ubound(rank, bounds::compute_ubound(
-            rank, iter1_.ubound(rank), iter2_.ubound(rank)), 
+            rank, iter1_.ubound(rank), iter2_.ubound(rank)),
             iter3_.ubound(rank));
     }
 
-    void push(MyIndexType position)
-    { 
-        iter1_.push(position); 
+    void push(ssize_t position)
+    {
+        iter1_.push(position);
         iter2_.push(position);
         iter3_.push(position);
     }
 
-    void pop(MyIndexType position)
-    { 
-        iter1_.pop(position); 
+    void pop(ssize_t position)
+    {
+        iter1_.pop(position);
         iter2_.pop(position);
         iter3_.pop(position);
     }
 
     void advance()
-    { 
-        iter1_.advance(); 
+    {
+        iter1_.advance();
         iter2_.advance();
         iter3_.advance();
     }
 
-    void advance(MyIndexType n)
+    void advance(ssize_t n)
     {
         iter1_.advance(n);
         iter2_.advance(n);
@@ -711,12 +709,12 @@ public:
     }
 
     void loadStride(int rank)
-    { 
-        iter1_.loadStride(rank); 
+    {
+        iter1_.loadStride(rank);
         iter2_.loadStride(rank);
         iter3_.loadStride(rank);
     }
-    
+
     bool isUnitStride(int rank) const
     {
         return iter1_.isUnitStride(rank)
@@ -725,31 +723,31 @@ public:
     }
 
     void advanceUnitStride()
-    { 
-        iter1_.advanceUnitStride(); 
+    {
+        iter1_.advanceUnitStride();
         iter2_.advanceUnitStride();
         iter3_.advanceUnitStride();
     }
 
     bool canCollapse(int outerLoopRank, int innerLoopRank) const
-    { 
+    {
         // BZ_DEBUG_MESSAGE("_bz_ArrayExprTernaryOp<>::canCollapse");
         return iter1_.canCollapse(outerLoopRank, innerLoopRank)
             && iter2_.canCollapse(outerLoopRank, innerLoopRank)
             && iter3_.canCollapse(outerLoopRank, innerLoopRank);
-    } 
+    }
 
-    T_numtype operator[](MyIndexType i)
+    T_numtype operator[](ssize_t i)
     { return T_op::apply(iter1_[i], iter2_[i], iter3_[i]); }
 
-    T_numtype fastRead(MyIndexType i)
+    T_numtype fastRead(ssize_t i)
     {
         return T_op::apply(iter1_.fastRead(i),
                            iter2_.fastRead(i),
                            iter3_.fastRead(i));
     }
 
-    MyIndexType suggestStride(int rank) const
+    ssize_t suggestStride(int rank) const
     {
         int stride1 = iter1_.suggestStride(rank);
         int stride2 = iter2_.suggestStride(rank);
@@ -758,21 +756,21 @@ public:
             stride1 : stride2;
     }
 
-    bool isStride(int rank, MyIndexType stride) const
+    bool isStride(int rank, ssize_t stride) const
     {
         return iter1_.isStride(rank,stride)
             && iter2_.isStride(rank,stride)
             && iter3_.isStride(rank,stride);
     }
 
-    void moveTo(const TinyVector<MyIndexType,_bz_ArrayExprTernaryOp::rank>& i)
+    void moveTo(const TinyVector<ssize_t,_bz_ArrayExprTernaryOp::rank>& i)
     {
         iter1_.moveTo(i);
         iter2_.moveTo(i);
         iter3_.moveTo(i);
     }
 
-    void prettyPrint(BZ_STD_SCOPE(string) &str, 
+    void prettyPrint(BZ_STD_SCOPE(string) &str,
         prettyPrintFormat& format) const
     {
         T_op::prettyPrint(str, format, iter1_, iter2_, iter3_);
@@ -790,8 +788,8 @@ protected:
     _bz_ArrayExprTernaryOp() { }
 
     T_expr1 iter1_;
-    T_expr2 iter2_; 
-    T_expr3 iter3_; 
+    T_expr2 iter2_;
+    T_expr3 iter3_;
 };
 
 
@@ -802,9 +800,9 @@ public:
     typedef T_numtype T_ctorArg1;
     typedef int       T_ctorArg2;    // dummy
 
-    static const int 
-        numArrayOperands = 0, 
-        numIndexPlaceholders = 0, 
+    static const int
+        numArrayOperands = 0,
+        numIndexPlaceholders = 0,
         rank = 0;
 
     _bz_ArrayExprConstant(const _bz_ArrayExprConstant<T_numtype>& a)
@@ -813,7 +811,7 @@ public:
 
     _bz_ArrayExprConstant(T_numtype value)
         : value_(BZ_NO_PROPAGATE(value))
-    { 
+    {
     }
 
     // tiny() and huge() return the smallest and largest representable
@@ -827,30 +825,30 @@ public:
     int ordering(int)
     { return INT_MIN; }
 
-    MyIndexType lbound(int)
-    { return tiny(MyIndexType()); }
+    ssize_t lbound(int)
+    { return tiny(ssize_t()); }
 
-    MyIndexType ubound(int)
-    { return huge(MyIndexType()); }
+    ssize_t ubound(int)
+    { return huge(ssize_t()); }
 
     T_numtype operator*()
     { return value_; }
 
 #ifdef BZ_ARRAY_EXPR_PASS_INDEX_BY_VALUE
     template<int N_rank>
-    T_numtype operator()(TinyVector<MyIndexType,N_rank>)
+    T_numtype operator()(TinyVector<ssize_t,N_rank>)
     { return value_; }
 #else
     template<int N_rank>
-    T_numtype operator()(const TinyVector<MyIndexType,N_rank>&)
+    T_numtype operator()(const TinyVector<ssize_t,N_rank>&)
     { return value_; }
 #endif
 
-    void push(MyIndexType) { }
-    void pop(MyIndexType) { }
+    void push(ssize_t) { }
+    void pop(ssize_t) { }
     void advance() { }
-    void advance(MyIndexType) { }
-    void loadStride(MyIndexType) { }
+    void advance(ssize_t) { }
+    void loadStride(ssize_t) { }
 
     bool isUnitStride(int) const
     { return true; }
@@ -858,27 +856,27 @@ public:
     void advanceUnitStride()
     { }
 
-    bool canCollapse(int,int) const 
+    bool canCollapse(int,int) const
     { return true; }
 
-    T_numtype operator[](MyIndexType)
+    T_numtype operator[](ssize_t)
     { return value_; }
 
-    T_numtype fastRead(MyIndexType)
+    T_numtype fastRead(ssize_t)
     { return value_; }
 
-    MyIndexType suggestStride(int) const
+    ssize_t suggestStride(int) const
     { return 1; }
 
-    bool isStride(int,MyIndexType) const
+    bool isStride(int,ssize_t) const
     { return true; }
 
-    void moveTo(MyIndexType) { }
+    void moveTo(ssize_t) { }
 
     template<int N_rank>
-    void moveTo(const TinyVector<MyIndexType,N_rank>&) { }
+    void moveTo(const TinyVector<ssize_t,N_rank>&) { }
 
-    void prettyPrint(BZ_STD_SCOPE(string) &str, 
+    void prettyPrint(BZ_STD_SCOPE(string) &str,
         prettyPrintFormat& format) const
     {
         if (format.tersePrintingSelected())

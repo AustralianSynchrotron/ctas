@@ -1229,7 +1229,7 @@ public:
       return;
     }
     ish = ImageSizes(filelist[0]);
-    sh = rotate(ish, ang);
+    sh = RotateProc::apply(ish, ang);
     sh = crp.apply(sh);
     sh = bnn.apply(sh);
     bar.setSteps(reader.slices());
@@ -1332,15 +1332,17 @@ Shape<3> ReadVolumeBySlice::shape() const {
 ImageProc::ImageProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN)
   : ish(ish)
   , ang(ang)
+  , rotProc(ish, ang)
   , crp(crp)
   , bnn(bnn)
-  , bnnProc(crp.apply(rotate(ish,ang)), bnn)
+  , bnnProc(crp.apply(RotateProc::apply(ish,ang)), bnn)
   , reNAN(reNAN)
 {}
 
 ImageProc::ImageProc(const ImageProc & other)
   : ish(other.ish)
   , ang(other.ang)
+  , rotProc(other.rotProc)
   , crp(other.crp)
   , bnn(other.bnn)
   , bnnProc(other.bnnProc)
@@ -1354,7 +1356,7 @@ void ImageProc::proc(Map & storage) {
       if (!fisok(*itar))
         *itar = reNAN;
   if (ang != 0.0) {
-    rotate(inmap, rotmap, ang);
+    rotProc(inmap, rotmap);
     crpmap.reference(crp.apply(rotmap));
   }
   bnn.apply(crpmap, storage);

@@ -111,6 +111,7 @@ toString(const std::string fmt, ...);
 ///
 /// @return string with printed number
 ///
+inline std::string toString (void*         p)   { return toString("%p", p); }
 inline std::string toString (long double   n)   { return toString("%g", n); }
 inline std::string toString (double        n)   { return toString("%g", n); }
 inline std::string toString (float         n)   { return toString("%g", n); }
@@ -118,6 +119,7 @@ inline std::string toString (long int      n)   { return toString("%i", n); }
 inline std::string toString (int           n)   { return toString("%i", n); }
 inline std::string toString (long unsigned n)   { return toString("%u", n); }
 inline std::string toString (unsigned      n)   { return toString("%u", n); }
+
 
 
 void prdn( const std::string & str = std::string() );

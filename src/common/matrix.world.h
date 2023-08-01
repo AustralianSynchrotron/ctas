@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <list>
 #include <numeric>
+#include <CL/cl.h>
 
 #define BZ_THREADSAFE
 //#define BZ_DEBUG_LOG_REFERENCES
@@ -27,6 +28,16 @@ inline bool operator!=( const blitz::TinyVector<T1,N> & t1
                       , const blitz::TinyVector<T2,N> & t2) {
   return ! (t1 == t2);
 }
+
+template<class T, int N>
+inline blitz::TinyVector<T,N> operator*( const blitz::TinyVector<T,N> & t1
+                                       , const blitz::TinyVector<T,N> & t2) {
+  blitz::TinyVector<T,N> toRet;
+  for (int dim=0; dim<N; dim++)
+    toRet(dim) = t1(dim)*t2(dim);
+  return toRet;
+}
+
 
 template<int Dim, class T>
 inline std::string toString (const blitz::TinyVector<T,Dim> & shp) {
@@ -107,6 +118,44 @@ inline bool areSame(const blitz::Array<T,N> & arr1,
 
 
 
+template<int Dim>
+class PointF : public blitz::TinyVector<float,Dim> {
+  using blitz::TinyVector<float,Dim>::TinyVector;
+public:
+  PointF() : blitz::TinyVector<float,Dim>(0.0f) {}
+};
+
+template<int Dim>
+std::string type_desc (PointF<Dim>*) {
+  return toString( blitz::TinyVector<std::string,Dim>("FLOAT") );
+}
+
+template<int Dim>
+int _conversion (PointF<Dim>* _val, const std::string & in) {
+  if (in.empty()) {
+    *_val = PointF<Dim>();
+    return 1;
+  }
+  std::deque<std::string> subs = split(in, ",");
+  const std::string modname = toString(Dim)+"D-point";
+  if ( Dim != subs.size() ) {
+    warn(modname, "Could not parse string \""+in+"\". Must contain " + toString(Dim)
+                  + " comma-delimited float numbers, while " + toString(subs.size()) + " found.");
+    return -1;
+  }
+  float flt;
+  for (uint curD=0; curD<Dim; ++curD) {
+    const std::string & curStr = subs.at(curD);
+    if ( ! parse_num(curStr, &flt) ) {
+      warn(modname, "Could not parse string \""+curStr+"\" as float point value."
+                    " for dimension " + toString(curD) + ".");
+      return -1;
+    }
+    // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
+    (*_val)(Dim-1-curD) = flt;
+  }
+  return 1;
+}
 
 
 template<int Dim>
@@ -137,6 +186,13 @@ template<int Dim>
 ssize_t size(const Shape<Dim> sh) {
   return std::accumulate(whole(sh), 1, std::multiplies<ssize_t>());
 }
+
+template<int Dim>
+double diag(const Shape<Dim> sh) {
+  Shape<Dim> ssh = sh*sh;
+  return sqrt(std::accumulate(whole(sh), 0));
+}
+
 
 static const blitz::Range all = blitz::Range::all();
 
@@ -246,15 +302,13 @@ int _conversion (Binn<Dim>* _val, const std::string & in) {
 }
 
 
-
-
 class BinnProc {
 public:
   const Binn<2> bnn;
   const Shape<2> ish;
   const Shape<2> osh;
-  static const std::string modname;
 private:
+  static const std::string modname;
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
   std::list<ForCLdev*> & envs;
@@ -270,44 +324,26 @@ BinnOptionDesc;
 
 
 
-template<int Dim>
-class PointF : public blitz::TinyVector<float,Dim> {
-  using blitz::TinyVector<float,Dim>::TinyVector;
+class RotateProc {
 public:
-  PointF() : blitz::TinyVector<float,Dim>(0.0f) {}
+  const float ang;
+  const Shape<2> ish;
+  const Shape<2> osh;
+private:
+  static const std::string modname;
+  class ForCLdev;
+  std::list<ForCLdev*>  _envs;
+  std::list<ForCLdev*> & envs;
+  blitz::Array<cl_float,2> xf, yf;
+  blitz::Array<cl_int,2> flx, fly;
+  bool isTrivial() const { return ! size(ish) || abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ;}
+public:
+  RotateProc(const Shape<2> & ish, float ang);
+  RotateProc(const RotateProc & other);
+  ~RotateProc();
+  Shape<2> operator()() const {return osh;}
+  void operator()(const Map & imap, Map & omap, float bg=NAN);
 };
-
-template<int Dim>
-std::string type_desc (PointF<Dim>*) {
-  return toString( blitz::TinyVector<std::string,Dim>("FLOAT") );
-}
-
-template<int Dim>
-int _conversion (PointF<Dim>* _val, const std::string & in) {
-  if (in.empty()) {
-    *_val = PointF<Dim>();
-    return 1;
-  }
-  std::deque<std::string> subs = split(in, ",");
-  const std::string modname = toString(Dim)+"D-point";
-  if ( Dim != subs.size() ) {
-    warn(modname, "Could not parse string \""+in+"\". Must contain " + toString(Dim)
-                  + " comma-delimited float numbers, while " + toString(subs.size()) + " found.");
-    return -1;
-  }
-  float flt;
-  for (uint curD=0; curD<Dim; ++curD) {
-    const std::string & curStr = subs.at(curD);
-    if ( ! parse_num(curStr, &flt) ) {
-      warn(modname, "Could not parse string \""+curStr+"\" as float point value."
-                    " for dimension " + toString(curD) + ".");
-      return -1;
-    }
-    // Dim-1-curD here is to reflect the fact that natural x,y,z... in matrix notaition has inverted order
-    (*_val)(Dim-1-curD) = flt;
-  }
-  return 1;
-}
 
 
 

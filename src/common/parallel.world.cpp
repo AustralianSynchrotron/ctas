@@ -381,6 +381,13 @@ bool CL_intialize() {
 }
 
 
+CLenv & clenv(const cl_context cont) {
+  for (CLenv & env : clenvs)
+    if (env.cont == cont)
+      return env;
+  throw_error("CLenv", "Found no OpenCL context "+toString((void*)cont)+".");
+}
+
 
 
 CLprogram & CLprogram::operator()(const string & source, cl_context context) {
@@ -476,6 +483,18 @@ CLprogram & CLprogram::operator()(const string & source, cl_context context) {
 
 }
 
+
+cl_context CLprogram::context() const {
+  if(!prog)
+    return 0;
+  cl_context toRet=0;
+  cl_int clerr = clGetProgramInfo(prog, CL_PROGRAM_CONTEXT, sizeof(cl_context), &toRet, NULL);
+  if ( clerr != CL_SUCCESS )
+    throw_error("CLprogram", "Failed to get context of OpenCL program: " + toString(clerr));
+  return toRet;
+}
+
+
 void CLprogram::free() {
   cl_program toDel = prog;
   prog=0;
@@ -483,6 +502,9 @@ void CLprogram::free() {
     clReleaseProgram(toDel);
 }
 
+
+
+const string CLkernel::modname = "CLkernel";
 
 
 CLkernel & CLkernel::operator()(const CLprogram & program, const std::string & name) {
@@ -496,26 +518,46 @@ CLkernel & CLkernel::operator()(const CLprogram & program, const std::string & n
   kern = clCreateKernel ( program(), name.c_str(), &clerr);
   if (clerr != CL_SUCCESS) {
     kern = 0;
-    throw_error("CLkernel",
-                "Could not create OpenCL kernel \"" + name + "\": " + toString(clerr));
+    throw_error(modname, "Could not create OpenCL kernel \"" + name + "\": " + toString(clerr));
   }
   return *this;
 }
 
-std::string CLkernel::name() const {
+
+string CLkernel::name() const {
   if (!kern)
     return "";
   size_t len=0;
   cl_int clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, 0, 0, &len);
   if ( clerr != CL_SUCCESS )
-    throw_error("kernelName", "Could not get OpenCL kernel name size: " + toString(clerr));
+    throw_error(modname, "Could not get OpenCL kernel name size: " + toString(clerr));
   string kernel_function(len-1, ' '); // -1 to exclude NL
   if (kernel_function.data()) {
     clerr = clGetKernelInfo ( kern, CL_KERNEL_FUNCTION_NAME, len, kernel_function.data(), 0);
     if (clerr != CL_SUCCESS)
-      throw_error("kernelName", "Could not get OpenCL kernel name: " + toString(clerr));
+      throw_error(modname, "Could not get OpenCL kernel name: " + toString(clerr));
   }
   return kernel_function;
+}
+
+cl_program CLkernel::program() const {
+  if (!kern)
+    return 0;
+  cl_program prog=0;
+  cl_int clerr = clGetKernelInfo ( kern, CL_KERNEL_PROGRAM, sizeof(cl_program), &prog, 0);
+  if ( clerr != CL_SUCCESS )
+    throw_error(modname, "Could not get OpenCL kernel's program: " + toString(clerr));
+  return prog;
+}
+
+cl_context CLkernel::context() const {
+  if (!kern)
+    return 0;
+  cl_context cont=0;
+  cl_int clerr = clGetKernelInfo ( kern, CL_KERNEL_CONTEXT, sizeof(cl_context), &cont, 0);
+  if ( clerr != CL_SUCCESS )
+    throw_error(modname, "Could not get OpenCL kernel's context: " + toString(clerr));
+  return cont;
 }
 
 
@@ -524,10 +566,10 @@ cl_int CLkernel::exec(size_t dims, size_t * sizes, cl_command_queue clque) const
     return CL_SUCCESS;
   cl_int clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, sizes, 0, 0, 0, 0);
   if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
+    throw_error(modname, "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
   clerr = clFinish(clque);
   if (clerr != CL_SUCCESS)
-    throw_error("execKernel", "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
+    throw_error(modname, "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
 }
 

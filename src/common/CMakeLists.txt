@@ -49,7 +49,7 @@ add_library(common SHARED
   parallel.world.h parallel.world.cpp
   physical.world.h physical.world.cpp
   external.world.h external.world.cpp )
-target_clsrc(common binn.cl)
+target_clsrc(common matrix.cl)
 target_link_libraries(common
   tiff
   ${HDF5_LIBRARIES}

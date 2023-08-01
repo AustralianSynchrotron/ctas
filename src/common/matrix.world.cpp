@@ -102,20 +102,32 @@ const string CropOptionDesc = "Each SEG describes the segment of the correspondi
 ;
 
 
-static const string binnOCLsrc() {
-  static const string toRet = {
-          #include "binn.cl.includeme"
+static const CLprogram & matrixOCLprogram(const cl_context cont=CL_context()) {
+  if (!CL_isReady())
+    throw_error("MatrixCL", "OpenCL is not functional.");
+  static unordered_map<cl_context, CLprogram> progs;
+  static pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER;
+  static const string oclsrc = {
+          #include "matrix.cl.includeme"
   };
-  return toRet;
+  if (!progs.count(cont)) {
+    pthread_mutex_lock(&locker);
+    if (!progs.count(cont)) // check again to make sure it was not created before locking
+      progs.try_emplace(cont, oclsrc, cont);
+    pthread_mutex_unlock(&locker);
+  }
+  return progs.at(cont);
 };
+
 
 
 class BinnProc::ForCLdev {
 
   static const std::string modname;
+  const Binn<2> bnn;
+  const Shape<2> ish;
   const Shape<2> osh;
   CLenv & cl;
-  CLprogram binnProgram;
   CLkernel kernelBinn;
   CLmem clinarr;
   CLmem cloutarr;
@@ -124,48 +136,48 @@ class BinnProc::ForCLdev {
 public:
 
   ForCLdev(CLenv & cl, const Shape<2> & ish, const Binn<2> & bnn)
-    : osh(bnn.apply(ish))
+    : bnn(bnn)
+    , ish(ish)
+    , osh(bnn.apply(ish))
     , cl(cl)
-    , binnProgram(binnOCLsrc(), cl.cont)
-    , kernelBinn(binnProgram, "binn2")
     , locker(PTHREAD_MUTEX_INITIALIZER)
-  {
-    if (!CL_isReady())
-      throw_error(modname, "OpenCL is not functional.");
-    try {
-      kernelBinn(binnProgram, "binn2");
-      clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
-      cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
-      if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
-        throw 1;
-      kernelBinn.setArg(0, clinarr());
-      kernelBinn.setArg(1, cloutarr());
-      kernelBinn.setArg(2, (cl_int) abs(bnn(1)));
-      kernelBinn.setArg(3, (cl_int) abs(bnn(0)));
-      kernelBinn.setArg(4, (cl_int) ish(1));
-      kernelBinn.setArg(5, (cl_int) ish(0));
-    } catch (...) {
-      kernelBinn.free();
-      clinarr.free();
-      cloutarr.free();
-      throw_error(modname, "Failed to prepare for operation.");
-    }
-  }
+  {  }
 
   ~ForCLdev(){
     pthread_mutex_destroy(&locker);
   }
 
   bool apply(const Map & imap, Map & omap) {
-    if ( ! binnProgram || ! CL_isReady() )
-      throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
+
+    if (!kernelBinn) // OpenCL infrastructure is created on first call.
+      try {
+        kernelBinn(matrixOCLprogram(cl.cont), "binn2");
+        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
+        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
+        if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
+          throw 1;
+        kernelBinn.setArg(0, clinarr());
+        kernelBinn.setArg(1, cloutarr());
+        kernelBinn.setArg(2, (cl_int) abs(bnn(1)));
+        kernelBinn.setArg(3, (cl_int) abs(bnn(0)));
+        kernelBinn.setArg(4, (cl_int) ish(1));
+        kernelBinn.setArg(5, (cl_int) ish(0));
+      } catch (...) {
+        kernelBinn.free();
+        clinarr.free();
+        cloutarr.free();
+        throw_error(modname, "Failed to prepare for operation.");
+      }
+
     if( pthread_mutex_trylock(&locker) )
       return false;
-    blitz2cl(imap, clinarr(), cl.que);
-    kernelBinn.exec(osh, cl.que);
-    cl2blitz(cloutarr(), omap, cl.que);
+    cl_command_queue que = clenv(kernelBinn.context()).que;
+    blitz2cl(imap, clinarr(), que);
+    kernelBinn.exec(osh, que);
+    cl2blitz(cloutarr(), omap, que);
     pthread_mutex_unlock(&locker);
     return true;
+
   }
 
 };
@@ -198,7 +210,7 @@ BinnProc::BinnProc(const Shape<2> & ish, const Binn<2> & bnn)
 BinnProc::BinnProc(const BinnProc & other)
   : bnn(other.bnn)
   , ish(other.ish)
-  , osh(other.bnn)
+  , osh(other.osh)
   , envs(other.envs)
 {}
 
@@ -214,7 +226,7 @@ void BinnProc::operator() (const Map & imap, Map & omap) {
   if (imap.shape() != ish)
     throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
                          " with expected ("+toString(ish)+").");
-  if (bnn.flipOnly()) {
+  if (bnn.flipOnly()) { // Trivial binning. No need OpenCL.
     bnn.apply(imap,omap);
     return;
   }
@@ -245,12 +257,6 @@ void BinnProc::operator() (const Map & imap, Map & omap) {
 }
 
 const string BinnProc::modname = "BinnProc";
-
-
-
-
-
-
 
 
 
@@ -292,6 +298,7 @@ Binn<Dim> Binn<Dim>::flipped() const {
   return toRet;
 }
 
+
 template<int Dim>
 Shape<Dim> Binn<Dim>::apply(const Shape<Dim> & ish) const {
   Shape<Dim> osh;
@@ -327,7 +334,7 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
 
   if (!CL_isReady())
     throw_error(modname, "OpenCL is not functional.");
-  CLprogram binnProgram(binnOCLsrc());
+  CLprogram binnProgram(matrixOCLprogram());
 
   try {
 
@@ -459,8 +466,196 @@ const string BinnOptionDesc =
 
 
 
+
+class RotateProc::ForCLdev {
+
+  static const std::string modname;
+  const Shape<2> osh;
+  CLmem clinarr;
+  CLmem cloutarr;
+  CLmem clxf;
+  CLmem clyf;
+  CLmem clflx;
+  CLmem clfly;
+  CLkernel kernelRotate;
+  pthread_mutex_t locker;
+
+public:
+
+  ForCLdev(CLenv & cl, const RotateProc * parent)
+    : osh(parent->osh)
+    , clinarr(clAllocArray<float>(size(parent->ish), CL_MEM_READ_ONLY, cl.cont))
+    , cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont))
+    , clxf(blitz2cl(parent->xf, cl.que))
+    , clyf(blitz2cl(parent->yf, cl.que))
+    , clflx(blitz2cl(parent->flx, cl.que))
+    , clfly(blitz2cl(parent->fly, cl.que))
+    , kernelRotate(matrixOCLprogram(cl.cont), "rotate")
+    , locker(PTHREAD_MUTEX_INITIALIZER)
+
+  {
+    if (  ! kernelRotate || ! clinarr() || ! cloutarr()
+       || ! clxf || ! clyf || ! clflx || ! clfly )
+      throw_error(modname, "Failed to prepare for operation.");
+    kernelRotate.setArg(0, clinarr());
+    kernelRotate.setArg(1, cloutarr());
+    kernelRotate.setArg(2, (cl_int) 0);
+    kernelRotate.setArg(3, (cl_int) parent->ish(1));
+    kernelRotate.setArg(4, (cl_int) parent->ish(0));
+    kernelRotate.setArg(5, (cl_int) osh(1));
+    kernelRotate.setArg(6, clxf());
+    kernelRotate.setArg(7, clyf());
+    kernelRotate.setArg(8, clflx());
+    kernelRotate.setArg(9, clfly());
+  }
+
+  ~ForCLdev(){
+    pthread_mutex_destroy(&locker);
+  }
+
+  bool apply(const Map & imap, Map & omap) {
+//    if ( ! binnProgram || ! CL_isReady() )
+//      throw_error(modname, "OpenCL is not functional or binn program has not compiled.");
+//    if( pthread_mutex_trylock(&locker) )
+//      return false;
+//    blitz2cl(imap, clinarr(), cl.que);
+//    kernelRotate.exec(osh, cl.que);
+//    cl2blitz(cloutarr(), omap, cl.que);
+//    pthread_mutex_unlock(&locker);
+//    return true;
+  }
+
+};
+const string RotateProc::ForCLdev::modname = "RotateOCL";
+
+
+
+RotateProc::RotateProc(const Shape<2> & ish, float ang)
+  : ang(ang)
+  , ish(ish)
+  , osh( [&ish,ang](){
+      if (!size(ish))
+        return Shape<2>(0l);
+      else if ( abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ) { // close to a 90-deg step
+        if ( ! ( ((int) round(2*ang/M_PI)) % 2 ) )
+          return ish;
+        else
+          return Shape<2>(ish(1),ish(0));
+      } else {
+        const float cosa = cos(-ang), sina = sin(-ang);
+        return Shape<2>( abs(ish(1)*sina) + abs(ish(0)*cosa)
+                       , abs(ish(1)*cosa) + abs(ish(0)*sina) );
+      }
+    }() )
+  , envs(_envs)
+  , xf(osh)
+  , yf(osh)
+  , flx(osh)
+  , fly(osh)
+{
+
+  if (!size(ish)) {
+    warn(modname, "Zero input size to rotate.");
+    return;
+  }
+  if (isTrivial()) // 90 step rotation. No need OpenCL.
+    return;
+
+  const float
+    cosa = cos(-ang), sina = sin(-ang),
+    constinx = ( ish(1) + osh(0)*sina - osh(1)*cosa ) / 2.0,
+    constiny = ( ish(0) - osh(1)*sina - osh(0)*cosa ) / 2.0;
+  xf = i1*cosa - i0*sina + constinx;
+  yf = i1*sina + i0*cosa + constiny;
+  flx = floor(xf);
+  fly = floor(yf);
+  xf -= flx;
+  yf -= fly;
+
+  if (!CL_isReady())
+    warn(modname, "OpenCL is not functional.");
+  for (CLenv & env : clenvs)
+    try{ _envs.emplace_back( new ForCLdev(env, this) ); } catch(...) {}
+
+}
+
+RotateProc::RotateProc(const RotateProc & other)
+  : ang(other.ang)
+  , ish(other.ish)
+  , osh(other.osh)
+  , envs(other.envs)
+  , xf(other.xf)
+  , yf(other.yf)
+  , flx(other.flx)
+  , fly(other.fly)
+{}
+
+RotateProc::~RotateProc() {
+  for (ForCLdev * env : _envs)
+    if (env)
+      delete env;
+}
+
+void RotateProc::operator() (const Map & imap, Map & omap, float bg) {
+
+  if (imap.shape() != ish)
+    throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
+                         " with expected ("+toString(ish)+").");
+
+  if ( isTrivial() ) { // close to a 90-deg step
+    const int nof90 = round(2*ang/M_PI);
+    if ( ! (nof90%4)  ) { // 360deg
+      omap.reference(imap);
+      return;
+    }
+    omap.resize(osh);
+    if ( ! (nof90%2) ) //180deg
+      omap=imap.copy().reverse(blitz::firstDim).reverse(blitz::secondDim);
+    else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) )  // 270deg
+      omap=imap.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim);
+    else // 90deg
+      omap=imap.copy().transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim);
+    return;
+  }
+
+  omap.resize(osh);
+
+  if ( ! isnormal(bg) ) {
+    bg = 0;
+    bg += mean( imap( all, 0 ) );
+    bg += mean( imap( 0, all ) );
+    bg += mean( imap( all, ish(1)-1 ) );
+    bg += mean( imap( ish(0)-1, all ) );
+    bg /= 4.0;
+  }
+
+  for ( ssize_t y=0 ; y < osh(0) ; y++) {
+    for ( ssize_t x=0 ; x < osh(1) ; x++) {
+      if ( flx(y,x) < 1 || flx(y,x) >= ish(1)-1 || fly(y,x) < 1  || fly(y,x) >= ish(0)-1 ) {
+        omap(y,x)=bg;
+      } else {
+        float v0 = imap(fly(y,x),  flx(y,x)) + ( imap(fly(y,x),  flx(y,x)+1) - imap(fly(y,x),  flx(y,x)) ) * xf(y,x);
+        float v1 = imap(fly(y,x)+1,flx(y,x)) + ( imap(fly(y,x)+1,flx(y,x)+1) - imap(fly(y,x)+1,flx(y,x)) ) * yf(y,x);
+        omap(y,x) = v0 + (v1-v0) * yf(y,x);
+      }
+
+    }
+  }
+
+}
+
+const string RotateProc::modname = "RotateProc";
+
+
+
+
+
+
+
 Shape<2> rotate(const Shape<2> & sh, float angle) {
-  if ( abs( remainder(angle, M_PI/2) ) < 1.0/max(sh(0),sh(1)) ) { // close to a 90-deg step
+  if (!size(sh))
+    return Shape<2>(0l);
+  if ( abs( remainder(angle, M_PI/2) ) < 1.0/diag(sh) ) { // close to a 90-deg step
     if ( ! ( ((int) round(2*angle/M_PI)) % 2 ) )
       return sh;
     else

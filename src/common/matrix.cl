@@ -1,25 +1,4 @@
 
-
-//kernel void  binn2(
-//  global const float*      in,
-//  global float*            out,
-//  int                      bx,
-//  int                      by,
-//  int                      iszx,
-//  int                      oszx)
-//{
-//  const int x = get_global_id(0);
-//  const int y = get_global_id(1);
-//  float sum = 0;
-//  for (int cy = 0 ; cy < by ; cy++) {
-//    const int offy = (y*by + cy)*iszx;
-//    for (int cx = 0 ; cx < bx ; cx++)
-//      sum += in[x*bx + cx + offy];
-//  }
-//  out[x + y*oszx] = sum/(bx*by);
-//}
-
-
 kernel void  binn2(
   global const float*      in,
   global float*            out,
@@ -92,5 +71,34 @@ kernel void  multiplyArray(
   float              coeff)
 {
   inout[get_global_id(0)] *= coeff;
+}
+
+
+
+kernel void  rotate(
+  global const float*      in,
+  global float*            out,
+  float                    bg,
+  int                      iszx,
+  int                      iszy,
+  int                      oszx,
+  gloabal const float*     xf,
+  gloabal const float*     yf,
+  gloabal const int*       flx,
+  gloabal const int*       fly)
+{
+  const int x = get_global_id(0);
+  const int y = get_global_id(1);
+  const int oshft = x+y*oszx;
+  const int vflx = flx(oshft);
+  const int vfly = flx(oshft);
+  if ( vflx < 1 || vflx >= iszx-1 || vfly < 1  || vfly >= iszy-1 )
+    out(oshft) = bg;
+  else {
+    const ishft = vflx + vfly*iszx;
+    float v0 = in[ishft]      + ( imap[ishft+1]      - imap[ishft]      ) * xf(oshft);
+    float v1 = in[ishft+iszx] + ( imap[ishft+iszx+1] - imap[ishft+iszx] ) * yf(oshft);
+    v0 + (v1-v0) * yf(oshft);
+  }
 }
 

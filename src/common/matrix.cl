@@ -75,7 +75,7 @@ kernel void  multiplyArray(
 
 
 
-kernel void  rotate(
+kernel void  rotate2(
   global const float*      in,
   global float*            out,
   float                    bg,

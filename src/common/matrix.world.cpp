@@ -537,7 +537,7 @@ public:
     try {
 
       if (!kernelRotate) { // OpenCL infrastructure is created on first call.
-        kernelRotate(matrixOCLprogram(cl.cont), "rotate");
+        kernelRotate(matrixOCLprogram(cl.cont), "rotate2");
         clinarr(clAllocArray<cl_float>(size(parent->ish), CL_MEM_READ_ONLY, cl.cont));
         cloutarr(clAllocArray<cl_float>(size(parent->osh), CL_MEM_WRITE_ONLY, cl.cont));
         clxf(blitz2cl<cl_float>(parent->xf, CL_MEM_READ_ONLY, cl.que));

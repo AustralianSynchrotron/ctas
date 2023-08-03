@@ -386,6 +386,7 @@ CLenv & clenv(const cl_context cont) {
     if (env.cont == cont)
       return env;
   throw_error("CLenv", "Found no OpenCL context "+toString((void*)cont)+".");
+  return clenvs[0]; // just to get rid of the no-return warning
 }
 
 

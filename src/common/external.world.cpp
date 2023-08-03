@@ -1334,7 +1334,6 @@ ImageProc::ImageProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const 
   , ang(ang)
   , rotProc(ish, ang)
   , crp(crp)
-  , bnn(bnn)
   , bnnProc(crp.apply(RotateProc::apply(ish,ang)), bnn)
   , reNAN(reNAN)
 {}
@@ -1344,7 +1343,6 @@ ImageProc::ImageProc(const ImageProc & other)
   , ang(other.ang)
   , rotProc(other.rotProc)
   , crp(other.crp)
-  , bnn(other.bnn)
   , bnnProc(other.bnnProc)
   , reNAN(other.reNAN)
 {}
@@ -1352,14 +1350,12 @@ ImageProc::ImageProc(const ImageProc & other)
 
 void ImageProc::proc(Map & storage) {
   if ( fisok(reNAN) )
-    for ( auto itar = storage.begin() ; itar != storage.end() ; itar++ )
-      if (!fisok(*itar))
-        *itar = reNAN;
-  if (ang != 0.0) {
+    for_each( whole(storage), [this](float & val){ if (!fisok(val)) val = this->reNAN; } );
+  if (ang != 0.0f) {
     rotProc(inmap, rotmap);
     crpmap.reference(crp.apply(rotmap));
   }
-  bnn.apply(crpmap, storage);
+  storage.reference(bnnProc(crpmap, storage));
 }
 
 void ImageProc::proc(const Map & imap, Map & omap) {
@@ -1368,7 +1364,7 @@ void ImageProc::proc(const Map & imap, Map & omap) {
     throw_error("ImageProc",
                 "Missmatch of input shape ("+toString(imap.shape())+")"
                 " with expected ("+toString(ish)+").");
-  if (ang==0.0 && ! crp && ! bnn && ! fisok(reNAN) ) {
+  if (ang==0.0 && ! crp && ! bnnProc.bnn && ! fisok(reNAN) ) {
     if (!omap.size()) {
       omap.reference(imap);
     } else if (!areSame(omap, imap)) {
@@ -1381,14 +1377,14 @@ void ImageProc::proc(const Map & imap, Map & omap) {
 
   inmap.resize(ish);
   inmap = imap;
-  if (ang==0.0)
+  if (ang==0.0f)
     crpmap.reference(crp.apply(imap));
   proc(omap);
 
 }
 
 void ImageProc::read(const ImagePath & filename, Map & storage) {
-  if (ang == 0.0)
+  if (ang == 0.0f)
     ReadImage(filename, crpmap, crp, ish);
   else
     ReadImage(filename, inmap, ish);
@@ -1398,7 +1394,7 @@ void ImageProc::read(const ImagePath & filename, Map & storage) {
 void ImageProc::read(ReadVolumeBySlice & volRd, uint sl, Map & storage) {
   if (volRd.face() != ish)
     throw_error("Image reader", "Non matching shape.");
-  if (ang == 0.0)
+  if (ang == 0.0f)
     volRd.read(sl, crpmap, crp);
   else
     volRd.read(sl, inmap);

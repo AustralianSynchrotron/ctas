@@ -180,7 +180,7 @@ class SliceInThread : public InThread {
       if (nmap.shape() != mish)
         throw_error("Sum on CL", "Wrong input image shape.");
       pthread_mutex_lock(&locker);
-      blitz2cl(nmap, addmem());
+      blitz2cl<cl_float>(nmap, addmem());
       addKernel.exec(size(mish));
       cnt++;
       if (cnt==bn)
@@ -260,9 +260,8 @@ class SliceInThread : public InThread {
     unlock(1);
 
     myrdproc.read(*ivolRd, idx, myrdmap);
-    if ( ! myacc.addme(myrdmap) ) {
+    if ( ! myacc.addme(myrdmap) )
       ovolSv->save(sodx, myrdmap);
-    }
     bar.update();
     return true;
 

@@ -112,7 +112,7 @@ void ProcProj::initCL() {
 
   iomCL(clAllocArray<float>(mskF.size()));
   if (!maskCL())
-    maskCL(blitz2cl(mskF, CL_MEM_READ_ONLY));
+    maskCL(blitz2cl<cl_float>(mskF, CL_MEM_READ_ONLY));
   gaussCL(oclProgram, "gauss");
   gaussCL.setArg(0, int(mskF.shape()(1)));
   gaussCL.setArg(1, int(mskF.shape()(0)));
@@ -474,7 +474,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
 
   // closing gaps left after superimposition
   if (doGapsFill) {
-    blitz2cl(stitched, iomCL());
+    blitz2cl<cl_float>(stitched, iomCL());
     gaussCL.exec(stitched.shape());
     cl2blitz(iomCL(), stitched);
   }

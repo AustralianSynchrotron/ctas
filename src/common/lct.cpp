@@ -314,7 +314,7 @@ bool CTrec::ForCLdev::checkReady() {
   try {
     clSlice(clAllocArray<float>(size(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
     clSino(clAllocArray<float>(size(parent.ish), CL_MEM_READ_ONLY, cl.cont));
-    clAngles(blitz2cl(parent.cossins, CL_MEM_READ_ONLY, cl.que));
+    clAngles(blitz2cl<cl_float2>(parent.cossins, CL_MEM_READ_ONLY, cl.que));
     kernelSino.setArg(0, clSino());
     kernelSino.setArg(1, clSlice());
     kernelSino.setArg(2, (cl_int) parent.ish(1));
@@ -344,7 +344,7 @@ int CTrec::ForCLdev::reconstruct(Map & fsin, Map & slice, float center) { // alr
   try{
     if (!checkReady())
       throw 0;
-    blitz2cl(fsin, clSino(), cl.que);
+    blitz2cl<cl_float>(fsin, clSino(), cl.que);
     kernelSino.setArg(5, (cl_float) center);
     kernelSino.exec(parent.osh, cl.que);
     slice.resize(parent.osh);
@@ -371,7 +371,7 @@ CTrec::ForCLdev::sino(Map &sinogram) {
     return false;
   bool toRet = false;
   pthread_mutex_lock(&locker);
-  try { blitz2cl(sinogram, clSino(), cl.que); toRet = true;}
+  try { blitz2cl<cl_float>(sinogram, clSino(), cl.que); toRet = true;}
   catch (...) { warn(modname, "Failed to upload sinogram to OCL device."); }
   pthread_mutex_unlock(&locker);
   return toRet;

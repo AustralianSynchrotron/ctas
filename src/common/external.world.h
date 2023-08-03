@@ -270,7 +270,6 @@ private:
   const float ang;
   RotateProc rotProc;
   const Crop<2> crp;
-  const Binn<2> bnn;
   BinnProc bnnProc;
   const float reNAN;
   Map inmap;
@@ -288,7 +287,7 @@ public:
   void proc(const Map & imap, Map & omap);
 
   Shape<2> outShape() const {
-    return outShape(ang, crp, bnn, ish);
+    return outShape(ang, crp, bnnProc.bnn, ish);
   }
 
   static Shape<2> outShape(float _ang, const Crop<2> & _crp, const Binn<2> & _bnn, const Shape<2> & _ish) {

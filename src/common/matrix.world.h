@@ -190,7 +190,7 @@ ssize_t size(const Shape<Dim> sh) {
 template<int Dim>
 double diag(const Shape<Dim> sh) {
   Shape<Dim> ssh = sh*sh;
-  return sqrt(std::accumulate(whole(sh), 0));
+  return sqrt(std::accumulate(whole(ssh), 0));
 }
 
 
@@ -270,7 +270,7 @@ class Binn : public blitz::TinyVector<ssize_t,Dim> {
 private:
   static const std::string modname;
   Binn<Dim> flipped() const;
-  void subapply(const ArrayF<Dim> & iarr, ArrayF<Dim> & oarr) const;
+  ArrayF<Dim> subapply(const ArrayF<Dim> & iarr, ArrayF<Dim> & oarr) const;
 public:
   Binn() : blitz::TinyVector<ssize_t,Dim>(1) {}
   Binn(const blitz::TinyVector<ssize_t,Dim> & other) : blitz::TinyVector<ssize_t,Dim>(other) {}
@@ -334,8 +334,8 @@ private:
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
   std::list<ForCLdev*> & envs;
-  blitz::Array<cl_float,2> xf, yf;
-  blitz::Array<cl_int,2> flx, fly;
+  Map xf, yf;
+  blitz::Array<ssize_t,2> flx, fly;
   bool isTrivial() const { return ! size(ish) || abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ;}
 public:
   RotateProc(const Shape<2> & ish, float ang);

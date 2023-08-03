@@ -133,6 +133,16 @@ public:
     inline CLmem & operator()(const CLmem & other) { free(); cl=other.cl; return *this; }
     inline operator bool() const { return cl; }
     inline void free() { if (clR) clReleaseMemObject(clR); clR=0; }
+    inline void write(void * data, ssize_t sz, cl_command_queue clque=CL_queue()) {
+      cl_int err = clEnqueueWriteBuffer(clque, cl, CL_TRUE, 0, sz, data, 0, 0, 0);
+      if (err != CL_SUCCESS)
+        throw_error("CLmem", "Could not write OpenCL buffer: " + toString(err) );
+    }
+    inline void read(void * data, ssize_t sz, cl_command_queue clque=CL_queue()) {
+      cl_int err = clEnqueueReadBuffer(clque, cl, CL_TRUE, 0, sz, data, 0, 0, 0 );
+      if (err != CL_SUCCESS)
+        throw_error("CLmem", "Could not read OpenCL buffer: " + toString(err) );
+    }
 };
 
 
@@ -219,8 +229,8 @@ cl_mem clAllocArray(size_t arrSize, cl_context context) {
 
 
 template <typename T, int N>
-cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
-               , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+cl_mem _blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
+                , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
   blitz::Array<T,N> _storage(safe(storage));
   cl_int err = clEnqueueWriteBuffer( clque, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size()
                                      , _storage.data(), 0, 0, 0);
@@ -229,31 +239,46 @@ cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
   return clStorage;
 }
 
-template <typename T, int N>
-cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage, cl_command_queue clque) {
-  return blitz2cl(storage, clStorage, CL_MEM_READ_WRITE, clque);
+template <typename CT, typename T, int N>
+cl_mem _blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
+                , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+  blitz::Array<CT,N> _storage(storage.shape());
+  _storage = blitz::cast<CT>(storage);
+  return _blitz2cl(_storage, clStorage, flag, clque);
 }
 
-template <typename T, int N>
+template <typename CT, typename T, int N>
+cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
+               , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+  return std::is_same<CT, T>::value
+      ? _blitz2cl<T,N>(storage, clStorage, CL_MEM_READ_WRITE, clque)
+      : _blitz2cl<CT,T,N>(storage, clStorage, CL_MEM_READ_WRITE, clque);
+}
+
+template <typename CT, typename T, int N>
+cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage, cl_command_queue clque) {
+  return blitz2cl<CT,T,N>(storage, clStorage, CL_MEM_READ_WRITE, clque);
+}
+
+template <typename CT, typename T, int N>
 cl_mem blitz2cl( const blitz::Array<T,N> & storage
                , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
   cl_context context;
   cl_int err = clGetCommandQueueInfo(clque, CL_QUEUE_CONTEXT, sizeof(cl_context), &context, 0);
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not get context from queue: " + toString(err));
-  cl_mem clStorage = clAllocArray<T>(storage.size(), flag, context);
-  return blitz2cl<T,N>(storage, clStorage, flag, clque);
+  cl_mem clStorage = clAllocArray<CT>(storage.size(), flag, context);
+  return blitz2cl<CT,T,N>(storage, clStorage, flag, clque);
 }
 
-template <typename T, int N>
+template <typename CT, typename T, int N>
 cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_command_queue clque) {
-  return blitz2cl(storage, CL_MEM_READ_WRITE, clque);
+  return blitz2cl<CT,T,N>(storage, CL_MEM_READ_WRITE, clque);
 }
 
 
 template <typename T, int N>
 blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage, cl_command_queue clque=CL_queue()) {
-
   blitz::Array<T,N> _storage(safe(storage));
   cl_int err = clEnqueueReadBuffer(clque, clbuffer, CL_TRUE, 0,
                                    sizeof(T) * _storage.size(),
@@ -263,7 +288,6 @@ blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage, cl_co
   if ( storage.data() != _storage.data() )
     storage = _storage;
   return storage;
-
 }
 
 

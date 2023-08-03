@@ -112,7 +112,7 @@ IPCprocess::ForCLdev::extract(Map & in) {
     if ( !clfft_plan ) {
 
       cin.resize(msh);
-      clmid(clAllocArray<float>(size(msh)*2, cl.cont));
+      clmid(clAllocArray<cl_float>(size(msh)*2, cl.cont));
       kernelApplyPhsFilter.setArg(0, clmid());
       kernelApplyPhsFilter.setArg(1, (cl_int) msh(1));
       kernelApplyPhsFilter.setArg(2, (cl_int) msh(0));
@@ -142,12 +142,12 @@ IPCprocess::ForCLdev::extract(Map & in) {
     }
 
     // execute
-    cin = blitz::cast<complex<float>>(in);
-    blitz2cl(cin, clmid(), cl.que);
+    cin = blitz::cast<complex<cl_float>>(in);
+    clmid.write(cin.data(), 2*size(msh)*sizeof(cl_float), cl.que);
     clfftExec(CLFFT_FORWARD);
     kernelApplyPhsFilter.exec(size(msh), cl.que);
     clfftExec(CLFFT_BACKWARD);
-    cl2blitz(clmid(), cin, cl.que);
+    clmid.read(cin.data(), 2*size(msh)*sizeof(cl_float), cl.que);
     in = real(cin);
     toRet = true;
 

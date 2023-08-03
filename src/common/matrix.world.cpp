@@ -179,7 +179,7 @@ public:
       }
 
       cl_command_queue que = clenv(kernelBinn.context()).que;
-      blitz2cl(imap, clinarr(), que);
+      blitz2cl<cl_float>(imap, clinarr(), que);
       kernelBinn.exec(osh, que);
       cl2blitz(cloutarr(), omap, que);
       done = true;
@@ -334,21 +334,21 @@ Shape<Dim> Binn<Dim>::apply(const Shape<Dim> & ish) const {
 template<int Dim>
 ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr) const {
   ArrayF<Dim> toRet;
-  apply(iarr,toRet);
-  return toRet;
+  return apply(iarr,toRet);
 }
 
-template<> void Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) const {
+template<> ArrayF<1> Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) const {
   throw_bug("1D Binning is not implemented yet.");
+  return oarr;
   //oarr.resize(bnn.apply(iarr.shape()));
   // TODO
 }
 
-template<> void Binn<2>::subapply( const ArrayF<2> & iarr, ArrayF<2> & oarr) const {
-  BinnProc(iarr.shape(), flipped())(iarr, oarr);
+template<> ArrayF<2> Binn<2>::subapply( const ArrayF<2> & iarr, ArrayF<2> & oarr) const {
+  return BinnProc(iarr.shape(), flipped())(iarr, oarr);
 }
 
-template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) const {
+template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) const {
 
   const Shape<3> ish = iarr.shape();
   const Shape<3> osh = oarr.shape();
@@ -362,7 +362,7 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
 
   try {
 
-    CLmem clinarr(blitz2cl(iarr, CL_MEM_READ_ONLY));
+    CLmem clinarr(blitz2cl<cl_float>(iarr, CL_MEM_READ_ONLY));
     CLmem cloutarr(clAllocArray<float>(oarr.size(), CL_MEM_WRITE_ONLY));
     CLkernel kernelBinn3(binnProgram, "binn3");
 
@@ -418,10 +418,10 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
       for (cz=0 ; cz<zbnn && z*zbnn+cz < ish(0) ; cz++) {
         Map inslice(iarr(z*zbnn+cz, all, all));
         if (sbnn) {
-          blitz2cl(inslice, clinslice());
+          blitz2cl<cl_float>(inslice, clinslice());
           kernelBinn2.exec(sosh);
         } else {
-          blitz2cl(inslice, cltmpslice());
+          blitz2cl<cl_float>(inslice, cltmpslice());
         }
         kernelAddTo.exec(sosz);
       }
@@ -458,6 +458,8 @@ template<> void Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) con
 
 #endif // OPENCL_FOUND
 
+  return oarr;
+
 }
 
 
@@ -480,8 +482,7 @@ ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr, ArrayF<Dim> & outarr) con
   if (outarr.shape() != osh)
     throw_error(modname, "Output array of incorrect shape ["+toString(outarr.shape())+"];"
                          " expecting ["+toString(osh)+"].");
-  subapply(fiarr, outarr);
-  return outarr;
+  return subapply(fiarr, outarr);
 
 }
 
@@ -537,12 +538,12 @@ public:
 
       if (!kernelRotate) { // OpenCL infrastructure is created on first call.
         kernelRotate(matrixOCLprogram(cl.cont), "rotate");
-        clinarr(clAllocArray<float>(size(parent->ish), CL_MEM_READ_ONLY, cl.cont));
-        cloutarr(clAllocArray<float>(size(parent->osh), CL_MEM_WRITE_ONLY, cl.cont));
-        clxf(blitz2cl(parent->xf, cl.que));
-        clyf(blitz2cl(parent->yf, cl.que));
-        clflx(blitz2cl(parent->flx, cl.que));
-        clfly(blitz2cl(parent->fly, cl.que));
+        clinarr(clAllocArray<cl_float>(size(parent->ish), CL_MEM_READ_ONLY, cl.cont));
+        cloutarr(clAllocArray<cl_float>(size(parent->osh), CL_MEM_WRITE_ONLY, cl.cont));
+        clxf(blitz2cl<cl_float>(parent->xf, CL_MEM_READ_ONLY, cl.que));
+        clyf(blitz2cl<cl_float>(parent->yf, CL_MEM_READ_ONLY, cl.que));
+        clflx(blitz2cl<cl_int>(parent->flx, CL_MEM_READ_ONLY, cl.que));
+        clfly(blitz2cl<cl_int>(parent->fly, CL_MEM_READ_ONLY, cl.que));
         kernelRotate.setArg(0, clinarr());
         kernelRotate.setArg(1, cloutarr());
         //kernelRotate.setArg(2, (cl_float) 0.0); // BG
@@ -557,7 +558,7 @@ public:
 
       kernelRotate.setArg(2, (cl_float) bg);
       cl_command_queue que = clenv(kernelRotate.context()).que;
-      blitz2cl(imap, clinarr(), que);
+      blitz2cl<cl_float>(imap, clinarr(), que);
       kernelRotate.exec(parent->osh, que);
       cl2blitz(cloutarr(), omap, que);
 
@@ -686,14 +687,15 @@ Map RotateProc::operator() (const Map & imap, Map & omap, float bg) {
   for (ForCLdev * env : envs)
     if (env->apply(imap, omap, bg))
       return omap;
-  // Do on CPU
+  //// Do on CPU
   for ( ssize_t y=0 ; y < osh(0) ; y++) {
     for ( ssize_t x=0 ; x < osh(1) ; x++) {
-      if ( flx(y,x) < 1 || flx(y,x) >= ish(1)-1 || fly(y,x) < 1  || fly(y,x) >= ish(0)-1 ) {
+      const ssize_t & vflx = flx(y,x), vfly = fly(y,x);
+      if ( vflx < 1 || vflx >= ish(1)-1 || vfly < 1  || vfly >= ish(0)-1 ) {
         omap(y,x)=bg;
       } else {
-        float v0 = imap(fly(y,x),  flx(y,x)) + ( imap(fly(y,x),  flx(y,x)+1) - imap(fly(y,x),  flx(y,x)) ) * xf(y,x);
-        float v1 = imap(fly(y,x)+1,flx(y,x)) + ( imap(fly(y,x)+1,flx(y,x)+1) - imap(fly(y,x)+1,flx(y,x)) ) * yf(y,x);
+        float v0 = imap(vfly,  vflx) + ( imap(vfly,  vflx+1) - imap(vfly,  vflx) ) * xf(y,x);
+        float v1 = imap(vfly+1,vflx) + ( imap(vfly+1,vflx+1) - imap(vfly+1,vflx) ) * yf(y,x);
         omap(y,x) = v0 + (v1-v0) * yf(y,x);
       }
     }
@@ -701,6 +703,7 @@ Map RotateProc::operator() (const Map & imap, Map & omap, float bg) {
   return omap;
 
 }
+/**/
 
 const string RotateProc::modname = "RotateProc";
 

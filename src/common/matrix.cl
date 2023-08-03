@@ -82,23 +82,23 @@ kernel void  rotate(
   int                      iszx,
   int                      iszy,
   int                      oszx,
-  gloabal const float*     xf,
-  gloabal const float*     yf,
-  gloabal const int*       flx,
-  gloabal const int*       fly)
+  global const float*     xf,
+  global const float*     yf,
+  global const int*       flx,
+  global const int*       fly)
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
   const int oshft = x+y*oszx;
-  const int vflx = flx(oshft);
-  const int vfly = flx(oshft);
+  const int vflx = flx[oshft];
+  const int vfly = fly[oshft];
   if ( vflx < 1 || vflx >= iszx-1 || vfly < 1  || vfly >= iszy-1 )
-    out(oshft) = bg;
+    out[oshft] = bg;
   else {
-    const ishft = vflx + vfly*iszx;
-    float v0 = in[ishft]      + ( imap[ishft+1]      - imap[ishft]      ) * xf(oshft);
-    float v1 = in[ishft+iszx] + ( imap[ishft+iszx+1] - imap[ishft+iszx] ) * yf(oshft);
-    v0 + (v1-v0) * yf(oshft);
+    const int ishft = vflx + vfly*iszx;
+    float v0 = in[ishft]      + ( in[ishft+1]      - in[ishft]      ) * xf[oshft];
+    float v1 = in[ishft+iszx] + ( in[ishft+iszx+1] - in[ishft+iszx] ) * yf[oshft];
+    out[oshft] = v0 + (v1-v0) * yf[oshft];
   }
 }
 

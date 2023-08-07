@@ -111,9 +111,11 @@ safe(const blitz::Array<T,N> & arr, bool preserve=true){
 template<class T, int N>
 inline bool areSame(const blitz::Array<T,N> & arr1,
                     const blitz::Array<T,N> & arr2) {
-  return arr1.data()   == arr2.data()   &&
-         arr1.stride() == arr2.stride() &&
-         arr1.shape()  == arr2.shape();
+  return arr1.zeroOffset() == arr2.zeroOffset() &&
+         arr1.data()       == arr2.data()       &&
+         arr1.base()       == arr2.base()       &&
+         arr1.stride()     == arr2.stride()     &&
+         arr1.shape()      == arr2.shape();
 }
 
 
@@ -245,7 +247,7 @@ public:
   Crop(const blitz::TinyVector<Segment,Dim> & other) : blitz::TinyVector<Segment,Dim>(other) {}
   Crop(const std::string & str) ;
   explicit operator bool() const { return std::any_of( whole(*this), [](const Segment & seg){return bool(seg);}); }
-  Shape<Dim> apply(const Shape<Dim> & ish) const ;
+  Shape<Dim> shape(const Shape<Dim> & ish) const ;
   ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
 };
 
@@ -269,21 +271,20 @@ class Binn : public blitz::TinyVector<ssize_t,Dim> {
   using blitz::TinyVector<ssize_t,Dim>::TinyVector;
 private:
   static const std::string modname;
-  Binn<Dim> flipped() const;
   ArrayF<Dim> subapply(const ArrayF<Dim> & iarr, ArrayF<Dim> & oarr) const;
+  Binn<Dim> flipped() const;
 public:
   Binn() : blitz::TinyVector<ssize_t,Dim>(1) {}
   Binn(const blitz::TinyVector<ssize_t,Dim> & other) : blitz::TinyVector<ssize_t,Dim>(other) {}
   Binn(const std::string & str);
   explicit operator bool() const { return std::any_of( whole(*this), [](const ssize_t & bnn){return bnn != 1;}); }
-  bool flipOnly() const { return std::all_of( whole(*this), [](const ssize_t & bnn){return std::abs(bnn) == 1;}); }
-  Shape<Dim> apply(const Shape<Dim> & ish) const ;
-  ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
-  ArrayF<Dim> apply(const ArrayF<Dim> & inarr, ArrayF<Dim> & outarr) const ;
+  bool isTrivial() const { return std::all_of( whole(*this), [](const ssize_t & bnn){return std::abs(bnn) == 1;}); }
+  Shape<Dim> shape(const Shape<Dim> & ish) const ;
+  ArrayF<Dim> apply(const ArrayF<Dim> & inarr) const ;
 };
 
 inline ssize_t binnOne(ssize_t sz, ssize_t bnn) {
-  return bnn ? (sz + abs(bnn) - 1) / abs(bnn)  :  1 ;
+  return bnn ? (sz + abs(bnn) - 1) / abs(bnn)  :  1 ; // make sure this is same in matrix.cl
 }
 
 template<int Dim>
@@ -303,11 +304,11 @@ int _conversion (Binn<Dim>* _val, const std::string & in) {
 
 
 class BinnProc {
-public:
+private:
   const Binn<2> bnn;
+  const Binn<2> rbnn;
   const Shape<2> ish;
   const Shape<2> osh;
-private:
   static const std::string modname;
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
@@ -316,7 +317,9 @@ public:
   BinnProc(const Shape<2> & ish, const Binn<2> & bnn);
   BinnProc(const BinnProc & other);
   ~BinnProc();
-  Map operator() (const Map & imap, Map & omap);
+  bool isTrivial() const {return bnn.isTrivial();}
+  Shape<2> shape() const {return osh;}
+  Map apply(const Map & imap, Map & tmap);
 };
 
 extern const std::string
@@ -325,28 +328,46 @@ BinnOptionDesc;
 
 
 class RotateProc {
-public:
+private:
   const float ang;
   const Shape<2> ish;
   const Shape<2> osh;
-private:
   static const std::string modname;
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
   std::list<ForCLdev*> & envs;
   Map xf, yf;
   blitz::Array<ssize_t,2> flx, fly;
-  bool isTrivial() const { return ! size(ish) || abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ;}
 public:
   RotateProc(const Shape<2> & ish, float ang);
   RotateProc(const RotateProc & other);
   ~RotateProc();
-  Shape<2> operator()() const {return osh;}
-  Map operator()(const Map & imap, Map & omap, float bg=NAN);
-  static Shape<2> apply(const Shape<2> & ish, float ang);
+  explicit operator bool() const { return size(ish) && abs( remainder(ang, M_PI_2) ) >= 2.0/diag(ish); }
+  bool isTrivial() const { return ! size(ish) || abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ;}
+  Shape<2> shape() const {return osh;}
+  static Shape<2> shape(const Shape<2> & ish, float ang);
+  Map apply(const Map & imap, Map & tmap, float bg=NAN);
 };
 
 
+
+
+class MapProc {
+protected:
+  const Shape<2> ish;
+  RotateProc rotProc;
+  const Crop<2> crp;
+  BinnProc bnnProc;
+  const Shape<2> osh;
+  const float reNAN;
+  Map rotmap, bnnmap;
+public:
+  MapProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN=NAN);
+  MapProc(const MapProc & other);
+  Shape<2> shape() const {return osh;}
+  static Shape<2> shape(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish);
+  Map apply(const Map & imap);
+};
 
 
 

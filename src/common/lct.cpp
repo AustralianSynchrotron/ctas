@@ -838,7 +838,7 @@ public:
     const float centre = axisR - 0.5*(ish(1)-1);
     ct.repeat(slice, centre);
     const Crop<2> crp = ct.recCrop(centre);
-    const Shape<2> oosh = crp.apply(osh);
+    const Shape<2> oosh = crp.shape(osh);
     if( osh == flt.shape() ){
       mid = blitz::cast< complex<float> >(slice);
       fftwf_execute(fft_f);

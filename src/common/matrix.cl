@@ -9,17 +9,17 @@ kernel void  binn2(
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  const int oszx = bx ? iszx / bx : 1;
-  const int oszy = by ? iszy / by : 1;
-  const int bbx = x < oszx ? bx : iszx % bx;
-  const int bby = y < oszy ? by : iszy % by;
+  const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
+  const int oszy = by ? ( iszy + by - 1 ) / by : 1;
+  const int bbx = min(iszx, (x+1)*bx) - x*bx;
+  const int bby = min(iszy, (y+1)*by) - y*by;
   float sum = 0;
   for (int cy = 0 ; cy < bby ; cy++) {
     const int offy = (y*by + cy)*iszx;
     for (int cx = 0 ; cx < bbx ; cx++)
       sum += in[x*bx + cx + offy];
   }
-  out[x + y*(oszx + iszx % bx)] = sum/(bbx*bby);
+  out[x + y*oszx] = sum/(bbx*bby);
 }
 
 
@@ -37,22 +37,22 @@ kernel void  binn3(
   const int x = get_global_id(0);
   const int y = get_global_id(1);
   const int z = get_global_id(2);
-  const int oszx = bx ? iszx / bx : 1;
-  const int oszy = by ? iszy / by : 1;
-  const int oszz = bz ? iszz / bz : 1;
-  const int bbx = x < oszx ? bx : iszx % bx;
-  const int bby = y < oszy ? by : iszy % by;
-  const int bbz = z < oszz ? bz : iszz % bz;
+  const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
+  const int oszy = by ? ( iszy + by - 1 ) / by : 1;
+  const int oszz = bz ? ( iszz + bz - 1 ) / bz : 1;
+  const int bbx = min(iszx, (x+1)*bx) - x*bx;
+  const int bby = min(iszy, (y+1)*by) - y*by;
+  const int bbz = min(iszz, (z+1)*bz) - z*bz;
   float sum = 0;
   for (int cz = 0 ; cz < bbz ; cz++) {
     int offz = iszy * iszx * (z*bz+cz);
     for (int cy = 0 ; cy < bby ; cy++) {
-      int offy = offz + iszx * (y*by+cy);
+      int offyz = offz + iszx * (y*by+cy);
       for (int cx = 0 ; cx < bbx ; cx++)
-        sum += in[x*bx + cx + offy];
+        sum += in[x*bx + cx + offyz];
     }
   }
-  out[x + (oszx + iszx % bx)*(y + z*(oszy + iszy % by))] = sum / (bbx*bby*bbz);
+  out[x + oszx*(y + z*oszy)] = sum / (bbx*bby*bbz);
 }
 
 

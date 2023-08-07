@@ -471,7 +471,7 @@ public :
 
     } else {
 
-      storage.resize(crp.apply(face()));
+      storage.resize(crp.shape(face()));
       Map rd;
       if (sliceDim==blitz::thirdDim)
         rd.resize(storage.transpose(blitz::secondDim, blitz::firstDim).shape()); // swap of face
@@ -948,7 +948,7 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop<2> & crp = Crop
     safelyCloseTIFFandThrow(image, fd, modname,
       "Image \"" + filename + "\" has unsupported sample format.");
 
-  const Shape<2> osh = crp.apply(Shape<2>(height,width));
+  const Shape<2> osh = crp.shape(Shape<2>(height,width));
   storage.resize(osh);
   tdata_t buf = _TIFFmalloc(TIFFScanlineSize(image));
   for (uint curidx = crp(0).begin(); curidx < crp(0).end(height); curidx++) {
@@ -1025,7 +1025,7 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
   const int
     width = imag.columns(),
     hight = imag.rows();
-  const Shape<2> osh = crp.apply(Shape<2>(hight,width));
+  const Shape<2> osh = crp.shape(Shape<2>(hight,width));
   storage.resize(osh);
 
   // below might be buggy - see notes in SaveImageINT_IM
@@ -1204,45 +1204,35 @@ struct _ReadVolBySlice  {
 class ReadVolInThread : public InThread {
 
   Volume & storage;
-  Shape<2> ish;
-  Shape<2> sh;
-  const float ang;
-  const Crop<2> crp;
-  const Binn<2> bnn;
-  ReadVolumeBySlice reader;
+  const Shape<2> ish;
+  const ImageProc canonImgProc;
+  const Shape<2> sh;
   unordered_map< pthread_t, ImageProc* > rdprocs;
-  unordered_map< pthread_t, Map* > rdmaps;
+  ReadVolumeBySlice reader;
 
 public:
 
-  ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & _storage,
-                  float _ang, Crop<2> _crp, Binn<2> _bnn, bool verbose=false)
+  ReadVolInThread(const std::deque<ImagePath> & filelist, Volume & storage,
+                  float ang, Crop<2> crp, Binn<2> bnn, bool verbose=false)
     : InThread(verbose , "reading volume")
-    , storage(_storage)
-    , ang(_ang)
-    , crp(_crp)
-    , bnn(_bnn)
+    , ish( filelist.size() ? ImageSizes(filelist[0]) : Shape<2>(0,0) )
+    , storage(storage)
+    , canonImgProc(ang, crp, bnn, ish)
+    , sh(canonImgProc.shape())
     , reader(filelist)
   {
-    if ( ! filelist.size() ) {
+    if ( ! filelist.size() || ! reader.slices() || ! size(sh) ) {
       storage.free();
       return;
     }
-    ish = ImageSizes(filelist[0]);
-    sh = RotateProc::apply(ish, ang);
-    sh = crp.apply(sh);
-    sh = bnn.apply(sh);
     bar.setSteps(reader.slices());
     storage.resize(reader.slices(), sh(0), sh(1));
-    if ( ! storage.size() )
-      return;
   }
 
   ~ReadVolInThread() {
-    #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
-    for (auto celem : rdprocs) delnul(celem.second);
-    for (auto celem : rdmaps)  delnul(celem.second);
-    #undef delnul
+    for (auto celem : rdprocs)
+      if (celem.second)
+        delete celem.second;
   }
 
 
@@ -1253,20 +1243,16 @@ public:
 
     pthread_t me = pthread_self();
     if ( ! rdprocs.count(me) ) {
-      ImageProc * erdproc = new ImageProc(ang, crp, bnn, ish);
-      Map * erdmap = new Map(sh);
+      ImageProc * erdproc = new ImageProc(canonImgProc);
       lock();
       rdprocs.emplace(me, erdproc);
-      rdmaps.emplace(me, erdmap);
       unlock();
     }
-    lock();
+    // lock(); // is it safe to avoid locking here?
     ImageProc & myrdproc = *rdprocs.at(me);
-    Map & myrdmap = *rdmaps.at(me);
-    unlock();
+    // unlock();
 
-    myrdproc.read(reader, idx, myrdmap);
-    storage(idx,all,all) = myrdmap;
+    storage(idx,all,all) = myrdproc.read(reader, idx);
     bar.update();
     return true;
 
@@ -1329,76 +1315,31 @@ Shape<3> ReadVolumeBySlice::shape() const {
 
 
 
-ImageProc::ImageProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN)
-  : ish(ish)
-  , ang(ang)
-  , rotProc(ish, ang)
-  , crp(crp)
-  , bnnProc(crp.apply(RotateProc::apply(ish,ang)), bnn)
-  , reNAN(reNAN)
-{}
-
-ImageProc::ImageProc(const ImageProc & other)
-  : ish(other.ish)
-  , ang(other.ang)
-  , rotProc(other.rotProc)
-  , crp(other.crp)
-  , bnnProc(other.bnnProc)
-  , reNAN(other.reNAN)
-{}
-
-
-void ImageProc::proc(Map & storage) {
-  if ( fisok(reNAN) )
-    for_each( whole(storage), [this](float & val){ if (!fisok(val)) val = this->reNAN; } );
-  if (ang != 0.0f) {
-    rotProc(inmap, rotmap);
-    crpmap.reference(crp.apply(rotmap));
+Map ImageProc::read(function<void()> doRot, function<void()> noRot) {
+  Map cmap;
+  if (rotProc) {
+    doRot();
+    Map rmap = rotProc.apply(readmap, rotmap, reNAN);
+    cmap.reference(crp.apply(rmap));
+  } else {
+    noRot();
+    cmap.reference(readmap);
   }
-  storage.reference(bnnProc(crpmap, storage));
+  Map bmap = bnnProc.apply(cmap,bnnmap);
+  return bmap;
 }
 
-void ImageProc::proc(const Map & imap, Map & omap) {
-
-  if (imap.shape() != ish)
-    throw_error("ImageProc",
-                "Missmatch of input shape ("+toString(imap.shape())+")"
-                " with expected ("+toString(ish)+").");
-  if (ang==0.0 && ! crp && ! bnnProc.bnn && ! fisok(reNAN) ) {
-    if (!omap.size()) {
-      omap.reference(imap);
-    } else if (!areSame(omap, imap)) {
-      omap.resize(ish);
-      omap = imap;
-    }
-    return;
-  } else
-    omap.resize(outShape());
-
-  inmap.resize(ish);
-  inmap = imap;
-  if (ang==0.0f)
-    crpmap.reference(crp.apply(imap));
-  proc(omap);
-
+Map ImageProc::read(const ImagePath & filename) {
+  return read( [&filename,this](){ReadImage(filename, readmap, ish);}
+             , [&filename,this](){ReadImage(filename, readmap, crp, ish);} );
 }
 
-void ImageProc::read(const ImagePath & filename, Map & storage) {
-  if (ang == 0.0f)
-    ReadImage(filename, crpmap, crp, ish);
-  else
-    ReadImage(filename, inmap, ish);
-  proc(storage);
-}
-
-void ImageProc::read(ReadVolumeBySlice & volRd, uint sl, Map & storage) {
+Map ImageProc::read(ReadVolumeBySlice & volRd, uint sl) {
   if (volRd.face() != ish)
-    throw_error("Image reader", "Non matching shape.");
-  if (ang == 0.0f)
-    volRd.read(sl, crpmap, crp);
-  else
-    volRd.read(sl, inmap);
-  proc(storage);
+    throw_error("ImageProc", "Missmatch of input volume slice shape ("+toString(volRd.face())+")"
+                             " with expected ("+toString(ish)+").");
+  return read( [&volRd,sl,this](){volRd.read(sl, readmap);}
+             , [&volRd,sl,this](){volRd.read(sl, readmap, crp);} );
 }
 
 

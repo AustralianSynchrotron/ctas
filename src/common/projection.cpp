@@ -121,37 +121,20 @@ void ProcProj::initCL() {
 }
 
 
-ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
+ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
                   , const deque<Map> & bgas, const deque<Map> & dfas
                   , const deque<Map> & dgas, const deque<Map> & msas
                   , const Path & saveMasks)
-  : strl(_st)
-  , ish(_ish)
-  , psh(ImageProc::outShape(strl.angle, strl.crp, strl.bnn, ish))
+  : strl(st)
+  , ish(ish)
+  , psh(MapProc::shape(strl.angle, strl.crp, strl.bnn, ish))
   , ssh( psh(0) + strl.flip*abs(strl.originF(0))
-         + (strl.origin1size-1)*abs(strl.origin1(0)) + (strl.origin2size-1)*abs(strl.origin2(0))
+                + (strl.origin1size-1)*abs(strl.origin1(0))
+                + (strl.origin2size-1)*abs(strl.origin2(0))
        , psh(1) + strl.flip*abs(strl.originF(1))
-         + (strl.origin1size-1)*abs(strl.origin1(1)) + (strl.origin2size-1)*abs(strl.origin2(1)) )
-  , oshs( [&](){
-      vector<Shape<2>> toRet;
-      const Shape<2> cssh = strl.fcrp.apply(ssh);
-      if ( strl.splits.empty() )
-        toRet.push_back(cssh);
-      else {
-        int fLine=0, lLine=0;
-        const int vsplit = strl.splits.at(0) ? 0 : 1;
-        const int mLine = cssh(vsplit);
-        for (int curS = vsplit ;  curS<=strl.splits.size()  ;  curS++) {
-          lLine = ( curS == strl.splits.size()  ||  mLine < strl.splits.at(curS) )
-                  ?  mLine :  strl.splits.at(curS) ;
-          int sz = lLine-fLine;
-          if ( sz > 0 )
-            toRet.push_back(vsplit ? Shape<2>(cssh(0),sz) : Shape<2>(sz, cssh(1)));
-          fLine=lLine;
-        }
-      }
-      return toRet;
-    }()   )
+                + (strl.origin1size-1)*abs(strl.origin1(1))
+                + (strl.origin2size-1)*abs(strl.origin2(1)) )
+  , oshs(outputShapes(strl,ish))
   , iproc(strl.angle, strl.crp, strl.bnn, ish)
   , allIn(strl.nofIn)
   , res(oshs.size())
@@ -197,10 +180,11 @@ ProcProj::ProcProj( const StitchRules & _st, const Shape<2> & _ish
   Map zmask(ish), zpmask(psh);
   for (int curI = 0; curI < msas.size() ; curI++) {
     Map & wghtI = wghts[curI];
-    iproc.proc(msas[curI], wghtI);
+    wghtI.resize(iproc.shape());
+    wghtI = iproc.apply(msas[curI]);
     zmask = msas[curI];
     prepareMask(zmask, false);
-    iproc.proc(zmask, zpmask);
+    zpmask = iproc.apply(zmask);
     prepareMask(zpmask, true, strl.edge);
     wghtI *= zpmask;
     if (saveMasks.length())
@@ -335,6 +319,33 @@ ProcProj::ProcProj(const ProcProj & other)
 }
 
 
+vector<Shape<2>> ProcProj::outputShapes(const StitchRules & st, const Shape<2> & ish) {
+  Shape<2> psh(MapProc::shape(st.angle, st.crp, st.bnn, ish));
+  Shape<2> ssh( psh(0) + st.flip*abs(st.originF(0))
+                       + (st.origin1size-1)*abs(st.origin1(0))
+                       + (st.origin2size-1)*abs(st.origin2(0))
+              , psh(1) + st.flip*abs(st.originF(1))
+                       + (st.origin1size-1)*abs(st.origin1(1))
+                       + (st.origin2size-1)*abs(st.origin2(1)) );
+  vector<Shape<2>> oshs;
+  const Shape<2> cssh = st.fcrp.shape(ssh);
+  if ( st.splits.empty() )
+    oshs.push_back(cssh);
+  else {
+    int fLine=0, lLine=0;
+    const int vsplit = st.splits.at(0) ? 0 : 1;
+    const int mLine = cssh(vsplit);
+    for (int curS = vsplit ;  curS<=st.splits.size()  ;  curS++) {
+      lLine = ( curS == st.splits.size()  ||  mLine < st.splits.at(curS) )
+          ?  mLine :  st.splits.at(curS) ;
+      int sz = lLine-fLine;
+      if ( sz > 0 )
+        oshs.push_back(vsplit ? Shape<2>(cssh(0),sz) : Shape<2>(sz, cssh(1)));
+      fLine=lLine;
+    }
+  }
+  return oshs;
+}
 
 
 void ProcProj::stitchSome(const ImagePath & interim_name, const std::vector<bool> & addMe) {
@@ -411,7 +422,9 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
       ffprocs[0].process(allInR[curproj]);
     else if (ffprocs.size() == strl.nofIn)
       ffprocs[curproj].process(allInR[curproj]);
-    iproc.proc(allInR[curproj], allIn[curproj]);
+    Map & curIn = allIn[curproj];
+    curIn.resize(psh);
+    curIn = iproc.apply(allInR[curproj]);
     if ( ! interim_name.empty() ) {
       int cur1, cur2, curF;
       strl.slot(curproj, &cur1, &cur2, &curF);
@@ -424,7 +437,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
       const string sfF = strl.flip ? (curF ? "_F" : "_D") : "";
       const string svName = interim_name.dtitle()
                             + "_I" + sfI + sfF + sf2 + sf1 + string(".tif");
-      SaveDenan(svName, allIn[curproj]);
+      SaveDenan(svName, curIn);
     }
   }
 
@@ -480,7 +493,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
   }
 
   // final crop
-  const Shape<2> fssh(strl.fcrp.apply(ssh));
+  const Shape<2> fssh(strl.fcrp.shape(ssh));
   final.reference(strl.fcrp.apply(stitched));
   if ( fssh != final.shape() )
     throw_error(modname, "Shape of the results ("+toString(final.shape())+")"

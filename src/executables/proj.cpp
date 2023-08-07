@@ -49,6 +49,7 @@ struct clargs {
   StitchRules st;
   int zbinn;
   int testMe;          ///< Prefix to save interim results
+  bool doTest;
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -66,6 +67,7 @@ clargs(int argc, char *argv[])
   , denoiseThr(0.0)
   , zbinn(1)
   , testMe(-1)
+  , doTest(false)
   , beverbose(false)
 {
 
@@ -175,8 +177,7 @@ clargs(int argc, char *argv[])
 
   if ( ! table.count(&out_name) )
     exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
-  if (table.count(&testMe) && testMe<0)
-    exit_on_error(command, "Negative test projection given with " + table.desc(&testMe) + " option.");
+  doTest = table.count(&testMe);
 
   if ( table.count(&st.originF) ) {
     if ( tiledImages % 2 )
@@ -317,6 +318,20 @@ class ProjInThread : public InThread {
       return toRet;
     }
 
+    int getme (Map & nmap) {
+      if (bn==1)
+        return true;
+      if (cnt) {
+        nmap.resize(storage.shape());
+        nmap = storage / cnt;
+        cnt = 0;
+        odx = -1;
+      }
+      return odx;
+    }
+
+
+
   };
   deque< pair< pthread_mutex_t, list<Accumulator> > > accs;
 
@@ -422,6 +437,24 @@ public:
       pthread_mutex_destroy(&accPair.first);
   }
 
+  void execute(int nThreads=0) { // To deals with possible last incomplete slice
+    InThread::execute(nThreads);
+    if (abs(zbinn)==1)
+      return;
+    for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ ) {
+      list<Accumulator> & curAccs = accs[curO].second;
+      Map res;
+      for ( auto & acc : curAccs ) {
+        const int odx = acc.getme(res);
+        if ( odx >= 0 )
+          allOutSv[curO].save(odx, res);
+      }
+    }
+    accs.clear();
+    bar.done();
+  }
+
+
 
 };
 
@@ -434,6 +467,35 @@ int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
   const Shape<2> ish(ImageSizes(args.images.at(0).at(0).repr()));
   const int nofIn = args.images.size();
+
+  // Prepare read factories
+  deque<ReadVolumeBySlice> allInRd(nofIn);
+  for ( int curI = 0 ; curI < nofIn ; curI++) {
+    allInRd.at(curI).add(args.images.at(curI));
+    int cSls = allInRd.at(curI).slices();
+    if (!cSls)
+      exit_on_error(args.command, "No images in input "+ toString(curI) +".");
+    if (curI && allInRd.at(0).slices() != cSls)
+      exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
+  }
+  const int nofProj = allInRd.at(0).slices();
+  const int nofOuts = binnOne(nofProj, args.zbinn);
+  if ( args.testMe >= nofOuts )
+    exit_on_error(args.command, "Requested test is beyond number of projections.");
+  const deque<int> projes = slice_str2vec(args.out_range, nofOuts);
+  if (!projes.size())
+    exit_on_error(args.command, "Given range \"" + args.out_range + "\""
+                                " is beyond output slices "+toString(nofOuts)+".");
+
+  // only print output sizes and exit
+  if (args.doTest && args.testMe < 0) {
+    vector<Shape<2>> oshs(ProcProj::outputShapes(args.st, ish));
+    if (oshs.empty())
+      exit_on_error(args.command, "No output. Check your input and stitching parameters.");
+    for(auto osh : oshs)
+      cout << nofOuts << " " << osh(0) << " " << osh(1) << "\n";
+    exit(0);
+  }
 
   // Read auxiliary images
   #define rdAux(pfx) \
@@ -494,25 +556,6 @@ int main(int argc, char *argv[]) {
   for (int curg=0 ; curg<dgas.size() ; curg++)
     curDnz(canonDZs, curg).proc(dgas[curg]);
 
-  // Prepare read factories
-  deque<ReadVolumeBySlice> allInRd(nofIn);
-  for ( int curI = 0 ; curI < nofIn ; curI++) {
-    allInRd.at(curI).add(args.images.at(curI));
-    int cSls = allInRd.at(curI).slices();
-    if (!cSls)
-      exit_on_error(args.command, "No images in input "+ toString(curI) +".");
-    if (curI && allInRd.at(0).slices() != cSls)
-      exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
-  }
-  const int nofProj = allInRd.at(0).slices();
-  const int nofOuts = args.zbinn ? nofProj/args.zbinn : 1;
-  if ( args.testMe >= nofOuts )
-    exit_on_error(args.command, "Requested test is beyond number of projections.");
-  const deque<int> projes = slice_str2vec(args.out_range, nofOuts);
-  if (!projes.size())
-    exit_on_error(args.command, "Given range \"" + args.out_range + "\""
-                                " is beyond output slices "+toString(nofOuts)+".");
-
   // Prepare canonical projection processor
   const string testFormat = [&](){
     if (args.testMe < 0)
@@ -554,7 +597,8 @@ int main(int argc, char *argv[]) {
       const Map & cOut = allOut[curSplt];
       const int svIdx = args.zbinn ? args.testMe / args.zbinn : 0;
       ImagePath svPath = allOutSv[curSplt].save(svIdx, cOut);
-      cout << nofOuts << " " << cOut.shape()(0) << " " << cOut.shape()(1) << " " << svPath << "\n";
+      if (args.beverbose)
+        cout << nofOuts << " " << cOut.shape()(0) << " " << cOut.shape()(1) << " " << svPath << "\n";
     }
   } else // finally process
     ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.zbinn, args.beverbose)

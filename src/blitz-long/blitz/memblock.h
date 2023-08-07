@@ -232,6 +232,8 @@ private:
 
 public:
 
+    const void * blck() const {return block_;}
+
     MemoryBlockReference()
     {
         block_ = 0;

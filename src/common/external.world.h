@@ -4,6 +4,7 @@
 
 #include "common.world.h"
 #include "matrix.world.h"
+#include <functional>
 
 
 
@@ -262,59 +263,13 @@ public:
 
 
 
-class ImageProc {
-
-private:
-
-  const Shape<2> ish;
-  const float ang;
-  RotateProc rotProc;
-  const Crop<2> crp;
-  BinnProc bnnProc;
-  const float reNAN;
-  Map inmap;
-  Map rotmap;
-  Map crpmap;
-  void proc(Map & storage);
-
+class ImageProc : public MapProc {
+  using MapProc::MapProc;
+  Map readmap;
+  Map read(std::function<void()> doRot, std::function<void()> noRot);
 public:
-
-  ImageProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN=NAN);
-  ImageProc(const ImageProc & other);
-
-  void read(const ImagePath & filename, Map & storage);
-  void read(ReadVolumeBySlice & volRd, uint sl, Map & storage);
-  void proc(const Map & imap, Map & omap);
-
-  Shape<2> outShape() const {
-    return outShape(ang, crp, bnnProc.bnn, ish);
-  }
-
-  static Shape<2> outShape(float _ang, const Crop<2> & _crp, const Binn<2> & _bnn, const Shape<2> & _ish) {
-    return _bnn.apply(_crp.apply(RotateProc::apply(_ish, _ang)));
-  }
-
-  static void read(const ImagePath & filename, Map & storage
-                   , float _ang, const Crop<2> & _crp, const Binn<2> & _bnn
-                   , const Shape<2> _ish = Shape<2>()) {
-    ImageProc(_ang, _crp, _bnn, size(_ish) ? _ish : ImageSizes(filename))
-        .read(filename, storage);
-  }
-
-  static void read(ReadVolumeBySlice & volRd, uint sl, Map & storage
-                   , float _ang, const Crop<2> & _crp, const Binn<2> & _bnn
-                   , const Shape<2> _ish = Shape<2>()) {
-    ImageProc(_ang, _crp, _bnn, size(_ish) ? _ish : volRd.face())
-        .read(volRd, sl, storage);
-  }
-
-  static void proc(const Map & imap, Map & omap
-                   , float _ang, const Crop<2> & _crp, const Binn<2> & _bnn) {
-    ImageProc(_ang, _crp, _bnn, imap.shape())
-        .proc(imap,omap);
-  }
-
-
+  Map read(const ImagePath & filename);
+  Map read(ReadVolumeBySlice & volRd, uint sl);
 };
 
 

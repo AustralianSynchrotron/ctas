@@ -74,7 +74,7 @@ class ProcProj {
 
 public:
 
-  ProcProj( const StitchRules & _st, const Shape<2> & _ish
+  ProcProj( const StitchRules & st, const Shape<2> & ish
           , const std::deque<Map> & bgas, const std::deque<Map> & dfas
           , const std::deque<Map> & dgas, const std::deque<Map> & msas
           , const Path & saveMasks = Path());
@@ -84,84 +84,9 @@ public:
   std::deque<Map> & process( std::deque<Map> & allInR, const ImagePath & interim_name = ImagePath());
 
   const std::vector<Shape<2>> & outputShapes() const {return oshs;}
+  static std::vector<Shape<2>> outputShapes(const StitchRules & st, const Shape<2> & ish);
 
 };
-
-
-/*
-class Trans {
-
-public:
-
-  static const std::string modname;
-
-  const Shape<2> ish;
-  const float angle;
-  const Crop<2> crop;
-  const PointF<2> binn; // negative binn to flip
-  Map mask;
-
-  Map afterRot;
-  Map afterRotMask;
-  void rotate(const Map & in, Map & out);
-
-  Map afterScale;
-  Map afterScaleMask;
-  void scale(const Map & in, Map & out);
-
-public:
-
-  Trans(const Shape<2> & _ish,
-        float _angle,
-        const Crop<2> & _crop,
-        const PointF<2> & _binn,
-        const Map & _mask = Map());
-
-  void process(const Map & in, Map & out) {
-    if (!size(ish))
-      return;
-    if (in.shape() != ish)
-      throw_error(modname, "Shape missmatch of process ("+toString(ish)+") and input ("+toString(in.shape())+").");
-  }
-
-};
-const std::string Trans::modname = "transform";
-
-
-struct Stitch {
-
-  struct Rule {
-    Shape<2> ish;
-    Crop<2> crp;
-    float angle;
-    PointF<2> origin;
-    PointF<2> scale; // negative scale to flip
-  };
-
-  std::deque<Rule> rules;
-  std::deque<FlatFieldProc> ffprocs;
-  std::deque<Map> wghts;
-
-  struct Init {
-    Rule rule;
-    Map bg;
-    Map df;
-    Map dg;
-    Map ms;
-  };
-
-  Stitch(const std::deque<Init> & inits, int nofInput = 0) {
-
-  }
-
-};
-
-
-*/
-
-
-
-
 
 
 

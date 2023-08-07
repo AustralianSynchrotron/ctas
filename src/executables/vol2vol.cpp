@@ -42,6 +42,7 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   deque<ImagePath> images;        ///< input image
   ImagePath outmask;              ///< Name of the output image.
+  float ang;
   Crop<3> crp;                  ///< Crop input projection image
   Binn<3> bnn;                  ///< binning factor
   string slicedesc;       ///< String describing the slices to be sino'ed.
@@ -58,6 +59,7 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[])
   : outmask ("slice.tif")
+  , ang(0.0f)
   , mincon(NAN)
   , maxcon(NAN)
   , SaveInt(false)
@@ -84,6 +86,7 @@ clargs(int argc, char *argv[])
          " All values below this will turn black.", "<minimum>")
     .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
          " All values above this will turn white.", "<maximum>")
+    .add(poptmx::OPTION, &ang,'r', "rotate", "Rotates each slice by this rotation angle (deg).", "")
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume.", CropOptionDesc)
     .add(poptmx::OPTION, &bnn, 'b', "binn", "Binn factor(s).", BinnOptionDesc)
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
@@ -106,6 +109,7 @@ clargs(int argc, char *argv[])
   if ( beverbose && outmask == "-" )
     exit_on_error(command, "Verbose option ("+table.desc(&beverbose)+") is incompatible with"
                            " printing to stdout (\'-\' given to "+table.desc(&outmask)+" option).");
+  ang *= M_PI/180;
 
 }
 
@@ -116,13 +120,11 @@ clargs(int argc, char *argv[])
 
 class SliceInThread : public InThread {
 
-  const clargs & args;
   ReadVolumeBySlice * ivolRd;
-  const Crop<2> crp;
-  const Binn<2> bnn;
   const Shape<2> ish;
   const unsigned isz;
   ssize_t bnz;
+  ImageProc canonImgProc;
   const Shape<2> osh;
   const unsigned osz;
   const deque<int> indices;
@@ -209,7 +211,6 @@ class SliceInThread : public InThread {
   };
 
   unordered_map<pthread_t, ImageProc* > rdprocs;
-  unordered_map<pthread_t, Map *> rdmaps;
   list<CLacc> accs;
 
 
@@ -223,16 +224,13 @@ class SliceInThread : public InThread {
 
     const pthread_t me = pthread_self();
     if ( ! rdprocs.count(me) ) {
-      ImageProc * erdprocs = new ImageProc(0, crp, bnn, ish, args.reNAN);
-      Map * erdmap = new Map(osh);
+      ImageProc * erdprocs = new ImageProc(canonImgProc);
       lock();
       rdprocs.emplace(me, erdprocs);
-      rdmaps.emplace(me, erdmap);
       unlock();
     }
     lock();
     ImageProc & myrdproc = *rdprocs.at(me);
-    Map & myrdmap = *rdmaps.at(me);
     unlock();
 
     lock(1);
@@ -259,7 +257,7 @@ class SliceInThread : public InThread {
     myacc.odx = sodx;
     unlock(1);
 
-    myrdproc.read(*ivolRd, idx, myrdmap);
+    Map myrdmap = myrdproc.read(*ivolRd, idx);
     if ( ! myacc.addme(myrdmap) )
       ovolSv->save(sodx, myrdmap);
     bar.update();
@@ -269,16 +267,14 @@ class SliceInThread : public InThread {
 
 public:
 
-  SliceInThread(const clargs & _args)
-    : InThread(_args.beverbose, "processing slices")
-    , args(_args)
+  SliceInThread(const clargs & args)
+    : InThread(args.beverbose, "processing slices")
     , ivolRd(new ReadVolumeBySlice(args.images))
-    , crp(copyMost<2>(args.crp))
-    , bnn(copyMost<2>(args.bnn))
     , ish(ivolRd->face())
     , isz(ivolRd->slices())
+    , canonImgProc(args.ang, copyMost<2>(args.crp), copyMost<2>(args.bnn), ish, args.reNAN)
     , bnz( args.bnn(0) ? args.bnn(0) : isz )
-    , osh( bnn.apply(crp.apply(ish)) )
+    , osh( canonImgProc.shape() )
     , osz( binnOne(isz, bnz) )
     , indices( [](string sindex, unsigned int _osz) {
         if (sindex.size() && string("zZ").find(sindex.at(0)) != string::npos)
@@ -294,13 +290,12 @@ public:
     if ( size(osh) <= 0 )
       throw_error(args.command, "Cropping or binning is larger than the shape of input volume.");
     needMutexes(2);
-    bar.setSteps(indices.size()*bnz);
+    bar.setSteps(indices.size()*abs(bnz));
   }
 
   ~SliceInThread() {
     #define delnul(pntr) { if (pntr) delete pntr; pntr = 0;}
     for (auto celem : rdprocs) delnul(celem.second);
-    for (auto celem : rdmaps)  delnul(celem.second);
     delnul(ivolRd);
     delnul(ovolSv)
     #undef delnul

@@ -77,20 +77,9 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
 
-  bool ret;
-  float fval;
-  ret = parse_num(args.in_name, &fval);
-  cout << ret << " " << fval << "\n";
-
-  int ival;
-  ret = parse_num(args.in_name, &ival);
-  cout << ret << " " << ival << "\n";
-
-  unsigned uval;
-  ret = parse_num(args.in_name, &uval);
-  cout << ret << " " << uval << "\n";
-
-
+  Map arr(1200,1000), res;
+  MapProc pr1(1, Crop<2>("100-100,100+200"), Binn<2>(2), arr.shape() );
+  Map r1 = pr1.apply(arr);
 
   /*
   Map arr;

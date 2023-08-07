@@ -1,5 +1,6 @@
 #include "matrix.world.h"
 #include "parallel.world.h"
+#include "external.world.h"
 
 using namespace std;
 
@@ -52,6 +53,7 @@ ssize_t Segment::size(size_t orgsz) const {
 template<int Dim>
 const string Crop<Dim>::modname = toString(Dim)+"D-segment";
 
+
 template<int Dim>
 Crop<Dim>::Crop(const string & str) {
   if (str.empty())
@@ -68,7 +70,7 @@ Crop<Dim>::Crop(const string & str) {
 }
 
 template<int Dim>
-Shape<Dim> Crop<Dim>::apply(const Shape<Dim> & ish) const {
+Shape<Dim> Crop<Dim>::shape(const Shape<Dim> & ish) const {
   Shape<Dim> osh;
   for (uint curD=0; curD<Dim; ++curD)
     osh(curD) = (*this)(curD).size(ish(curD));
@@ -79,7 +81,7 @@ template<int Dim>
 ArrayF<Dim> Crop<Dim>::apply(const ArrayF<Dim> & iarr) const {
   if (!bool(*this))
     return iarr;
-  const Shape<Dim> osh = apply(iarr.shape());
+  const Shape<Dim> osh = shape(iarr.shape());
   blitz::TinyVector<size_t,Dim> ubound;
   blitz::TinyVector<size_t,Dim> lbound;
   for (uint curD=0; curD<Dim; ++curD) {
@@ -125,7 +127,7 @@ class BinnProc::ForCLdev {
 
   static const std::string modname;
   const Shape<2> ish;
-  const Binn<2> abnn;
+  const Binn<2> rbnn;
   const Shape<2> osh;
   CLenv & cl;
   CLkernel kernelBinn;
@@ -135,20 +137,14 @@ class BinnProc::ForCLdev {
 
 public:
 
-  ForCLdev(CLenv & cl, const Shape<2> & _ish, const Binn<2> & _bnn)
-    : abnn( [&_ish,_bnn](){
-        Binn<2>toRet;
-        // flipping, if needed, must happen outside CL
-        for (int dim=0; dim<2; dim++)
-          toRet(dim) = _bnn(dim) ? abs(_bnn(dim)) : _ish(dim) ;
-        return toRet;
-      }() )
+  ForCLdev(CLenv & cl, const Shape<2> & _ish, const Binn<2> & _rbnn)
+    : rbnn(_rbnn)
     , ish(_ish)
-    , osh(abnn.apply(ish))
+    , osh(rbnn.shape(ish))
     , cl(cl)
     , locker(PTHREAD_MUTEX_INITIALIZER)
   {
-    if (!abnn)
+    if (!rbnn)
       throw_bug(modname+" Not intended for trivial binnings.");
   }
 
@@ -172,8 +168,8 @@ public:
           throw 1;
         kernelBinn.setArg(0, clinarr());
         kernelBinn.setArg(1, cloutarr());
-        kernelBinn.setArg(2, (cl_int) abnn(1));
-        kernelBinn.setArg(3, (cl_int) abnn(0));
+        kernelBinn.setArg(2, (cl_int) rbnn(1));
+        kernelBinn.setArg(3, (cl_int) rbnn(0));
         kernelBinn.setArg(4, (cl_int) ish(1));
         kernelBinn.setArg(5, (cl_int) ish(0));
       }
@@ -199,8 +195,14 @@ const string BinnProc::ForCLdev::modname = "BinnOCL";
 
 BinnProc::BinnProc(const Shape<2> & ish, const Binn<2> & bnn)
   : bnn(bnn)
+  , rbnn( [&ish,bnn](){
+      Binn<2>toRet;
+      for (int dim=0; dim<2; dim++)
+        toRet(dim) = bnn(dim) ? abs(bnn(dim)) : ish(dim) ;
+      return toRet;
+    }())
   , ish(ish)
-  , osh(bnn.apply(ish))
+  , osh(bnn.shape(ish))
   , envs(_envs)
 {
   if (!size(ish)) {
@@ -212,17 +214,18 @@ BinnProc::BinnProc(const Shape<2> & ish, const Binn<2> & bnn)
                   " ("+toString(ish)+") by (" + toString(bnn) + ").");
     return;
   }
-  if (bnn.flipOnly()) // Trivial binning. No need OpenCL.
+  if (bnn.isTrivial()) // Trivial binning. No need OpenCL.
     return;
   if (!CL_isReady())
     warn(modname, "OpenCL is not functional.");
   else
     for (CLenv & env : clenvs)
-      try{ _envs.emplace_back( new ForCLdev(env, ish, bnn) ); } catch(...) {}
+      try{ _envs.emplace_back( new ForCLdev(env, ish, rbnn) ); } catch(...) {}
 }
 
 BinnProc::BinnProc(const BinnProc & other)
   : bnn(other.bnn)
+  , rbnn(other.rbnn)
   , ish(other.ish)
   , osh(other.osh)
   , envs(other.envs)
@@ -234,7 +237,7 @@ BinnProc::~BinnProc() {
       delete env;
 }
 
-Map BinnProc::operator() (const Map & imap, Map & omap) {
+Map BinnProc::apply(const Map & imap, Map & tmap) {
 
   if (!bnn)
     return imap;
@@ -243,49 +246,45 @@ Map BinnProc::operator() (const Map & imap, Map & omap) {
                          " with expected ("+toString(ish)+").");
   if (!size(ish) || !size(osh))
     return imap;
-  if (bnn.flipOnly())
+  if (bnn.isTrivial())
     return bnn.apply(imap);
 
   Map fimap(imap);
   for (uint curD=0; curD<2; ++curD) // flipping
     if (bnn(curD) < 0)
       fimap.reverseSelf(curD);
-  if (bnn.flipOnly())
-    return fimap;
 
-  if (!omap.size())
-    omap.resize(osh);
-  if ( omap.shape() != osh )
-    throw_error(modname, "Missmatch of output shape ("+toString(omap.shape())+")"
+  if (!tmap.size())
+    tmap.resize(osh);
+  if ( tmap.shape() != osh )
+    throw_error(modname, "Missmatch of interim array shape ("+toString(tmap.shape())+")"
                          " with expected ("+toString(osh)+")."
-                         " Arrays are assumed to be ready before getting here." );
+                         " It is assumed to be empty or ready before getting here." );
   for (ForCLdev * env : envs)
-    if (env->apply(fimap,omap))
-      return omap;
+    if (env->apply(fimap,tmap))
+      return tmap;
   // Do on CPU
   for (ssize_t y=0 ; y<osh(0) ; ++y) {
-    const int bby = y < osh(0) ? bnn(0) : ish(0) % bnn(0);
+    const int bby = min(ish(0), (y+1)*rbnn(0)) - y*rbnn(0);
     for (ssize_t x=0 ; x<osh(1) ; ++x) {
-      const ssize_t bbx = x < osh(1) ? bnn(1) : ish(1) % bnn(1);
-      float & val = omap(y,x);
+      const int bbx = min(ish(1), (x+1)*rbnn(1)) - x*rbnn(1);
+      float & val = tmap(y,x);
       val = 0;
       for (ssize_t cy = 0 ; cy < bby ; cy++) {
-        const ssize_t yy = y*bnn(0) + cy;
+        const ssize_t yy = y*rbnn(0) + cy;
         for (ssize_t cx = 0 ; cx < bbx ; cx++)
-          val += fimap(yy, x*bnn(1) + cx);
+          val += fimap(yy, x*rbnn(1) + cx);
       }
       val /= bbx*bby;
     }
   }
-  return omap;
+  return tmap;
 }
 
 const string BinnProc::modname = "BinnProc";
 
 
 
-template<int Dim>
-const string Binn<Dim>::modname = toString(Dim)+"D-binning";
 
 
 template<int Dim>
@@ -324,18 +323,13 @@ Binn<Dim> Binn<Dim>::flipped() const {
 
 
 template<int Dim>
-Shape<Dim> Binn<Dim>::apply(const Shape<Dim> & ish) const {
+Shape<Dim> Binn<Dim>::shape(const Shape<Dim> & ish) const {
   Shape<Dim> osh;
   for (uint curD=0; curD<Dim; ++curD)
     osh(curD) = binnOne( ish(curD), (*this)(curD) );
   return osh;
 }
 
-template<int Dim>
-ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr) const {
-  ArrayF<Dim> toRet;
-  return apply(iarr,toRet);
-}
 
 template<> ArrayF<1> Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr) const {
   throw_bug("1D Binning is not implemented yet.");
@@ -345,16 +339,16 @@ template<> ArrayF<1> Binn<1>::subapply( const ArrayF<1> & iarr, ArrayF<1> & oarr
 }
 
 template<> ArrayF<2> Binn<2>::subapply( const ArrayF<2> & iarr, ArrayF<2> & oarr) const {
-  return BinnProc(iarr.shape(), flipped())(iarr, oarr);
+  return BinnProc(iarr.shape(), flipped()).apply(iarr, oarr);
 }
 
 template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr) const {
 
   const Shape<3> ish = iarr.shape();
   const Shape<3> osh = oarr.shape();
-  const Binn<3> abnn(flipped());
-
-  #ifdef OPENCL_FOUND
+  Binn<3>rbnn;
+  for (int dim=0; dim<2; dim++)
+    rbnn(dim) = (*this)(dim) ? abs((*this)(dim)) : ish(dim) ;
 
   if (!CL_isReady())
     throw_error(modname, "OpenCL is not functional.");
@@ -368,9 +362,9 @@ template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr
 
     kernelBinn3.setArg(0, clinarr());
     kernelBinn3.setArg(1, cloutarr());
-    kernelBinn3.setArg(2, (cl_int) abnn(2));
-    kernelBinn3.setArg(3, (cl_int) abnn(1));
-    kernelBinn3.setArg(4, (cl_int) abnn(0));
+    kernelBinn3.setArg(2, (cl_int) rbnn(2));
+    kernelBinn3.setArg(3, (cl_int) rbnn(1));
+    kernelBinn3.setArg(4, (cl_int) rbnn(0));
     kernelBinn3.setArg(5, (cl_int) ish(2));
     kernelBinn3.setArg(6, (cl_int) ish(1));
     kernelBinn3.setArg(7, (cl_int) ish(0));
@@ -382,8 +376,8 @@ template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr
 
     warn("Binning", "Trying second method.");
     const Shape<2> sish(copyMost<2>(ish));
-    const Binn<2> sbnn(copyMost<2>(abnn));
-    const ssize_t zbnn = abnn(0);
+    const Binn<2> sbnn(copyMost<2>(rbnn));
+    const ssize_t zbnn = rbnn(0);
     const Shape<2> sosh(copyMost<2>(osh));
     const size_t sosz(size(osh));
 
@@ -434,37 +428,13 @@ template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr
 
   }
 
-#else // OPENCL_FOUND
-
-  throw_bug("Binning is implemented in OpenCL only.");
-
-  const size_t bsz = bnn.x * bnn.y * bnn.z;
-  for (ArrIndex zcur = 0 ; zcur < osh(0) ; zcur++ )
-    for (ArrIndex ycur = 0 ; ycur < osh(1) ; ycur++ )
-      for (ArrIndex xcur = 0 ; xcur < osh(2) ; xcur++ )
-        // BUG in blitz? But the following fails.
-        //outarr(zcur,ycur,xcur) = mean(
-        //  inarr( bnn.z  ?  blitz::Range(zcur*bnn.z, zcur*bnn.z+bnn.z-1)  :  all
-        //       , bnn.y  ?  blitz::Range(ycur*bnn.y, ycur*bnn.y+bnn.y-1)  :  all
-        //       , bnn.x  ?  blitz::Range(xcur*bnn.x, xcur*bnn.x+bnn.x-1)  :  all ));
-      {
-        float sum=0;
-        for (int zbcur = 0 ; zbcur < bnn.z ; zbcur++ )
-          for (int ybcur = 0 ; ybcur < bnn.y ; ybcur++ )
-            for (int xbcur = 0 ; xbcur < bnn.x ; xbcur++ )
-              sum += inarr( zcur*bnn.z+zbcur, ycur*bnn.y+ybcur, xcur*bnn.x+xbcur );
-        outarr(zcur,ycur,xcur) = sum / bsz;
-      }
-
-#endif // OPENCL_FOUND
-
   return oarr;
 
 }
 
 
 template<int Dim>
-ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr, ArrayF<Dim> & outarr) const {
+ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr) const {
 
   if (!(*this))
     return iarr;
@@ -472,19 +442,20 @@ ArrayF<Dim> Binn<Dim>::apply(const ArrayF<Dim> & iarr, ArrayF<Dim> & outarr) con
   for (uint curD=0; curD<Dim; ++curD) // flipping
     if ((*this)(curD) < 0)
       fiarr.reverseSelf(curD);
-  if (flipOnly())
+  if (isTrivial())
     return fiarr;
 
   const Shape<Dim> ish = iarr.shape();
-  const Shape<Dim> osh = apply(ish);
-  if (!outarr.size())
-    outarr.resize(osh);
-  if (outarr.shape() != osh)
-    throw_error(modname, "Output array of incorrect shape ["+toString(outarr.shape())+"];"
-                         " expecting ["+toString(osh)+"].");
+  const Shape<Dim> osh = shape(ish);
+  ArrayF<Dim> outarr(osh);
   return subapply(fiarr, outarr);
 
 }
+
+
+template<int Dim>
+const string Binn<Dim>::modname = toString(Dim)+"D-binning";
+
 
 template class Binn<1>;
 template class Binn<2>;
@@ -579,7 +550,7 @@ const string RotateProc::ForCLdev::modname = "RotateOCL";
 RotateProc::RotateProc(const Shape<2> & ish, float ang)
   : ang(ang)
   , ish(ish)
-  , osh(apply(ish,ang))
+  , osh(shape(ish,ang))
   , envs(_envs)
   , xf(osh)
   , yf(osh)
@@ -630,7 +601,7 @@ RotateProc::~RotateProc() {
 }
 
 
-Shape<2> RotateProc::apply(const Shape<2> & ish, float ang) {
+Shape<2> RotateProc::shape(const Shape<2> & ish, float ang) {
   if (!size(ish))
     return Shape<2>(0l);
   else if ( abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ) { // close to a 90-deg step
@@ -646,7 +617,7 @@ Shape<2> RotateProc::apply(const Shape<2> & ish, float ang) {
 }
 
 
-Map RotateProc::operator() (const Map & imap, Map & omap, float bg) {
+Map RotateProc::apply(const Map & imap, Map & tmap, float bg) {
 
   if (imap.shape() != ish)
     throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
@@ -670,45 +641,72 @@ Map RotateProc::operator() (const Map & imap, Map & omap, float bg) {
     return toRet;
   }
 
-  if (!omap.size())
-    omap.resize(osh);
-  if (omap.shape() != osh)
-    throw_error(modname, "Output array of incorrect shape ["+toString(omap.shape())+"];"
-                         " expecting ["+toString(osh)+"].");
+  if (!tmap.size())
+    tmap.resize(osh);
+  if (tmap.shape() != osh)
+    throw_error(modname, "Missmatch of interim array shape ("+toString(tmap.shape())+")"
+                         " with expected ("+toString(osh)+")."
+                         " It is assumed to be empty or ready before getting here." );
+  if ( ! isnormal(bg) )
+    bg = 0.25 * ( mean(imap(all,0))        + mean(imap(0,all))
+                + mean(imap(all,ish(1)-1)) + mean(imap(ish(0)-1,all)) );
 
-  if ( ! isnormal(bg) ) {
-    bg = 0;
-    bg += mean( imap( all, 0 ) );
-    bg += mean( imap( 0, all ) );
-    bg += mean( imap( all, ish(1)-1 ) );
-    bg += mean( imap( ish(0)-1, all ) );
-    bg /= 4.0;
-  }
   for (ForCLdev * env : envs)
-    if (env->apply(imap, omap, bg))
-      return omap;
+    if (env->apply(imap, tmap, bg))
+      return tmap;
   //// Do on CPU
   for ( ssize_t y=0 ; y < osh(0) ; y++) {
     for ( ssize_t x=0 ; x < osh(1) ; x++) {
       const ssize_t & vflx = flx(y,x), vfly = fly(y,x);
       if ( vflx < 1 || vflx >= ish(1)-1 || vfly < 1  || vfly >= ish(0)-1 ) {
-        omap(y,x)=bg;
+        tmap(y,x)=bg;
       } else {
         float v0 = imap(vfly,  vflx) + ( imap(vfly,  vflx+1) - imap(vfly,  vflx) ) * xf(y,x);
         float v1 = imap(vfly+1,vflx) + ( imap(vfly+1,vflx+1) - imap(vfly+1,vflx) ) * yf(y,x);
-        omap(y,x) = v0 + (v1-v0) * yf(y,x);
+        tmap(y,x) = v0 + (v1-v0) * yf(y,x);
       }
     }
   }
-  return omap;
+  return tmap;
 
 }
-/**/
 
 const string RotateProc::modname = "RotateProc";
 
 
 
 
+MapProc::MapProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN)
+  : ish(ish)
+  , rotProc(ish, ang)
+  , crp(crp)
+  , bnnProc(crp.shape(rotProc.shape()), bnn)
+  , osh(bnnProc.shape())
+  , reNAN(reNAN)
+{}
+
+MapProc::MapProc(const MapProc & other)
+  : ish(other.ish)
+  , rotProc(other.rotProc)
+  , crp(other.crp)
+  , bnnProc(other.bnnProc)
+  , osh(other.osh)
+  , reNAN(other.reNAN)
+{}
 
 
+Map MapProc::apply(const Map & imap) {
+  static const string modname="MapProc";
+  if (imap.shape() != ish)
+    throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
+                         " with expected ("+toString(ish)+").");
+  Map rmap = rotProc.apply(imap, rotmap, reNAN);
+  Map cmap = crp.apply(rmap);
+  Map bmap = bnnProc.apply(cmap, bnnmap);
+  return bmap;
+}
+
+
+Shape<2> MapProc::shape(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish) {
+  return bnn.shape(crp.shape(RotateProc::shape(ish,ang)));
+}

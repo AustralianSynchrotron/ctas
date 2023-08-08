@@ -207,7 +207,7 @@ public:
     , ivolRd(ctrl.sinograms)
     , ish(ivolRd.face())
     , osh(ish(1),ish(1))
-    , ovolSv(ctrl.outmask, ivolRd.shape(), ctrl.mincon, ctrl.maxcon)
+    , ovolSv(ctrl.outmask, Shape<3>(ivolRd.slices(), ish(1), ish(1)), ctrl.mincon, ctrl.maxcon)
     , canonRec(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type)
   {
     bar.setSteps(ivolRd.slices());

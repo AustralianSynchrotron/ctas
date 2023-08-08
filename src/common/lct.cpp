@@ -308,7 +308,7 @@ void RingFilter::apply(Map & sinogram) {
 bool CTrec::ForCLdev::checkReady() {
   if (clSlice)
     return true;
-  if ( ! CL_isReady() || ( program && ! clSlice ) )
+  if ( ! CL_isReady() )
     return false;
 
   try {
@@ -321,6 +321,7 @@ bool CTrec::ForCLdev::checkReady() {
     kernelSino.setArg(3, (cl_int) parent.ish(0));
     kernelSino.setArg(4, clAngles());
     kernelSino.setArg(6, recCof);
+    return true;
   }  catch (...)  {
     kernelSino.free();
     clAngles.free();
@@ -328,19 +329,17 @@ bool CTrec::ForCLdev::checkReady() {
     clSino.free();
     return false;
   }
-  return true;
 }
 
 
 int CTrec::ForCLdev::reconstruct(Map & fsin, Map & slice, float center) { // already filtered sinogram
   if (fsin.shape() != parent.ish)
     throw_error(modname, "Unexpected array size on OCL reconstruct.");
-  if ( ! CL_isReady() || ( program && ! clSlice ) )
+  if ( ! CL_isReady() )
     return -1;
   if ( pthread_mutex_trylock(&locker) )
     return 0;
   bool toRet = 0;
-
   try{
     if (!checkReady())
       throw 0;
@@ -377,14 +376,16 @@ CTrec::ForCLdev::sino(Map &sinogram) {
   return toRet;
 }
 
-bool
+int
 CTrec::ForCLdev::repeat(Map & slice, float center) {
   if ( abs(center) >= parent.ish(1)/2 )
     throw_error(modname, "Rotation center "+toString(center)+
                          " is outside the image of width " + toString(parent.ish(1)) + ".");
-  if ( ! CL_isReady() || ( program && ! clSino ) || pthread_mutex_trylock(&locker) )
-    return false;
-  bool toRet = false;
+  if ( ! CL_isReady() )
+    return -1;
+  if ( pthread_mutex_trylock(&locker) )
+    return 0;
+  int toRet = 0;
   try {
     if (!checkReady())
       throw 0;
@@ -392,7 +393,7 @@ CTrec::ForCLdev::repeat(Map & slice, float center) {
     kernelSino.exec(parent.osh, cl.que);
     slice.resize(parent.osh);
     cl2blitz(clSlice(), slice, cl.que);
-    toRet = true;
+    toRet = 1;
   }
   catch (...) { warn(modname, "Failed to perform reconstruction on OCL device."); }
   pthread_mutex_unlock(&locker);

@@ -307,7 +307,7 @@ private:
 
     bool sino(Map &sinogram) ;
 
-    bool repeat(Map & slice, float center) ;
+    int repeat(Map & slice, float center) ;
 
   };
 

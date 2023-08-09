@@ -319,15 +319,16 @@ class ProjInThread : public InThread {
     }
 
     int getme (Map & nmap) {
+      const unsigned int toRet = odx;
       if (bn==1)
-        return true;
+        return toRet;
       if (cnt) {
         nmap.resize(storage.shape());
         nmap = storage / cnt;
         cnt = 0;
         odx = -1;
       }
-      return odx;
+      return toRet;
     }
 
 
@@ -338,10 +339,10 @@ class ProjInThread : public InThread {
 
   bool inThread(long int idx) {
 
-    const long int odx = idx/zbinn;
-    if (odx >= allOutSv[0].slices() || idx >= allInRd[0].slices() )
+    const long int sodx =  idx/zbinn + ( zbinn > 0 ? 0 : allOutSv[0].slices() - 1 ) ;
+    if (sodx < 0 || sodx >= allOutSv[0].slices() || idx >= allInRd[0].slices() )
       return false;
-    if ( find(projes.begin(), projes.end(), odx) == projes.end() )
+    if ( find(projes.begin(), projes.end(), sodx) == projes.end() )
       return true;
 
     const pthread_t me = pthread_self();
@@ -369,7 +370,7 @@ class ProjInThread : public InThread {
       deque<Map> & myRes = myProc.process(myAllIn);
       if (zbinn == 1)
         for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
-          allOutSv[curO].save(odx, myRes[curO]);
+          allOutSv[curO].save(sodx, myRes[curO]);
       else {
         for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ ) {
           pthread_mutex_lock(&accs[curO].first);
@@ -381,8 +382,8 @@ class ProjInThread : public InThread {
           for ( auto accsp  = curAccs.begin() ; accsp != curAccs.end() ; accsp++) {
             if (useacc == curAccs.end() && accsp->odx<0 ) { // found free
               useacc = accsp;
-              useacc->odx = odx; // reserve this acc, but keep searching
-            } else if (accsp->odx == odx) {  // found existing
+              useacc->odx = sodx; // reserve this acc, but keep searching
+            } else if (accsp->odx == sodx) {  // found existing
               if ( useacc != curAccs.end() ) // if was reserved
                 useacc->odx = -1; // release reservation
               useacc = accsp;
@@ -394,14 +395,14 @@ class ProjInThread : public InThread {
             useacc = --curAccs.end();
           }
           Accumulator & myacc = *useacc;
-          myacc.odx = odx;
+          myacc.odx = sodx;
           pthread_mutex_unlock(&accs[curO].first);
           if (myacc.addme(curMyRes))
-            allOutSv[curO].save(odx, curMyRes);
+            allOutSv[curO].save(sodx, curMyRes);
         }
       }
     } catch (...) {
-      warn("form projection", toString("Failed processing input index %i, for output slice %i.", idx, odx));
+      warn("form projection", toString("Failed processing input index %i, for output slice %i.", idx, sodx));
     }
 
     bar.update();

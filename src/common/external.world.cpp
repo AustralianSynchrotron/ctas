@@ -447,13 +447,13 @@ public :
   }
 
 
-  void read(uint idx, Map & storage, const Crop<2> & crp = Crop<2>()) {
+  Map read(uint idx, Map & storage, const Crop<2> & crp = Crop<2>()) {
     if ( ! hdfFile )
       throw_error(modname, "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
       throw_error(modname, "Index is beyond slices to read from " + name + ".");
 
-    const int idxme = indices.at(idx);
+    const ssize_t idxme = indices.at(idx);
 
     if (dataMmap.size()) {
 
@@ -467,7 +467,7 @@ public :
       default:
         throw_error(modname, "Bad slice dimension. Should never happen.");
       }
-      storage.reference(crp.apply(rd));
+      return crp.apply(rd);
 
     } else {
 
@@ -502,6 +502,7 @@ public :
         rd.transposeSelf(blitz::secondDim, blitz::firstDim);
       if ( rd.data() != storage.data() )
         storage = rd;
+      return storage;
 
     }
 
@@ -1044,7 +1045,7 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
 
 
 
-void
+Map
 ReadImage(const ImagePath & filename, Map & storage, const Crop<2> & crp, const Shape<2> & shp){
   try {
     const string ext = lower(filename.ext());
@@ -1059,6 +1060,7 @@ ReadImage(const ImagePath & filename, Map & storage, const Crop<2> & crp, const 
   } catch (...) {
     throw_error("Read image", "Failed to read image " + filename + ".");
   }
+  return storage;
 }
 
 
@@ -1138,7 +1140,7 @@ struct _ReadVolBySlice  {
       add(*curI);
   }
 
-  bool read (long int idx, Map & out, const Crop<2> & crp = Crop<2>()) {
+  Map read (long int idx, Map & out, const Crop<2> & crp = Crop<2>()) {
     int cfirst=0;
     for (int cfl = 0 ; cfl < ilist.size() ; cfl++) {
       const ImagePath flnm = ilist[cfl];
@@ -1146,20 +1148,16 @@ struct _ReadVolBySlice  {
       const size_t key = hash<string>{}(flnm.repr());
       if (hdfs.count(key)) {
         HDFread & hdf = hdfs.at(key);
-        if (idx < cfirst + hdf.slices()) {
-          hdf.read(idx-cfirst, out, crp);
-          return true;
-        }
+        if (idx < cfirst + hdf.slices())
+          return hdf.read(idx-cfirst, out, crp);
         cfirst += hdf.slices();
       } else {
-        if (idx==cfirst){
-          ReadImage(flnm, out, crp);
-          return true;
-        }
+        if (idx==cfirst)
+          return ReadImage(flnm, out, crp);
         cfirst++;
       }
     }
-    return false;
+    return out;
   }
 
 
@@ -1292,8 +1290,16 @@ ReadVolumeBySlice::~ReadVolumeBySlice() {
   delete (_ReadVolBySlice*) guts;
 }
 
-void ReadVolumeBySlice::read(uint sl, Map& trg, const Crop<2> & crp) {
-  ((_ReadVolBySlice*) guts)->read(sl, trg, crp);
+Map ReadVolumeBySlice::read(uint sl, Map& trg, const Crop<2> & crp) {
+  return ((_ReadVolBySlice*) guts)->read(sl, trg, crp);
+}
+
+void ReadVolumeBySlice::readTo(uint sl, Map& trg, const Crop<2> & crp) {
+  Map rmap = read(sl, trg, crp);
+  if (!areSame(rmap, trg)) {
+    trg.resize(rmap.shape());
+    trg = rmap;
+  }
 }
 
 bool ReadVolumeBySlice::write(uint sl, Map& trg) {
@@ -1315,31 +1321,30 @@ Shape<3> ReadVolumeBySlice::shape() const {
 
 
 
-Map ImageProc::read(function<void()> doRot, function<void()> noRot) {
+Map ImageProc::read(function<Map()> doRot, function<Map()> noRot) {
   Map cmap;
   if (rotProc) {
-    doRot();
-    Map rmap = rotProc.apply(readmap, rotmap, reNAN);
+    Map rdmap = doRot();
+    Map rmap = rotProc.apply(rdmap, rotmap, reNAN);
     cmap.reference(crp.apply(rmap));
   } else {
-    noRot();
-    cmap.reference(readmap);
+    cmap.reference(noRot());
   }
   Map bmap = bnnProc.apply(cmap,bnnmap);
   return bmap;
 }
 
 Map ImageProc::read(const ImagePath & filename) {
-  return read( [&filename,this](){ReadImage(filename, readmap, ish);}
-             , [&filename,this](){ReadImage(filename, readmap, crp, ish);} );
+  return read( [&filename,this](){return ReadImage(filename, readmap, ish);}
+             , [&filename,this](){return ReadImage(filename, readmap, crp, ish);} );
 }
 
 Map ImageProc::read(ReadVolumeBySlice & volRd, uint sl) {
   if (volRd.face() != ish)
     throw_error("ImageProc", "Missmatch of input volume slice shape ("+toString(volRd.face())+")"
                              " with expected ("+toString(ish)+").");
-  return read( [&volRd,sl,this](){volRd.read(sl, readmap);}
-             , [&volRd,sl,this](){volRd.read(sl, readmap, crp);} );
+  return read( [&volRd,sl,this](){return volRd.read(sl, readmap);}
+             , [&volRd,sl,this](){return volRd.read(sl, readmap, crp);} );
 }
 
 

@@ -268,51 +268,10 @@ private:
   blitz::Array<cl_float2, 1> cossins;
   float recCof;
 
-  class ForCLdev {
 
-    static const std::string oclsrc;
-    CLenv & cl;
-    const CTrec & parent;
-    CLprogram program;
-    CLkernel kernelSino;
-    CLmem clSlice;
-    CLmem clSino;
-    CLmem clAngles;
-    cl_float recCof;
-    pthread_mutex_t locker;
-
-    bool checkReady();
-
-  public:
-
-    ForCLdev(CLenv & cl, const CTrec & _parent)
-      : cl(cl)
-      , parent(_parent)
-      , program(oclsrc, cl.cont)
-      , kernelSino(program, "fbp")
-      , clAngles(0)
-      , clSino(0)
-      , clSlice(0)
-      , recCof(1.0)
-      , locker(PTHREAD_MUTEX_INITIALIZER)
-    {};
-
-    ~ForCLdev() {
-      pthread_mutex_destroy(&locker);
-    } ;
-
-    int reconstruct(Map & fsin, Map & slice, float center) ;
-
-    void setRecCof(float _recCof) ;
-
-    bool sino(Map &sinogram) ;
-
-    int repeat(Map & slice, float center) ;
-
-  };
-
-  std::list<ForCLdev>  _envs;
-  std::list<ForCLdev> & envs;
+  class ForCLdev;
+  std::list<ForCLdev*>  _envs;
+  std::list<ForCLdev*> & envs;
 
   bool switchToGPU = false;
   bool useCPU = false;

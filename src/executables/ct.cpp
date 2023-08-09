@@ -190,7 +190,7 @@ class RecInThread : public InThread {
     Map & myOmap = *omaps.at(me);
     unlock();
 
-    ivolRd.read(idx, myImap);
+    ivolRd.readTo(idx, myImap);
     myRing.apply(myImap);
     myRec.reconstruct(myImap, myOmap, ctrl.center);
     ovolSv.save(idx, myOmap);

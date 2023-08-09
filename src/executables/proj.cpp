@@ -363,7 +363,7 @@ class ProjInThread : public InThread {
 
     try {
       for (ssize_t curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
-        allInRd[curI].read(idx, myAllIn[curI]);
+        allInRd[curI].readTo(idx, myAllIn[curI]);
         curDnz(myDnsr, curI).proc(myAllIn[curI]);
       }
       deque<Map> & myRes = myProc.process(myAllIn);
@@ -589,7 +589,7 @@ int main(int argc, char *argv[]) {
     for ( ssize_t curI = 0 ; curI < nofIn ; curI++) {
       allIn.emplace_back(ish);
       const int trd = args.zbinn * ( args.testMe >= 0  ?  args.testMe  :  projes[0] );
-      allInRd[curI].read(trd, allIn[curI]);
+      allInRd[curI].readTo(trd, allIn[curI]);
       curDnz(canonDZs, curI).proc(allIn.back());
     }
     const deque<Map> & allOut = canonPP.process(allIn, toString(testFormat, ".tif"));

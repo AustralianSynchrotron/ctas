@@ -176,7 +176,7 @@ class ProcInThread : public InThread {
     Map & myIOmap = *iomaps.at(me);
     unlock();
 
-    allIn.read(idx, myIOmap);
+    allIn.readTo(idx, myIOmap);
     myProc.extract(myIOmap);
     if (args.phsExp)
       myIOmap = exp(-myIOmap);

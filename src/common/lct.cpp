@@ -32,6 +32,7 @@
 
 #include "ct.h"
 #include "poptmx.h"
+#include "external.world.h"
 #include <algorithm>
 #include <numeric> /* partial_sum */
 #include <pthread.h>
@@ -305,100 +306,129 @@ void RingFilter::apply(Map & sinogram) {
 
 
 
-bool CTrec::ForCLdev::checkReady() {
-  if (clSlice)
-    return true;
-  if ( ! CL_isReady() )
-    return false;
+class CTrec::ForCLdev {
 
-  try {
-    clSlice(clAllocArray<float>(size(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
-    clSino(clAllocArray<float>(size(parent.ish), CL_MEM_READ_ONLY, cl.cont));
-    clAngles(blitz2cl<cl_float2>(parent.cossins, CL_MEM_READ_ONLY, cl.que));
-    kernelSino.setArg(0, clSino());
-    kernelSino.setArg(1, clSlice());
-    kernelSino.setArg(2, (cl_int) parent.ish(1));
-    kernelSino.setArg(3, (cl_int) parent.ish(0));
-    kernelSino.setArg(4, clAngles());
-    kernelSino.setArg(6, recCof);
-    return true;
-  }  catch (...)  {
-    kernelSino.free();
-    clAngles.free();
-    clSlice.free();
-    clSino.free();
-    return false;
+  static const std::string oclsrc;
+  CLenv & cl;
+  const CTrec & parent;
+  CLprogram program;
+  CLkernel kernelSino;
+  CLmem clSlice;
+  CLmem clSino;
+  CLmem clAngles;
+  cl_float recCof;
+  pthread_mutex_t locker;
+
+  bool checkReady() {
+    if (clSlice)
+      return true;
+    if ( ! CL_isReady() )
+      return false;
+    try {
+      clSlice(clAllocArray<float>(size(parent.osh), CL_MEM_WRITE_ONLY, cl.cont));
+      clSino(clAllocArray<float>(size(parent.ish), CL_MEM_READ_ONLY, cl.cont));
+      clAngles(blitz2cl<cl_float2>(parent.cossins, CL_MEM_READ_ONLY, cl.que));
+      kernelSino.setArg(0, clSino());
+      kernelSino.setArg(1, clSlice());
+      kernelSino.setArg(2, (cl_int) parent.ish(1));
+      kernelSino.setArg(3, (cl_int) parent.ish(0));
+      kernelSino.setArg(4, clAngles());
+      kernelSino.setArg(6, recCof);
+      return true;
+    }  catch (...)  {
+      kernelSino.free();
+      clAngles.free();
+      clSlice.free();
+      clSino.free();
+      return false;
+    }
   }
-}
 
+public:
 
-int CTrec::ForCLdev::reconstruct(Map & fsin, Map & slice, float center) { // already filtered sinogram
-  if (fsin.shape() != parent.ish)
-    throw_error(modname, "Unexpected array size on OCL reconstruct.");
-  if ( ! CL_isReady() )
-    return -1;
-  if ( pthread_mutex_trylock(&locker) )
-    return 0;
-  bool toRet = 0;
-  try{
-    if (!checkReady())
-      throw 0;
-    blitz2cl<cl_float>(fsin, clSino(), cl.que);
-    kernelSino.setArg(5, (cl_float) center);
-    kernelSino.exec(parent.osh, cl.que);
-    slice.resize(parent.osh);
-    cl2blitz(clSlice(), slice, cl.que);
-    toRet=1;
-  } catch (...) {}
+  ForCLdev(CLenv & cl, const CTrec & _parent)
+    : cl(cl)
+    , parent(_parent)
+    , program(oclsrc, cl.cont)
+    , kernelSino(program, "fbp")
+    , clAngles(0)
+    , clSino(0)
+    , clSlice(0)
+    , recCof(1.0)
+    , locker(PTHREAD_MUTEX_INITIALIZER)
+  {};
 
-  pthread_mutex_unlock(&locker);
-  return toRet;
-} ;
+  ~ForCLdev() {
+    pthread_mutex_destroy(&locker);
+  } ;
 
-void CTrec::ForCLdev::setRecCof(float _recCof) {
-  recCof = _recCof;
-  if (kernelSino)
-    kernelSino.setArg(6, recCof);
-}
+  int reconstruct(Map & fsin, Map & slice, float center) {
+    if (fsin.shape() != parent.ish)
+      throw_error(modname, "Unexpected array size on OCL reconstruct.");
+    if ( ! CL_isReady() )
+      return -1;
+    if ( pthread_mutex_trylock(&locker) )
+      return 0;
+    bool toRet = 0;
+    try{
+      if (!checkReady())
+        throw 0;
+      blitz2cl<cl_float>(fsin, clSino(), cl.que);
+      kernelSino.setArg(5, (cl_float) center);
+      kernelSino.exec(parent.osh, cl.que);
+      slice.resize(parent.osh);
+      cl2blitz(clSlice(), slice, cl.que);
+      toRet=1;
+    } catch (...) {}
 
-bool
-CTrec::ForCLdev::sino(Map &sinogram) {
-  if ( sinogram.shape() != parent.ish )
-    throw_error ( modname, "Shape of input sinogram (" + toString(sinogram.shape()) + ")"
-                           " does not match initial (" + toString(parent.ish) + ").");
-  if ( ! checkReady()  )
-    return false;
-  bool toRet = false;
-  pthread_mutex_lock(&locker);
-  try { blitz2cl<cl_float>(sinogram, clSino(), cl.que); toRet = true;}
-  catch (...) { warn(modname, "Failed to upload sinogram to OCL device."); }
-  pthread_mutex_unlock(&locker);
-  return toRet;
-}
-
-int
-CTrec::ForCLdev::repeat(Map & slice, float center) {
-  if ( abs(center) >= parent.ish(1)/2 )
-    throw_error(modname, "Rotation center "+toString(center)+
-                         " is outside the image of width " + toString(parent.ish(1)) + ".");
-  if ( ! CL_isReady() )
-    return -1;
-  if ( pthread_mutex_trylock(&locker) )
-    return 0;
-  int toRet = 0;
-  try {
-    if (!checkReady())
-      throw 0;
-    kernelSino.setArg(5, (cl_float) center);
-    kernelSino.exec(parent.osh, cl.que);
-    slice.resize(parent.osh);
-    cl2blitz(clSlice(), slice, cl.que);
-    toRet = 1;
+    pthread_mutex_unlock(&locker);
+    return toRet;
   }
-  catch (...) { warn(modname, "Failed to perform reconstruction on OCL device."); }
-  pthread_mutex_unlock(&locker);
-  return toRet;
-}
+
+  void setRecCof(float _recCof)  {
+    recCof = _recCof;
+    if (kernelSino)
+      kernelSino.setArg(6, recCof);
+  }
+
+  bool sino(Map &sinogram)  {
+    if ( sinogram.shape() != parent.ish )
+      throw_error ( modname, "Shape of input sinogram (" + toString(sinogram.shape()) + ")"
+                             " does not match initial (" + toString(parent.ish) + ").");
+    if ( ! checkReady()  )
+      return false;
+    bool toRet = false;
+    pthread_mutex_lock(&locker);
+    try { blitz2cl<cl_float>(sinogram, clSino(), cl.que); toRet = true;}
+    catch (...) { warn(modname, "Failed to upload sinogram to OCL device."); }
+    pthread_mutex_unlock(&locker);
+    return toRet;
+  }
+
+  int repeat(Map & slice, float center) {
+    if ( abs(center) >= parent.ish(1)/2 )
+      throw_error(modname, "Rotation center "+toString(center)+
+                           " is outside the image of width " + toString(parent.ish(1)) + ".");
+    if ( ! CL_isReady() )
+      return -1;
+    if ( pthread_mutex_trylock(&locker) )
+      return 0;
+    int toRet = 0;
+    try {
+      if (!checkReady())
+        throw 0;
+      kernelSino.setArg(5, (cl_float) center);
+      kernelSino.exec(parent.osh, cl.que);
+      slice.resize(parent.osh);
+      cl2blitz(clSlice(), slice, cl.que);
+      toRet = 1;
+    }
+    catch (...) { warn(modname, "Failed to perform reconstruction on OCL device."); }
+    pthread_mutex_unlock(&locker);
+    return toRet;
+  }
+
+};
 
 const string CTrec::ForCLdev::oclsrc({
   #include "ct.cl.includeme"
@@ -462,7 +492,7 @@ CTrec::CTrec(const Shape<2> &sinoshape, Contrast cn, const float anarc, const Fi
   if (!CL_isReady())
     warn(modname, "OpenCL is not functional.");
   for (CLenv & env : clenvs)
-    try{ envs.emplace_back(env, *this); } catch(...) {}
+    try{ envs.push_back(new ForCLdev(env, *this)); } catch(...) {}
   if (envs.empty())
     useCPU = true;
 
@@ -498,6 +528,9 @@ CTrec::~CTrec(){
     pthread_cond_destroy(gpuReleasedCondition);
     delete gpuReleasedCondition;
   }
+  for (ForCLdev * env : _envs)
+    if (env)
+      delete env;
   safe_fftw_destroy_plan(planF);
   safe_fftw_destroy_plan(planB);
 }
@@ -509,8 +542,8 @@ void CTrec::setPhysics(float pixelSize, float lambda) {
     recCof *= lambda / (2*M_PI);
   if (pixelSize > 0.0)
     recCof *= M_PI / pixelSize;
-  for (ForCLdev & env : envs)
-    env.setRecCof(recCof);
+  for (ForCLdev * env : envs)
+    env->setRecCof(recCof);
 }
 
 
@@ -552,8 +585,8 @@ CTrec::sino(Map &sinogram) {
                            " does not match initial (" + toString(ish) + ").");
   mysino.reference(sinogram);
   prepare_sino(mysino);
-  for (ForCLdev & env : envs)
-    env.sino(mysino);
+  for (ForCLdev * env : envs)
+    env->sino(mysino);
 }
 
 
@@ -566,16 +599,16 @@ CTrec::repeat(Map & slice, float center) {
 
   if (useCPU) {
 
-    for (ForCLdev & env : envs)
-      if (env.repeat(slice, center))
+    for (ForCLdev * env : envs)
+      if (env->repeat(slice, center))
         return;
     reconstructOnCPU(slice, center);
 
   } else {
 
     while (true) {
-      for (ForCLdev & env : envs) {
-        const int reced = env.repeat(slice, center);
+      for (ForCLdev * env : envs) {
+        const int reced = env->repeat(slice, center);
         if (reced) {
           pthread_mutex_lock(gpuReleasedMutex);
           gpuWasReleased = true;
@@ -613,8 +646,8 @@ CTrec::reconstruct(Map &sinogram, Map & slice, float center) {
 
   if (useCPU) {
 
-    for (ForCLdev & env : envs)
-      if (env.reconstruct(sinogram, slice, center) > 0)
+    for (ForCLdev * env : envs)
+      if (env->reconstruct(sinogram, slice, center) > 0)
         return;
     mysino.reference(sinogram);
     reconstructOnCPU(slice, center);
@@ -622,8 +655,8 @@ CTrec::reconstruct(Map &sinogram, Map & slice, float center) {
   } else {
 
     while (true) {
-      for (ForCLdev & env : envs) {
-        const int reced = env.reconstruct(sinogram, slice, center);
+      for (ForCLdev * env : envs) {
+        const int reced = env->reconstruct(sinogram, slice, center);
         if (reced) {
           pthread_mutex_lock(gpuReleasedMutex);
           gpuWasReleased = true;
@@ -684,8 +717,8 @@ CTrec::reconstructOnCPU(Map & slice, float center) {
         }
         if (switchToGPU) {
           switchToGPU=false;
-          for (ForCLdev & env : envs)
-            if (env.reconstruct(mysino, slice, center))
+          for (ForCLdev * env : envs)
+            if (env->reconstruct(mysino, slice, center))
               return;
         }
       }

@@ -106,7 +106,7 @@ class RingInThread : public InThread {
     Map & myMap = *iomaps.at(me);
     unlock();
 
-    ivolRd.read(idx, myMap);
+    ivolRd.readTo(idx, myMap);
     myRing.apply(myMap);
     if (ovolSv)
       ovolSv->save(idx, myMap);

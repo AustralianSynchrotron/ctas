@@ -123,13 +123,13 @@ BadShape(const ImagePath & filename, const Shape<2> & shp);
 /// @param storage  Array to load the image into.
 /// @param shp The expected shape.
 ///
-void
+Map
 ReadImage( const ImagePath & filename, Map & storage
          , const Crop<2> & crp = Crop<2>(), const Shape<2> & shp = Shape<2>(0l));
 
-inline void
+inline Map
 ReadImage(const ImagePath & filename, Map & storage, const Shape<2> & shp) {
-  ReadImage(filename, storage, Crop<2>(), shp);
+  return ReadImage(filename, storage, Crop<2>(), shp);
 }
 
 
@@ -241,7 +241,8 @@ public:
   ~ReadVolumeBySlice();
   void add(const std::deque<ImagePath> & filelist);
   void add(const ImagePath & fileind);
-  void read(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
+  Map read(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
+  void readTo(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
   bool write(uint sl, Map & out);
   size_t slices() const;
   Shape<2> face() const;
@@ -266,7 +267,7 @@ public:
 class ImageProc : public MapProc {
   using MapProc::MapProc;
   Map readmap;
-  Map read(std::function<void()> doRot, std::function<void()> noRot);
+  Map read(std::function<Map()> doRot, std::function<Map()> noRot);
 public:
   Map read(const ImagePath & filename);
   Map read(ReadVolumeBySlice & volRd, uint sl);

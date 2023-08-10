@@ -130,88 +130,8 @@ class SliceInThread : public InThread {
   const deque<int> indices;
   SaveVolumeBySlice * ovolSv;
 
-  // Class to accumulate slices in binning Z axis.
-  struct CLacc {
-
-    const Shape<2> mish;
-    size_t bn;
-    int odx;
-    unsigned cnt;
-    CLmem resmem;
-    CLmem addmem;
-    pthread_mutex_t locker;
-    CLprogram binnProgram;
-    CLkernel addKernel;
-    CLkernel divKernel;
-
-    CLacc(Shape<2> _mish, ssize_t _bn)
-      : mish(_mish)
-      , bn(abs(_bn))
-      , odx(-1)
-      , cnt(0)
-      , locker(PTHREAD_MUTEX_INITIALIZER)
-    {
-      if (!bn)
-        throw_bug("CLacc: zero binning. Here must be size.");
-      if (bn==1)
-        return;
-
-      static const string oclsrc = {
-        #include "../common/matrix.cl.includeme"
-      };
-      binnProgram(oclsrc);
-      resmem(clAllocArray<float>(size(mish)));
-      addmem(clAllocArray<float>(size(mish), CL_MEM_READ_ONLY) );
-      addKernel(binnProgram, "addToSecond");
-      addKernel.setArg(0, addmem());
-      addKernel.setArg(1, resmem());
-      fillClArray<float>(resmem(), size(mish), 0);
-      divKernel(binnProgram, "multiplyArray");
-      divKernel.setArg(0, resmem());
-      divKernel.setArg(1, (float)1.0/bn);
-
-    }
-
-    ~CLacc() {
-      pthread_mutex_destroy(&locker);
-    }
-
-    unsigned int addme (Map & nmap) {
-      if (bn==1)
-        return 0;
-      if (nmap.shape() != mish)
-        throw_error("Sum on CL", "Wrong input image shape.");
-      pthread_mutex_lock(&locker);
-      blitz2cl<cl_float>(nmap, addmem());
-      addKernel.exec(size(mish));
-      cnt++;
-      if (cnt==bn)
-        getme(nmap);
-      pthread_mutex_unlock(&locker);
-      return cnt;
-    }
-
-    unsigned int getme (Map & nmap) {
-      const unsigned int toRet = odx;
-      if ( ! cnt || bn==1 )
-        return toRet;
-      nmap.resize(mish);
-      if (cnt != bn) // will happen only for the last incomplete slice
-        divKernel.setArg(1, (float)1.0/cnt);
-      divKernel.exec(size(mish));
-      cl2blitz(resmem(), nmap);
-      if (cnt == bn)
-        fillClArray<float>(resmem(), size(mish), 0);
-      cnt=0;
-      odx=-1;
-      return toRet;
-    }
-
-
-  };
-
   unordered_map<pthread_t, ImageProc* > rdprocs;
-  list<CLacc> accs;
+  list<BinnProc::Accumulator> accs;
 
 
   bool inThread(long int idx) {
@@ -240,9 +160,9 @@ class SliceInThread : public InThread {
     if (abs(bnz)!=1) {
       useacc = accs.end();
       for ( auto accsp  = accs.begin() ; accsp != accs.end() ; accsp++) {
-        if (accsp->odx<0)
+        if (accsp->index()<0)
           useacc = accsp;
-        else if (accsp->odx == sodx) {
+        else if (accsp->index() == sodx) {
           useacc = accsp;
           break;
         }
@@ -253,8 +173,8 @@ class SliceInThread : public InThread {
         --useacc;
       }
     }
-    CLacc & myacc = *useacc;
-    myacc.odx = sodx;
+    BinnProc::Accumulator & myacc = *useacc;
+    myacc.index(sodx);
     unlock(1);
 
     Map myrdmap = myrdproc.read(*ivolRd, idx);
@@ -306,7 +226,7 @@ public:
     if (abs(bnz)==1)
       return;
     Map last;
-    for ( CLacc & acc : accs ) {
+    for ( BinnProc::Accumulator & acc : accs ) {
       const int odx = acc.getme(last);
       if ( odx >= 0 ) {
         ovolSv->save(odx, last);

@@ -193,6 +193,130 @@ public:
 const string BinnProc::ForCLdev::modname = "BinnOCL";
 
 
+struct BinnAcc {
+
+  const Shape<2> mish;
+  size_t bn;
+  ssize_t odx;
+  unsigned cnt;
+  CLmem resmem;
+  CLmem addmem;
+  pthread_mutex_t locker;
+  CLprogram binnProgram;
+  CLkernel addKernel;
+  CLkernel divKernel;
+
+  BinnAcc(Shape<2> _mish, ssize_t _bn)
+    : mish(_mish)
+    , bn(abs(_bn))
+    , odx(-1)
+    , cnt(0)
+    , locker(PTHREAD_MUTEX_INITIALIZER)
+  {
+    if (!bn)
+      throw_bug("CLacc: zero binning. Here must be size.");
+    if (bn==1)
+      return;
+
+    static const string oclsrc = {
+      #include "../common/matrix.cl.includeme"
+    };
+    binnProgram(oclsrc);
+    resmem(clAllocArray<float>(size(mish)));
+    addmem(clAllocArray<float>(size(mish), CL_MEM_READ_ONLY) );
+    addKernel(binnProgram, "addToSecond");
+    addKernel.setArg(0, addmem());
+    addKernel.setArg(1, resmem());
+    fillClArray<float>(resmem(), size(mish), 0);
+    divKernel(binnProgram, "multiplyArray");
+    divKernel.setArg(0, resmem());
+    divKernel.setArg(1, (float)1.0/bn);
+
+  }
+
+  ~BinnAcc() {
+    pthread_mutex_destroy(&locker);
+  }
+
+  unsigned int addme (Map & nmap) {
+    if (bn==1)
+      return 0;
+    if (nmap.shape() != mish)
+      throw_error("Sum on CL", "Wrong input image shape.");
+    pthread_mutex_lock(&locker);
+    blitz2cl<cl_float>(nmap, addmem());
+    addKernel.exec(size(mish));
+    cnt++;
+    if (cnt==bn)
+      getme(nmap);
+    pthread_mutex_unlock(&locker);
+    return cnt;
+  }
+
+  unsigned int getme (Map & nmap) {
+    const unsigned int toRet = odx;
+    if ( ! cnt || bn==1 )
+      return toRet;
+    nmap.resize(mish);
+    if (cnt != bn) // will happen only for the last incomplete slice
+      divKernel.setArg(1, (float)1.0/cnt);
+    divKernel.exec(size(mish));
+    cl2blitz(resmem(), nmap);
+    if (cnt == bn)
+      fillClArray<float>(resmem(), size(mish), 0);
+    cnt=0;
+    odx=-1;
+    return toRet;
+  }
+
+
+};
+
+
+
+BinnProc::Accumulator::Accumulator(const Shape<2> & ish, ssize_t bn)
+  : guts(new BinnAcc(ish, bn))
+{
+  if (!guts)
+    throw_error("BinnAcc", "Failed to create.");
+}
+
+BinnProc::Accumulator::~Accumulator() {
+  if (guts)
+    delete (BinnAcc*)guts;
+}
+
+unsigned int
+BinnProc::Accumulator::addme(Map & nmap) {
+  if (!guts)
+    throw_bug("BinnAcc is a ghost.");
+  return ((BinnAcc*)guts)->addme(nmap);
+}
+
+unsigned int
+BinnProc::Accumulator::getme(Map & nmap) {
+  if (!guts)
+    throw_bug("BinnAcc is a ghost.");
+  return ((BinnAcc*)guts)->getme(nmap);
+}
+
+ssize_t
+BinnProc::Accumulator::index() const {
+  if (!guts)
+    throw_bug("BinnAcc is a ghost.");
+  return ((BinnAcc*)guts)->odx;
+}
+
+void
+BinnProc::Accumulator::index(ssize_t idx) {
+  if (!guts)
+    throw_bug("BinnAcc is a ghost.");
+  ((BinnAcc*)guts)->odx = idx;
+}
+
+
+
+
 BinnProc::BinnProc(const Shape<2> & ish, const Binn<2> & bnn)
   : bnn(bnn)
   , rbnn( [&ish,bnn](){

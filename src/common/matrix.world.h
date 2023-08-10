@@ -320,6 +320,17 @@ public:
   bool isTrivial() const {return bnn.isTrivial();}
   Shape<2> shape() const {return osh;}
   Map apply(const Map & imap, Map & tmap);
+public:
+  struct Accumulator {
+    Accumulator(const Shape<2> & ish, ssize_t bn);
+    ~Accumulator();
+    unsigned int addme (Map & nmap);
+    unsigned int getme (Map & nmap);
+    ssize_t index() const;
+    void index(ssize_t idx);
+  private:
+    void * guts=0;
+  };
 };
 
 extern const std::string

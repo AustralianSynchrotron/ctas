@@ -263,78 +263,7 @@ class ProjInThread : public InThread {
   unordered_map<pthread_t, deque<Denoiser>* > dnsrs;
   unordered_map<pthread_t, ProcProj*> procs;
   unordered_map<pthread_t, deque<Map>* > allInMaps;
-
-  // Class to accumulate projections in binning Z axis.
-  struct Accumulator {
-
-    Map storage;
-    const int bn;
-    int odx;
-    int cnt;
-    pthread_mutex_t * locker;
-
-    Accumulator(Shape<2> sh, int _bn)
-      : bn(_bn)
-      , odx(-1)
-      , cnt(0)
-      , locker(0)
-    {
-      if (!bn)
-        throw_bug("Z-binning. Binning can't be 0.");
-      if (bn==1)
-        return;
-      storage.resize(sh);
-      locker = new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER);
-    }
-
-    ~Accumulator() {
-      if (!locker)
-        return;
-      if (cnt)
-        warn("Z-binning", "Unfinished accumulation on slice "+toString(odx)+".");
-      pthread_mutex_destroy(locker);
-      delete locker;
-      locker = 0;
-    }
-
-    // returns true if accamulation has filled
-    bool addme (Map & nmap) {
-      if (bn==1)
-        return true;
-      if (nmap.shape() != storage.shape())
-        throw_error("Z-binning", "Wrong input image shape.");
-      pthread_mutex_lock(locker);
-      cnt++;
-      if (cnt==1) // first map
-        storage = nmap;
-      else if (cnt == bn) { // last map
-        nmap = (nmap + storage) / bn;
-        cnt = 0;
-        odx = -1;
-      } else
-        storage += nmap;
-      const bool toRet = (cnt==0);
-      pthread_mutex_unlock(locker);
-      return toRet;
-    }
-
-    int getme (Map & nmap) {
-      const unsigned int toRet = odx;
-      if (bn==1)
-        return toRet;
-      if (cnt) {
-        nmap.resize(storage.shape());
-        nmap = storage / cnt;
-        cnt = 0;
-        odx = -1;
-      }
-      return toRet;
-    }
-
-
-
-  };
-  deque< pair< pthread_mutex_t, list<Accumulator> > > accs;
+  deque< pair< pthread_mutex_t, list<BinnProc::Accumulator> > > accs;
 
 
   bool inThread(long int idx) {
@@ -374,18 +303,18 @@ class ProjInThread : public InThread {
       else {
         for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ ) {
           pthread_mutex_lock(&accs[curO].first);
-          list<Accumulator> & curAccs = accs[curO].second;
+          list<BinnProc::Accumulator> & curAccs = accs[curO].second;
           Map & curMyRes = myRes[curO];
           if (!curAccs.size())
             curAccs.emplace_back(curMyRes.shape(), zbinn);
           auto useacc = curAccs.end();
           for ( auto accsp  = curAccs.begin() ; accsp != curAccs.end() ; accsp++) {
-            if (useacc == curAccs.end() && accsp->odx<0 ) { // found free
+            if (useacc == curAccs.end() && accsp->index()<0 ) { // found free
               useacc = accsp;
-              useacc->odx = sodx; // reserve this acc, but keep searching
-            } else if (accsp->odx == sodx) {  // found existing
+              useacc->index(sodx); // reserve this acc, but keep searching
+            } else if (accsp->index() == sodx) {  // found existing
               if ( useacc != curAccs.end() ) // if was reserved
-                useacc->odx = -1; // release reservation
+                useacc->index(-1); // release reservation
               useacc = accsp;
               break;
             }
@@ -394,8 +323,8 @@ class ProjInThread : public InThread {
             curAccs.emplace_back(curMyRes.shape(), zbinn);
             useacc = --curAccs.end();
           }
-          Accumulator & myacc = *useacc;
-          myacc.odx = sodx;
+          BinnProc::Accumulator & myacc = *useacc;
+          myacc.index(sodx);
           pthread_mutex_unlock(&accs[curO].first);
           if (myacc.addme(curMyRes))
             allOutSv[curO].save(sodx, curMyRes);
@@ -426,7 +355,7 @@ public:
     bar.setSteps(zbinn*projes.size());
     if (zbinn != 1)
       for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
-        accs.emplace_back( pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER), list<Accumulator>() );
+        accs.emplace_back( pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER), list<BinnProc::Accumulator>() );
   }
 
   ~ProjInThread() {
@@ -442,9 +371,9 @@ public:
     InThread::execute(nThreads);
     if (abs(zbinn)==1)
       return;
+    Map res;
     for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ ) {
-      list<Accumulator> & curAccs = accs[curO].second;
-      Map res;
+      list<BinnProc::Accumulator> & curAccs = accs[curO].second;
       for ( auto & acc : curAccs ) {
         const int odx = acc.getme(res);
         if ( odx >= 0 )

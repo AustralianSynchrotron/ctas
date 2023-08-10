@@ -867,7 +867,11 @@ BadShape(const ImagePath & filename, const Shape<2> & shp){
 static void
 ReadImage_HDF5 (const ImagePath & filedesc, Map & storage, const Crop<2> & crp = Crop<2>() ) {
   try {
-    HDFread(filedesc).read(0,storage,crp);
+    Map rd = HDFread(filedesc).read(0,storage,crp);
+    if (!areSame(rd,storage)) {
+      storage.resize(rd.shape());
+      storage=rd;
+    }
   } catch( ... ) {
     throw CtasErr(CtasErr::ERR, "HDF read", "Failed to read HDF5 from " + filedesc);
   }

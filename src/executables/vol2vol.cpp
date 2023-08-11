@@ -42,6 +42,9 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   deque<ImagePath> images;        ///< input image
   ImagePath outmask;              ///< Name of the output image.
+  ImagePath bgs;        ///< Array of the background images.
+  ImagePath dfs;        ///< Array of the dark field images.
+  ImagePath dgs;        ///< Array of the dark field images for backgrounds.
   float ang;
   Crop<3> crp;                  ///< Crop input projection image
   Binn<3> bnn;                  ///< binning factor
@@ -90,6 +93,9 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume.", CropOptionDesc)
     .add(poptmx::OPTION, &bnn, 'b', "binn", "Binn factor(s).", BinnOptionDesc)
     .add(poptmx::OPTION, &slicedesc, 's', "slice", "Slices to be processed.", DimSliceOptionDesc, "<all>")
+    .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image", "")
+    .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image", "")
+    .add(poptmx::OPTION, &dgs, 'F', "dg", "Dark field image for backgrounds", "")
     .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
     .add(poptmx::OPTION, &reNAN,'N', "nan", "Replace NAN's with this number.", "")
     .add_standard_options(&beverbose)

@@ -1320,7 +1320,7 @@ Shape<2> ReadVolumeBySlice::face() const {
 }
 
 Shape<3> ReadVolumeBySlice::shape() const {
-  return  Shape<3>( slices(), face()(1), face()(0) );
+  return  Shape<3>( slices(), face()(0), face()(1) );
 }
 
 

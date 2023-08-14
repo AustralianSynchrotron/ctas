@@ -55,6 +55,7 @@ target_link_libraries(common
   ${HDF5_LIBRARIES}
   ${ImageMagick_LIBRARIES}
   ${OpenCL_LIBRARIES}
+  flatfield
 )
 
 

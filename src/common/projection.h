@@ -1,5 +1,7 @@
 
 #include "common.world.h"
+#include "parallel.world.h"
+#include "external.world.h"
 #include "flatfield.h"
 
 

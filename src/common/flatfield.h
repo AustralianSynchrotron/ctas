@@ -30,7 +30,7 @@
 #ifndef _H_BACKGROUND_H_
 #define _H_BACKGROUND_H_
 
-#include "../common/ctas.h"
+#include "matrix.world.h"
 
 
 
@@ -53,14 +53,16 @@ private:
   const CLmem df;
   const CLmem dg;
   #else // ONGPU
-  const Map & df;
+  Map df;
   Map bga;
   #endif // ONGPU
 public:
   FlatFieldProc( const Map & _bg, const Map & _df
                , const Map & _dg, const Map & _ms);
-
   FlatFieldProc(const FlatFieldProc & other);
+  FlatFieldProc(){};
+
+  explicit operator bool() const {return size(sh) && (df.size() || bga.size());}
 
   #ifdef ONGPU
   bool execute(const Map & _io);

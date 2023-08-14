@@ -4,6 +4,7 @@
 
 #include "common.world.h"
 #include "matrix.world.h"
+#include "flatfield.h"
 #include <functional>
 
 
@@ -264,11 +265,15 @@ public:
 
 
 
-class ImageProc : public MapProc {
+class ImageProc : public MapProc, public FlatFieldProc {
   using MapProc::MapProc;
+  using FlatFieldProc::FlatFieldProc;
+  static const std::string modname;
   Map readmap;
   Map read(std::function<Map()> doRot, std::function<Map()> noRot);
 public:
+  ImageProc( const Map & bg, const Map & df, const Map & dg, const Map & ms
+           , float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN=NAN);
   Map read(const ImagePath & filename);
   Map read(ReadVolumeBySlice & volRd, uint sl);
 };

@@ -1325,14 +1325,37 @@ Shape<3> ReadVolumeBySlice::shape() const {
 
 
 
+ImageProc::ImageProc( const Map & bg, const Map & df, const Map & dg, const Map & ms
+                    , float ang, const Crop<2> & crp, const Binn<2> & bnn
+                      , const Shape<2> & ish, float reNAN)
+  : MapProc(ang, crp, bnn, ish, reNAN)
+  , FlatFieldProc( rotProc ? bg : crp.apply(bg),
+                   rotProc ? df : crp.apply(df),
+                   rotProc ? dg : crp.apply(dg),
+                   rotProc ? ms : crp.apply(ms) )
+{
+  auto chcker = [&ish](const Map & mp, const string & role) {
+    if (mp.size() && mp.shape() != ish)
+      throw_error(modname, "Size of "+role+" image ("+toString(mp.shape())+") does not match that of the constructor ("+toString(ish)+")");
+  };
+  chcker(bg, "background");
+  chcker(df, "darkfield");
+  chcker(dg, "darkground");
+  chcker(ms, "mask");
+}
+
+
+
 Map ImageProc::read(function<Map()> doRot, function<Map()> noRot) {
   Map cmap;
+  Map rdmap = rotProc ? doRot() : noRot();
+  if (FlatFieldProc::operator bool())
+    process(rdmap);
   if (rotProc) {
-    Map rdmap = doRot();
     Map rmap = rotProc.apply(rdmap, rotmap, reNAN);
     cmap.reference(crp.apply(rmap));
   } else {
-    cmap.reference(noRot());
+    cmap.reference(rdmap);
   }
   Map bmap = bnnProc.apply(cmap,bnnmap);
   return bmap;
@@ -1352,10 +1375,7 @@ Map ImageProc::read(ReadVolumeBySlice & volRd, uint sl) {
 }
 
 
-
-
-
-
+const string ImageProc::modname="ImagePrtoc";
 
 
 

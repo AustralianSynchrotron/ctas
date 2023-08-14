@@ -110,8 +110,6 @@ FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
   , df(other.df)
   , bga(other.bga)
 {
-  if (!size(sh))
-    return;
 }
 
 

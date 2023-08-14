@@ -29,6 +29,7 @@
 
 #include "../common/ctas.h"
 #include "../common/poptmx.h"
+#include "../common/flatfield.h"
 #include <algorithm>
 #include <string.h>
 
@@ -45,6 +46,7 @@ struct clargs {
   ImagePath bgs;        ///< Array of the background images.
   ImagePath dfs;        ///< Array of the dark field images.
   ImagePath dgs;        ///< Array of the dark field images for backgrounds.
+  //bool sinoFF;          ///< Tells if **s above are the sources of sinolines or actual fields
   float ang;
   Crop<3> crp;                  ///< Crop input projection image
   Binn<3> bnn;                  ///< binning factor
@@ -62,6 +64,7 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[])
   : outmask ("slice.tif")
+  //, sinoFF(false)
   , ang(0.0f)
   , mincon(NAN)
   , maxcon(NAN)
@@ -96,6 +99,8 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &bgs, 'B', "bg", "Background image", "")
     .add(poptmx::OPTION, &dfs, 'D', "df", "Dark field image", "")
     .add(poptmx::OPTION, &dgs, 'F', "dg", "Dark field image for backgrounds", "")
+    //.add(poptmx::OPTION, &sinoFF, 'S', "sino",
+    //     "If set, images given with BDF option(s) are considered as face slices to get lines in sinogram.", "")
     .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
     .add(poptmx::OPTION, &reNAN,'N', "nan", "Replace NAN's with this number.", "")
     .add_standard_options(&beverbose)
@@ -115,6 +120,13 @@ clargs(int argc, char *argv[])
   if ( beverbose && outmask == "-" )
     exit_on_error(command, "Verbose option ("+table.desc(&beverbose)+") is incompatible with"
                            " printing to stdout (\'-\' given to "+table.desc(&outmask)+" option).");
+  //if (table.count(&sinoFF) && !(table.count(&bgs)+table.count(&dfs)+table.count(&dgs)) )
+  //  warn(command, "Option "+table.desc(&sinoFF)+" given without any of "
+  //                + table.desc(&bgs)+", "+table.desc(&dfs)+" and "+table.desc(&dgs)
+  //                + ": will be ignored.");
+  if ( ! table.count(&bgs) && table.count(&dgs) )
+    exit_on_error(command, "No background images (" + table.desc(&bgs) + ") for provided darkgrounds (" + table.desc(&dgs) + ").");
+
   ang *= M_PI/180;
 
 }
@@ -193,12 +205,12 @@ class SliceInThread : public InThread {
 
 public:
 
-  SliceInThread(const clargs & args)
+  SliceInThread(const clargs & args, const Map & bg , const Map & df, const Map & dg)
     : InThread(args.beverbose, "processing slices")
     , ivolRd(new ReadVolumeBySlice(args.images))
     , ish(ivolRd->face())
     , isz(ivolRd->slices())
-    , canonImgProc(args.ang, copyMost<2>(args.crp), copyMost<2>(args.bnn), ish, args.reNAN)
+    , canonImgProc(bg, df, dg, Map(), args.ang, copyMost<2>(args.crp), copyMost<2>(args.bnn), ish, args.reNAN)
     , bnz( args.bnn(0) ? args.bnn(0) : isz )
     , osh( canonImgProc.shape() )
     , osz( binnOne(isz, bnz) )
@@ -252,6 +264,15 @@ int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
   const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
+  const Shape<2> ish = ImageSizes(args.images[0]);
+
+  Map bg, df, dg;
+  if (!args.bgs.empty())
+    ReadImage(args.bgs, bg, ish);
+  if (!args.dfs.empty())
+    ReadImage(args.dfs, df, ish);
+  if (!args.dgs.empty())
+    ReadImage(args.dgs, dg, ish);
 
   if (  ( ! args.slicedesc.empty()
           &&  string("xXyY").find(args.slicedesc.at(0)) != string::npos )
@@ -260,7 +281,24 @@ int main(int argc, char *argv[]) {
 
     Volume ivol;
     ReadVolume(args.images, ivol, args.beverbose);
-    Volume cvol(args.crp.apply(ivol));
+    FlatFieldProc ffProc(bg, df, dg, Map());
+    if (ffProc)
+      InThread::execute(ivol.shape()(0), [&](ssize_t ii){
+        Map pmp = ivol(ii,all,all);
+        ffProc.process(pmp);
+      } ) ;
+    Volume rotVol;
+    RotateProc rotProc(ish, args.ang);
+    if (rotProc) {
+      rotVol.resize(Shape<3>(ivol.shape()(0), rotProc.shape()(0), rotProc.shape()(1)));
+      InThread::execute(ivol.shape()(0), [&](ssize_t ii){
+        Map rotMap(rotVol(ii,all,all));
+        rotMap = rotProc.apply(ivol(ii,all,all), rotMap);
+      } ) ;
+    } else {
+      rotVol.reference(ivol);
+    }
+    Volume cvol(args.crp.apply(rotVol));
     Volume bvol(args.bnn.apply(cvol));
 
     if (toInt) {
@@ -274,7 +312,7 @@ int main(int argc, char *argv[]) {
 
   } else {
     // Can work slice-by-slice.
-    SliceInThread factory(args);
+    SliceInThread factory(args, bg, df, dg);
     factory.execute();
 
   }

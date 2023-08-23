@@ -160,9 +160,10 @@ clargs(int argc, char *argv[])
   st.nofIn = tiledImages;
 
   auto chkNofIns = [&](const deque<ImagePath> & ims, const string & lbl) {
-    if (ims.size() && ims.size() != 1 && ims.size() != st.nofIn) \
-      exit_on_error(command, "Number of " +lbl+ " images given by " + table.desc(&ims) + " option " \
-                             " is neither 0, 1, nor the number of inputs (" + toString(st.nofIn) +  ").");
+    if (ims.size() && ims.size() != 1 && ims.size() != st.nofIn)
+      exit_on_error(command, "Number of " +lbl+ " images (" + toString(ims.size()) +  ")"
+                             " given by " + table.desc(&ims) + " option is neither 0, 1,"
+                             " nor the number of inputs (" + toString(st.nofIn) +  ").");
   };
   chkNofIns(bgs, "background");
   chkNofIns(dfs, "darkfield");

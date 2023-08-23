@@ -34,6 +34,42 @@ static const int run_threads = nof_threads();
 
 
 
+Relocker::Relocker()
+  : mutex(PTHREAD_MUTEX_INITIALIZER)
+  , condition(PTHREAD_COND_INITIALIZER)
+  , state(_state)
+{}
+
+Relocker::Relocker(const Relocker &other)
+  : mutex(other.mutex)
+  , condition(other.condition)
+  , state(other.state)
+{}
+
+Relocker::~Relocker() {
+  if ( addressof(_state) == addressof(state) ) {
+    pthread_mutex_destroy(&mutex) ;
+    pthread_cond_destroy(&condition);
+  }
+}
+
+void Relocker::lock() {
+  pthread_mutex_lock(&mutex);
+  if (!state)
+    pthread_cond_wait(&condition, &mutex);
+  state = false;
+  pthread_mutex_unlock(&mutex);
+}
+
+void Relocker::unlock() {
+  pthread_mutex_lock(&mutex);
+  state = true;
+  pthread_cond_signal(&condition);
+  pthread_mutex_unlock(&mutex);
+}
+
+
+
 class ThreadDistributor {
 
 private :

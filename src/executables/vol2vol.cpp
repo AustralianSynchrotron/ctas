@@ -287,18 +287,18 @@ int main(int argc, char *argv[]) {
         Map pmp = ivol(ii,all,all);
         ffProc.process(pmp);
       } ) ;
-    Volume rotVol;
+    Volume rvol;
     RotateProc rotProc(ish, args.ang);
     if (rotProc) {
-      rotVol.resize(Shape<3>(ivol.shape()(0), rotProc.shape()(0), rotProc.shape()(1)));
+      rvol.resize(Shape<3>(ivol.shape()(0), rotProc.shape()(0), rotProc.shape()(1)));
       InThread::execute(ivol.shape()(0), [&](ssize_t ii){
-        Map rotMap(rotVol(ii,all,all));
+        Map rotMap(rvol(ii,all,all));
         rotMap = rotProc.apply(ivol(ii,all,all), rotMap);
       } ) ;
     } else {
-      rotVol.reference(ivol);
+      rvol.reference(ivol);
     }
-    Volume cvol(args.crp.apply(rotVol));
+    Volume cvol(args.crp.apply(rvol));
     Volume bvol(args.bnn.apply(cvol));
 
     if (toInt) {
@@ -314,7 +314,6 @@ int main(int argc, char *argv[]) {
     // Can work slice-by-slice.
     SliceInThread factory(args, bg, df, dg);
     factory.execute();
-
   }
 
   exit(0);

@@ -1329,10 +1329,10 @@ ImageProc::ImageProc( const Map & bg, const Map & df, const Map & dg, const Map 
                     , float ang, const Crop<2> & crp, const Binn<2> & bnn
                       , const Shape<2> & ish, float reNAN)
   : MapProc(ang, crp, bnn, ish, reNAN)
-  , FlatFieldProc( rotProc ? bg : crp.apply(bg),
-                   rotProc ? df : crp.apply(df),
-                   rotProc ? dg : crp.apply(dg),
-                   rotProc ? ms : crp.apply(ms) )
+  , FlatFieldProc( rotProc || ! bg.size() ? bg : crp.apply(bg),
+                   rotProc || ! df.size() ? df : crp.apply(df),
+                   rotProc || ! dg.size() ? dg : crp.apply(dg),
+                   rotProc || ! ms.size() ? ms : crp.apply(ms) )
 {
   auto chcker = [&ish](const Map & mp, const string & role) {
     if (mp.size() && mp.shape() != ish)

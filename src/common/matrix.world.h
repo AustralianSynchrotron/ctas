@@ -34,9 +34,29 @@ inline blitz::TinyVector<T,N> operator*( const blitz::TinyVector<T,N> & t1
                                        , const blitz::TinyVector<T,N> & t2) {
   blitz::TinyVector<T,N> toRet;
   for (int dim=0; dim<N; dim++)
-    toRet(dim) = t1(dim)*t2(dim);
+    toRet(dim) = t1(dim) * t2(dim);
   return toRet;
 }
+
+template<class T, int N>
+inline blitz::TinyVector<T,N> operator+( const blitz::TinyVector<T,N> & t1
+                                       , const blitz::TinyVector<T,N> & t2) {
+  blitz::TinyVector<T,N> toRet;
+  for (int dim=0; dim<N; dim++)
+    toRet(dim) = t1(dim) + t2(dim);
+  return toRet;
+}
+
+template<class T, int N>
+inline blitz::TinyVector<T,N> operator-( const blitz::TinyVector<T,N> & t1
+                                       , const blitz::TinyVector<T,N> & t2) {
+  blitz::TinyVector<T,N> toRet;
+  for (int dim=0; dim<N; dim++)
+    toRet(dim) = t1(dim) - t2(dim);
+  return toRet;
+}
+
+
 
 
 template<int Dim, class T>
@@ -120,12 +140,20 @@ inline bool areSame(const blitz::Array<T,N> & arr1,
 
 
 
-template<int Dim>
-class PointF : public blitz::TinyVector<float,Dim> {
-  using blitz::TinyVector<float,Dim>::TinyVector;
+template<class T, int Dim
+         , std::enable_if_t<  std::is_arithmetic<T>::value, bool> = true >
+class Point : public blitz::TinyVector<T,Dim> {
+  using blitz::TinyVector<T,Dim>::TinyVector;
 public:
-  PointF() : blitz::TinyVector<float,Dim>(0.0f) {}
+  Point() : blitz::TinyVector<T,Dim>((T)0) {}
+  Point(const blitz::TinyVector<T,Dim> & other) : blitz::TinyVector<T,Dim>(other) {}
 };
+
+template<int Dim>
+using PointF = Point<float, Dim>;
+
+template<int Dim>
+using PointI = Point<ssize_t, Dim>;
 
 template<int Dim>
 std::string type_desc (PointF<Dim>*) {
@@ -133,9 +161,14 @@ std::string type_desc (PointF<Dim>*) {
 }
 
 template<int Dim>
-int _conversion (PointF<Dim>* _val, const std::string & in) {
+std::string type_desc (PointI<Dim>*) {
+  return toString( blitz::TinyVector<std::string,Dim>("INT") );
+}
+
+template<class T, int Dim>
+int _conversion (Point<T,Dim>* _val, const std::string & in) {
   if (in.empty()) {
-    *_val = PointF<Dim>();
+    *_val = Point<T,Dim>();
     return 1;
   }
   std::deque<std::string> subs = split(in, ",");
@@ -145,7 +178,7 @@ int _conversion (PointF<Dim>* _val, const std::string & in) {
                   + " comma-delimited float numbers, while " + toString(subs.size()) + " found.");
     return -1;
   }
-  float flt;
+  T flt;
   for (uint curD=0; curD<Dim; ++curD) {
     const std::string & curStr = subs.at(curD);
     if ( ! parse_num(curStr, &flt) ) {
@@ -158,6 +191,7 @@ int _conversion (PointF<Dim>* _val, const std::string & in) {
   }
   return 1;
 }
+
 
 
 template<int Dim>
@@ -319,7 +353,7 @@ public:
   ~BinnProc();
   bool isTrivial() const {return bnn.isTrivial();}
   Shape<2> shape() const {return osh;}
-  Map apply(const Map & imap, Map & tmap);
+  Map apply(const Map & imap, Map & tmap) const;
 public:
   struct Accumulator {
     Accumulator(const Shape<2> & ish, ssize_t bn);
@@ -357,7 +391,7 @@ public:
   bool isTrivial() const { return ! size(ish) || abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ;}
   Shape<2> shape() const {return osh;}
   static Shape<2> shape(const Shape<2> & ish, float ang);
-  Map apply(const Map & imap, Map & tmap, float bg=NAN);
+  Map apply(const Map & imap, Map & tmap, float bg=NAN) const ;
 };
 
 
@@ -371,13 +405,14 @@ protected:
   BinnProc bnnProc;
   const Shape<2> osh;
   const float reNAN;
-  Map rotmap, bnnmap;
+  mutable Map rotmap, bnnmap;
 public:
-  MapProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN=NAN);
+  MapProc( float ang=0, const Crop<2> & crp=Crop<2>(), const Binn<2> & bnn=Binn<2>()
+         , const Shape<2> & ish=Shape<2>(0,0), float reNAN=NAN);
   MapProc(const MapProc & other);
   Shape<2> shape() const {return osh;}
   static Shape<2> shape(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish);
-  Map apply(const Map & imap);
+  Map apply(const Map & imap) const ;
 };
 
 

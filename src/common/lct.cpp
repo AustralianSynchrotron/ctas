@@ -465,9 +465,6 @@ CTrec::CTrec(const Shape<2> &sinoshape, Contrast cn, const float anarc, const Fi
   , recCof(1)
   , cossins(ish(0))
   , envs(_envs)
-  , gpuReleasedCondition(new pthread_cond_t(PTHREAD_COND_INITIALIZER))
-  , gpuReleasedMutex(new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER))
-  , gpuWasReleased(_gpuWasReleased)
 {
 
   if (ish(1) < 2)
@@ -510,9 +507,7 @@ CTrec::CTrec(CTrec & other)
   , recCof(other.recCof)
   , cossins(other.cossins)
   , envs(other.envs)
-  , gpuReleasedCondition(other.gpuReleasedCondition)
-  , gpuReleasedMutex(other.gpuReleasedMutex)
-  , gpuWasReleased(other.gpuWasReleased)
+  , gpuRelease(other.gpuRelease)
   , useCPU(other.useCPU)
 {
   planF = safe_fftwf_plan_r2r_1d (zidth, 0, FFTW_R2HC);
@@ -522,12 +517,6 @@ CTrec::CTrec(CTrec & other)
 
 /// \brief Destructor
 CTrec::~CTrec(){
-  if(addressof(envs) == addressof(_envs)) { // parent instance
-    pthread_mutex_destroy(gpuReleasedMutex);
-    delete gpuReleasedMutex;
-    pthread_cond_destroy(gpuReleasedCondition);
-    delete gpuReleasedCondition;
-  }
   for (ForCLdev * env : _envs)
     if (env)
       delete env;
@@ -609,25 +598,16 @@ CTrec::repeat(Map & slice, float center) {
     while (true) {
       for (ForCLdev * env : envs) {
         const int reced = env->repeat(slice, center);
+        gpuRelease.unlock();
         if (reced) {
-          pthread_mutex_lock(gpuReleasedMutex);
-          gpuWasReleased = true;
-          pthread_cond_signal(gpuReleasedCondition);
-          pthread_mutex_unlock(gpuReleasedMutex);
-        }
-        if (reced < 0) { // GPU failed
-          warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
-          reconstructOnCPU(slice, center);
+          if (reced < 0) { // GPU failed
+            warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
+            reconstructOnCPU(slice, center);
+          }
           return;
         }
-        if (reced)
-          return;
       }
-      pthread_mutex_lock(gpuReleasedMutex);
-      if (!gpuWasReleased)
-        pthread_cond_wait(gpuReleasedCondition, gpuReleasedMutex);
-      gpuWasReleased = false;
-      pthread_mutex_unlock(gpuReleasedMutex);
+      gpuRelease.lock();
     }
 
 
@@ -658,24 +638,16 @@ CTrec::reconstruct(Map &sinogram, Map & slice, float center) {
       for (ForCLdev * env : envs) {
         const int reced = env->reconstruct(sinogram, slice, center);
         if (reced) {
-          pthread_mutex_lock(gpuReleasedMutex);
-          gpuWasReleased = true;
-          pthread_cond_signal(gpuReleasedCondition);
-          pthread_mutex_unlock(gpuReleasedMutex);
-        }
-        if (reced < 0) { // GPU failed
-          warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
-          mysino.reference(sinogram);
-          reconstructOnCPU(slice, center);
-        }
-        if (reced)
+          gpuRelease.unlock();
+          if (reced < 0) { // GPU failed
+            warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
+            mysino.reference(sinogram);
+            reconstructOnCPU(slice, center);
+          }
           return;
+        }
       }
-      pthread_mutex_lock(gpuReleasedMutex);
-      if (!gpuWasReleased)
-        pthread_cond_wait(gpuReleasedCondition, gpuReleasedMutex);
-      gpuWasReleased = false;
-      pthread_mutex_unlock(gpuReleasedMutex);
+      gpuRelease.lock();
     }
 
   }

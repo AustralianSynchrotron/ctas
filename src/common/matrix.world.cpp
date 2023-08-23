@@ -361,7 +361,7 @@ BinnProc::~BinnProc() {
       delete env;
 }
 
-Map BinnProc::apply(const Map & imap, Map & tmap) {
+Map BinnProc::apply(const Map & imap, Map & tmap) const {
 
   if (!bnn)
     return imap;
@@ -741,7 +741,7 @@ Shape<2> RotateProc::shape(const Shape<2> & ish, float ang) {
 }
 
 
-Map RotateProc::apply(const Map & imap, Map & tmap, float bg) {
+Map RotateProc::apply(const Map & imap, Map & tmap, float bg) const {
 
   if (imap.shape() != ish)
     throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"
@@ -819,7 +819,7 @@ MapProc::MapProc(const MapProc & other)
 {}
 
 
-Map MapProc::apply(const Map & imap) {
+Map MapProc::apply(const Map & imap) const {
   static const string modname="MapProc";
   if (imap.shape() != ish)
     throw_error(modname, "Missmatch of input shape ("+toString(imap.shape())+")"

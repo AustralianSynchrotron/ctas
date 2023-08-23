@@ -35,18 +35,6 @@ void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=fal
 }
 
 
-void StitchRules::slot(int cur, int* cur1, int* cur2, int* curF) const {
-  if (cur < 0 || cur >= nofIn)
-    throw_error("stitch slot", "Current index " +toString(cur)+ " is beyond the range "
-                               "[0.." +toString(nofIn-1)+ "].");
-  int _curF = flip && cur >= nofIn/2;
-  cur -= _curF * nofIn/2;
-  if (curF) *curF = _curF;
-  if (cur2) *cur2 = cur / origin1size;
-  if (cur1) *cur1 = cur % origin1size;
-}
-
-
 Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
 
   if (!mask.size())
@@ -96,6 +84,337 @@ Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
 }
 
 
+class N_ProcProj::FamilyValues::ForCLdev {
+  static const string modname;
+  const Shape<2> sh;
+  const Map & mask;
+  CLenv & cl;
+  CLprogram oclProgram;
+  CLkernel kernelGauss;
+  CLmem maskCL;
+  CLmem iomCL;
+  pthread_mutex_t locker;
+
+public:
+
+  ForCLdev(CLenv & cl, const Map & mask)
+    : cl(cl)
+    , sh(mask.shape())
+    , mask(mask)
+    , locker(PTHREAD_MUTEX_INITIALIZER)
+  {
+    if (!CL_isReady())
+      throw_error(modname, "Dysfunctional OpenCL environment.");
+    if (!size(sh))
+      throw_error(modname, "Zero input size");
+    if (!any(mask==0.0)) {
+      warn(modname, "Nothing to close in the mask provided.");
+      return;
+    }
+  }
+
+  ~ForCLdev() {
+    pthread_mutex_destroy(&locker);
+  } ;
+
+  bool process(Map & in) {
+    if (in.shape() != sh)
+      throw_error(modname, "Unexpected array size on OCL extract.");
+    if ( ! CL_isReady()  ||  pthread_mutex_trylock(&locker) )
+      return false;
+    bool toRet = false;
+    try {
+      if (!maskCL) {
+        static const string oclsrc = {
+          #include "projection.cl.includeme"
+        };
+        oclProgram(oclsrc, cl.cont);
+        kernelGauss(oclProgram, "gauss");
+        iomCL(clAllocArray<cl_float>(size(sh), CL_MEM_READ_WRITE, cl.cont));
+        maskCL(blitz2cl<cl_float>(mask, CL_MEM_READ_ONLY, cl.que));
+        kernelGauss.setArg(0, int(sh(1)));
+        kernelGauss.setArg(1, int(sh(0)));
+        kernelGauss.setArg(2, iomCL());
+        kernelGauss.setArg(3, maskCL());
+      }
+      blitz2cl<cl_float>(in, iomCL());
+      kernelGauss.exec(sh);
+      cl2blitz(iomCL(), in);
+      toRet = true;
+    } catch (...) {}
+    pthread_mutex_unlock(&locker);
+    return toRet;
+  }
+
+
+};
+const string N_ProcProj::FamilyValues::ForCLdev::modname="CloseGapCL";
+
+
+N_ProcProj::FamilyValues::FamilyValues( const N_StitchRules & st, const deque< Shape<2> > & ishs
+                                      , const deque<Map> & bgas, const deque<Map> & dfas
+                                      , const deque<Map> & dgas, const deque<Map> & msas
+                                      , const Path & saveMasks )
+
+  : ishs(whole(ishs))
+{
+
+  // check inputs
+  if (!st.nofIn)
+    throw_error(N_ProcProj::modname, "No input images.");
+  if (ishs.size() != st.nofIn)
+    throw_error(N_ProcProj::modname, "Numbers of input shapes (" + toString(ishs.size()) + ") and images"
+                                     " ("+ toString(st.nofIn) + ") are not equal.");
+  for(int curI=0; curI < st.nofIn ; ++curI )
+    if (!size(ishs[curI]))
+      throw_error(N_ProcProj::modname, "Zero size size of input image " + toString(curI) + ".");
+
+  auto chkNofIns = [&ishs](const deque<Map> & ims, const string & lbl) {
+    if (ims.size() && ims.size() != 1 && ims.size() != ishs.size())
+      throw_error( N_ProcProj::modname
+                 , "Number of " +lbl+ " images (" + toString(ims.size()) + ") is neither"
+                   " 0, 1, nor the number of inputs (" + toString(ishs.size()) + ").");
+    for(int curI=0; curI < ims.size() ; ++curI ) {
+      const Shape<2> & imsh = ims.at(curI).shape();
+      if ( imsh != ishs.at(curI) )
+        throw_error(N_ProcProj::modname, "Shape of " + lbl + " image " + toString(curI) +
+                    " ("+toString(imsh)+") does not match that of the"
+                    " corresponding input image ("+toString(ishs.at(curI))+").");
+    }
+  };
+  chkNofIns(bgas, "background");
+  chkNofIns(dfas, "darkfield");
+  chkNofIns(dgas, "darkground");
+  chkNofIns(msas, "mask");
+
+  // prepare canonImProcs
+  auto selectSrc = [](const auto & prm, const auto & dflt, int cur=0) -> const auto & {
+    return prm.size() ? prm.at( prm.size() > 1 ? cur : 0 ) : dflt;
+  };
+  canonImProcs.emplace_back( selectSrc(bgas, defaultMap)
+                           , selectSrc(dfas, defaultMap)
+                           , selectSrc(dgas, defaultMap)
+                           , selectSrc(msas, defaultMap)
+                           , selectSrc(st.angles, 0.0f)
+                           , selectSrc(st.crops, Crop<2>())
+                           , selectSrc(st.binns, Binn<2>())
+                           , ishs[0], 0 );
+  if (  bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1
+     || st.angles.size() > 1 || st.crops.size() > 1 || st.binns.size() > 1
+     || adjacent_find( whole(ishs), [](auto &lsh, auto &rsh){return lsh != rsh;} ) != ishs.end() )
+  {
+    for ( int curI = 1 ; curI < st.nofIn ; curI++ )
+      canonImProcs.emplace_back( selectSrc(bgas, defaultMap, curI)
+                               , selectSrc(dfas, defaultMap, curI)
+                               , selectSrc(dgas, defaultMap, curI)
+                               , selectSrc(msas, defaultMap, curI)
+                               , selectSrc(st.angles, 0.0f, curI)
+                               , selectSrc(st.crops, Crop<2>(), curI )
+                               , selectSrc(st.binns, Binn<2>(), curI )
+                               , ishs[curI], 0 );
+  } else {
+    for ( int curI = 1 ; curI < st.nofIn ; curI++ )
+      canonImProcs.emplace_back(canonImProcs[0]);
+  }
+
+  // prepare pshs, ssh and real origins
+  PointI<2> lo, hi;
+  for ( int curI = 0 ; curI < st.nofIn ; curI++ ) {
+    pshs.push_back(canonImProcs[curI].shape());
+    PointI<2> curLH = st.origins[curI];
+    if (lo(0)>curLH(0)) lo(0) = curLH(0);
+    if (lo(1)>curLH(1)) lo(1) = curLH(1);
+    curLH += pshs.back();
+    if (hi(0)<curLH(0)) hi(0) = curLH(0);
+    if (lo(1)<curLH(1)) hi(1) = curLH(1);
+  }
+  ssh = hi-lo;
+  std::transform( whole(st.origins), std::back_inserter(origins)
+                , [&lo](const PointI<2> & orgI) { return orgI - lo; } );
+
+  // prepare processed masks
+  deque<Map> pmasks;
+  for (int curI = 0; curI < msas.size() ; curI++) {
+    const ImageProc & procI = canonImProcs[curI];
+    const Map & maskI = msas[curI];
+    Map zmask(ishs[curI]);
+    zmask = maskI;
+    prepareMask(zmask, false);
+    Map zpmask(pshs[curI]);
+    zpmask = procI.apply(zmask);
+    prepareMask(zpmask, true, st.edge);
+    pmasks.push_back(pshs[curI]);
+    pmasks.back() = procI.apply(maskI) * zpmask ;
+    if (saveMasks.length())
+      SaveDenan(saveMasks.dtitle() + "_I" +
+                (msas.size()>1 ? toString(curI) : string()) + ".tif", pmasks.back());
+  }
+
+  if (st.nofIn == 1) { // no stitching
+    if (msas.size())
+      mskF.reference(pmasks[0]);
+  } else { // prepare sum of weights and of masks images
+    swght.resize(ssh);
+    swght=0.0;
+    if (msas.size()) {
+      mskF.resize(ssh);
+      mskF=0.0;
+    }
+    for (int curI = 0 ; curI < st.nofIn ; curI++ ) {
+      const Shape<2> & psh = pshs[curI];
+      for ( int curJ = 0 ; curJ<curI ; ++curJ)
+        if (psh == pshs[curJ]) { // use existing array of the same size
+          wghts.push_back(wghts[curJ]);
+          break;
+        }
+      if (wghts.size()<curI+1) { // no earlier arrays of the same size found
+        wghts.push_back(psh);
+        wghts.back() = ( psh(0) - abs( 2*i0 - psh(0) + 1l ) ) * ( psh(1) - abs( 2*i1 - psh(1) + 1l ) );
+      }
+      Map & wghtI = wghts.back();
+      const blitz::Range r0(origins[curI](0), origins[curI](0) + psh(0)-1)
+                       , r1(origins[curI](1), origins[curI](1) + psh(1)-1);
+      if (msas.size()) {
+        Map & pmask = pmasks[ msas.size()==1 ? 0 : curI ];
+        mskF(r0, r1) += pmask;
+        wghtI *= pmask;
+      }
+      swght(r0, r1) += wghtI;
+    }
+    swght = invert(swght);
+    if (saveMasks.length())
+      SaveDenan(saveMasks.dtitle() + "_X.tif", mskF);
+  }
+
+  // prepare output crops
+  for ( const Crop<2> & crp : st.outCrops )
+    ocrps.push_back(crp);
+  if (ocrps.empty())
+    ocrps.push_back(Crop<2>());
+
+  // save final mask
+  if (msas.size()) {
+    prepareMask(mskF, false);
+    if (saveMasks.length()) {
+      const int nofOuts = ocrps.size();
+      const string svformat  =  nofOuts > 1  ?  mask2format("_Z@", nofOuts)  :  "" ;
+      for (int curI = 0 ; curI < nofOuts ; ++curI )
+        SaveDenan( saveMasks.dtitle() + toString(svformat, curI) + ".tif", ocrps[curI].apply(mskF) );
+    }
+  }
+
+  // prepare gaps feeling
+  doGapsFill = any(mskF==0.0);
+  if (doGapsFill) {
+    if (!CL_isReady())
+      throw_error(modname, "Dysfunctional OpenCL required to close mask gaps.");
+    for (CLenv & env : clenvs)
+      try{ envs.push_back(new ForCLdev(env, mskF)); } catch(...) {}
+  }
+
+}
+
+
+N_ProcProj::FamilyValues::~FamilyValues() {
+  for (ForCLdev * env : envs)
+    if (env)
+      delete env;
+};
+
+
+
+const string N_ProcProj::modname = "ProcProj";
+
+N_ProcProj::N_ProcProj( const N_StitchRules & st, const deque< Shape<2> > & ishs
+                      , const deque<Map> & bgas, const deque<Map> & dfas
+                      , const deque<Map> & dgas, const deque<Map> & msas
+                      , const Path & saveMasks)
+  : st(st)
+  , _values(st, ishs, bgas, dfas, dgas, msas)
+  , values(_values)
+  , res(values.ocrps.size())
+{}
+
+
+N_ProcProj::N_ProcProj(const N_ProcProj & other)
+  : st(other.st)
+  , values(other.values)
+  , res(values.ocrps.size())
+{}
+
+vector<Shape<2>> N_ProcProj::shapes() const {
+  std::vector<Shape<2>> toRet;
+  std::transform( whole(values.ocrps), std::back_inserter(toRet)
+                , [this](const Crop<2> & crp) { return crp.shape(values.ssh) ; } );
+  return toRet;
+}
+
+
+deque<Map> & N_ProcProj::process(std::deque<ReadVolumeBySlice> & allInR, uint prj) {
+  if (allInR.size() != st.nofIn)
+    throw_error(modname, "Incorrect number of read volumes: " + toString(allInR.size())
+                         + " supplied, " + toString(st.nofIn) +  " required.");
+  if (imProcs.empty()) { // first use
+    for (const ImageProc & imProc : values.canonImProcs)
+      imProcs.emplace_back(imProc);
+    res.resize(values.ocrps.size());
+    if (st.nofIn != 1) {
+      stitched.resize(values.ssh);
+      for ( int curI = 0 ; curI < values.ocrps.size() ; ++curI )
+        res[curI].reference(values.ocrps[curI].apply(stitched));
+    }
+  }
+  if (st.nofIn == 1) {
+    stitched.reference(imProcs[0].read(allInR[0], prj));
+    for ( int curI = 0 ; curI < values.ocrps.size() ; ++curI )
+      res[curI].reference(values.ocrps[curI].apply(stitched));
+  } else {
+    stitched=0.0;
+    for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
+      const Map incur = imProcs[curproj].read(allInR[curproj], prj);
+      const PointI<2> & origin = values.origins[curproj];
+      const Shape<2> & psh = values.pshs[curproj];
+      stitched( blitz::Range(origin(0), origin(0) + psh(0)-1)
+              , blitz::Range(origin(1), origin(1) + psh(1)-1) )
+          += incur * values.wghts[curproj];
+    }
+    stitched *= values.swght;
+  }
+  if (!values.doGapsFill)
+    return res;
+  while (true) {
+    for ( FamilyValues::ForCLdev * env : values.envs ) {
+      const bool reced = env->process(stitched);
+      values.locker.unlock();
+      if (reced)
+        return res;
+    }
+    values.locker.lock();
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+void StitchRules::slot(int cur, int* cur1, int* cur2, int* curF) const {
+  if (cur < 0 || cur >= nofIn)
+    throw_error("stitch slot", "Current index " +toString(cur)+ " is beyond the range "
+                               "[0.." +toString(nofIn-1)+ "].");
+  int _curF = flip && cur >= nofIn/2;
+  cur -= _curF * nofIn/2;
+  if (curF) *curF = _curF;
+  if (cur2) *cur2 = cur / origin1size;
+  if (cur1) *cur1 = cur % origin1size;
+}
+
+
 
 const string ProcProj::modname="ProcProj";
 
@@ -118,6 +437,7 @@ void ProcProj::initCL() {
   gaussCL.setArg(1, int(mskF.shape()(0)));
   gaussCL.setArg(2, iomCL());
   gaussCL.setArg(3, maskCL());
+
 }
 
 
@@ -520,127 +840,6 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
 
 }
 
-
-
-/*
-
-
-Trans::Trans(const Shape & _ish,
-             float _angle,
-             const Crop & _crop,
-             const PointF<2> & _binn,
-             const Map & _mask)
-  : ish(_ish)
-  , angle( [](float a, const Shape & s){
-             a = remainder(a, 2*M_PIf);
-             if (!area(s))
-               return a;
-             const float a90 = abs(remainder(a, M_PI_2f));
-             if ( max(s(0),s(1)) * min(sin(a90),cos(a90)) >= 1.0 ) // far from 90-deg step;
-               return a;
-             const int nof90 = round(a*M_2_PIf);
-             if ( ! (nof90 % 4)  ) // 0deg
-               return 0.0f;
-             else if ( ! (nof90 % 2) ) //180deg
-               return M_PIf;
-             else if (  ( nof90 > 0 && (nof90 % 3) ) || ( nof90 < 0 && ! (nof90 % 3) ) )  // 270deg
-               return -M_PI_2f;
-             else
-               return M_PI_2f;
-           } (_angle, _ish) )
-  , crop(_crop)
-  , binn(_binn)
-  , mask(_mask.copy())
-{
-  if (!area(ish))
-    return;
-  if (mask.size() && mask.shape() != ish)
-    throw_error(modname, "Shape missmatch of process ("+toString(ish)+") and mask ("+toString(mask.shape())+").");
-  prepareMask(mask, true);
-  rotate(mask, afterRotMask);
-  //if (afterRotMask.dataFirst() != mask.dataFirst())
-  //  prepareMask(afterRotMask, true);
-  return;
-}
-
-
-
-void Trans::scale(const Map & in, Map & out) {
-  if (!in.size() || !area(ish))
-    return;
-  if (binn == PointF<2>(1,1)) {
-    out.reference(in);
-    return;
-  }
-  Map rin(in);
-  PointF<2> rbinn(abs(binn.x),abs(binn.y));
-  if (binn.x<0)
-    rin.reverseSelf(blitz::secondDim);
-  if (binn.y<0)
-    rin.reverseSelf(blitz::firstDim);
-}
-
-
-
-
-void Trans::rotate(const Map & in, Map & out) {
-  if (!in.size() || !area(ish))
-    return;
-  if (angle == 0.0f)
-    out.reference(in);
-  else if (angle == M_PI_2f) // 90 deg
-    out.reference(in.transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::firstDim));
-  else if (angle == -M_PI_2f) // -90 (270) deg
-    out.reference(in.transpose(blitz::firstDim, blitz::secondDim).reverse(blitz::secondDim));
-  else if (angle == M_PIf) // 180 deg
-    out.reference(in.reverse(blitz::firstDim).reverse(blitz::secondDim));
-  else {
-    const float cosa = cos(-angle),
-                sina = sin(-angle);
-    const Shape rsh( floor(abs(ish(1)*sina)+abs(ish(0)*cosa)),
-                     floor(abs(ish(1)*cosa)+abs(ish(0)*sina)));
-    out.resize(rsh);
-    const float constinx = ( ish(1) + rsh(0)*sina - rsh(1)*cosa ) / 2.0,
-                constiny = ( ish(0) - rsh(1)*sina - rsh(0)*cosa ) / 2.0;
-    for ( ArrIndex y=0 ; y < rsh(0) ; y++) {
-      for ( ArrIndex x=0 ; x < rsh(1) ; x++) {
-        const float fx = x*cosa - y*sina + constinx;
-        const float fy = x*sina + y*cosa + constiny;
-        const ArrIndex flx = floor(fx);
-        const ArrIndex fly = floor(fy);
-        float sum=0.0;
-        float wgt=0.0;
-        for (ArrIndex  fxx : {flx,flx+1}) {
-          const float dx = fxx - fx;
-          for (ArrIndex  fyy : {fly,fly+1}) {
-            if ( fxx >= 0 && fxx < ish(1) && fyy >= 0 && fyy < ish(0)
-                 && ( ! mask.size() || mask(fyy,fxx) > 0.0 )   ) {
-              const float dy = fyy - fy;
-              const float mywgt = 1 - sqrt(dx*dx+dy*dy);
-              if (mywgt>0) {
-                wgt += mywgt;
-                sum += mywgt*in(fyy,fxx);
-              }
-            }
-          }
-        }
-        out(y, x) = wgt > 0.0 ? sum/wgt  : 0.0;
-        //if ( flx < 0 || flx >= ish(1)-1 || fly < 0  || fly >= ish(0)-1 ) {
-        //  out(y, x)=0;
-        //} else {
-        //  const float v0 = in(fly  ,flx) + ( in(fly  ,flx+1) - in(fly  ,flx) ) * (fx-flx);
-        //  const float v1 = in(fly+1,flx) + ( in(fly+1,flx+1) - in(fly+1,flx) ) * (fy-fly);
-        //  out(y, x) = v0 + (v1-v0) * (fy-fly);
-        //}
-      }
-    }
-  }
-}
-
-
-
-
-*/
 
 
 

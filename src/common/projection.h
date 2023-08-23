@@ -7,6 +7,82 @@
 
 
 
+struct N_StitchRules {
+
+  uint nofIn;
+  std::deque< float > angles;
+  std::deque< Crop<2> > crops;                  ///< Crop input projection image
+  std::deque< Binn<2> > binns;                  ///< binning factor
+  std::deque< PointI<2> > origins;
+  std::deque< Crop<2> > outCrops;                  ///< Crop final projection image
+  uint edge;               ///< blur of mask and image edges.
+
+  N_StitchRules()
+  : nofIn(0)
+  , edge(0)
+  {}
+
+};
+
+
+class N_ProcProj {
+
+  static const std::string modname;
+  const N_StitchRules & st;
+
+  struct FamilyValues {
+    std::vector< Shape<2> > ishs; // input images
+    std::deque<ImageProc> canonImProcs;
+    std::vector< Shape<2> > pshs; // processed images
+    Shape<2> ssh; // stitched image
+    std::vector< Crop<2> > ocrps;
+    std::vector<Map> wghts;
+    std::vector< PointI<2> > origins;
+    Map swght;
+    Map mskF;
+    bool doGapsFill;
+    class ForCLdev;
+    std::list<ForCLdev*>  envs;
+    mutable Relocker locker;
+    FamilyValues( const N_StitchRules & st, const std::deque< Shape<2> > & ishs
+                , const std::deque<Map> & bgas, const std::deque<Map> & dfas
+                , const std::deque<Map> & dgas, const std::deque<Map> & msas
+                , const Path & saveMasks = Path() ) ;
+    FamilyValues() {};
+    ~FamilyValues();
+  };
+  const FamilyValues  _values;
+  const FamilyValues & values;
+
+  // own
+  std::deque<ImageProc> imProcs;
+  std::deque<Map> allIn;
+  Map stitched, final;
+  std::deque<Map> res; // will all reference final
+
+  void stitchSome( const ImagePath & interim_name = ImagePath()
+                 , const std::vector<bool> & addMe = std::vector<bool>());
+
+public:
+
+  N_ProcProj( const N_StitchRules & st, const std::deque< Shape<2> > & ishs
+            , const std::deque<Map> & bgas, const std::deque<Map> & dfas
+            , const std::deque<Map> & dgas, const std::deque<Map> & msas
+            , const Path & saveMasks = Path());
+
+  N_ProcProj(const N_ProcProj & other);
+
+  std::deque<Map> & process( std::deque<ReadVolumeBySlice> & allInR, uint prj);
+
+  std::vector<Shape<2>> shapes() const;
+  static std::vector<Shape<2>> shapes(const N_StitchRules & st, const std::deque< Shape<2> > & ishs);
+
+};
+
+
+
+
+
 
 
 struct StitchRules {

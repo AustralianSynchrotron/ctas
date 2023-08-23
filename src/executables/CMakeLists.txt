@@ -85,6 +85,13 @@ target_link_libraries(proj
   projection
 )
 
+add_executable(tile tile.cpp)
+target_link_libraries(tile
+  common
+  poptmx
+  projection
+)
+
 
 
 add_executable(v2v vol2vol.cpp)
@@ -105,7 +112,7 @@ target_link_libraries(test
 
 
 set( all_targets
-  ipc dei edei norm ax ct ts rc2fd proj v2v ring
+  ipc dei edei norm ax ct ts rc2fd proj tile v2v ring
 )
 
 

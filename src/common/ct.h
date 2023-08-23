@@ -272,13 +272,9 @@ private:
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
   std::list<ForCLdev*> & envs;
-
+  Relocker gpuRelease;
   bool switchToGPU = false;
   bool useCPU = false;
-  pthread_mutex_t * gpuReleasedMutex;
-  pthread_cond_t * gpuReleasedCondition;
-  bool _gpuWasReleased = false;
-  bool & gpuWasReleased;
 
   void prepare_sino(Map & sinogram);
   void reconstructOnCPU(Map & slice, float center);

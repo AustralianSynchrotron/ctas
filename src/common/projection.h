@@ -75,7 +75,12 @@ public:
   std::deque<Map> & process( std::deque<ReadVolumeBySlice> & allInR, uint prj);
 
   std::vector<Shape<2>> shapes() const;
-  static std::vector<Shape<2>> shapes(const N_StitchRules & st, const std::deque< Shape<2> > & ishs);
+  static std::vector<Shape<2>> shapes(const N_StitchRules & st, const std::deque< Shape<2> > & ishs) {
+    std::deque<Map> nothing;
+    return N_ProcProj(st, ishs, nothing, nothing, nothing, nothing).shapes();
+  }
+
+  ;
 
 };
 

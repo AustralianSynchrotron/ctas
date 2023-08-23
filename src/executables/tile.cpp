@@ -422,6 +422,7 @@ int main(int argc, char *argv[]) {
   const deque<Map> dgas(rdAux(args.dgs));
   const deque<Map> msas(rdAux(args.mss));
 
+  /*
   // normalize masks
   for (int curm=0 ; curm<msas.size() ; curm++) {
     Map & msk = msas[curm];

@@ -35,8 +35,8 @@ static const int run_threads = nof_threads();
 
 
 Relocker::Relocker()
-  : mutex(PTHREAD_MUTEX_INITIALIZER)
-  , condition(PTHREAD_COND_INITIALIZER)
+  : mutex(new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER))
+  , condition(new pthread_cond_t(PTHREAD_COND_INITIALIZER))
   , state(_state)
 {}
 
@@ -48,24 +48,32 @@ Relocker::Relocker(const Relocker &other)
 
 Relocker::~Relocker() {
   if ( addressof(_state) == addressof(state) ) {
-    pthread_mutex_destroy(&mutex) ;
-    pthread_cond_destroy(&condition);
+    if (mutex) {
+      pthread_mutex_destroy(mutex) ;
+      delete mutex;
+      mutex=0;
+    }
+    if (condition) {
+      pthread_cond_destroy(condition);
+      delete condition;
+      condition=0;
+    }
   }
 }
 
 void Relocker::lock() {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(mutex);
   if (!state)
-    pthread_cond_wait(&condition, &mutex);
+    pthread_cond_wait(condition, mutex);
   state = false;
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(mutex);
 }
 
 void Relocker::unlock() {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(mutex);
   state = true;
-  pthread_cond_signal(&condition);
-  pthread_mutex_unlock(&mutex);
+  pthread_cond_signal(condition);
+  pthread_mutex_unlock(mutex);
 }
 
 

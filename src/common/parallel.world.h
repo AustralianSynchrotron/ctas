@@ -20,23 +20,16 @@ nof_threads(long _threads=0);
 
 class Relocker {
 private:
-  pthread_mutex_t mutex;
-  pthread_cond_t condition;
+  pthread_mutex_t * mutex = 0;
+  pthread_cond_t * condition = 0;
   bool _state = false;
   bool & state;
 public:
-
   Relocker();
-
   Relocker(const Relocker & other);
-
-
   ~Relocker();
-
   void lock();
-
   void unlock();
-
 };
 
 

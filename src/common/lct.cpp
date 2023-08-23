@@ -598,8 +598,8 @@ CTrec::repeat(Map & slice, float center) {
     while (true) {
       for (ForCLdev * env : envs) {
         const int reced = env->repeat(slice, center);
-        gpuRelease.unlock();
         if (reced) {
+          gpuRelease.unlock();
           if (reced < 0) { // GPU failed
             warn(modname, "Reconstruction on GPU has failed. Trying CPU.");
             reconstructOnCPU(slice, center);

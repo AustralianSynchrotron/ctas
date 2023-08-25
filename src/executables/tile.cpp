@@ -26,17 +26,30 @@
 /// @brief %Forms projection from multiple images.
 ///
 
+#include <optional>
 #include <unistd.h>
-#include "../common/projection.h"
+#include "../common/ctas.h"
 #include "../common/poptmx.h"
 
 
 using namespace std;
 
 
+
+
+
+
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
+  uint nofIn;
+  deque< float > angles;
+  deque< Crop<2> > crops;                  ///< Crop input projection image
+  deque< Binn<2> > binns;                  ///< binning factor
+  deque< PointI<2> > origins;
+  deque< Crop<2> > outCrops;                  ///< Crop final projection image
+  int zbinn;
+  uint edge;               ///< blur of mask and image edges.
   deque< deque<ImagePath> > images;        ///< images to combine
   deque<ImagePath> bgs;        ///< Array of the background images.
   deque<ImagePath> dfs;        ///< Array of the dark field images.
@@ -44,10 +57,8 @@ struct clargs {
   deque<ImagePath> mss;        ///< Mask Array.
   uint denoiseRad;
   float denoiseThr;
-  deque<ImagePath> out_names;              ///< Name of the output image.
+  ImagePath out_name;              ///< Name template of the output image(s).
   string out_range;
-  N_StitchRules st;
-  int zbinn;
   int testMe;          ///< Prefix to save interim results
   bool doTest;
   bool beverbose;             ///< Be verbose flag
@@ -62,6 +73,8 @@ clargs(int argc, char *argv[])
   : table("Combines multiple images to form single projection.",
           "Transforms and stitches components of the composite image(s)."
           " Transformations are applied in the following order: rotate, crop, binning." )
+  , nofIn(0)
+  , edge(0)
   , denoiseRad(0)
   , denoiseThr(0.0)
   , zbinn(1)
@@ -71,9 +84,9 @@ clargs(int argc, char *argv[])
 {
 
   auto chkNofIns = [&](auto & ims, const string & lbl) {
-    if (ims.size() && ims.size() != 1 && ims.size() != st.nofIn)
+    if (ims.size() && ims.size() != 1 && ims.size() != nofIn)
       exit_on_error(command, "Number of " +lbl+ " given by " + table.desc(&ims) + " option "
-                             " is neither 0, 1, nor the number of inputs (" + toString(st.nofIn) +  ").");
+                             " is neither 0, 1, nor the number of inputs (" + toString(nofIn) +  ").");
   };
   const string multiIN = "If only one provided, then it will be used for all images."
                          " Otherwise must be equal to the number of input images.";
@@ -93,24 +106,21 @@ clargs(int argc, char *argv[])
          "Image where values are weights of corresponding pixels in superimposition operations."
          " F.e. 0 values exclude corresponding or affected pixels from further use.")
     .add(poptmx::NOTE, "OPTIONS:")
-    .add(poptmx::OPTION, &out_names, 'o', "output", "Output image(s) mask."
+    .add(poptmx::OPTION, &out_name, 'o', "output", "Output image(s) template."
          , "If more than one is provided, then equal number of final crops must be given.", "")
     .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process. All if not used.",
          SliceOptionDesc + ". Only makes sense in multiple projections.", "all")
-    .add(poptmx::OPTION, &st.angles,'r', "rotate", "Rotation angle(s).", multiIN)
-    .add(poptmx::OPTION, &st.binns, 'b', "binn", "Binn factor(s)."
+    .add(poptmx::OPTION, &angles,'r', "rotate", "Rotation angle(s).", multiIN)
+    .add(poptmx::OPTION, &binns, 'b', "binn", "Binn factor(s)."
          , multiIN + " " + BinnOptionDesc)
-    .add(poptmx::OPTION, &st.crops, 'c', "crop", "Crop input image(s)."
+    .add(poptmx::OPTION, &crops, 'c', "crop", "Crop input image(s)."
          , multiIN + " " + CropOptionDesc)
-    .add(poptmx::OPTION, &st.origins, 'g', "origin", "Origin of the image relative to the first one.",
+    .add(poptmx::OPTION, &origins, 'g', "origin", "Origin of the image relative to the first one.",
          "Number of origins must be one less than the number of input images.")
-    .add(poptmx::OPTION, &st.outCrops, 'C', "crop-final", "Crop final image(s)."
-         , "If more than one output image is set (via "+table.desc(&out_names)+" options),"
-           " then the number of these crops must be equal to the number of output image masks."
-           " Otherwise can be ommited (no crop). "+ CropOptionDesc)
+    .add(poptmx::OPTION, &outCrops, 'C', "crop-final", "Crop final image(s).", CropOptionDesc)
     .add(poptmx::OPTION, &zbinn, 'z', "zinn", "Binning over multiple input prrojections.",
          "If zero, binns all outputs down to a single image. Ignored for tests.")
-    .add(poptmx::OPTION, &st.edge, 'e', "edge", "Thickness in pixels of edge transition.",
+    .add(poptmx::OPTION, &edge, 'e', "edge", "Thickness in pixels of edge transition.",
          "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
          " to produce seamless image stitching." )
     .add(poptmx::OPTION, &denoiseRad, 'n', "noise-rad", "Radius for noise reducing algorithm.",
@@ -134,12 +144,12 @@ clargs(int argc, char *argv[])
   }
   command = table.name();
 
-  st.nofIn = table.count(&iimages);
-  if (!st.nofIn)
+  nofIn = table.count(&iimages);
+  if (!nofIn)
     exit_on_error(command, "No input images provided.");
-  images.resize(st.nofIn);
+  images.resize(nofIn);
   deque<uint> toRead;
-  for ( int curI = 0 ; curI < st.nofIn ; curI++ )
+  for ( int curI = 0 ; curI < nofIn ; curI++ )
     if ( iimages.at(curI) != "-" )
       images.at(curI).push_back(iimages.at(curI));
     else
@@ -171,39 +181,38 @@ clargs(int argc, char *argv[])
   if (dgs.size() && ! bgs.size())
     exit_on_error(command, "No background images (" + table.desc(&bgs) + ") for"
                            " provided darkgrounds (" + table.desc(&dgs) + ").");
-  if ( ! mss.size()  &&  ! bgs.size()  &&  st.edge )
+  if ( ! mss.size()  &&  ! bgs.size()  &&  edge )
     throw_error(command, "No background (" + table.desc(&bgs) + ") or mask"
                          " (" + table.desc(&mss) + ") images provided while"
-                         " mask operation (" + table.desc(&st.edge) + ") is requested.");
+                         " mask operation (" + table.desc(&edge) + ") is requested.");
 
-  const uint nofOuts = table.count(&out_names);
-  const uint nofCrops = table.count(&st.outCrops);
-  if ( ! nofOuts )
-    exit_on_error(command, "No output name provided. Use option " + table.desc(&out_names) + ".");
-  else if ( nofOuts == 1  &&  nofCrops > 1  )
-    exit_on_error(command, "With single output, only a single " + table.desc(&st.outCrops) +
-                           " option is allowed, while "+toString(nofCrops)+" are provided.");
-  else if ( nofOuts != 1  &&  nofCrops != nofOuts )
-    exit_on_error(command, "With multiple ("+toString(nofOuts)+") outputs, equal number of " +
-                           table.desc(&st.outCrops) + " must be provided instead of "+toString(nofCrops)+".");
+  if ( ! table.count(&out_name) )
+    exit_on_error(command, "No output name provided. Use option " + table.desc(&out_name) + ".");
   doTest = table.count(&testMe);
 
-  for (float & ang : st.angles)
+  for (float & ang : angles)
     ang *= M_PI/180;
-  chkNofIns(st.angles, "rotations");
-  chkNofIns(st.crops, "crops");
-  chkNofIns(st.binns, "binns");
-  if ( st.origins.size() != st.nofIn - 1 )
-    exit_on_error(command, "Number of image origins given by " + table.desc(&st.origins) + " option "
-                           " must be one less than the number of inputs (" + toString(st.nofIn) + ")."
-                           " Instead " + toString(st.origins.size()) + " are provided.");
-  st.origins.push_front(PointF<2>()); // first image is always at 0,0.
+  chkNofIns(angles, "rotations");
+  chkNofIns(crops, "crops");
+  chkNofIns(binns, "binns");
+  if ( origins.size() != nofIn - 1 )
+    exit_on_error(command, "Number of image origins given by " + table.desc(&origins) + " option "
+                           " must be one less than the number of inputs (" + toString(nofIn) + "-1)."
+                           " Instead " + toString(origins.size()) + " are provided.");
+  origins.push_front(PointF<2>()); // first image is always at 0,0.
 
   if ( table.count(&denoiseThr) && ! table.count(&denoiseRad) )
     warn(command, "Setting noise threshold via " + table.desc(&denoiseThr) + " option "
          " without noise rad (option " + table.desc(&denoiseRad) + ") makes no sense.");
 
 }
+
+
+
+
+
+
+
 
 
 namespace blitz {
@@ -217,32 +226,444 @@ BZ_DECLARE_FUNCTION(invert);
 }
 
 
-
-
-static const Denoiser & curDnz(const deque<Denoiser> & dnzs, int cur) {
-  if (dnzs.size()==1)
-    return dnzs[0];
-  else if (dnzs.size() > cur)
-    return dnzs[cur];
-  throw_error("select denoiser", "Empty or incomplete list of denoisers.");
-  return dnzs[0]; // just to get rid of no-return warning
+void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
+  Map outm(storage.shape());
+  outm=denan(storage);
+  SaveImage(filename, outm, saveint);
 }
+
+
+Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
+
+  if (!mask.size())
+    return mask;
+  const float mm = min(mask);
+  const float MM = max(mask);
+  if (mm==MM) {
+    if (MM!=0.0 && MM!=1.0)
+      mask = 1.0;
+    return mask;
+  }
+  if (mm != 0.0 || MM != 1.0)
+    mask = (mask-mm)/(MM-mm);
+
+  for (ssize_t i = 0 ; i<mask.shape()(0) ; i++)
+    for (ssize_t j = 0 ; j<mask.shape()(1) ; j++)
+      if (bepicky && mask(i,j)<1.0 )
+        mask(i,j)=0.0 ;
+      else if (! bepicky && mask(i,j)>0.0 )
+        mask(i,j)=1.0 ;
+  if (!edge)
+    return mask;
+
+  const Shape<2> ish = mask.shape();
+  const float step = 1.0 / (edge +1);
+  Map tmp(mask.shape());
+  tmp = mask;
+  for ( int stp = 1 ; stp <= edge ; stp++ ) {
+    const float fill = step*stp;
+    //const float usq = stp * step - 1 ;
+    //const float fill = sqrt(1.0 - usq*usq);
+
+    for (ssize_t i = 0 ; i<ish(0) ; i++)
+      for (ssize_t j = 0 ; j<ish(1) ; j++)
+
+        if ( mask(i,j) != 1.0 )
+          for (ssize_t ii = i-1 ; ii <= i+1 ; ii++)
+            for (ssize_t jj = j-1 ; jj <= j+1 ; jj++)
+
+              if ( ii >= 0 && ii < ish(0) && jj >= 0 && jj < ish(1)
+                   && mask(ii,jj) == 1.0 )
+                tmp(ii,jj) = fill;
+
+    mask = tmp;
+  }
+  return mask;
+}
+
+
+
+class N_ProcProj {
+
+  static const std::string modname;
+  const clargs & st;
+
+  struct FamilyValues {
+
+    std::vector< Shape<2> > ishs; // input images
+    std::deque<ImageProc> canonImProcs;
+    std::vector< Shape<2> > pshs; // processed images
+    Shape<2> ssh; // stitched image
+    Denoiser * canonDenoiser = 0;
+    std::vector< Crop<2> > ocrps;
+    std::vector<Map> wghts;
+    std::vector< PointI<2> > origins;
+    Map swght;
+    Map mskF;
+    bool doGapsFill;
+
+    class ForCLdev {
+      static const string modname;
+      const Shape<2> sh;
+      const Map & mask;
+      CLenv & cl;
+      CLprogram oclProgram;
+      CLkernel kernelGauss;
+      CLmem maskCL;
+      CLmem iomCL;
+      pthread_mutex_t locker;
+
+    public:
+
+      ForCLdev(CLenv & cl, const Map & mask)
+        : cl(cl)
+        , sh(mask.shape())
+        , mask(mask)
+        , locker(PTHREAD_MUTEX_INITIALIZER)
+      {
+        if (!CL_isReady())
+          throw_error(modname, "Dysfunctional OpenCL environment.");
+        if (!size(sh))
+          throw_error(modname, "Zero input size");
+        if (!any(mask==0.0)) {
+          warn(modname, "Nothing to close in the mask provided.");
+          return;
+        }
+      }
+
+      ~ForCLdev() {
+        pthread_mutex_destroy(&locker);
+      } ;
+
+      bool process(Map & in) {
+        if (in.shape() != sh)
+          throw_error(modname, "Unexpected array size on OCL extract.");
+        if ( ! CL_isReady()  ||  pthread_mutex_trylock(&locker) )
+          return false;
+        bool toRet = false;
+        try {
+          if (!maskCL) {
+            static const string oclsrc = {
+              #include "projection.cl.includeme"
+            };
+            oclProgram(oclsrc, cl.cont);
+            kernelGauss(oclProgram, "gauss");
+            iomCL(clAllocArray<cl_float>(size(sh), CL_MEM_READ_WRITE, cl.cont));
+            maskCL(blitz2cl<cl_float>(mask, CL_MEM_READ_ONLY, cl.que));
+            kernelGauss.setArg(0, int(sh(1)));
+            kernelGauss.setArg(1, int(sh(0)));
+            kernelGauss.setArg(2, iomCL());
+            kernelGauss.setArg(3, maskCL());
+          }
+          blitz2cl<cl_float>(in, iomCL());
+          kernelGauss.exec(sh);
+          cl2blitz(iomCL(), in);
+          toRet = true;
+        } catch (...) {}
+        pthread_mutex_unlock(&locker);
+        return toRet;
+      }
+
+
+    };
+    std::list<ForCLdev*>  envs;
+    mutable Relocker locker;
+
+    FamilyValues() {}; // to allow empty _values
+
+    FamilyValues( const clargs & st, const std::deque< Shape<2> > & ishs
+                , const std::deque<Map> & bgas, const std::deque<Map> & dfas
+                , const std::deque<Map> & dgas, const std::deque<Map> & msas
+                , const Path & saveMasks = Path() )
+      : ishs(whole(ishs))
+    {
+
+      // check inputs
+      if (!st.nofIn)
+        throw_error(N_ProcProj::modname, "No input images.");
+      if (ishs.size() != st.nofIn)
+        throw_error(N_ProcProj::modname, "Numbers of input shapes (" + toString(ishs.size()) + ") and images"
+                                         " ("+ toString(st.nofIn) + ") are not equal.");
+      for(int curI=0; curI < st.nofIn ; ++curI )
+        if (!size(ishs[curI]))
+          throw_error(N_ProcProj::modname, "Zero size size of input image " + toString(curI) + ".");
+
+      auto chkNofIns = [&ishs](const deque<Map> & ims, const string & lbl) {
+        if (ims.size() && ims.size() != 1 && ims.size() != ishs.size())
+          throw_error( N_ProcProj::modname
+                     , "Number of " +lbl+ " images (" + toString(ims.size()) + ") is neither"
+                       " 0, 1, nor the number of inputs (" + toString(ishs.size()) + ").");
+        for(int curI=0; curI < ims.size() ; ++curI ) {
+          const Shape<2> & imsh = ims.at(curI).shape();
+          if ( imsh != ishs.at(curI) )
+            throw_error(N_ProcProj::modname, "Shape of " + lbl + " image " + toString(curI) +
+                        " ("+toString(imsh)+") does not match that of the"
+                        " corresponding input image ("+toString(ishs.at(curI))+").");
+        }
+      };
+      chkNofIns(bgas, "background");
+      chkNofIns(dfas, "darkfield");
+      chkNofIns(dgas, "darkground");
+      chkNofIns(msas, "mask");
+
+      // prepare canonImProcs
+      auto selectSrc = [](const auto & prm, const auto & dflt, int cur=0) -> const auto & {
+        return prm.size() ? prm.at( prm.size() > 1 ? cur : 0 ) : dflt;
+      };
+      canonImProcs.emplace_back( selectSrc(bgas, defaultMap)
+                               , selectSrc(dfas, defaultMap)
+                               , selectSrc(dgas, defaultMap)
+                               , selectSrc(msas, defaultMap)
+                               , selectSrc(st.angles, 0.0f)
+                               , selectSrc(st.crops, Crop<2>())
+                               , selectSrc(st.binns, Binn<2>())
+                               , ishs[0], 0 );
+      if (  bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1
+         || st.angles.size() > 1 || st.crops.size() > 1 || st.binns.size() > 1
+         || adjacent_find( whole(ishs), [](auto &lsh, auto &rsh){return lsh != rsh;} ) != ishs.end() )
+      {
+        for ( int curI = 1 ; curI < st.nofIn ; curI++ )
+          canonImProcs.emplace_back( selectSrc(bgas, defaultMap, curI)
+                                   , selectSrc(dfas, defaultMap, curI)
+                                   , selectSrc(dgas, defaultMap, curI)
+                                   , selectSrc(msas, defaultMap, curI)
+                                   , selectSrc(st.angles, 0.0f, curI)
+                                   , selectSrc(st.crops, Crop<2>(), curI )
+                                   , selectSrc(st.binns, Binn<2>(), curI )
+                                   , ishs[curI], 0 );
+      } else {
+        for ( int curI = 1 ; curI < st.nofIn ; curI++ )
+          canonImProcs.emplace_back(canonImProcs[0]);
+      }
+
+      // prepare pshs, ssh and real origins
+      PointI<2> lo, hi;
+      for ( int curI = 0 ; curI < st.nofIn ; curI++ ) {
+        pshs.push_back(canonImProcs[curI].shape());
+        PointI<2> curLH = st.origins[curI];
+        if (lo(0)>curLH(0)) lo(0) = curLH(0);
+        if (lo(1)>curLH(1)) lo(1) = curLH(1);
+        curLH += pshs.back();
+        if (hi(0)<curLH(0)) hi(0) = curLH(0);
+        if (lo(1)<curLH(1)) hi(1) = curLH(1);
+      }
+      ssh = hi-lo;
+      std::transform( whole(st.origins), std::back_inserter(origins)
+                    , [&lo](const PointI<2> & orgI) { return orgI - lo; } );
+
+      // prepare processed masks
+      deque<Map> pmasks;
+      for (int curI = 0; curI < msas.size() ; curI++) {
+        const ImageProc & procI = canonImProcs[curI];
+        const Map & maskI = msas[curI];
+        Map zmask(ishs[curI]);
+        zmask = maskI;
+        prepareMask(zmask, false);
+        Map zpmask(pshs[curI]);
+        zpmask = procI.apply(zmask);
+        prepareMask(zpmask, true, st.edge);
+        pmasks.push_back(pshs[curI]);
+        pmasks.back() = procI.apply(maskI) * zpmask ;
+        if (saveMasks.length())
+          SaveDenan(saveMasks.dtitle() + "_I" +
+                    (msas.size()>1 ? toString(curI) : string()) + ".tif", pmasks.back());
+      }
+
+      if (st.nofIn == 1) { // no stitching
+        if (msas.size())
+          mskF.reference(pmasks[0]);
+      } else { // prepare sum of weights and of masks images
+        swght.resize(ssh);
+        swght=0.0;
+        if (msas.size()) {
+          mskF.resize(ssh);
+          mskF=0.0;
+        }
+        for (int curI = 0 ; curI < st.nofIn ; curI++ ) {
+          const Shape<2> & psh = pshs[curI];
+          for ( int curJ = 0 ; curJ<curI ; ++curJ)
+            if (psh == pshs[curJ]) { // use existing array of the same size
+              wghts.push_back(wghts[curJ]);
+              break;
+            }
+          if (wghts.size()<curI+1) { // no earlier arrays of the same size found
+            wghts.push_back(psh);
+            wghts.back() = ( psh(0) - abs( 2*i0 - psh(0) + 1l ) ) * ( psh(1) - abs( 2*i1 - psh(1) + 1l ) );
+          }
+          Map & wghtI = wghts.back();
+          const blitz::Range r0(origins[curI](0), origins[curI](0) + psh(0)-1)
+                           , r1(origins[curI](1), origins[curI](1) + psh(1)-1);
+          if (msas.size()) {
+            Map & pmask = pmasks[ msas.size()==1 ? 0 : curI ];
+            mskF(r0, r1) += pmask;
+            wghtI *= pmask;
+          }
+          swght(r0, r1) += wghtI;
+        }
+        swght = invert(swght);
+        if (saveMasks.length())
+          SaveDenan(saveMasks.dtitle() + "_X.tif", mskF);
+      }
+
+      // prepare output crops
+      for ( const Crop<2> & crp : st.outCrops )
+        ocrps.push_back(crp);
+      if (ocrps.empty())
+        ocrps.push_back(Crop<2>());
+
+      // save final mask
+      if (msas.size()) {
+        prepareMask(mskF, false);
+        if (saveMasks.length()) {
+          const int nofOuts = ocrps.size();
+          const string svformat  =  nofOuts > 1  ?  mask2format("_Z@", nofOuts)  :  "" ;
+          for (int curI = 0 ; curI < nofOuts ; ++curI )
+            SaveDenan( saveMasks.dtitle() + toString(svformat, curI) + ".tif", ocrps[curI].apply(mskF) );
+        }
+      }
+
+      // prepare gaps feeling and denoiser
+      canonDenoiser = new Denoiser(ssh, st.denoiseRad, st.denoiseThr, mskF);
+      doGapsFill = any(mskF==0.0);
+      if (doGapsFill) {
+        if (!CL_isReady())
+          throw_error(modname, "Dysfunctional OpenCL required to close mask gaps.");
+        for (CLenv & env : clenvs)
+          try{ envs.push_back(new ForCLdev(env, mskF)); } catch(...) {}
+      }
+
+    }
+
+
+    ~FamilyValues() {
+      for (ForCLdev * env : envs)
+        if (env)
+          delete env;
+      if (canonDenoiser)
+        delete canonDenoiser;
+    };
+
+
+
+  };
+  const FamilyValues  _values;
+  const FamilyValues & values;
+
+  // own
+  std::deque<ImageProc> imProcs;
+  std::optional<Denoiser> denoiser;
+  std::deque<Map> allIn;
+  Map stitched, final;
+  std::deque<Map> res; // will all reference final
+
+public:
+
+  N_ProcProj( const clargs & st, const std::deque< Shape<2> > & ishs
+            , const std::deque<Map> & bgas, const std::deque<Map> & dfas
+            , const std::deque<Map> & dgas, const std::deque<Map> & msas
+            , const Path & saveMasks = Path())
+    : st(st)
+    , _values(st, ishs, bgas, dfas, dgas, msas)
+    , values(_values)
+    , res(values.ocrps.size())
+  {}
+
+
+  N_ProcProj(const N_ProcProj & other)
+    : st(other.st)
+    , values(other.values)
+    , res(values.ocrps.size())
+  {}
+
+
+  std::deque<Map> & process( std::deque<ReadVolumeBySlice> & allInR, uint prj) {
+
+    if (allInR.size() != st.nofIn)
+      throw_error(modname, "Incorrect number of read volumes: " + toString(allInR.size())
+                           + " supplied, " + toString(st.nofIn) +  " required.");
+    if (imProcs.empty()) { // first use
+      for (const ImageProc & imProc : values.canonImProcs)
+        imProcs.emplace_back(imProc);
+      res.resize(values.ocrps.size());
+      if (st.nofIn != 1) {
+        stitched.resize(values.ssh);
+        for ( int curI = 0 ; curI < values.ocrps.size() ; ++curI )
+          res[curI].reference(values.ocrps[curI].apply(stitched));
+      }
+    }
+    if (st.nofIn == 1) {
+      stitched.reference(imProcs[0].read(allInR[0], prj));
+      for ( int curI = 0 ; curI < values.ocrps.size() ; ++curI )
+        res[curI].reference(values.ocrps[curI].apply(stitched));
+    } else {
+      stitched=0.0;
+      for ( int curproj = 0 ; curproj < st.nofIn ; curproj++) {
+        const Map incur = imProcs[curproj].read(allInR[curproj], prj);
+        const PointI<2> & origin = values.origins[curproj];
+        const Shape<2> & psh = values.pshs[curproj];
+        stitched( blitz::Range(origin(0), origin(0) + psh(0)-1)
+                , blitz::Range(origin(1), origin(1) + psh(1)-1) )
+            += incur * values.wghts[curproj];
+      }
+      stitched *= values.swght;
+    }
+    if (!values.doGapsFill)
+      return res;
+    while (true) {
+      for ( FamilyValues::ForCLdev * env : values.envs ) {
+        const bool reced = env->process(stitched);
+        values.locker.unlock();
+        if (reced)
+          return res;
+      }
+      values.locker.lock();
+    }
+
+  }
+
+
+  std::vector<Shape<2>> shapes() const {
+    std::vector<Shape<2>> toRet;
+    std::transform( whole(values.ocrps), std::back_inserter(toRet)
+                  , [this](const Crop<2> & crp) { return crp.shape(values.ssh) ; } );
+    return toRet;
+  }
+
+
+  static std::vector<Shape<2>> shapes(const clargs & st, const std::deque< Shape<2> > & ishs) {
+    std::deque<Map> nothing;
+    return N_ProcProj(st, ishs, nothing, nothing, nothing, nothing).shapes();
+  }
+
+
+};
+
+
+const string N_ProcProj::FamilyValues::ForCLdev::modname="CloseGapCL";
+const string N_ProcProj::modname = "ProcProj";
+
+
+
+
+
+
+
+
+
+
 
 
 class ProjInThread : public InThread {
 
   deque<ReadVolumeBySlice> & allInRd;
   deque<SaveVolumeBySlice> & allOutSv;
-  const deque<Denoiser> & dnsr;
-  const ProcProj & proc;
+  const N_ProcProj & proc;
   const deque<int> & projes;
   const int zbinn;
 
-  unordered_map<pthread_t, deque<Denoiser>* > dnsrs;
-  unordered_map<pthread_t, ProcProj*> procs;
+  unordered_map<pthread_t, N_ProcProj*> procs;
   unordered_map<pthread_t, deque<Map>* > allInMaps;
   deque< pair< pthread_mutex_t, list<BinnProc::Accumulator> > > accs;
-
 
   bool inThread(long int idx) {
 
@@ -254,27 +675,22 @@ class ProjInThread : public InThread {
 
     const pthread_t me = pthread_self();
     if ( ! procs.count(me) ) { // first call
-      deque<Denoiser> * ednsr = new deque<Denoiser>(dnsr);
-      ProcProj* eproc = new ProcProj(proc);
+      N_ProcProj* eproc = new N_ProcProj(proc);
       deque<Map> * eAllInMaps = new deque<Map>(allInRd.size());
       lock();
-      dnsrs.emplace(me, ednsr);
       procs.emplace(me, eproc);
       allInMaps.emplace(me, eAllInMaps);
       unlock();
     }
     lock();
-    deque<Denoiser> & myDnsr = *dnsrs.at(me);
-    ProcProj & myProc = *procs.at(me);
+    N_ProcProj & myProc = *procs.at(me);
     deque<Map> & myAllIn = *allInMaps.at(me);
     unlock();
 
     try {
-      for (ssize_t curI = 0  ;  curI<allInRd.size()  ;  curI++ ) {
+      for (ssize_t curI = 0  ;  curI<allInRd.size()  ;  curI++ )
         allInRd[curI].readTo(idx, myAllIn[curI]);
-        curDnz(myDnsr, curI).proc(myAllIn[curI]);
-      }
-      deque<Map> & myRes = myProc.process(myAllIn);
+      deque<Map> & myRes = myProc.process(allInRd, idx);
       if (zbinn == 1)
         for (int curO = 0  ;  curO<allOutSv.size()  ;  curO++ )
           allOutSv[curO].save(sodx, myRes[curO]);
@@ -319,16 +735,14 @@ class ProjInThread : public InThread {
 
 public:
 
-  ProjInThread(deque<ReadVolumeBySlice> & _allInRd, deque<SaveVolumeBySlice> & _outSave
-              , const deque<Denoiser> & _dnsr, const ProcProj & _proc
-              , const deque<int> & _projes, const int _zbinn, bool verbose)
+  ProjInThread(deque<ReadVolumeBySlice> & allInRd, deque<SaveVolumeBySlice> & outSave
+              , const N_ProcProj & proc, const deque<int> & projes, const int zbinn, bool verbose)
     : InThread(verbose, "processing projections")
-    , dnsr(_dnsr)
-    , proc(_proc)
-    , projes(_projes)
-    , allInRd(_allInRd)
-    , allOutSv(_outSave)
-    , zbinn(_zbinn ? _zbinn : allInRd.at(0).slices())
+    , proc(proc)
+    , projes(projes)
+    , allInRd(allInRd)
+    , allOutSv(outSave)
+    , zbinn(zbinn ? zbinn : allInRd.at(0).slices())
   {
     bar.setSteps(zbinn*projes.size());
     if (zbinn != 1)
@@ -338,7 +752,6 @@ public:
 
   ~ProjInThread() {
     auto dlnl = [](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
-    for (auto celem : dnsrs)       dlnl(celem.second) ;
     for (auto celem : procs)       dlnl(celem.second) ;
     for (auto celem : allInMaps)   dlnl(celem.second) ;
     for (auto & accPair : accs)
@@ -402,7 +815,7 @@ int main(int argc, char *argv[]) {
 
   // only print output sizes and exit
   if (args.doTest && args.testMe < 0) {
-    vector<Shape<2>> oshs(N_ProcProj::shapes(args.st, ishs));
+    vector<Shape<2>> oshs(N_ProcProj::shapes(args, ishs));
     if (oshs.empty())
       exit_on_error(args.command, "No output. Check your input and stitching parameters.");
     for(auto osh : oshs)
@@ -417,12 +830,10 @@ int main(int argc, char *argv[]) {
       ReadImage(comp[curf].repr(), toRet[curf], ishs[curf]);
     return toRet;
   };
-  const deque<Map> bgas(rdAux(args.bgs));
-  const deque<Map> dfas(rdAux(args.dfs));
-  const deque<Map> dgas(rdAux(args.dgs));
-  const deque<Map> msas(rdAux(args.mss));
-
-  /*
+  deque<Map> bgas(std::move(rdAux(args.bgs)));
+  deque<Map> dfas(std::move(rdAux(args.dfs)));
+  deque<Map> dgas(std::move(rdAux(args.dgs)));
+  deque<Map> msas(std::move(rdAux(args.mss)));
   // normalize masks
   for (int curm=0 ; curm<msas.size() ; curm++) {
     Map & msk = msas[curm];
@@ -434,6 +845,7 @@ int main(int argc, char *argv[]) {
       msk = (msk-vmin)/delta;
   }
 
+  /*
   // Construct masks from bgs and df/gs if not provided but required by other parameters.
   if ( ! msas.size()  &&  args.st.edge ) {
     deque<Map> & bgdf = dgas.size() ? dgas : dfas;
@@ -454,25 +866,10 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-
-  // create canonical denoiser(s)
-  deque<Denoiser> canonDZs;
-  if (!msas.size())
-    canonDZs.emplace_back(ish, (int) args.denoiseRad, args.denoiseThr);
-  else if (msas.size()==1)
-    canonDZs.emplace_back(ish, (int) args.denoiseRad, args.denoiseThr, msas[0]);
-  else
-    for ( int curI = 0 ; curI < nofIn ; curI++)
-      canonDZs.emplace_back(ish, (int) args.denoiseRad, args.denoiseThr, msas[curI]);
-
-  // denoise bg and dg
-  for (int curg=0 ; curg<bgas.size() ; curg++)
-    curDnz(canonDZs, curg).proc(bgas[curg]);
-  for (int curg=0 ; curg<dgas.size() ; curg++)
-    curDnz(canonDZs, curg).proc(dgas[curg]);
+  */
 
   // Prepare canonical projection processor
-  const string testFormat = [&](){
+  const string testFormat = [&args,&nofProj](){
     if (args.testMe < 0)
       return string();
     string toRet = args.out_name.dtitle();
@@ -481,12 +878,12 @@ int main(int argc, char *argv[]) {
     toRet += "%s";
     return toRet;
   }();
-  ProcProj canonPP(args.st, ish, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
+  N_ProcProj canonPP( args, ishs, bgas, dfas, dgas, msas, toString(testFormat, "_mask.tif"));
 
   // Prepare saving factories
-  const std::vector<Shape<2>> & outShapes = canonPP.outputShapes();
+  const std::vector<Shape<2>> outShapes = canonPP.shapes();
   const size_t nofSplts = outShapes.size();
-  const string spformat = mask2format("_split@", nofSplts);
+  const string spformat = mask2format("_part@", nofSplts);
   deque<SaveVolumeBySlice> allOutSv;
   for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
     ImagePath filedescind = args.out_name;
@@ -498,16 +895,11 @@ int main(int argc, char *argv[]) {
     allOutSv.emplace_back(filedescind, Shape<3>(nofOuts, outShapes[curSplt](0), outShapes[curSplt](1)) );
   }
 
+
   // Test or process and save
   if ( args.testMe >= 0 ) { // test
-    deque<Map> allIn;
-    for ( ssize_t curI = 0 ; curI < nofIn ; curI++) {
-      allIn.emplace_back(ish);
-      const int trd = args.zbinn * ( args.testMe >= 0  ?  args.testMe  :  projes[0] );
-      allInRd[curI].readTo(trd, allIn[curI]);
-      curDnz(canonDZs, curI).proc(allIn.back());
-    }
-    const deque<Map> & allOut = canonPP.process(allIn, toString(testFormat, ".tif"));
+    const int trd = args.zbinn * ( args.testMe >= 0  ?  args.testMe  :  projes[0] );
+    const deque<Map> & allOut = canonPP.process(allInRd, trd);
     for (int curSplt = 0 ; curSplt < nofSplts ; curSplt++) {
       const Map & cOut = allOut[curSplt];
       const int svIdx = args.zbinn ? args.testMe / args.zbinn : 0;
@@ -516,10 +908,8 @@ int main(int argc, char *argv[]) {
         cout << nofOuts << " " << cOut.shape()(0) << " " << cOut.shape()(1) << " " << svPath << "\n";
     }
   } else // finally process
-    ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.zbinn, args.beverbose)
+    ProjInThread(allInRd, allOutSv, canonPP, projes, args.zbinn, args.beverbose)
         .execute();
-
-  /**/
 
   exit(0);
 

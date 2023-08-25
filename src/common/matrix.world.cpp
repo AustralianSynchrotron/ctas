@@ -834,3 +834,104 @@ Map MapProc::apply(const Map & imap) const {
 Shape<2> MapProc::shape(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish) {
   return bnn.shape(crp.shape(RotateProc::shape(ish,ang)));
 }
+
+
+
+namespace blitz {
+
+static inline float denan(float x){ return isnormal(x) ? x : 0.0 ;}
+BZ_DECLARE_FUNCTION(denan);
+
+static inline float invert(float x){ return x==0.0 ? 0.0 : 1.0/x ;}
+BZ_DECLARE_FUNCTION(invert);
+
+static inline float subzero(float x){ return x < 0.0 ? 0.0 : x ;}
+BZ_DECLARE_FUNCTION(subzero);
+
+
+static inline float thrshld(float v, float av){ return v-av; }
+BZ_DECLARE_FUNCTION2(thrshld);
+
+}
+
+
+Denoiser::Denoiser(const Shape<2> & _sh, int _rad, float _threshold, const Map & _mask)
+  : sh(_sh)
+  , rad(abs(_rad))
+  , thr(_threshold)
+  , mask(_mask)
+{
+  if ( !size(sh) || !rad )
+    return;
+  const ssize_t mssz=_mask.size();
+  if ( mssz && _mask.shape() != sh)
+    throw_error("denoiser", "Mask shape ("+toString(_mask.shape())+") does not match"
+                            " that of the denoiser("+toString(sh)+").");
+  tarr.resize(sh);
+  swghts.resize(sh);
+  swghts = 0.0;
+  int cntr = 0;
+  const uint rad2 = rad*rad;
+  for (int ii = -rad ; ii <= rad ; ii++)
+    for (int jj = -rad ; jj <= rad ; jj++)
+      if ( ii*ii + jj*jj <= rad2 ) {
+        if (mssz)
+          swghts(dstRa(sh, ii, jj)) += mask (srcRa(sh, ii, jj));
+        else
+          swghts(dstRa(sh, ii, jj)) += 1.0;
+        cntr++;
+      }
+  swghts = invert(swghts);
+}
+
+
+Denoiser::Denoiser(const Denoiser & other)
+  : sh(other.sh)
+  , tarr(sh)
+  , swghts(other.swghts)
+  , mask(other.mask)
+  , rad(other.rad)
+  , thr(other.thr)
+{}
+
+
+void Denoiser::proc(Map & iom) const {
+
+  if ( !size(sh) || !rad )
+    return;
+  if ( iom.shape() != sh )
+    throw_error("denoiser", "Non matching shape of input array.");
+  if ( mask.size() &&  mask.shape() != sh )
+    throw_error("denoiser", "Non matching shape of the mask.");
+
+  static const uint rad2 = rad*rad;
+  tarr=0.0;
+  if (mask.size())
+    iom *= mask;
+  for (int ii = -rad ; ii <= rad ; ii++)
+    for (int jj = -rad ; jj <= rad ; jj++)
+      if ( ii*ii + jj*jj <= rad2 )
+        tarr(dstRa(sh, ii, jj)) += iom (srcRa(sh, ii, jj));
+  tarr *= swghts;
+
+  if (thr == 0.0) {
+    iom = tarr;
+  } else if (thr<0) {
+    for (ssize_t ycur = 0 ; ycur < sh(0) ; ycur++ )
+      for (ssize_t xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+        float & tval = tarr(ycur,xcur);
+        float & ival = iom(ycur,xcur);
+        if (ival == 0.0 || ( tval != 0.0  &&  abs((ival-tval)/tval) > -thr) )
+          ival = tval;
+      }
+  } else {
+    for (ssize_t ycur = 0 ; ycur < sh(0) ; ycur++ )
+      for (ssize_t xcur = 0 ; xcur < sh(1) ; xcur++ ) {
+        float & tval = tarr(ycur,xcur);
+        float & ival = iom(ycur,xcur);
+        if (ival == 0.0 ||  abs(ival-tval) > thr)
+          ival = tval;
+      }
+  }
+
+}

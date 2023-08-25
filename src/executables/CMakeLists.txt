@@ -79,17 +79,17 @@ target_link_libraries(norm
 )
 
 add_executable(proj proj.cpp)
+target_clsrc(proj projection.cl)
 target_link_libraries(proj
   common
   poptmx
-  projection
 )
 
 add_executable(tile tile.cpp)
+target_clsrc(tile projection.cl)
 target_link_libraries(tile
   common
   poptmx
-  projection
 )
 
 

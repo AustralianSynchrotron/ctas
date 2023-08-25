@@ -34,7 +34,6 @@
 
 #include "../common/ctas.h"
 #include "../common/ct.h"
-#include "../common/projection.h"
 #include "../common/poptmx.h"
 
 using namespace std;
@@ -121,7 +120,7 @@ int main(int argc, char *argv[]) {
     throw_error (args.command, "Size of input image ("+toString(ish)+") is less than 2x2.");
 
   float cent;
-  #define rotax(f1, ...) \
+  #define rotax(f1, ...) { \
     cent = 0.0; \
     try { \
       cent = raxis(f1, ##__VA_ARGS__) - 0.5*(ish(1)-1); \
@@ -130,7 +129,8 @@ int main(int argc, char *argv[]) {
     } catch (...) {\
       cerr << "Failed to calculate COR.\n";\
       fflush(stderr);\
-    }
+    } \
+  }
 
   if (args.imgs.size() == 1) { // sinogram
     const float ang = args.arc / ( abs(args.arc)<=1.0 ? 1.0 : ish(0)-1 );
@@ -148,24 +148,28 @@ int main(int argc, char *argv[]) {
       rec->sino(_sino);
       recr.resize(rec->recShape());
     }
-    #define saveres(num) \
-      if (rec) { \
-        rec->repeat(recr,cent); \
-        Path ofile = toString(mask2format(args.outmask,3),num); \
-        SaveImage( ofile.dtitle() + "_" + toString(cent) + ofile.ext() , recr); \
-      }
+
+    auto saveMe = [&args,&cent,&rec,&recr](int num){
+      if ( !rec || !args.outmask.size() )
+        return;
+      rec->repeat(recr,cent);
+      Path ofile = toString(mask2format(args.outmask,3),num);
+      SaveImage( ofile.dtitle() + "_" + toString(cent) + ofile.ext() , recr);
+    };
+
     rotax(sino, ang, args.maxShift, 0);
-    saveres(0);
+    saveMe(0);
     rotax(sino, ang, args.maxShift, 1);
-    saveres(1);
+    saveMe(1);
     rotax(sino, ang, args.maxShift, 2);
-    saveres(2);
+    saveMe(2);
     rotax(sino, ang, args.maxShift, 3);
-    saveres(3);
-    #undef saveres
+    saveMe(3);
     if (rec)
       delete rec;
+
   } else if(args.imgs.size() == 2) { // projections
+
     Map pr0, pr180;
     ReadImage(args.imgs[1], pr180, ish);
     ReadImage(args.imgs[0], pr0);
@@ -175,29 +179,29 @@ int main(int argc, char *argv[]) {
       dnz.proc(pr180);
     }
 
-    #define saveres(num) \
-      if (args.outmask.size()) { \
-        StitchRules rl; \
-        rl.nofIn = 2; \
-        rl.flip = true; \
-        rl.originF = PointF<2>(2*cent,0); \
-        std::deque<Map> emp; \
-        ProcProj canonPP(rl, pr0.shape(), emp, emp, emp, emp); \
-        std::deque<Map> allInR = {pr0.copy(), pr180.copy()}; \
-        const std::deque<Map> & allInSv = canonPP.process(allInR); \
-        if (allInSv.size()==1) { \
-          Path ofile = toString(mask2format(args.outmask,1),num); \
-          SaveImage( ofile.dtitle() + "_" + toString("%+f", cent) + "." + ofile.ext() , allInSv[0]); \
-        } \
-      }
+    auto saveMe = [&args,&pr0,&pr180,&cent](int num){
+      if (!args.outmask.size())
+        return;
+      const Shape<2> ish = pr0.shape();
+      const int shft = 2*cent;
+      Map result(ish(0),ish(1)+shft);
+      result=0;
+      result(all, blitz::Range(0,ish(1))) += shft > 0 ? pr0 : pr180;
+      result(all, blitz::Range(shft,ish(1)+shft)) += shft > 0 ? pr180 : pr0;
+      result /= 2;
+      Path ofile = toString(mask2format(args.outmask,1),num);
+      SaveImage( ofile.dtitle() + "_" + toString("%+f", cent) + "." + ofile.ext() , result);
+    };
+
     rotax(pr0, pr180, args.maxShift);
-    saveres(0);
+    saveMe(0);
     //rotax(pr0, pr180); // commented out because results are crap
-    //saveres(1);
-    #undef saveres
+    //saveMe(1);
+
   } else {
     throw_error(args.command, "Can accept only one (sinogram) or two (opposit projections) images.");
   }
+
   #undef rotax
 
   exit(0);

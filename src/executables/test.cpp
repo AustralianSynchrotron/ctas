@@ -69,8 +69,6 @@ clargs(int argc, char *argv[])
 
 }
 
-#include "../common/projection.h"
-
 
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {

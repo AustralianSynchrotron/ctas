@@ -417,4 +417,24 @@ public:
 
 
 
+
+class Denoiser {
+private:
+  const Shape<2> sh;
+  const int rad;
+  const float thr;
+  mutable Map tarr;
+  Map swghts;
+  Map mask;
+public:
+  Denoiser(const Shape<2> & sh, int rad, float threshold, const Map & mask=defaultMap);
+  Denoiser(const Denoiser & other);
+  Denoiser() : Denoiser(Shape<2>(0,0), 0, 0) {}
+  void proc(Map & iom) const ;
+};
+
+
+
+
+
 #endif // MATRIX_H

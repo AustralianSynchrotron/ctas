@@ -351,6 +351,7 @@ public:
   BinnProc(const Shape<2> & ish, const Binn<2> & bnn);
   BinnProc(const BinnProc & other);
   ~BinnProc();
+  bool operator==(const BinnProc & other) const {return std::addressof(envs)==std::addressof(other.envs);} ;
   bool isTrivial() const {return bnn.isTrivial();}
   Shape<2> shape() const {return osh;}
   Map apply(const Map & imap, Map & tmap) const;
@@ -363,7 +364,8 @@ public:
     ssize_t index() const;
     void index(ssize_t idx);
   private:
-    void * guts=0;
+    struct BinnAcc;
+    BinnAcc * guts=0;
   };
 };
 
@@ -387,6 +389,7 @@ public:
   RotateProc(const Shape<2> & ish, float ang);
   RotateProc(const RotateProc & other);
   ~RotateProc();
+  bool operator==(const RotateProc & other) const {return std::addressof(envs)==std::addressof(other.envs);} ;
   explicit operator bool() const { return size(ish) && abs( remainder(ang, M_PI_2) ) >= 2.0/diag(ish); }
   bool isTrivial() const { return ! size(ish) || abs( remainder(ang, M_PI/2) ) < 2.0/diag(ish) ;}
   Shape<2> shape() const {return osh;}
@@ -410,6 +413,7 @@ public:
   MapProc( float ang=0, const Crop<2> & crp=Crop<2>(), const Binn<2> & bnn=Binn<2>()
          , const Shape<2> & ish=Shape<2>(0,0), float reNAN=NAN);
   MapProc(const MapProc & other);
+  bool operator==(const MapProc & other) const {return bnnProc == other.bnnProc && rotProc == other.rotProc;} ;
   Shape<2> shape() const {return osh;}
   static Shape<2> shape(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish);
   Map apply(const Map & imap) const ;

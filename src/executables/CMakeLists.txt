@@ -26,7 +26,6 @@ target_link_libraries(ax
   common
   poptmx
   lct
-  projection
 )
 
 add_executable(rc2fd rc2fd.cpp)
@@ -85,9 +84,9 @@ target_link_libraries(proj
   poptmx
 )
 
-add_executable(tile tile.cpp)
-target_clsrc(tile projection.cl)
-target_link_libraries(tile
+add_executable(mosaic mosaic.cpp)
+target_clsrc(mosaic projection.cl)
+target_link_libraries(mosaic
   common
   poptmx
 )
@@ -107,12 +106,11 @@ add_executable(test test.cpp)
 target_link_libraries(test
   common
   poptmx
-  projection
 )
 
 
 set( all_targets
-  ipc dei edei norm ax ct ts rc2fd proj tile v2v ring
+  ipc dei edei norm ax ct ts rc2fd proj mosaic v2v ring
 )
 
 

@@ -193,7 +193,7 @@ public:
 const string BinnProc::ForCLdev::modname = "BinnOCL";
 
 
-struct BinnAcc {
+struct BinnProc::Accumulator::BinnAcc {
 
   const Shape<2> mish;
   size_t bn;
@@ -283,35 +283,35 @@ BinnProc::Accumulator::Accumulator(const Shape<2> & ish, ssize_t bn)
 
 BinnProc::Accumulator::~Accumulator() {
   if (guts)
-    delete (BinnAcc*)guts;
+    delete guts;
 }
 
 unsigned int
 BinnProc::Accumulator::addme(Map & nmap) {
   if (!guts)
     throw_bug("BinnAcc is a ghost.");
-  return ((BinnAcc*)guts)->addme(nmap);
+  return guts->addme(nmap);
 }
 
 unsigned int
 BinnProc::Accumulator::getme(Map & nmap) {
   if (!guts)
     throw_bug("BinnAcc is a ghost.");
-  return ((BinnAcc*)guts)->getme(nmap);
+  return guts->getme(nmap);
 }
 
 ssize_t
 BinnProc::Accumulator::index() const {
   if (!guts)
     throw_bug("BinnAcc is a ghost.");
-  return ((BinnAcc*)guts)->odx;
+  return guts->odx;
 }
 
 void
 BinnProc::Accumulator::index(ssize_t idx) {
   if (!guts)
     throw_bug("BinnAcc is a ghost.");
-  ((BinnAcc*)guts)->odx = idx;
+  guts->odx = idx;
 }
 
 

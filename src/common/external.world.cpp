@@ -1345,7 +1345,6 @@ ImageProc::ImageProc( const Map & bg, const Map & df, const Map & dg, const Map 
 }
 
 
-
 Map ImageProc::read(function<Map()> doRot, function<Map()> noRot) {
   Map cmap;
   Map rdmap = rotProc ? doRot() : noRot();

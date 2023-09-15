@@ -49,7 +49,7 @@ struct clargs {
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   bool phsExp;
-  bool SaveInt;				///< Be verbose flag
+  int bpp;				///< Be verbose flag
   bool beverbose;             ///< Save image as 16-bit integer.
 
   /// \CLARGSF
@@ -63,7 +63,7 @@ clargs::clargs(int argc, char *argv[]) :
   lambda(1.0),
   dist(1.0),
   phsExp(false),
-  SaveInt(false),
+  bpp(0),
   beverbose(false)
 {
 
@@ -87,7 +87,7 @@ clargs::clargs(int argc, char *argv[]) :
        "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
   .add(poptmx::OPTION, &phsExp,'e', "exp", "Outputs exponent of phase contrast.",
        "Useful for further CT processing of output as absorption contrast.")
-  .add(poptmx::OPTION, &SaveInt,'i', "int",
+  .add(poptmx::OPTION, &bpp,'i', "int",
        "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -201,7 +201,7 @@ public:
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
   {
     if (!args.oname.empty())
-      allOut = new SaveVolumeBySlice(args.oname, allIn.shape());
+      allOut = new SaveVolumeBySlice(args.oname, allIn.shape(), args.bpp);
     bar.setSteps(sz);
   }
 

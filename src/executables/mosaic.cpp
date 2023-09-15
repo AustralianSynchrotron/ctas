@@ -226,10 +226,10 @@ BZ_DECLARE_FUNCTION(invert);
 }
 
 
-void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
+void SaveDenan(const ImagePath & filename, const Map & storage) {
   Map outm(storage.shape());
   outm=denan(storage);
-  SaveImage(filename, outm, saveint);
+  SaveImage(filename, outm);
 }
 
 
@@ -411,27 +411,29 @@ class ProcProj {
       };
 
       // prepare canonImProcs
-      canonImProcs.emplace_back( selectSrc(bgas, defaultMap)
+      canonImProcs.emplace_back( ishs[0]
+                               , selectSrc(bgas, defaultMap)
                                , selectSrc(dfas, defaultMap)
                                , selectSrc(dgas, defaultMap)
                                , selectSrc(msas, defaultMap)
                                , selectSrc(st.angles, 0.0f)
                                , selectSrc(st.crops, Crop<2>())
                                , selectSrc(st.binns, Binn<2>())
-                               , ishs[0], 0 );
+                               , 0 );
       if (  bgas.size() > 1 || dfas.size() > 1 || dgas.size() > 1 || msas.size() > 1
          || st.angles.size() > 1 || st.crops.size() > 1 || st.binns.size() > 1
          || adjacent_find( whole(ishs), [](auto &lsh, auto &rsh){return lsh != rsh;} ) != ishs.end() )
       {
         for ( int curI = 1 ; curI < st.nofIn ; curI++ )
-          canonImProcs.emplace_back( selectSrc(bgas, defaultMap, curI)
+          canonImProcs.emplace_back( ishs[curI]
+                                   , selectSrc(bgas, defaultMap, curI)
                                    , selectSrc(dfas, defaultMap, curI)
                                    , selectSrc(dgas, defaultMap, curI)
                                    , selectSrc(msas, defaultMap, curI)
                                    , selectSrc(st.angles, 0.0f, curI)
                                    , selectSrc(st.crops, Crop<2>(), curI )
                                    , selectSrc(st.binns, Binn<2>(), curI )
-                                   , ishs[curI], 0 );
+                                   , 0 );
       } else {
         for ( int curI = 1 ; curI < st.nofIn ; curI++ )
           canonImProcs.emplace_back(canonImProcs[0]);

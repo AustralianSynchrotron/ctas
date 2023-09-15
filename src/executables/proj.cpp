@@ -295,10 +295,10 @@ BZ_DECLARE_FUNCTION(invert);
 
 
 
-void SaveDenan(const ImagePath & filename, const Map & storage, bool saveint=false) {
+void SaveDenan(const ImagePath & filename, const Map & storage) {
   Map outm(storage.shape());
   outm=denan(storage);
-  SaveImage(filename, outm, saveint);
+  SaveImage(filename, outm);
 }
 
 

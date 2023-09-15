@@ -143,26 +143,11 @@ ReadImage(const ImagePath & filename, Map & storage, const Shape<2> & shp) {
 ///
 /// @param filename the name of the image file image.
 /// @param storage the array to be written to the image.
-/// @param saveint save image as 16-bit integer.
-///
-void
-SaveImage(const ImagePath & filename, const Map & storage, bool saveint=false);
-
-
-/// \brief Save the array into integer image.
-///
-/// Stores the array in the integer-based image. If minval is equal to maxval
-/// then the minimum and maximum values of the array data corresponds to black
-/// and white respectively.
-///
-/// @param filename the name of the image file image.
-/// @param storage the array to be written to the image.
+/// @param bpp if non-zero saves image as integer with corresponding bits per pixel.
 /// @param minval the value corresponding to black.
 /// @param maxval the value corresponding to white.
-///
 void
-SaveImage(const ImagePath & filename, const Map & storage, float minval, float maxval );
-
+SaveImage(const ImagePath & filename, const Map & storage, int bpp=0, float minval=0, float maxval=0);
 
 
 
@@ -182,51 +167,8 @@ ReadVolume(const ImagePath & filename, Volume & storage, bool verbose=false) {
 
 
 void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           bool verbose, const std::string & slicedesc, float mmin, float mmax);
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           bool verbose, const std::string & slicedesc) {
-  SaveVolume(filedesc, storage, verbose, slicedesc, 0, 0);
-}
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           bool verbose) {
-  SaveVolume(filedesc, storage, verbose, "", 0, 0);
-}
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           const std::string & slicedesc) {
-  SaveVolume(filedesc, storage, false, slicedesc, 0, 0);
-}
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage) {
-  SaveVolume(filedesc, storage, false, "", 0, 0);
-}
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           bool verbose, float mmin, float mmax) {
-  SaveVolume(filedesc, storage, verbose, "", mmin, mmax);
-}
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           const std::string & slicedesc, float mmin, float mmax) {
-  SaveVolume(filedesc, storage, false, slicedesc, mmin, mmax);
-}
-
-inline void
-SaveVolume(const ImagePath & filedesc, Volume & storage,
-           float mmin, float mmax) {
-  SaveVolume(filedesc, storage, false, "", mmin, mmax);
-}
-
-
+SaveVolume( const ImagePath & filedesc, Volume & storage, bool verbose
+          , const std::string & slicedesc, int bpp=0, float minval=0, float maxval=0);
 
 
 
@@ -255,7 +197,7 @@ class SaveVolumeBySlice {
 private:
   void * guts;
 public:
-  SaveVolumeBySlice(const ImagePath & filedesc, Shape<3> _sh, float mmin=0, float mmax=0);
+  SaveVolumeBySlice(const ImagePath & filedesc, Shape<3> sh, int bpp=0, float minval=0, float maxval=0);
   ~SaveVolumeBySlice();
   ImagePath save(uint sl, const Map & trg);
   size_t slices() const;
@@ -272,8 +214,8 @@ class ImageProc : public MapProc, public FlatFieldProc {
   Map readmap;
   Map read(std::function<Map()> doRot, std::function<Map()> noRot);
 public:
-  ImageProc( const Map & bg, const Map & df, const Map & dg, const Map & ms
-           , float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN=NAN);
+  ImageProc( const Shape<2> & ish, const Map & bg, const Map & df, const Map & dg, const Map & ms
+           , float ang, const Crop<2> & crp, const Binn<2> & bnn, float reNAN=NAN);
   Map read(const ImagePath & filename);
   Map read(ReadVolumeBySlice & volRd, uint sl);
 };

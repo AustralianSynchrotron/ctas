@@ -22,9 +22,8 @@ unset(CLSRC)
 unset(CLINC)
 endmacro()
 
-
-
-add_subdirectory(blitz-long)
+add_subdirectory(blitz64)
+include_directories("blitz64")
 add_subdirectory(common)
 add_subdirectory(executables)
 

@@ -47,7 +47,7 @@ struct clargs {
   Path data_name;             ///< Name of the input data file.
   Path outmask;           ///< Name of the file to save the result to.
   bool beverbose;				///< Be verbose flag
-  bool SaveInt;					///< Save image as 16-bit integer.
+  int bpp;					///< Save image as 16-bit integer.
 
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -70,7 +70,7 @@ clargs(int argc, char *argv[]) :
   plane(0),
   center(0),
   beverbose(false),
-  SaveInt(false),
+  bpp(0),
   contrast(Contrast::ABS)
 {
 
@@ -96,7 +96,7 @@ clargs(int argc, char *argv[]) :
          "Plane of the reconstruction.", "Relative to the rotation center.")
   .add(poptmx::OPTION, &center, 'c', "center",
      "Rotation center.", CenterOptionDesc, toString(center))
-  .add(poptmx::OPTION, &SaveInt,'i', "int",
+  .add(poptmx::OPTION, &bpp,'i', "int",
          "Output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -217,7 +217,7 @@ int main( int argc, char *argv[] ) {
   }
   bar.done();
 
-  SaveImage(args.outmask, result, args.SaveInt);
+  SaveImage(args.outmask, result, args.bpp);
 
   exit (0);
 

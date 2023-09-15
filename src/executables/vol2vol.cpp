@@ -53,7 +53,7 @@ struct clargs {
   string slicedesc;       ///< String describing the slices to be sino'ed.
   float mincon;         ///< Black intensity.
   float maxcon;         ///< White intensity.
-  bool SaveInt;         ///< Save image as 16-bit integer.
+  int bpp;         ///< Save image as 16-bit integer.
   float reNAN;
   bool beverbose;             ///< Be verbose flag
   /// \CLARGSF
@@ -66,9 +66,9 @@ clargs(int argc, char *argv[])
   : outmask ("slice.tif")
   //, sinoFF(false)
   , ang(0.0f)
-  , mincon(NAN)
-  , maxcon(NAN)
-  , SaveInt(false)
+  , mincon(0)
+  , maxcon(0)
+  , bpp(0)
   , reNAN(NAN)
   , beverbose(false)
 {
@@ -88,10 +88,6 @@ clargs(int argc, char *argv[])
     .add(poptmx::NOTE, "OPTIONS:")
     .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
          "Output filename if output is a single file. Output mask otherwise. " + MaskDesc, outmask)
-    .add(poptmx::OPTION, &mincon, 'm', "min", "Pixel value corresponding to black.",
-         " All values below this will turn black.", "<minimum>")
-    .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
-         " All values above this will turn white.", "<maximum>")
     .add(poptmx::OPTION, &ang,'r', "rotate", "Rotates each slice by this rotation angle (deg).", "")
     .add(poptmx::OPTION, &crp, 'c', "crop", "Crop input volume.", CropOptionDesc)
     .add(poptmx::OPTION, &bnn, 'b', "binn", "Binn factor(s).", BinnOptionDesc)
@@ -101,7 +97,13 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &dgs, 'F', "dg", "Dark field image for backgrounds", "")
     //.add(poptmx::OPTION, &sinoFF, 'S', "sino",
     //     "If set, images given with BDF option(s) are considered as face slices to get lines in sinogram.", "")
-    .add(poptmx::OPTION, &SaveInt,'i', "int", "Output image(s) as integer.", IntOptionDesc)
+    .add(poptmx::OPTION, &mincon, 'm', "min", "Pixel value corresponding to black.",
+         " All values below this will turn black.", "<minimum>")
+    .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
+         " All values above this will turn white.", "<maximum>")
+    .add(poptmx::OPTION, &bpp,'i', "int", "Bits per pixel to output image(s) as integer.", IntOptionDesc,
+         "0 (for 32-bit float-point) if no " + table.desc(&mincon) + " or " + table.desc(&maxcon)
+         + " are used; 8 otherwise.")
     .add(poptmx::OPTION, &reNAN,'N', "nan", "Replace NAN's with this number.", "")
     .add_standard_options(&beverbose)
     .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
@@ -126,6 +128,8 @@ clargs(int argc, char *argv[])
   //                + ": will be ignored.");
   if ( ! table.count(&bgs) && table.count(&dgs) )
     exit_on_error(command, "No background images (" + table.desc(&bgs) + ") for provided darkgrounds (" + table.desc(&dgs) + ").");
+  if ( table.count(&mincon) + table.count(&maxcon) && ! table.count(&bpp) )
+    bpp = 8;
 
   ang *= M_PI/180;
 
@@ -210,7 +214,7 @@ public:
     , ivolRd(new ReadVolumeBySlice(args.images))
     , ish(ivolRd->face())
     , isz(ivolRd->slices())
-    , canonImgProc(bg, df, dg, Map(), args.ang, copyMost<2>(args.crp), copyMost<2>(args.bnn), ish, args.reNAN)
+    , canonImgProc(ish, bg, df, dg, Map(), args.ang, copyMost<2>(args.crp), copyMost<2>(args.bnn), args.reNAN)
     , bnz( args.bnn(0) ? args.bnn(0) : isz )
     , osh( canonImgProc.shape() )
     , osz( binnOne(isz, bnz) )
@@ -219,9 +223,8 @@ public:
           sindex.erase(0,1);
         return slice_str2vec(sindex, _osz);
       }(args.slicedesc, osz) )
-    , ovolSv( new SaveVolumeBySlice(args.outmask, Shape<3>(osz,osh(0),osh(1))
-                                   , fisok(args.mincon) ?  args.mincon : 0
-                                   , fisok(args.maxcon) ?  args.maxcon : 0)  )
+    , ovolSv( new SaveVolumeBySlice( args.outmask, Shape<3>(osz,osh(0),osh(1))
+                                   , args.bpp, args.mincon, args.maxcon ) )
   {
     if (!isz)
       throw_error(args.command, "Empty volume to read.");
@@ -263,7 +266,6 @@ public:
 int main(int argc, char *argv[]) {
 
   const clargs args(argc, argv) ;
-  const bool toInt = fisok(args.mincon)  ||  fisok(args.maxcon) || args.SaveInt;
   const Shape<2> ish = ImageSizes(args.images[0]);
 
   Map bg, df, dg;
@@ -276,7 +278,7 @@ int main(int argc, char *argv[]) {
 
   if (  ( ! args.slicedesc.empty()
           &&  string("xXyY").find(args.slicedesc.at(0)) != string::npos )
-        || ( toInt  &&  ( ! fisok(args.mincon)  ||  ! fisok(args.maxcon) ) ) ) {
+        || ( args.bpp  &&  args.mincon == args.maxcon ) ) {
     // Requires whole volume in memory to produce cross-sections or calculate min/max
 
     Volume ivol;
@@ -300,15 +302,8 @@ int main(int argc, char *argv[]) {
     }
     Volume cvol(args.crp.apply(rvol));
     Volume bvol(args.bnn.apply(cvol));
-
-    if (toInt) {
-      const float
-        mincon  =  fisok(args.mincon) ?  args.mincon  :  min(cvol),
-        maxcon  =  fisok(args.maxcon) ?  args.maxcon  :  max(cvol);
-      SaveVolume(args.outmask, bvol, args.beverbose, args.slicedesc, mincon, maxcon);
-    } else {
-      SaveVolume(args.outmask, bvol, args.beverbose, args.slicedesc);
-    }
+    SaveVolume( args.outmask, bvol, args.beverbose, args.slicedesc
+              , args.bpp, args.mincon, args.maxcon);
 
   } else {
     // Can work slice-by-slice.

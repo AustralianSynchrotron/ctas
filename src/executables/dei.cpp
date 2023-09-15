@@ -43,7 +43,7 @@ struct clargs {
   Path ref_name;              ///< Output refraction image.
   Path abs_name;              ///< Output absorption image.
   bool beverbose;				///< Be verbose flag
-  bool SaveInt;					///< Save image as 16-bit integer.
+  int bpp;					///< Save image as 16-bit integer.
 
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -53,43 +53,43 @@ struct clargs {
 clargs::
 clargs(int argc, char *argv[]) :
   beverbose(false),
-  SaveInt(false)
+  bpp(0)
 {
 
   poptmx::OptionTable table
-	("DEI contrast processing.",
-	 "Takes two images recorded in different positions of the analyzing"
-	 " crystal and process them with the DEI method separating the"
-	 " apparent absorption and clean refraction components and saving"
-	 " the requested one(s).");
+  ("DEI contrast processing.",
+   "Takes two images recorded in different positions of the analyzing"
+   " crystal and process them with the DEI method separating the"
+   " apparent absorption and clean refraction components and saving"
+   " the requested one(s).");
 
   table
-	.add(poptmx::NOTE, "ARGUMENTS:")
-	.add(poptmx::ARGUMENT, &minus_name, "minus",
-		 "Contrast in the minus position.", "")
-	.add(poptmx::ARGUMENT, &plus_name, "plus",
+  .add(poptmx::NOTE, "ARGUMENTS:")
+  .add(poptmx::ARGUMENT, &minus_name, "minus",
+     "Contrast in the minus position.", "")
+  .add(poptmx::ARGUMENT, &plus_name, "plus",
          "Contrast in the plus position.", "")
-	.add(poptmx::NOTE, "",
-		 table.desc(&minus_name) + ", " + table.desc(&plus_name) +
-		 ". " + "Two images recorded in different position"
-		 " of the analyzing crystal. Must be of equal sizes.")
+  .add(poptmx::NOTE, "",
+     table.desc(&minus_name) + ", " + table.desc(&plus_name) +
+     ". " + "Two images recorded in different position"
+     " of the analyzing crystal. Must be of equal sizes.")
 
-	.add(poptmx::NOTE, "OPTIONS:")
-	.add(poptmx::OPTION, &ref_name,'r', "refraction",
-		 "Image name to output refraction component.", "", "NONE")
-	.add(poptmx::OPTION, &abs_name,'a', "absorption",
-		 "Image name to output absorption component.", "", "NONE")
-	.add(poptmx::OPTION, &SaveInt,'i', "int",
-      "Output image(s) as integer.", IntOptionDesc)
-	.add(deiopt.options())
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+  .add(poptmx::NOTE, "OPTIONS:")
+  .add(poptmx::OPTION, &ref_name,'r', "refraction",
+     "Image name to output refraction component.", "", "NONE")
+  .add(poptmx::OPTION, &abs_name,'a', "absorption",
+     "Image name to output absorption component.", "", "NONE")
+  .add(poptmx::OPTION, &bpp,'i', "int",
+      "Bits per pixel to output image(s) as integer.", IntOptionDesc)
+  .add(deiopt.options())
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+  exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+  table.usage();
+  exit(0);
   }
 
   command = table.name();
@@ -97,15 +97,15 @@ clargs(int argc, char *argv[]) :
   // <minus> and <plus> : required arguments.
   if ( ! table.count(&minus_name) )
     exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&minus_name)+".");
+          "Missing required argument: "+table.desc(&minus_name)+".");
   if ( ! table.count(&plus_name) )
     exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&plus_name)+".");
+          "Missing required argument: "+table.desc(&plus_name)+".");
   // At least one of two options required
   if ( ! table.count(&abs_name) &&  ! table.count(&ref_name) )
     exit_on_error(command, string() +
-				  "At least one of two options must be set: " +
-				  table.desc(&ref_name) + table.desc(&abs_name) + ".");
+          "At least one of two options must be set: " +
+          table.desc(&ref_name) + table.desc(&abs_name) + ".");
 
 
 }
@@ -127,11 +127,11 @@ int main(int argc, char *argv[]) {
   Map compa(ma.shape());
   if ( ! args.ref_name.empty() ) {
     compa = proc.extract(ma,pa,DEIprocess::REF);
-    SaveImage(args.ref_name, compa, args.SaveInt);
+    SaveImage(args.ref_name, compa, args.bpp);
   }
   if ( ! args.abs_name.empty() ) {
     compa = proc.extract(ma,pa,DEIprocess::ABS);
-    SaveImage(args.abs_name, compa, args.SaveInt);
+    SaveImage(args.abs_name, compa, args.bpp);
   }
 
   exit(0);

@@ -1,2 +1,0 @@
-// MagickLib namespace is used in older ImageMagick < 6.4.2
-#cmakedefine MAGICKLIB_NAMESPACE

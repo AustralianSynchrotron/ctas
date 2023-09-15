@@ -1,6 +1,4 @@
-# To make sure the internal version of blitz is used
 
-include_directories("../blitz-long")
 
 link_directories(${CMAKE_BINARY_DIR}/src/common)
 

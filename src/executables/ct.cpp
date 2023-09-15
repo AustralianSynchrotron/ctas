@@ -54,6 +54,7 @@ struct clargs {
   bool beverbose;				///< Be verbose flag
   float mincon;         ///< Black intensity.
   float maxcon;         ///< White intensity.
+  int bpp;
   bool allowCPU;
 
   /// \CLARGSF
@@ -68,6 +69,7 @@ clargs(int argc, char *argv[])
   , beverbose(false)
   , mincon(0)
   , maxcon(0)
+  , bpp(0)
   , outmask("reconstructed-<sinogram>")
   , arc(180)
   , dd(0.0)
@@ -111,6 +113,9 @@ clargs(int argc, char *argv[])
        " All values below this will turn black.", "<minimum>")
   .add(poptmx::OPTION, &maxcon, 'M', "max", "Pixel value corresponding to white.",
        " All values above this will turn white.", "<maximum>")
+  .add(poptmx::OPTION, &bpp,'i', "int", "Bits per pixel to output image(s) as integer.", IntOptionDesc,
+       "0 (for 32-bit float-point) if no " + table.desc(&mincon) + " or " + table.desc(&maxcon)
+       + " are used; 8 otherwise.")
   .add(poptmx::OPTION, &allowCPU, 0, "cpu", "Allow CT'ing on CPU (very slow).",
        "By default CPU processing is allowed only if no OpenCL devices were found or failing."
        " Using CPU can be benificial on large slices, but detrimental on small ones.", toString(allowCPU))
@@ -140,9 +145,10 @@ clargs(int argc, char *argv[])
       exit_on_error(command, "Negative wawelwngth (given by "+table.desc(&lambda)+").");
     lambda /= 1.0E10; // Angstrom -> m
   }
+  if ( table.count(&mincon) + table.count(&maxcon) && ! table.count(&bpp) )
+    bpp = 8;
   if (arc <= 0.0)
     exit_on_error(command, "CT arc (given by "+table.desc(&arc)+") must be strictly positive.");
-
 
 }
 
@@ -207,7 +213,7 @@ public:
     , ivolRd(ctrl.sinograms)
     , ish(ivolRd.face())
     , osh(ish(1),ish(1))
-    , ovolSv(ctrl.outmask, Shape<3>(ivolRd.slices(), ish(1), ish(1)), ctrl.mincon, ctrl.maxcon)
+    , ovolSv(ctrl.outmask, Shape<3>(ivolRd.slices(), ish(1), ish(1)), ctrl.bpp, ctrl.mincon, ctrl.maxcon)
     , canonRec(ish, ctrl.contrast, ctrl.arc, ctrl.filter_type)
   {
     bar.setSteps(ivolRd.slices());
@@ -230,7 +236,6 @@ public:
 /// \MAIN{ct}
 int main(int argc, char *argv[]) {
   const clargs args(argc, argv) ;
-  RecInThread factory(args);
-  factory.execute();
+  RecInThread(args).execute();
   exit(0);
 }

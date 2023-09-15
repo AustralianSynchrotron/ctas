@@ -1,6 +1,3 @@
-# To make sure the internal version of blitz is used
-include_directories("../blitz-long")
-
 
 # check ImageMagick
 FIND_PACKAGE(ImageMagick 6.4.2  REQUIRED)
@@ -37,8 +34,6 @@ if( "${HAVE_GSL_SF_BESSEL_H}" MATCHES "HAVE_GSL_SF_BESSEL_H-NOTFOUND" )
   message(FATAL_ERROR "Could not find \"gsl/gsl_sf_bessel.h\" header which must be a part of the GSL library.")
 endif()
 
-
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/src/common/config.h.in ${CMAKE_SOURCE_DIR}/src/common/config.h)
 
 add_library(poptmx SHARED poptmx.cpp)
 

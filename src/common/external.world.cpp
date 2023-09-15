@@ -63,88 +63,71 @@ static const bool imageIOinited = initImageIO();
 
 
 
-
-struct HDFdesc {
-
-  ImagePath name;
-  string data;
-  string slicesStr;
-  int sliceDim;
-
-  HDFdesc(const ImagePath & filedesc) {
-    const string desc = trim(filedesc.desc(), ":");
-    if (desc.empty()) // not HDF5
-      return;
-    name = filedesc;
-    deque<string> hdfRd = split(desc, ":");
-    data=hdfRd[0];
-    slicesStr  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   "Z"  :  hdfRd[1] ;
-    switch ( slicesStr.at(0) ) {
-      case 'x':
-      case 'X':
-        sliceDim=blitz::thirdDim;  slicesStr.erase(0,1); break;
-      case 'y':
-      case 'Y':
-        sliceDim=blitz::secondDim;  slicesStr.erase(0,1); break;
-      case 'z':
-      case 'Z':
-        sliceDim=blitz::firstDim;  slicesStr.erase(0,1); break;
-      default:
-        sliceDim=blitz::firstDim;
+template<typename T> blitz::Array<T, 2> limit(const Map & storage, float mincon, float maxcon) {
+  blitz::Array<T, 2> toRet(storage.shape());
+  if (mincon==maxcon) {
+    mincon = min(storage);
+    maxcon = max(storage);
+  }
+  if (mincon==maxcon) {
+    toRet = 0;
+    return toRet;
+  }
+  const float type_width = float(numeric_limits<T>::max()) - float(numeric_limits<T>::min());
+  const float lims_width = maxcon-mincon;
+  for (ssize_t y = 0 ; y < storage.shape()(0) ; y++) {
+    for (ssize_t x = 0 ; x < storage.shape()(1) ; x++) {
+      float interim = ( storage(y,x) - mincon ) / lims_width ;
+      if (interim < 0)
+        toRet(y,x) = numeric_limits<T>::min();
+      else if (interim > 1)
+        toRet(y,x) = numeric_limits<T>::max();
+      else
+        toRet(y,x) = numeric_limits<T>::min() + interim * type_width;
     }
   }
-
-  string id() const {
-    return name.repr();
-  }
-
-  inline bool isValid() const { return name.length() ; }
-  inline bool isValidHDF() const {
-    return    isValid() && ( H5Fis_hdf5(name.c_str()) > 0 ) && ! data.empty()  ;
-  }
-  static bool isValid(const ImagePath & filedesc) { return HDFdesc(filedesc).isValid(); }
-  static bool isValidHDF(const ImagePath & filedesc) { return HDFdesc(filedesc).isValidHDF(); }
-
-};
-
-
-
-
-bool ImagePath::isValidHDF() const {
-  return HDFdesc::isValidHDF(*this);
-}
-
-static bool isValidHDF(const string & nm) {
-  return HDFdesc::isValidHDF(nm);
+  return toRet;
 }
 
 
 
-struct HDFrw : public HDFdesc {
-
-public :
-
-  inline HDFrw(const ImagePath & filedesc)
-    : HDFdesc(filedesc)
-    , iosh(0l)
-    , hdfFile(0)
-    , file_fapl(0)
-    , dataset(0)
-    , dataset_dxpl(0)
-    , filespace(0)
-    , memspace(0)
-    //, rwLock(PTHREAD_MUTEX_INITIALIZER)
-  {
-    if (!isValid())
-      throw_error("HDF i/o", "Not an HDF in \""+filedesc.repr()+"\".");
-  }
+template<typename T> void delimit(Map & storage, float mincon, float maxcon) {
+  const float width_ratio = ( maxcon - mincon ) / ( (float) numeric_limits<T>::max() - numeric_limits<T>::min() );
+  storage = mincon + ( storage - numeric_limits<T>::min() ) * width_ratio;
+}
 
 
-  #define closeMe(hid, al) \
+
+class HDFwrapper {
+
+  static const string modname;
+
+  Shape<3> iosh;
+  int rank;
+  hid_t hdfFile;
+  hid_t file_fapl;
+  hid_t dataset;
+  hid_t dataset_dxpl;
+  hid_t filespace;
+  hid_t memspace;
+  blitz::Array<hsize_t, 1> cnts;
+  mutable deque<int> indices;
+  Volume dataMmap;
+
+  bool writable;
+  int bpp;
+  float mincon;
+  float maxcon;
+
+
+
+  #define closeMe(hid, al) { \
     if (hid>0) { \
       H5##al ## close(hid);\
       hid = 0; \
-    }
+    } \
+  }
+
 
   void complete() {
     if (dataMmap.size()) {
@@ -159,28 +142,12 @@ public :
     closeMe(hdfFile, F);
   }
 
-  ~HDFrw() {
-    closeMe(dataset_dxpl, P);
-    closeMe(file_fapl, P);
-    closeMe(memspace, S);
-    complete();
-  }
 
-  #undef closeMe
-
-private:
-  Shape<3> iosh;
-
-public:
-  inline Shape<2> face() const {return sliceDim == blitz::thirdDim
-                    ?  Shape<2>(iosh(2),iosh(1)) : Shape<2>(iosh(1),iosh(2));}
-  inline Shape<2> ioface() const {return Shape<2>(iosh(1),iosh(2));}
-  inline size_t slices() const {return iosh(0);}
-  //inline Shape3 sizes() const {return _shape);}
-
-  template<class T> Shape<2> exclDim(const T & sh3, int dimension) {
+  Shape<2> exclDim(const blitz::Array<hsize_t, 1> & sh3, int dimension) {
     if (dimension>2)
       throw_error("face of volume", "Impossible excluded dimension " +toString(dimension)+ ".");
+    if (sh3.size() != 3)
+      throw_error("face of volume", "Input is supposed to be of size 3; instead it is " +toString(sh3.size())+ ".");
     Shape<2> ret;
     int idx=0, odx=0;
     while (idx<3) {
@@ -192,70 +159,11 @@ public:
   }
 
 
-  template<class T> Shape<3> inclDim(const T & sh2, int dimension, long sz) {
-    if (dimension>2)
-      throw_error("shape volume", "Impossible included dimension " +toString(dimension)+ ".");
-    Shape<3> ret;
-    int idx=0, odx=0;
-    while (idx<3) {
-      ret(idx) = (idx == sliceDim) ? sz : sh2(odx++);
-      idx++;
-    }
-    return ret;
-  }
-
-protected :
-
-  int rank;
-  hid_t hdfFile;
-  hid_t file_fapl;
-  hid_t dataset;
-  hid_t dataset_dxpl;
-  hid_t filespace;
-  hid_t memspace;
-  //pthread_mutex_t rwLock;
-  blitz::Array<hsize_t, 1> cnts;
-  mutable deque<int> indices;
-  Volume dataMmap;
-
-  void setFace(const Shape<2> & fcsh) {
-    iosh[1] = fcsh(sliceDim == blitz::thirdDim ? 1 : 0);
-    iosh[2] = fcsh(sliceDim == blitz::thirdDim ? 0 : 1);
-    const size_t ar = size(fcsh);
-    if ( ! ar )
-      return;
-    if (  (dataset_dxpl = H5Pcreate(H5P_DATASET_XFER)) == H5I_INVALID_HID
-       || H5Pset_buffer(dataset_dxpl, ar*sizeof(float), 0, 0) < 0 )
-      dataset_dxpl=H5P_DEFAULT;
-    //size_t bsize;
-    //switch (sliceDim) {
-    //  case 0: bsize = ar; break;
-    //  case 1: bsize = iosh[1] ; break;
-    //  case 2: bsize = 1; break;
-    //}
-    if (  (file_fapl = H5Pcreate(H5P_FILE_ACCESS)) == H5I_INVALID_HID
-       || H5Pset_sieve_buf_size(file_fapl, ar*sizeof(float)) < 0
-       || H5Pset_cache(file_fapl, 0, 1, ar*sizeof(float), 1) < 0 )
-      file_fapl = H5P_DEFAULT;
-    hsize_t mcnts[2] = { hsize_t(ioface()(0)), hsize_t(ioface()(1))},
-            moffs[2] = {0, 0};
-    if ( (memspace = H5Screate_simple(2, mcnts, 0))<0
-       || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
-      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
-
-  }
-
-  inline void setSlices(size_t _slices) {
-    iosh[0]=_slices;
-  }
-
-
-
-
   hid_t local_fs(int idx, const Crop<2> & crp = Crop<2>()) {
     hid_t ret_fs=H5Scopy(filespace);
     if (ret_fs<0)
-      throw_error("HDF i/o", "Failed to copy filespace accessing slice " +toString(idx)+ " from " + id() + ".");
+      throw_error("HDF i/o", "Failed to copy filespace accessing slice "
+                             + toString(idx) + " from " + name.repr() + ".");
     hsize_t offs[rank], mcns[rank];
     unsigned cdim = sliceDim == blitz::thirdDim ? 1 : 0;
     for (int dim=0; dim<rank ; dim++) {
@@ -270,14 +178,16 @@ protected :
     }
     if ( H5Sselect_hyperslab(ret_fs, H5S_SELECT_SET, offs, NULL, mcns, NULL) < 0) {
       H5Sclose(ret_fs);
-      throw_error("HDF i/o", "Failed to select hyperslab accessing slice " +toString(idx)+ " from " + id() + ".");
+      throw_error("HDF i/o", "Failed to select hyperslab accessing slice "
+                             + toString(idx) + " from " + name.repr() + ".");
     }
     return ret_fs;
   }
 
-  void mmapMeIfYouCan(bool writable) {
 
-    if ( !hdfFile || !dataset || !file_fapl || dataMmap.size())
+  void mmapMeIfYouCan() {
+
+    if ( !hdfFile || !dataset || !file_fapl || dataMmap.size() || bpp )
       return;
 
     string name_realpath( [&](){
@@ -374,29 +284,112 @@ protected :
 
   }
 
-};
 
+  void createNewGroup() {
+    if (!writable)
+      throw_bug(modname + ": attempt to create a group in a read-only HDF " + name.repr());
+    hid_t lcpl=0, dcpl=0;
+    hid_t data_type;
+    switch (bpp) {
+    case   0 : data_type = H5T_NATIVE_FLOAT  ; break;
+    case  -8 : data_type = H5T_NATIVE_CHAR   ; break;
+    case   8 : data_type = H5T_NATIVE_UCHAR  ; break;
+    case -16 : data_type = H5T_NATIVE_SHORT  ; break;
+    case  16 : data_type = H5T_NATIVE_USHORT ; break;
+    case -32 : data_type = H5T_NATIVE_INT    ; break;
+    case  32 : data_type = H5T_NATIVE_UINT   ; break;
+    case -64 : data_type = H5T_NATIVE_LONG   ; break;
+    case  64 : data_type = H5T_NATIVE_ULONG  ; break;
+    default: throw_bug(modname + ": unsupported bits per sample " + toString(bpp));
+    }
+    if (  hdfFile<=0
+       || (lcpl = H5Pcreate(H5P_LINK_CREATE)) == H5I_INVALID_HID
+       || H5Pset_create_intermediate_group(lcpl, 1) < 0
+       || H5Pset_char_encoding(lcpl, H5T_CSET_UTF8) < 0
+       || (dcpl = H5Pcreate(H5P_DATASET_CREATE)) == H5I_INVALID_HID
+       || H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER) < 0
+       || (filespace = H5Screate_simple(3, cnts.data(), NULL)) < 0
+       || (dataset = H5Dcreate(hdfFile, data.c_str(), data_type, filespace, lcpl, dcpl, H5P_DEFAULT)) == H5I_INVALID_HID
+       ) {
+      complete();
+      if (lcpl)
+        H5Pclose(lcpl);
+      if (dcpl)
+        H5Pclose(dcpl);
+    }
+  }
 
+  static deque<string> components(const ImagePath & filedesc) {
+    const string desc = trim(filedesc.desc(), ":");
+    return desc.empty() ? deque<string>(1) : split(desc, ":");
+  }
 
-
-struct HDFread : public HDFrw {
-
-private :
-
-  const static string modname;
-
-public :
-
-  HDFread(const ImagePath & filedesc, bool overwrite=false)
-    : HDFrw(filedesc)
+  HDFwrapper( const ImagePath & filedesc, bool writable
+            , int bpp, float mincon, float maxcon)
+    : iosh(0l)
+    , hdfFile(0)
+    , file_fapl(0)
+    , dataset(0)
+    , dataset_dxpl(0)
+    , filespace(0)
+    , memspace(0)
+    , writable(writable)
+    , bpp(bpp)
+    , mincon(mincon)
+    , maxcon(maxcon)
+    , name( [&filedesc](){
+        if ( ! isValidPath(filedesc) )
+          throw_error(modname, "Ivalid HDF5 path descriptor \""+filedesc.repr()+"\"");
+        return filedesc;
+      }() )
+    , data(components(filedesc)[0])
+    , slicesStr( [&filedesc](){
+        deque<string> hdfRd = components(filedesc);
+        string toRet  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   "Z"  :  hdfRd[1] ;
+        if ( 0 == toRet.find_first_of("xXyYzZ") )
+          toRet.erase(0,1);
+        return toRet;
+      }() )
+    , sliceDim ( [&filedesc](){
+        deque<string> hdfRd = components(filedesc);
+        const char toChk  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   'Z'  :  hdfRd[1].at(0) ;
+        switch ( toChk ) {
+          case 'x':
+          case 'X':
+            return blitz::thirdDim;
+          case 'y':
+          case 'Y':
+            return blitz::secondDim;
+          case 'z':
+          case 'Z':
+          default:
+            return blitz::firstDim;
+        }
+      }() )
   {
-    if (!isValidHDF())
-      throw_error(modname, "No HDF file at "+id()+".");
-    const Shape<2> sh = ImageSizes(filedesc);
-    setFace(sh);
+    static const vector<int> allowedBPP = {-64, -32, -16, -8, 0, 8, 16, 32, 64};
+    if ( find( whole(allowedBPP), bpp) == allowedBPP.end() )
+      throw_error(modname, "Unsupported bits per sample " + toString(bpp));
+  }
+
+
+public:
+
+  const ImagePath name;
+  const string data;
+  const string slicesStr;
+  const int sliceDim;
+
+
+  // For existing files
+  HDFwrapper(const ImagePath & filedesc, bool writable, float mincon=0, float maxcon=0)
+    : HDFwrapper(filedesc, writable, 0, mincon, maxcon)
+  {
+    if (!isValidFile(filedesc))
+      throw_error(modname, "No HDF file at "+name+".");
 
     unsigned int h5openflags;
-    if (overwrite) {
+    if (writable) {
       //#ifdef H5F_ACC_SWMR_WRITE
       //h5openflags = H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE;
       //#else
@@ -415,196 +408,59 @@ public :
        || (filespace = H5Dget_space(dataset))<0
        || (rank = H5Sget_simple_extent_ndims(filespace))<0 ) {
       complete();
-      throw_error(modname, "Failed to open data " + id() + " for reading.");
+      throw_error(modname, "Failed to open data " + name.repr());
     }
     if (rank!=2 && rank !=3) {
       complete();
-      throw_error(modname, "Dataset is not 2D or 3D in " + id());
+      throw_error(modname, "Dataset is not 2D or 3D in " + name.repr());
     }
     cnts.resize(rank);
     if ( H5Sget_simple_extent_dims(filespace, cnts.data(), 0) != rank ) {
       complete();
-      throw_error(modname, "Failed to read dataset size in " + id());
+      throw_error(modname, "Failed to read dataset size in " + name.repr());
     }
     Shape<2> chsh =  rank == 2 ? Shape<2>(cnts(0), cnts(1))  :  exclDim(cnts, sliceDim);
     if (sliceDim==blitz::thirdDim) // need to transpose what I read in YZ plane
       chsh = Shape<2>(chsh(1),chsh(0));
-    if (chsh != sh)
-      throw_error(modname, "Inconsistent read from file " + id());
-    //if (overwrite) {
-      //#ifdef H5F_ACC_SWMR_WRITE
+    setFace(chsh);
+    const hid_t data_type = H5Dget_type(dataset);
+    if      ( H5Tequal(data_type, H5T_NATIVE_FLOAT) )  bpp = 0;
+    else if ( H5Tequal(data_type, H5T_NATIVE_CHAR) )   bpp = -8;
+    else if ( H5Tequal(data_type, H5T_NATIVE_UCHAR) )  bpp = 8;
+    else if ( H5Tequal(data_type, H5T_NATIVE_SHORT) )  bpp = -16;
+    else if ( H5Tequal(data_type, H5T_NATIVE_USHORT) ) bpp = 16;
+    else if ( H5Tequal(data_type, H5T_NATIVE_INT) )    bpp = -32;
+    else if ( H5Tequal(data_type, H5T_NATIVE_UINT) )   bpp = 32;
+    else if ( H5Tequal(data_type, H5T_NATIVE_LONG) )   bpp = -64;
+    else if ( H5Tequal(data_type, H5T_NATIVE_ULONG) )  bpp = 64;
+    else if ( writable && mincon != maxcon ) {
+      warn(modname, "Unsupported data type id in HDF " + name.repr() +
+                    ". Will rely on internal conversion from float.");
+      mincon = 0;
+      maxcon = 0;
+    }
+    //#ifdef H5F_ACC_SWMR_WRITE
+    //if (overwrite)
       //H5Fstart_swmr_write(hdfFile);
-      //#endif
-    //}
+    //#endif
     if ( rank == 2 )
       indices.push_back(0);
     else if ( rank == 3 )
       indices = slice_str2vec(slicesStr, cnts(sliceDim));
     setSlices(indices.size());
 
-    mmapMeIfYouCan(overwrite);
+    mmapMeIfYouCan();
 
   }
 
 
-  Map read(uint idx, Map & storage, const Crop<2> & crp = Crop<2>()) {
-    if ( ! hdfFile )
-      throw_error(modname, "File " + name + " was previously closed.");
-    if ( idx >= indices.size() )
-      throw_error(modname, "Index is beyond slices to read from " + name + ".");
-
-    const ssize_t idxme = indices.at(idx);
-
-    if (dataMmap.size()) {
-
-      Map rd;
-      switch (sliceDim) {
-      case blitz::firstDim : rd.reference(dataMmap(idxme, all, all)); break;
-      case blitz::secondDim: rd.reference(dataMmap(all, idxme, all)); break;
-      case blitz::thirdDim : rd.reference(dataMmap(all, all, idxme)
-                                          .transpose(blitz::secondDim, blitz::firstDim));
-        break;
-      default:
-        throw_error(modname, "Bad slice dimension. Should never happen.");
-      }
-      return crp.apply(rd);
-
-    } else {
-
-      storage.resize(crp.shape(face()));
-      Map rd;
-      if (sliceDim==blitz::thirdDim)
-        rd.resize(storage.transpose(blitz::secondDim, blitz::firstDim).shape()); // swap of face
-      else
-        rd.reference(safe(storage, false));
-
-      hid_t lms;
-      if (!crp && memspace)
-        lms = memspace;
-      else {
-        hsize_t mcnts[2] = {hsize_t(rd.shape()(0)), hsize_t(rd.shape()(1))},
-                moffs[2] = {0, 0};
-        lms = H5Screate_simple(2, mcnts, 0);
-        if (  lms < 0
-           || H5Sselect_hyperslab(lms, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
-          throw_error(modname, "Failed to prepare memory space to access file " + name + ".");
-      }
-      hid_t lfs=local_fs(idxme, crp);
-      //pthread_mutex_lock(&rwLock);
-      if ( H5Dread(dataset, H5T_NATIVE_FLOAT, lms, lfs, H5P_DEFAULT, rd.data()) < 0)
-        warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
-      //pthread_mutex_unlock(&rwLock);
-      if (lms != memspace)
-        H5Sclose(lms);
-      H5Sclose(lfs);
-
-      if (sliceDim==blitz::thirdDim)
-        rd.transposeSelf(blitz::secondDim, blitz::firstDim);
-      if ( rd.data() != storage.data() )
-        storage = rd;
-      return storage;
-
-    }
-
-
-
-  }
-
-
-  void write(uint idx, Map & storage) {
-
-    if ( ! hdfFile )
-      throw_error(modname, "File " + name + " was previously closed.");
-    unsigned intent;
-    H5Fget_intent(hdfFile, &intent);
-    if ( ! (intent & H5F_ACC_RDWR) )
-      throw_error(modname, "Can't write into " + name + " which was open read-only.");
-    if ( idx >= indices.size() )
-      throw_error(modname, "Index is beyond slices to write to " + name + ".");
-    if ( storage.shape() != face() )
-      throw_error(modname, "Shape of the slice to write " + toString(storage.shape())
-                  + " is different from existing shape" + toString(face()) + ".");
-    const int idxme = indices.at(idx);
-
-    if (dataMmap.size()) {
-
-      Map wrto;
-      switch (sliceDim) {
-      case blitz::firstDim : wrto.reference(dataMmap(idxme, all, all)); break;
-      case blitz::secondDim: wrto.reference(dataMmap(all, idxme, all)); break;
-      case blitz::thirdDim : wrto.reference(dataMmap(all, all, idxme).transpose(blitz::secondDim, blitz::firstDim)); break;
-      default:
-        throw_error(modname, "Bad slice dimension. Should never happen.");
-      }
-      wrto = storage;
-
-    } else {
-
-      Map wr;
-      if (sliceDim==blitz::thirdDim) {
-        Map tmap(storage);
-        wr.resize(ioface());
-        wr = tmap.transpose(blitz::secondDim, blitz::firstDim);
-      } else {
-        wr.reference(safe(storage));
-      }
-      hid_t lfs=local_fs(idxme);
-      //pthread_mutex_lock(&rwLock);
-      if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfs, H5P_DEFAULT, wr.data()) < 0)
-        warn(modname, "Failed to write slice " +toString(idxme)+ " to " + name + ".");
-      //pthread_mutex_unlock(&rwLock);
-      H5Sclose(lfs);
-
-    }
-
-  }
-
-};
-
-const string HDFread::modname = "HDF read";
-
-
-
-
-
-struct HDFwrite : public HDFrw {
-
-private:
-
-  const static string modname;
-  const float mincon;
-  const float maxcon;
-
-  void createNewGroup() {
-    hid_t lcpl=0, dcpl=0;
-    if (  hdfFile<=0
-       || (lcpl = H5Pcreate(H5P_LINK_CREATE)) == H5I_INVALID_HID
-       || H5Pset_create_intermediate_group(lcpl, 1) < 0
-       || H5Pset_char_encoding(lcpl, H5T_CSET_UTF8) < 0
-       || (dcpl = H5Pcreate(H5P_DATASET_CREATE)) == H5I_INVALID_HID
-       || H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER) < 0
-       || (filespace = H5Screate_simple(3, cnts.data(), NULL)) < 0
-       || (dataset = H5Dcreate(hdfFile, data.c_str(), H5T_NATIVE_FLOAT, filespace, lcpl, dcpl, H5P_DEFAULT)) == H5I_INVALID_HID
-       ) {
-      complete();
-      if (lcpl)
-        H5Pclose(lcpl);
-      if (dcpl)
-        H5Pclose(dcpl);
-    }
-  }
-
-
-public :
-
-  HDFwrite( const ImagePath & filedesc, Shape<3> _sh, float _mincon=0, float _maxcon=0)
-    : HDFrw(filedesc)
-    , mincon(_mincon)
-    , maxcon(_maxcon)
+  // for newly created files
+  HDFwrapper( const ImagePath & filedesc, const Shape<3> & sh, int bpp=0, float mincon=0, float maxcon=0)
+    : HDFwrapper(filedesc, true, bpp, mincon, maxcon)
   {
     rank = 3;
-    setFace(Shape<2>(_sh(1),_sh(2)));
-    const int zsize = _sh(0);
+    setFace(Shape<2>(sh(1),sh(2)));
+    const int zsize = sh(0);
     if ( ! zsize * size(face()) )
       throw warn(modname, "Zerro size to write.");
     indices = slice_str2vec(slicesStr, -zsize);
@@ -662,7 +518,7 @@ public :
         createNewGroup();
       else {
         complete();
-        if (isValidHDF()) {
+        if (isValidFile(filedesc)) {
           hbool_t locking, ignored;
           warn(modname, "Failed to open valid and existing HDF5 file \"" + name + "\".");
           if ( H5Pget_file_locking(file_fapl, &locking, &ignored) >= 0  &&  locking )
@@ -677,21 +533,181 @@ public :
 //    H5Fstart_swmr_write(hdfFile);
 //#endif
 
-    mmapMeIfYouCan(true);
+    mmapMeIfYouCan();
 
   }
 
 
+  ~HDFwrapper() {
+    closeMe(dataset_dxpl, P);
+    closeMe(file_fapl, P);
+    closeMe(memspace, S);
+    complete();
+  }
 
-  int write(int idx, const Map & storage) {
-    if ( hdfFile <= 0 )
-      throw_error(modname, "File \"" + id() + "\" was previously closed and no more write possible.");
+
+  static bool isValidPath(const ImagePath & filedesc) {
+    deque<string> comps = components(filedesc);
+    return filedesc.length() && comps.size() && comps.at(0).size();
+  }
+
+
+  static bool isValidFile(const ImagePath & filedesc) {
+    return isValidPath(filedesc)  &&  (H5Fis_hdf5(filedesc.c_str()) > 0);
+  }
+
+
+  Shape<2> face() const {
+    return sliceDim == blitz::thirdDim
+           ?  Shape<2>(iosh(2),iosh(1))
+           :  Shape<2>(iosh(1),iosh(2));
+  }
+
+
+  Shape<2> ioface() const {
+    return Shape<2>(iosh(1),iosh(2));
+  }
+
+
+  static Shape<2> ioface(const ImagePath & filedesc) {
+    HDFwrapper me(filedesc, false, 0, 0, 0);
+    if (!isValidFile(filedesc))
+      throw_error(modname, "No HDF file at "+me.name.repr()+".");
+    if (  (me.hdfFile = H5Fopen(me.name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)) <= 0
+       || (me.dataset = H5Dopen(me.hdfFile, me.data.c_str(), H5P_DEFAULT)) < 0
+       || (me.filespace = H5Dget_space(me.dataset)) < 0
+       || (me.rank = H5Sget_simple_extent_ndims(me.filespace))<0 )
+      throw_error(modname, "Failed to open data " + me.name.repr());
+    if (me.rank!=2 && me.rank !=3)
+      throw_error(modname, "Dataset is not 2D or 3D in " + me.name.repr());
+    me.cnts.resize(me.rank);
+    if ( H5Sget_simple_extent_dims(me.filespace, me.cnts.data(), 0) != me.rank )
+      throw_error(modname, "Failed to read dataset size in " + me.name.repr());
+    Shape<2> chsh =  me.rank == 2 ? Shape<2>(me.cnts(0), me.cnts(1))  :  me.exclDim(me.cnts, me.sliceDim);
+    return  me.sliceDim==blitz::thirdDim ? Shape<2>(chsh(1),chsh(0)) : chsh;
+  }
+
+
+  inline size_t slices() const {
+    return iosh(0);
+  }
+
+
+  void setFace(const Shape<2> & fcsh) {
+    iosh[1] = fcsh(sliceDim == blitz::thirdDim ? 1 : 0);
+    iosh[2] = fcsh(sliceDim == blitz::thirdDim ? 0 : 1);
+    const size_t ar = size(fcsh);
+    if ( ! ar )
+      return;
+    if (  (dataset_dxpl = H5Pcreate(H5P_DATASET_XFER)) == H5I_INVALID_HID
+       || H5Pset_buffer(dataset_dxpl, ar*sizeof(float), 0, 0) < 0 )
+      dataset_dxpl=H5P_DEFAULT;
+    if (  (file_fapl = H5Pcreate(H5P_FILE_ACCESS)) == H5I_INVALID_HID
+       || H5Pset_sieve_buf_size(file_fapl, ar*sizeof(float)) < 0
+       || H5Pset_cache(file_fapl, 0, 1, ar*sizeof(float), 1) < 0 )
+      file_fapl = H5P_DEFAULT;
+    hsize_t mcnts[2] = { hsize_t(ioface()(0)), hsize_t(ioface()(1))},
+            moffs[2] = {0, 0};
+    if ( (memspace = H5Screate_simple(2, mcnts, 0))<0
+       || H5Sselect_hyperslab(memspace, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
+      throw_error("HDF i/o", "Failed to prepare memory space to access file " + name + ".");
+  }
+
+
+  void setSlices(size_t _slices) {
+    iosh[0]=_slices;
+  }
+
+
+  Map read(uint idx, Map & storage, const Crop<2> & crp = Crop<2>()) {
+
+    if ( ! hdfFile )
+      throw_error(modname, "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
-      throw_error(modname, "Index " + toString(idx) + " to write is beyond initially requested size "
-                        + toString(indices.size()) + ". Write is ignored.");
+      throw_error(modname, "Index is beyond slices to read from " + name + ".");
+
+    const ssize_t idxme = indices.at(idx);
+
+    if (dataMmap.size()) {
+
+      Map rd;
+      switch (sliceDim) {
+      case blitz::firstDim : rd.reference(dataMmap(idxme, all, all)); break;
+      case blitz::secondDim: rd.reference(dataMmap(all, idxme, all)); break;
+      case blitz::thirdDim : rd.reference(dataMmap(all, all, idxme)
+                                          .transpose(blitz::secondDim, blitz::firstDim));
+        break;
+      default:
+        throw_error(modname, "Bad slice dimension. Should never happen.");
+      }
+      return crp.apply(rd);
+
+    } else {
+
+      storage.resize(crp.shape(face()));
+      Map rd;
+      if (sliceDim==blitz::thirdDim)
+        rd.resize(storage.transpose(blitz::secondDim, blitz::firstDim).shape()); // swap of face
+      else
+        rd.reference(safe(storage, false));
+
+      hid_t lms;
+      if (!crp && memspace)
+        lms = memspace;
+      else {
+        hsize_t mcnts[2] = {hsize_t(rd.shape()(0)), hsize_t(rd.shape()(1))},
+                moffs[2] = {0, 0};
+        lms = H5Screate_simple(2, mcnts, 0);
+        if (  lms < 0
+           || H5Sselect_hyperslab(lms, H5S_SELECT_SET, moffs, NULL, mcnts, NULL) < 0 )
+          throw_error(modname, "Failed to prepare memory space to access file " + name + ".");
+      }
+      hid_t lfs=local_fs(idxme, crp);
+      //pthread_mutex_lock(&rwLock);
+      if ( H5Dread(dataset, H5T_NATIVE_FLOAT, lms, lfs, H5P_DEFAULT, rd.data()) < 0)
+        warn(modname, "Failed to read slice " +toString(idx)+ " from " + name + ".");
+      //pthread_mutex_unlock(&rwLock);
+      if (lms != memspace)
+        H5Sclose(lms);
+      H5Sclose(lfs);
+
+      if (sliceDim==blitz::thirdDim)
+        rd.transposeSelf(blitz::secondDim, blitz::firstDim);
+      if ( rd.data() != storage.data() )
+        storage = rd;
+
+      if ( bpp && mincon != maxcon )
+        switch (bpp) {
+        case  -8 : delimit<char          >(storage, mincon, maxcon); break;
+        case   8 : delimit<unsigned char >(storage, mincon, maxcon); break;
+        case -16 : delimit<short         >(storage, mincon, maxcon); break;
+        case  16 : delimit<unsigned short>(storage, mincon, maxcon); break;
+        case -32 : delimit<int           >(storage, mincon, maxcon); break;
+        case  32 : delimit<unsigned int  >(storage, mincon, maxcon); break;
+        case -64 : delimit<long          >(storage, mincon, maxcon); break;
+        case  64 : delimit<unsigned long >(storage, mincon, maxcon); break;
+        default: throw_bug(modname + ": unsupported bits per sample " + toString(bpp));
+        }
+
+      return storage;
+
+    }
+
+  }
+
+
+  int write(uint idx, const Map & storage) {
+    if ( ! hdfFile )
+      throw_error(modname, "File " + name + " was previously closed.");
+    unsigned intent;
+    H5Fget_intent(hdfFile, &intent);
+    if ( ! (intent & H5F_ACC_RDWR) || ! writable )
+      throw_error(modname, "Can't write into " + name + " which was open read-only.");
+    if ( idx >= indices.size() )
+      throw_error(modname, "Index is beyond slices to write to " + name + ".");
     if ( storage.shape() != face() )
       throw_error(modname, "Shape of the slice to write " + toString(storage.shape())
-                  + " is different from initially requested shape" + toString(face()) + ".");
+                  + " is different from existing shape" + toString(face()) + ".");
     const int idxme = indices.at(idx);
 
     if (dataMmap.size()) {
@@ -708,19 +724,51 @@ public :
 
     } else {
 
-      Map wr;
-      if (sliceDim==blitz::thirdDim) {
-        Map tmap(storage);
-        wr.resize(ioface());
-        wr = tmap.transpose(blitz::secondDim, blitz::firstDim);
-      } else {
-        wr.reference(safe(storage));
-      }
       hid_t lfs=local_fs(idxme);
-      //pthread_mutex_lock(&rwLock);
-      if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfs, H5P_DEFAULT, wr.data()) < 0)
-        warn(modname, "Failed to write slice " +toString(idxme)+ " to " + name + ".");
-      //pthread_mutex_unlock(&rwLock);
+
+      if ( bpp && mincon != maxcon ) {
+
+        #define lmAndWr(hTp, cTp) { \
+          Map rstorage = sliceDim == blitz::thirdDim \
+                         ? storage.transpose(blitz::secondDim, blitz::firstDim) \
+                         : storage ; \
+          blitz::Array<cTp, 2> wra = limit<cTp>(rstorage, mincon, maxcon); \
+          if ( H5Dwrite(dataset, hTp, memspace, lfs, H5P_DEFAULT, wra.data()) < 0) \
+            warn(modname, "Failed to write slice " +toString(idxme)+ " to " + name + "."); \
+        }
+
+        switch (bpp) {
+        case  -8 : lmAndWr( H5T_NATIVE_CHAR  , char           ); break;
+        case   8 : lmAndWr( H5T_NATIVE_UCHAR , unsigned char  ); break;
+        case -16 : lmAndWr( H5T_NATIVE_SHORT , short          ); break;
+        case  16 : lmAndWr( H5T_NATIVE_USHORT, unsigned short ); break;
+        case -32 : lmAndWr( H5T_NATIVE_INT   , int            ); break;
+        case  32 : lmAndWr( H5T_NATIVE_UINT  , unsigned int   ); break;
+        case -64 : lmAndWr( H5T_NATIVE_LONG  , long           ); break;
+        case  64 : lmAndWr( H5T_NATIVE_ULONG , unsigned long  ); break;
+        default: throw_bug(modname + ": unsupported bits per sample " + toString(bpp));
+        }
+
+        #undef lmAndWr
+
+      } else {
+
+        Map wr;
+        if (sliceDim==blitz::thirdDim) {
+          Map tmap(storage);
+          wr.resize(ioface());
+          wr = tmap.transpose(blitz::secondDim, blitz::firstDim);
+        } else {
+          wr.reference(safe(storage));
+        }
+        //pthread_mutex_lock(&rwLock);
+        if ( H5Dwrite(dataset, H5T_NATIVE_FLOAT, memspace, lfs, H5P_DEFAULT, wr.data()) < 0)
+          warn(modname, "Failed to write slice " +toString(idxme)+ " to " + name + ".");
+        //pthread_mutex_unlock(&rwLock);
+
+      }
+
+
       H5Sclose(lfs);
 
     }
@@ -729,10 +777,10 @@ public :
 
   }
 
+
+  #undef closeMe
 };
-
-const string HDFwrite::modname = "HDF write";
-
+const string HDFwrapper::modname = "HDF5wrapper";
 
 
 
@@ -773,62 +821,11 @@ PixelSize(const ImagePath & filename) {
 
 
 
-Shape<2>
-ImageSizes_HDF5(const ImagePath & filename){
-  const string modname="HDF size";
-  HDFdesc me(filename);
-  if (!me.isValidHDF())
-    throw CtasErr(CtasErr::ERR, modname, "Not an HDF in \""+filename.repr()+"\".");
-
-  hid_t hdfFile(0)
-      , dataset(0)
-      , filespace(0);
-  int rank(0);
-  #define cleanup() \
-    if (filespace>0) H5Sclose(filespace); \
-    if (dataset>0) H5Dclose(dataset); \
-    if (hdfFile>0) H5Fclose(hdfFile);
-
-  if (  (hdfFile = H5Fopen(me.name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)) <0
-     || (dataset = H5Dopen(hdfFile, me.data.c_str(), H5P_DEFAULT))<0
-     || (filespace = H5Dget_space(dataset))<0
-     || (rank = H5Sget_simple_extent_ndims(filespace))<0
-     ) {
-    cleanup();
-    throw_error(modname, "Failed to open data " + filename.repr() + " for reading.");
-  }
-  if (rank!=2 && rank !=3) {
-    cleanup();
-    throw_error(modname, "Dataset is not 2D or 3D in " + filename.repr());
-  }
-  blitz::Array<hsize_t, 1> cnts(rank);
-  if ( H5Sget_simple_extent_dims(filespace, cnts.data(), 0) != rank ) {
-    cleanup();
-    throw_error(modname, "Failed to read dataset size in " + filename.repr());
-  }
-  Shape<2> ret;
-  if ( rank == 2 )
-    ret = Shape<2>(cnts(0), cnts(1));
-  else {
-    int idx=0, odx=0;
-    while (idx<rank) {
-      if (idx != me.sliceDim)
-        ret(odx++) = cnts(idx);
-      idx++;
-    }
-  }
-  if (me.sliceDim==blitz::thirdDim) // need to transpose what I read in YZ plane
-    ret = Shape<2>(ret(1),ret(0));
-  cleanup();
-  return ret;
-  #undef cleanup
-}
-
 
 Shape<2>
 ImageSizes(const ImagePath & filename){
   try {
-    return ImageSizes_HDF5(filename);
+    return HDFwrapper(filename,false).ioface();
   } catch (CtasErr err) {
     Magick::Image imag;
     try {
@@ -867,7 +864,7 @@ BadShape(const ImagePath & filename, const Shape<2> & shp){
 static void
 ReadImage_HDF5 (const ImagePath & filedesc, Map & storage, const Crop<2> & crp = Crop<2>() ) {
   try {
-    Map rd = HDFread(filedesc).read(0,storage,crp);
+    Map rd = HDFwrapper(filedesc, false).read(0,storage,crp);
     if (!areSame(rd,storage)) {
       storage.resize(rd.shape());
       storage=rd;
@@ -1055,7 +1052,7 @@ ReadImage(const ImagePath & filename, Map & storage, const Crop<2> & crp, const 
     const string ext = lower(filename.ext());
     if (size(shp))
       BadShape(filename, shp);
-    if (HDFdesc::isValidHDF(filename))
+    if (HDFwrapper::isValidFile(filename))
       ReadImage_HDF5(filename, storage, crp);
     else if ( ext == ".tif" || ext == ".tiff")
       ReadImage_TIFF(filename, storage, crp);
@@ -1105,7 +1102,7 @@ struct _ReadVolBySlice  {
   // I have observed situation where using ImagePath as the key could not
   // descriminate between different keys despite producing different hash.
   //unordered_map<ImagePath,HDFread> hdfs;
-  unordered_map<size_t,HDFread> hdfs;
+  unordered_map<size_t,HDFwrapper> hdfs;
   size_t ssize;
   Shape<2> face;
   const bool writable;
@@ -1129,7 +1126,7 @@ struct _ReadVolBySlice  {
       if (!ilist.size())
         face = ImageSizes(fileind);
       ilist.push_back(fileind);
-      if (HDFdesc::isValidHDF(fileind)) {
+      if (HDFwrapper::isValidPath(fileind)) {
         const size_t key = hash<string>{}(fileind.repr());
         hdfs.try_emplace(key, fileind, writable);
         ssize += hdfs.at(key).slices();
@@ -1151,7 +1148,7 @@ struct _ReadVolBySlice  {
       //if (hdfs.count(flnm)) {
       const size_t key = hash<string>{}(flnm.repr());
       if (hdfs.count(key)) {
-        HDFread & hdf = hdfs.at(key);
+        HDFwrapper & hdf = hdfs.at(key);
         if (idx < cfirst + hdf.slices())
           return hdf.read(idx-cfirst, out, crp);
         cfirst += hdf.slices();
@@ -1174,7 +1171,7 @@ struct _ReadVolBySlice  {
       //if (hdfs.count(flnm)) {
       const size_t key = hash<string>{}(flnm.repr());
       if (hdfs.count(key)) {
-        HDFread & hdf = hdfs.at(key);
+        HDFwrapper & hdf = hdfs.at(key);
         if (idx < cfirst + hdf.slices()) {
           hdf.write(idx-cfirst, out);
           return true;
@@ -1325,9 +1322,8 @@ Shape<3> ReadVolumeBySlice::shape() const {
 
 
 
-ImageProc::ImageProc( const Map & bg, const Map & df, const Map & dg, const Map & ms
-                    , float ang, const Crop<2> & crp, const Binn<2> & bnn
-                      , const Shape<2> & ish, float reNAN)
+ImageProc::ImageProc( const Shape<2> & ish, const Map & bg, const Map & df, const Map & dg, const Map & ms
+                    , float ang, const Crop<2> & crp, const Binn<2> & bnn, float reNAN)
   : MapProc(ang, crp, bnn, ish, reNAN)
   , FlatFieldProc( rotProc || ! bg.size() ? bg : crp.apply(bg),
                    rotProc || ! df.size() ? df : crp.apply(df),
@@ -1385,10 +1381,11 @@ class _SaveVolumeBySlice {
 private:
 
   const size_t zsize;
-  HDFwrite * hdfFile;
+  HDFwrapper * hdfFile;
   string sliceformat;
   const float mincon;
   const float maxcon;
+  const int bpp;
 
   // below members are to accumulate printed output to keep in order.
   pthread_mutex_t locker;
@@ -1397,18 +1394,19 @@ private:
 
 public:
 
-  _SaveVolumeBySlice(const ImagePath & filedesc, Shape<3> _sh, float mmin, float mmax)
+  _SaveVolumeBySlice(const ImagePath & filedesc, Shape<3> _sh, int bpp=0, float minval=0, float maxval=0)
     : zsize(_sh(0))
     , hdfFile(0)
-    , mincon(mmin)
-    , maxcon(mmax)
+    , mincon(minval)
+    , maxcon(maxval)
+    , bpp(bpp)
     , locker(PTHREAD_MUTEX_INITIALIZER)
     , nextOut(0)
   {
     if (filedesc == "-") { // special case for print out
       sliceformat = "-";
-    } else if ( HDFdesc::isValid(filedesc) )
-      hdfFile = new HDFwrite(filedesc, _sh, mincon, maxcon);
+    } else if ( HDFwrapper::isValidPath(filedesc) )
+      hdfFile = new HDFwrapper(filedesc, _sh, bpp, mincon, maxcon);
     else if ( zsize==1 )
       sliceformat=filedesc;
     else if ( filedesc.find('@') == string::npos )
@@ -1417,18 +1415,20 @@ public:
       sliceformat = mask2format(filedesc, zsize);
   }
 
+
   ~_SaveVolumeBySlice() {
     complete();
   }
+
 
   void complete() {
     if (hdfFile)
       delete hdfFile;
     hdfFile=0;
-
     if (sliceformat == "-")
       printf("\n");
   }
+
 
   ImagePath save(int idx, const Map & storage) {
 
@@ -1459,36 +1459,12 @@ public:
       return ImagePath();
 
     } else if (hdfFile) {
-
-      int slIdx;
-      if (mincon==maxcon)
-        slIdx = hdfFile->write(idx, storage);
-      else {
-        Map _stor(storage.shape());
-        for (ssize_t y = 0 ; y < storage.shape()(0) ; y++) {
-          for (ssize_t x = 0 ; x < storage.shape()(1) ; x++) {
-            float val = storage(y,x);
-            if (val < mincon)
-              _stor(y,x) = mincon;
-            else if (val > maxcon)
-              _stor(y,x) = maxcon;
-            else
-              _stor(y,x) = val;
-          }
-        }
-        slIdx = hdfFile->write(idx, storage);
-      }
+      int slIdx = hdfFile->write(idx, storage);
       return hdfFile->name + ':' + hdfFile->data + ':' + hdfFile->slicesStr + toString(slIdx);
-
     } else {
-
       const ImagePath fileName =  zsize == 1  ?  sliceformat : toString(sliceformat, idx);
-      if (mincon==maxcon)
-        SaveImage(fileName, storage);
-      else
-        SaveImage(fileName, storage, mincon, maxcon);
+      SaveImage(fileName, storage, bpp, mincon, maxcon);
       return fileName;
-
     }
   }
 
@@ -1540,7 +1516,7 @@ private:
 public:
 
   SaveVolInThread(const ImagePath & filedesc, const Volume & _vol, bool verbose,
-                  const std::string & slicedesc, float mmin, float mmax)
+                  const std::string & slicedesc, int bpp=0, float minval=0, float maxval=0)
     : vol(_vol)
     , InThread(verbose , "saving volume")
   {
@@ -1568,7 +1544,7 @@ public:
         ssh = Shape<2>(vsh(1),vsh(2));
     }
     indices = slice_str2vec(sindex, vsh(sliceDim));
-    writer = new _SaveVolumeBySlice(filedesc, Shape<3>(vsh(sliceDim), ssh(0), ssh(1)), mmin, mmax);
+    writer = new _SaveVolumeBySlice(filedesc, Shape<3>(vsh(sliceDim), ssh(0), ssh(1)), bpp, minval, maxval);
     bar.setSteps(indices.size());
 
   }
@@ -1581,8 +1557,8 @@ public:
   }
 
   static void execute(const ImagePath & filedesc, const Volume & _vol, bool verbose,
-                      const std::string & slicedesc, float mmin, float mmax) {
-    SaveVolInThread(filedesc, _vol, verbose, slicedesc, mmin, mmax)
+                      const std::string & slicedesc, int bpp=0, float minval=0, float maxval=0) {
+    SaveVolInThread(filedesc, _vol, verbose, slicedesc, bpp, minval, maxval)
         .InThread::execute();
   }
 
@@ -1590,14 +1566,15 @@ public:
 
 
 void SaveVolume(const ImagePath & filedesc, Volume & storage, bool verbose,
-                const string & slicedesc, float mmin, float mmax) {
-  SaveVolInThread::execute(filedesc, storage, verbose, slicedesc, mmin, mmax);
+                const string & slicedesc, int bpp, float minval, float maxval) {
+  SaveVolInThread::execute(filedesc, storage, verbose, slicedesc, bpp, minval, maxval);
 }
 
 
 
-SaveVolumeBySlice::SaveVolumeBySlice(const ImagePath & filedesc, Shape<3> _sh, float mmin, float mmax)
-  : guts(new _SaveVolumeBySlice(filedesc, _sh, mmin, mmax))
+SaveVolumeBySlice::SaveVolumeBySlice(const ImagePath & filedesc, Shape<3> _sh
+                                    , int bpp, float minval, float maxval)
+  : guts(new _SaveVolumeBySlice(filedesc, _sh, bpp, minval, maxval))
 {}
 
 SaveVolumeBySlice::~SaveVolumeBySlice() {
@@ -1618,167 +1595,107 @@ size_t SaveVolumeBySlice::slices() const {
 
 
 
-/// Saves image in integer format using ImageMagick library.
-///
-/// @param filename file to save image into.
-/// @param storage array with the image.
-///
-static void
-SaveImageINT_IM (const Path & filename, const Map & storage){
-
-  if ( ! storage.size() ) {
-    warn("save image", "Zero-sized array for image.");
-    return;
-  }
-
-  const int
-    width = storage.columns(),
-    hight = storage.rows();
-
-  Map _storage(safe(storage));
-  Magick::Image imag( width, hight, "I", Magick::FloatPixel, _storage.data() );
-  imag.classType(Magick::DirectClass);
-  imag.type( Magick::GrayscaleType );
-  imag.depth(8);
-  //imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
-  try { imag.write(filename); }
-  catch ( Magick::Exception & error) {
-    throw_error("save image IM", "Could not write image file\""+filename+"\"."
-                        " Caught Magick++ exception: \""+error.what()+"\".");
-  }
-
-}
-
-
-
-
-namespace blitz {
-
-/// Limits the number to the [0;1] region
-///
-/// @param x number to be limited
-///
-/// @return limited number
-///
-float
-limit01(float x){
-  return ( x < 0.0 ) ?
-    0.0 :
-    ( x > 1.0 ? 1.0 : x ) ;
-}
-
-/// \cond
-BZ_DECLARE_FUNCTION(limit01);
-/// \endcond
-
-}
-
-
-
-/// \brief Save the array into integer image.
-///
-/// Stores the array in the integer-based image. If minval is equal to maxval
-/// then the minimum and maximum values of the array data corresponds to black
-/// and white respectively.
-///
-/// @param filename the name of the image file image.
-/// @param storage the array to be written to the image.
-/// @param minval the value corresponding to black.
-/// @param maxval the value corresponding to white.
-///
-static void
-SaveImageINT (const Path &filename, const Map &storage,
-              float minval=0, float maxval=0 ) {
-
-  if ( ! storage.size() ) {
-    warn("save image",
-         "Zero-sized array for image '" + filename + "': won't save." );
-    return;
-  }
-
-  Map _storage(safe(storage));
-  Map stor(_storage.shape());
-  if (minval == maxval) {
-    minval = (blitz::min)(_storage);
-    maxval = (blitz::max)(_storage);
-  }
-  if (minval == maxval) {
-    warn("save image",
-         "All elements in the image '" + filename + "' have the same value.");
-    if      ( minval < 0.0 ) stor = 0.0;
-    else if ( minval > 1.0 ) stor = 1.0;
-    else                     stor = minval;
-  } else {
-    const string modname = "Limit array";
-    stor = ( _storage - minval ) / (maxval-minval);
-    stor = limit01(stor);
-  }
-  SaveImageINT_IM(filename, stor);
-
-}
-
-
-
-
-/// \brief Save the array into float point TIFF image.
-///
-/// Stores the array in the float-point TIFF file. Be careful: limited number
-/// of editors/viewers/analyzers support float point format.
-///
-/// @param filename the name of the image file image.
-/// @param storage the array to be written to the image.
-///
 void
-SaveImageFP (const Path & filename, const Map & storage, uint attempts=3){
+SaveImage(const ImagePath & filename, const Map & storage, int bpp, float minval, float maxval){
 
-  static const string modname="save 32fp image";
-  if (!attempts)
-    throw_error(modname, "Failed to save image to file \"" + filename + "\" after all attempts.");
+  static const string modname="save image";
   if ( ! storage.size() ) {
     warn(modname, "Zero-sized array for image \"" + filename + "\".");
     return;
   }
-  const int
-    width = storage.columns(),
-    hight = storage.rows();
+  const Shape<2> sh = storage.shape();
 
-  try {
+  const string lExt = lower(filename.ext());
+  if ( lExt == ".tif" || lExt == ".tiff" ) { // libTiff
+
     TIFF *image = 0;
     int fd=0;
+    uint32_t sampleFormat;
+    if (bpp<0)
+      sampleFormat = SAMPLEFORMAT_INT;
+    else if (bpp>0)
+      sampleFormat = SAMPLEFORMAT_UINT;
+    else
+      sampleFormat = SAMPLEFORMAT_IEEEFP;
+
     safelyOpenTIFForThrow(&image, &fd, modname, filename, false);
-    if (   TIFFSetField(image, TIFFTAG_IMAGEWIDTH, width) != 1
-        || TIFFSetField(image, TIFFTAG_IMAGELENGTH, hight) !=1
-        || TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 32) != 1
+    if (   TIFFSetField(image, TIFFTAG_IMAGEWIDTH, sh(1)) != 1
+        || TIFFSetField(image, TIFFTAG_IMAGELENGTH, sh(0)) !=1
+        || TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, bpp ? abs(bpp) : 32) != 1
         || TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1) != 1
-        || TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, hight) != 1
-        || TIFFSetField(image, TIFFTAG_SAMPLEFORMAT,SAMPLEFORMAT_IEEEFP) != 1
+        || TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, sh(0)) != 1
+        || TIFFSetField(image, TIFFTAG_SAMPLEFORMAT, sampleFormat) != 1
         || TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK) != 1 )
       safelyCloseTIFFandThrow(image, fd, modname, "Could not set a field in image \"" + filename + "\".");
-    Map _storage(safe(storage));
-    int wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), width*hight*sizeof(float));
+
+    int wret;
+    #define lmAndWr(cTp) { \
+      blitz::Array<cTp, 2> wra = limit<cTp>(storage, minval, maxval); \
+      wret = TIFFWriteRawStrip(image, 0, (void*) wra.data(), size(sh)*sizeof(cTp)); \
+    }
+
+    switch (bpp) {
+    case   0 : {
+      Map _storage(safe(storage));
+      wret = TIFFWriteRawStrip(image, 0, (void*) _storage.data(), size(sh)*sizeof(float));
+    } ; break ;
+    case  -8 : lmAndWr(char           ); break;
+    case   8 : lmAndWr(unsigned char  ); break;
+    case -16 : lmAndWr(short          ); break;
+    case  16 : lmAndWr(unsigned short ); break;
+    case -32 : lmAndWr(int            ); break;
+    case  32 : lmAndWr(unsigned int   ); break;
+    case -64 : lmAndWr(long           ); break;
+    case  64 : lmAndWr(unsigned long  ); break;
+    default: throw_bug(modname + ": unsupported bits per sample " + toString(bpp));
+    }
     safelyCloseTIFFandThrow(image, fd, modname,  (-1 != wret) ? "" : "Could not save image to file \"" + filename + "\"." );
 
-  } catch (...) {
-    return SaveImageFP(filename, storage, --attempts);
+    #undef lmAndWr
+
+
+  } else { // ImageMagick
+
+    if (bpp<0)
+      throw_error(modname, "Float point and signed format images can be only of tif.");
+    if (minval == maxval) {
+      minval = (blitz::min)(storage);
+      maxval = (blitz::max)(storage);
+    }
+    Map rstorage(sh);
+    if (minval == maxval) {
+      warn(modname, "All elements in the image '" + filename + "' have the same value.");
+      rstorage = minval > 0.0  ?  1  : 0;
+    } else {
+      const float lims_width = maxval-minval;
+      for (ssize_t y = 0 ; y < storage.shape()(0) ; y++) {
+        for (ssize_t x = 0 ; x < storage.shape()(1) ; x++) {
+          float interim = ( storage(y,x) - minval ) / lims_width ;
+          if (interim < 0)
+            rstorage(y,x) = 0;
+          else if (interim > 1)
+            rstorage(y,x) = 1;
+          else
+            rstorage(y,x) = interim;
+        }
+      }
+    }
+
+    try {
+      Magick::Image imag = Magick::Image( sh(1), sh(0), "I", Magick::FloatPixel, rstorage.data() );
+      imag.classType(Magick::DirectClass);
+      imag.type( Magick::GrayscaleType );
+      imag.depth(bpp);
+      //imag.magick("TIFF"); // saves to tif if not overwritten by the extension.
+      imag.write(filename);
+    } catch ( Magick::Exception & error) {
+      throw_error(modname, "Could not write image file\""+filename+"\"."
+                          " Caught Magick++ exception: \""+error.what()+"\".");
+    }
+
   }
 
-
 }
-
-
-void
-SaveImage(const ImagePath & filename, const Map & storage, bool saveint){
-  if (saveint) SaveImageINT(filename, storage);
-  else SaveImageFP(filename, storage);
-}
-
-void
-SaveImage(const ImagePath & filename, const Map & storage,
-          float minval, float maxval ){
-  SaveImageINT(filename, storage, minval, maxval);
-}
-
-
 
 
 
@@ -1931,11 +1848,10 @@ LoadData ( const Path filename, Map & storage ) {
 
 
 const string IntOptionDesc =
-  "If this option is not set, the output format defaults to the"
-  " 32-bit float-point TIFF (regardless of the extension)."
-  " If it is set, the image format is derived from the output"
-  " file extension (TIFF if the extension does not correspond"
-  " to any format).";
+  " Bits per pixel. Can be 0 (default: 32-bit float point), 8, 16, 32, 64"
+  " and corresponding negative values for signed output data format."
+  " Note that float point and signed data formats are available only for"
+  " TIFF and HDF5 file formats.";
 
 const string SliceOptionDesc=
   "The string describing the slices in the image stack which are to be"

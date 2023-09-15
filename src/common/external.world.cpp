@@ -339,7 +339,7 @@ class HDFwrapper {
     , maxcon(maxcon)
     , name( [&filedesc](){
         if ( ! isValidPath(filedesc) )
-          throw_error(modname, "Ivalid HDF5 path descriptor \""+filedesc.repr()+"\"");
+          throw_error(modname, "Invalid HDF5 path descriptor \""+filedesc.repr()+"\"");
         return filedesc;
       }() )
     , data(components(filedesc)[0])
@@ -396,11 +396,11 @@ public:
       h5openflags = H5F_ACC_RDWR;
       //#endif
     } else {
-      #ifdef H5F_ACC_SWMR_READ
-      h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
-      #else
+      //#ifdef H5F_ACC_SWMR_READ
+      //h5openflags = H5F_ACC_RDONLY | H5F_ACC_SWMR_READ;
+      //#else
       h5openflags = H5F_ACC_RDONLY;
-      #endif
+      //#endif
     }
     hdfFile = H5Fopen(name.c_str(), h5openflags, H5P_DEFAULT);
     if (  hdfFile<=0
@@ -824,21 +824,19 @@ PixelSize(const ImagePath & filename) {
 
 Shape<2>
 ImageSizes(const ImagePath & filename){
-  try {
+  if (HDFwrapper::isValidFile(filename))
     return HDFwrapper(filename,false).ioface();
-  } catch (CtasErr err) {
-    Magick::Image imag;
-    try {
-      imag.ping(filename);
-    } catch ( Magick::WarningCoder err ) {
-    } catch ( Magick::Exception & error) {
-      throw_error("get image size", "Could not read image file \""+filename+"\"."
-                          " Caught Magick++ exception: \""+error.what()+"\".");
-    } catch (...) {
-      throw_error("get image size", "Could not read image file \""+filename+"\".");
-    }
-    return Shape<2>( imag.rows(), imag.columns() );
+  Magick::Image imag;
+  try {
+    imag.ping(filename);
+  } catch ( Magick::WarningCoder err ) {
+  } catch ( Magick::Exception & error) {
+    throw_error("get image size", "Could not read image file \""+filename+"\"."
+                                  " Caught Magick++ exception: \""+error.what()+"\".");
+  } catch (...) {
+    throw_error("get image size", "Could not read image file \""+filename+"\".");
   }
+  return Shape<2>( imag.rows(), imag.columns() );
 }
 
 

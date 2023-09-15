@@ -112,7 +112,7 @@ clargs(int argc, char *argv[]) :
 
 
 /// \MAIN{dei}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv);
   const DEIprocess proc(args.deiopt.Gm, args.deiopt.Gp, args.deiopt.Rm, args.deiopt.Rp);
@@ -134,6 +134,4 @@ int main(int argc, char *argv[]) {
     SaveImage(args.abs_name, compa, args.bpp);
   }
 
-  exit(0);
-
-}
+} exit(0); }

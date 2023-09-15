@@ -100,7 +100,7 @@ clargs(int argc, char *argv[]) :
 
 
 /// \MAIN{ct}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv) ;
 
@@ -124,6 +124,4 @@ int main(int argc, char *argv[]) {
 
   SaveImage(args.out_name, arr);
 
-  exit(0);
-
-}
+} exit(0); }

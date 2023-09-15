@@ -144,9 +144,8 @@ public:
 
 
 /// \MAIN{ct}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
   const clargs args(argc, argv) ;
   RingInThread factory(args);
   factory.execute();
-  exit(0);
-}
+} exit(0); }

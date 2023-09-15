@@ -84,7 +84,7 @@ clargs(int argc, char *argv[]) :
          EDEIoptions::rcOptionShortDesc, EDEIoptions::rcOptionDesc)
   .add(edeiopt.options())
   .add(poptmx::OPTION, &bpp,'i', "int",
-         "Output image(s) as integer.", IntOptionDesc)
+         "Bits per pixel to output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -114,7 +114,7 @@ clargs(int argc, char *argv[]) :
 
 
 /// \MAIN{dei}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv);
   const EDEIprocess proc(args.edeiopt.RCname, args.edeiopt.Gm, args.edeiopt.Gp,
@@ -137,6 +137,4 @@ int main(int argc, char *argv[]) {
     SaveImage(args.abs_name, compa, args.bpp);
   }
 
-  exit(0);
-
-}
+} exit(0); }

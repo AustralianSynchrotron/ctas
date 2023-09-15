@@ -66,6 +66,30 @@ const string IPCprocess::modname = "IPC process";	///< Module name.
 
 
 
+class IPCprocess::ForCLdev {
+  const Shape<2> sh;
+  const Shape<2> msh;
+  const float d2b;
+  CLenv & cl;
+  CMap cin;
+  CLmem clmid;                 ///< Internally used array for the zero-padded data.
+  CLprogram oclProgram;
+  CLkernel kernelApplyPhsFilter;
+  clfftPlanHandle clfft_plan;
+  CLmem clfftTmpBuff;
+  cl_int clfftExec(clfftDirection dir) const;
+  pthread_mutex_t locker;
+  static const std::string oclsrc;
+  int useCounter=0;
+public:
+  ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b);
+  ~ForCLdev();
+  bool extract(Map & in);
+};
+
+
+
+
 IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b)
   : sh(sh)
   , msh(closest_factorable(sh(0), {2,3,5,7}),
@@ -91,6 +115,9 @@ IPCprocess::ForCLdev::~ForCLdev() {
   if (clfft_plan)
     clfftDestroyPlan(&clfft_plan);
   pthread_mutex_destroy(&locker);
+#ifdef DEBUGCTAS
+    cout << "DBGCTAS: IPCprocess::ForCLdev " << toString("%p", this) << " : " << useCounter << "\n";
+#endif // DEBUGCTAS
 }
 
 
@@ -104,6 +131,7 @@ IPCprocess::ForCLdev::extract(Map & in) {
     throw_error(modname, "Unexpected array size on OCL extract.");
   if ( ! CL_isReady() || ( cin.size() && ! clfft_plan ) ||  pthread_mutex_trylock(&locker) )
     return false;
+  ++useCounter;
 
   bool toRet = false;
   try {
@@ -200,7 +228,7 @@ IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b)
   if (!CL_isReady())
     warn(modname, "OpenCL is not functional.");
   for (CLenv & env : clenvs)
-    try{ envs.emplace_back(env, sh, d2b); } catch(...) {}
+    try{ _envs.push_back(new ForCLdev(env, sh, d2b)); } catch(...) {}
 
   float* midd = mid.data();
   fft_f = fftwf_plan_r2r_2d ( msh(0), msh(1), midd, midd, FFTW_R2HC, FFTW_R2HC, FFTW_ESTIMATE);
@@ -249,6 +277,9 @@ IPCprocess::~IPCprocess() {
     fftwf_destroy_plan(fft_f);
   if (fft_b)
     fftwf_destroy_plan(fft_b);
+  for (ForCLdev * env : _envs)
+    if (env)
+      delete env;
 }
 
 
@@ -277,8 +308,8 @@ IPCprocess::extract(const Map & in, Map & out) {
   mid = 0.0;
   mid(r0_1, r1_1) = out;
   bool doneOnGPU = false;
-  for (ForCLdev & env : envs)
-    if ((doneOnGPU = env.extract(mid)))
+  for (ForCLdev * env : envs)
+    if ((doneOnGPU = env->extract(mid)))
       break;
   if (!doneOnGPU) {
     fftwf_execute(fft_f);

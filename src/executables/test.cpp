@@ -71,7 +71,7 @@ clargs(int argc, char *argv[])
 
 
 /// \MAIN{ct}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv) ;
 
@@ -92,6 +92,4 @@ int main(int argc, char *argv[]) {
   Map oarr;
   trans.process(arr, oarr);
   */
-  exit(0);
-
-}
+} exit(0); }

@@ -51,7 +51,7 @@ clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &x, 'x', "xsize", "X size (pixels)", "", "ysize")
   .add(poptmx::OPTION, &y, 'y', "ysize", "Y size (pixels)", "", "xsize")
   .add(poptmx::OPTION, &d2b, 'd', "d2b", "delta/beta ratio (0 for no absorption).", "", toString(d2b))
-  .add(poptmx::OPTION, &bpp,'i', "int", "Output image(s) as integer.", IntOptionDesc)
+  .add(poptmx::OPTION, &bpp,'i', "int", "Bits per pixel to output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose);
 
   if ( ! table.parse(argc,argv) )
@@ -98,7 +98,7 @@ clargs(int argc, char *argv[]) :
 
 
 /// \MAIN{ct}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
   const clargs args(argc, argv) ;
   Shape<2> sh(args.y, args.x);
   Map intensity(sh);
@@ -106,8 +106,7 @@ int main(int argc, char *argv[]) {
   simulateTif( tif, sh, args.d2b, args.theta, args.dd, args.lambda);
   propagate(tif, intensity, args.dd, args.lambda, args.dist);
   SaveImage(args.outIm, intensity, args.bpp);
-  exit(0);
-}
+} exit(0); }
 
 
 

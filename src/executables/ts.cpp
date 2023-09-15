@@ -97,7 +97,7 @@ clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &center, 'c', "center",
      "Rotation center.", CenterOptionDesc, toString(center))
   .add(poptmx::OPTION, &bpp,'i', "int",
-         "Output image(s) as integer.", IntOptionDesc)
+         "Bits per pixel to output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -194,7 +194,7 @@ struct proj_info {
 
 
 /// \MAIN{ts}
-int main( int argc, char *argv[] ) {
+int main( int argc, char *argv[] ) { {
 
   const clargs args(argc, argv);
 
@@ -219,7 +219,5 @@ int main( int argc, char *argv[] ) {
 
   SaveImage(args.outmask, result, args.bpp);
 
-  exit (0);
-
-}
+} exit (0); }
 

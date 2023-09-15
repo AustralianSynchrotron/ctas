@@ -28,6 +28,7 @@
 /// This file contains the declarations of the functions, types,
 /// classes to be used in most of the project routines.
 
+// #define DEBUGCTAS
 
 #ifndef COMMON_H
 #define COMMON_H

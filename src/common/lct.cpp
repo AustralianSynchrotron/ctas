@@ -318,6 +318,7 @@ class CTrec::ForCLdev {
   CLmem clAngles;
   cl_float recCof;
   pthread_mutex_t locker;
+  int useCounter=0;
 
   bool checkReady() {
     if (clSlice)
@@ -360,6 +361,9 @@ public:
 
   ~ForCLdev() {
     pthread_mutex_destroy(&locker);
+#ifdef DEBUGCTAS
+    cout << "DBGCTAS: CTrec::ForCLdev " << toString("%p", this) << " : " << useCounter << "\n";
+#endif // DEBUGCTAS
   } ;
 
   int reconstruct(Map & fsin, Map & slice, float center) {
@@ -369,6 +373,7 @@ public:
       return -1;
     if ( pthread_mutex_trylock(&locker) )
       return 0;
+    ++useCounter;
     bool toRet = 0;
     try{
       if (!checkReady())

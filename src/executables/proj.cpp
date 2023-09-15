@@ -984,7 +984,7 @@ public:
 
 
 /// \MAIN{projection}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv) ;
   const Shape<2> ish(ImageSizes(args.images.at(0).at(0).repr()));
@@ -1126,7 +1126,5 @@ int main(int argc, char *argv[]) {
     ProjInThread(allInRd, allOutSv, canonDZs, canonPP, projes, args.zbinn, args.beverbose)
         .execute();
 
-  exit(0);
-
-}
+} exit(0); }
 

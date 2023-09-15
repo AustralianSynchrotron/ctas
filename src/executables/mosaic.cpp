@@ -777,7 +777,7 @@ public:
 
 
 /// \MAIN{projection}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv) ;
   const int nofIn = args.images.size();
@@ -904,7 +904,5 @@ int main(int argc, char *argv[]) {
     ProjInThread(allInRd, allOutSv, canonPP, projes, args.zbinn, args.beverbose)
         .execute();
 
-  exit(0);
-
-}
+} exit(0); }
 

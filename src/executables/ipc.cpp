@@ -88,7 +88,7 @@ clargs::clargs(int argc, char *argv[]) :
   .add(poptmx::OPTION, &phsExp,'e', "exp", "Outputs exponent of phase contrast.",
        "Useful for further CT processing of output as absorption contrast.")
   .add(poptmx::OPTION, &bpp,'i', "int",
-       "Output image(s) as integer.", IntOptionDesc)
+       "Bits per pixel to output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -217,15 +217,11 @@ public:
 
 
 /// \MAIN{ct}
-int main(int argc, char *argv[]) {
-  try {
-    const clargs args(argc, argv) ;
-    ProcInThread procall(args);
-    procall.execute();
-  } catch (...) {
-    throw;
-  }
-}
+int main(int argc, char *argv[]) { {
+  const clargs args(argc, argv) ;
+  ProcInThread procall(args);
+  procall.execute();
+} exit(0); }
 
 
 

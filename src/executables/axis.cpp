@@ -113,7 +113,7 @@ clargs(int argc, char *argv[])
 
 
 /// \MAIN{ct}
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { {
   const clargs args(argc, argv) ;
   const Shape<2> ish = ImageSizes(args.imgs[0]);
   if (ish(1) < 2 || ish(0) < 2)
@@ -204,7 +204,4 @@ int main(int argc, char *argv[]) {
 
   #undef rotax
 
-  exit(0);
-
-
-}
+} exit(0); }

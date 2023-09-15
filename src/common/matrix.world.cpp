@@ -134,6 +134,7 @@ class BinnProc::ForCLdev {
   CLmem clinarr;
   CLmem cloutarr;
   pthread_mutex_t locker;
+  int useCounter=0;
 
 public:
 
@@ -150,12 +151,16 @@ public:
 
   ~ForCLdev(){
     pthread_mutex_destroy(&locker);
+#ifdef DEBUGCTAS
+    cout << "DBGCTAS: BinnProc::ForCLdev " << toString("%p", this) << " : " << useCounter << "\n";
+#endif // DEBUGCTAS
   }
 
   bool apply(const Map & imap, Map & omap) {
 
     if( pthread_mutex_trylock(&locker) )
       return false;
+    ++useCounter;
 
     bool done = false;
     try {
@@ -607,6 +612,7 @@ class RotateProc::ForCLdev {
   CLmem clflx;
   CLmem clfly;
   pthread_mutex_t locker;
+  int useCounter=0;
 
 public:
 
@@ -622,12 +628,16 @@ public:
 
   ~ForCLdev(){
     pthread_mutex_destroy(&locker);
+#ifdef DEBUGCTAS
+    cout << "DBGCTAS: RotateProc::ForCLdev " << toString("%p", this) << " : " << useCounter << "\n";
+#endif // DEBUGCTAS
   }
 
   bool apply(const Map & imap, Map & omap, const float bg) {
 
     if( pthread_mutex_trylock(&locker) )
       return false;
+    useCounter++;
 
     try {
 

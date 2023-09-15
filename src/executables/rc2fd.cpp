@@ -41,7 +41,7 @@ struct clargs {
   bool beverbose;				///< Be verbose flag
 
   /// \CLARGSF
-  clargs(int argc, char *argv[]); 
+  clargs(int argc, char *argv[]);
 };
 
 
@@ -49,49 +49,46 @@ clargs::
 clargs(int argc, char *argv[]){
 
   beverbose = false;
-  
+
   poptmx::OptionTable table
-	("Converts the rocking curve of the analyzer to the function used in the EDEI.",
-	 "I use this program only to develop and debug the EDEI algorithm. If you"
-	 " you are not interested in it, you don't need this program.");
+  ("Converts the rocking curve of the analyzer to the function used in the EDEI.",
+   "I use this program only to develop and debug the EDEI algorithm. If you"
+   " you are not interested in it, you don't need this program.");
 
   table
-	.add(poptmx::NOTE, "ARGUMENTS:")
+  .add(poptmx::NOTE, "ARGUMENTS:")
     /*.add(poptmx::ARGUMENT, &edeiopt.RCname, "RC",
       EDEIoptions::rcOptionShortDesc, EDEIoptions::rcOptionDesc, "")*/
     .add(poptmx::ARGUMENT, &edeiopt.FDname, "FD",
          EDEIoptions::fdOptionShortDesc, EDEIoptions::fdOptionDesc, "processed-<RC>")
 
-	.add(poptmx::NOTE, "OPTIONS:")
-	.add(edeiopt.options())
-	.add_standard_options(&beverbose)
-	.add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
+  .add(poptmx::NOTE, "OPTIONS:")
+  .add(edeiopt.options())
+  .add_standard_options(&beverbose)
+  .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
   if ( ! table.parse(argc,argv) )
-	exit(0);
+  exit(0);
   if ( ! table.count() ) {
-	table.usage();
-	exit(0);
+  table.usage();
+  exit(0);
   }
 
   command = table.name();
 
   if ( ! table.count(&edeiopt.RCname) )
     exit_on_error(command, string () +
-				  "Missing required argument: "+table.desc(&edeiopt.RCname)+".");
+          "Missing required argument: "+table.desc(&edeiopt.RCname)+".");
   if ( ! table.count(&edeiopt.FDname) )
-	edeiopt.FDname = upgrade(edeiopt.RCname, "processed-");
+  edeiopt.FDname = upgrade(edeiopt.RCname, "processed-");
 
 }
 
 
 /// \MAIN{rc2fd}
-int main(int argc, char *argv[]) {
-
+int main(int argc, char *argv[]) { {
   const clargs args(argc, argv);
   const EDEIprocess proc(args.edeiopt.RCname, args.edeiopt.Gm, args.edeiopt.Gp,
                          args.edeiopt.mpinter, args.edeiopt.smooth, args.edeiopt.acof);
   proc.saveFD(args.edeiopt.RCname);
-  exit(0);
-
-}
+} exit(0); }

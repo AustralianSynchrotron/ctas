@@ -123,28 +123,9 @@ private:
 
   static const std::string modname;	///< Module name.
 
-  class ForCLdev {
-    const Shape<2> sh;
-    const Shape<2> msh;
-    const float d2b;
-    CLenv & cl;
-    CMap cin;
-    CLmem clmid;                 ///< Internally used array for the zero-padded data.
-    CLprogram oclProgram;
-    CLkernel kernelApplyPhsFilter;
-    clfftPlanHandle clfft_plan;
-    CLmem clfftTmpBuff;
-    cl_int clfftExec(clfftDirection dir) const;
-    pthread_mutex_t locker;
-    static const std::string oclsrc;
-  public:
-    ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b);
-    ~ForCLdev();
-    bool extract(Map & in);
-  };
-
-  std::list<ForCLdev>  _envs;
-  std::list<ForCLdev> & envs;
+  class ForCLdev;
+  std::list<ForCLdev*>  _envs;
+  std::list<ForCLdev*> & envs;
   int cntr = 0;
 
   mutable Map mid;

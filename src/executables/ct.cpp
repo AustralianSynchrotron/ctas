@@ -222,7 +222,10 @@ public:
   }
 
   ~RecInThread() {
-    auto dlnl = [&](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
+    auto dlnl = [&](auto & pntr) { if (pntr) {
+        delete pntr;
+        pntr=0;
+      } } ;
     for (auto celem : rings) dlnl(celem.second);
     for (auto celem : recs)  dlnl(celem.second);
     for (auto celem : imaps) dlnl(celem.second);

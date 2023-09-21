@@ -60,22 +60,6 @@
 
 
 
-pthread_mutex_t fftw_lock = PTHREAD_MUTEX_INITIALIZER;
-
-inline fftwf_plan safe_fftwf_plan_r2r_1d(int n, float *inout, fftw_r2r_kind kind) {
-  pthread_mutex_lock(&fftw_lock);
-  fftwf_plan ret = fftwf_plan_r2r_1d(n, inout, inout, kind, FFTW_ESTIMATE);
-  pthread_mutex_unlock(&fftw_lock);
-  return ret;
-}
-
-inline void safe_fftw_destroy_plan(fftwf_plan plan) {
-  pthread_mutex_lock(&fftw_lock);
-  fftwf_destroy_plan(plan);
-  pthread_mutex_unlock(&fftw_lock);
-}
-
-
 /// \defgroup CT CT and TS reconstruction.
 ///
 /// Where actual \CT and \TS reconstruction is done.

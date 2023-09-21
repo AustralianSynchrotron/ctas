@@ -43,6 +43,26 @@
 
 using namespace std;
 
+
+
+static pthread_mutex_t fftw_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static fftwf_plan safe_fftwf_plan_r2r_1d(int n, float *inout, fftw_r2r_kind kind) {
+  pthread_mutex_lock(&fftw_lock);
+  fftwf_plan ret = fftwf_plan_r2r_1d(n, inout, inout, kind, FFTW_ESTIMATE);
+  pthread_mutex_unlock(&fftw_lock);
+  return ret;
+}
+
+static void safe_fftw_destroy_plan(fftwf_plan plan) {
+  pthread_mutex_lock(&fftw_lock);
+  fftwf_destroy_plan(plan);
+  pthread_mutex_unlock(&fftw_lock);
+}
+
+
+
+
 const string Filter::modname="filter";
 
 
@@ -494,7 +514,7 @@ CTrec::CTrec(const Shape<2> &sinoshape, Contrast cn, const float anarc, const Fi
   if (!CL_isReady())
     warn(modname, "OpenCL is not functional.");
   for (CLenv & env : clenvs)
-    try{ envs.push_back(new ForCLdev(env, *this)); } catch(...) {}
+    try{ _envs.push_back(new ForCLdev(env, *this)); } catch(...) {}
   if (envs.empty())
     useCPU = true;
 
@@ -523,8 +543,8 @@ CTrec::CTrec(CTrec & other)
 /// \brief Destructor
 CTrec::~CTrec(){
   for (ForCLdev * env : _envs)
-    if (env)
-      delete env;
+    if (env) delete env;
+  _envs.clear();
   safe_fftw_destroy_plan(planF);
   safe_fftw_destroy_plan(planB);
 }

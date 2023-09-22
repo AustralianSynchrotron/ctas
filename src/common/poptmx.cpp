@@ -1365,7 +1365,7 @@ bool num_conversion(T * _val, const std::string & in) {
     warn(modname, "String \""+in+"\" contains integer value outside type range.");
   else if (std::is_floating_point<T>() && (
              inval > std::numeric_limits<T>::max() ||
-             fabsl(inval) < std::numeric_limits<T>::min() ) )
+             ( inval != 0.0 && fabsl(inval) < std::numeric_limits<T>::min() ) ) )
     warn(modname, "String \""+in+"\" contains float-point value outside type range.");
   else
     return true;

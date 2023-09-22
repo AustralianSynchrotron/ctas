@@ -226,12 +226,13 @@ public:
         delete pntr;
         pntr=0;
       } } ;
-    for (auto celem : recs) if (celem.second != &canonRec) dlnl(celem.second);
+    for (auto celem : recs)
+      if (celem.second != &canonRec)
+        dlnl(celem.second);
     for (auto celem : rings) dlnl(celem.second);
     for (auto celem : imaps) dlnl(celem.second);
     for (auto celem : omaps) dlnl(celem.second);
   }
-
 };
 
 

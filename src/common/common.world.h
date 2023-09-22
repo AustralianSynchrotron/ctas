@@ -237,10 +237,11 @@ long double spec_conversion(const std::string & in, char ** tail) {
   return strtold(in.c_str(), tail);
 }
 
+
 template<class T,
          class = typename std::enable_if<std::is_arithmetic<T>::value>::type >
 bool parse_num(const std::string & in, T * val) {
-  const std::string modname="numeric conversion";
+  const std::string modname="parse number";
   char * tail = 0 ;
   errno = 0;
   auto inval = spec_conversion<T>(in, &tail);
@@ -257,7 +258,7 @@ bool parse_num(const std::string & in, T * val) {
     warn(modname, "String \""+in+"\" contains integer value outside type range.");
   else if (std::is_floating_point<T>() && inval != 0.0L && (
              inval > std::numeric_limits<T>::max() ||
-             fabsl(inval) < std::numeric_limits<T>::min() ) )
+             ( inval != 0.0 && fabsl(inval) < std::numeric_limits<T>::min() ) ) )
     warn(modname, "String \""+in+"\" contains float-point value outside type range.");
   else
     return true;

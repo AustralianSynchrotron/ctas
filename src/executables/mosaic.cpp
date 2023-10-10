@@ -30,13 +30,25 @@
 #include <unistd.h>
 #include "../common/ctas.h"
 #include "../common/poptmx.h"
+#include "../common/magic_enum.hpp"
+
+
+#ifdef OPENCV_FOUND
+#include <opencv2/photo.hpp> // for inpainting
+#endif // OPENCV_FOUND
 
 
 using namespace std;
 
 
-
-
+enum Inpaint {
+  ZEROES=0,
+#ifdef OPENCV_FOUND
+  NS, // Navier-Stokes
+  AT, // Alexandru Telea
+#endif // OPENCV_FOUND
+  AM  // antonmx
+};
 
 
 /// \CLARGS
@@ -57,6 +69,7 @@ struct clargs {
   deque<ImagePath> mss;        ///< Mask Array.
   uint denoiseRad;
   float denoiseThr;
+  Inpaint inpaint = Inpaint::ZEROES;
   ImagePath out_name;              ///< Name template of the output image(s).
   string out_range;
   int testMe;          ///< Prefix to save interim results
@@ -91,6 +104,15 @@ clargs(int argc, char *argv[])
   const string multiIN = "If only one provided, then it will be used for all images."
                          " Otherwise must be equal to the number of input images.";
   deque<ImagePath> iimages;
+  const string allInpaints = [](){
+    string toRet;
+    for( auto str : magic_enum::enum_names<Inpaint>() )
+      toRet += string(str) + ", ";
+    if (toRet.size())
+      toRet.erase(toRet.size()-2);
+    return toRet;
+  }();
+  string inpaint_str;
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
@@ -120,6 +142,9 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &outCrops, 'C', "crop-final", "Crop final image(s).", CropOptionDesc)
     .add(poptmx::OPTION, &zbinn, 'z', "zinn", "Binning over multiple input projections.",
          "If zero, binns all outputs down to a single image. Ignored for tests.")
+    .add(poptmx::OPTION, &inpaint_str, 'I', "fill", "Type of gap fill algorithm.",
+         "If mask is set and after all stitching some gaps are left, they are filled using one of the following methods: "
+         + allInpaints + ".", string(magic_enum::enum_name<Inpaint>(inpaint)) )
     .add(poptmx::OPTION, &edge, 'e', "edge", "Thickness in pixels of edge transition.",
          "Smoothly reduces the weight of pixels around the mask edges (0 values in mask)"
          " to produce seamless image stitching." )
@@ -205,6 +230,14 @@ clargs(int argc, char *argv[])
     warn(command, "Setting noise threshold via " + table.desc(&denoiseThr) + " option "
          " without noise rad (option " + table.desc(&denoiseRad) + ") makes no sense.");
 
+  if ( table.count(&inpaint_str) ) {
+    auto inp = magic_enum::enum_cast<Inpaint>(inpaint_str, magic_enum::case_insensitive);
+    if ( ! inp.has_value() )
+      throw_error(command,   "Unknown string \""+inpaint_str+"\" for option " + table.desc(&inpaint_str)
+                           + ". Possible values are: " + allInpaints + ".");
+    inpaint = inp.value();
+  }
+
 }
 
 
@@ -285,8 +318,12 @@ Map & prepareMask(Map & mask, bool bepicky, uint edge=0) {
 
 class ProcProj {
 
+
+private:
+
   static const std::string modname;
   const uint nofIn;
+
 
   struct FamilyValues {
 
@@ -300,7 +337,11 @@ class ProcProj {
     std::vector< PointI<2> > origins;
     Map swght;
     Map mskF;
-    bool doGapsFill;
+    Inpaint inpaint=ZEROES;
+
+    #ifdef OPENCV_FOUND
+    cv::Mat mskI; // for OpenCV::inpaint
+    #endif // OPENCV_FOUND
 
     class ForCLdev {
       static const string modname;
@@ -374,7 +415,7 @@ class ProcProj {
     FamilyValues( const clargs & st, const std::deque< Shape<2> > & ishs
                 , const std::deque<Map> & bgas, const std::deque<Map> & dfas
                 , const std::deque<Map> & dgas, const std::deque<Map> & msas
-                , const Path & saveMasks = Path() )
+                , const Path & saveMasks = Path())
       : ishs(whole(ishs))
     {
 
@@ -527,13 +568,20 @@ class ProcProj {
 
       // prepare gaps feeling and denoiser
       canonDenoiser = new Denoiser(ssh, st.denoiseRad, st.denoiseThr, mskF);
-      doGapsFill = any(mskF==0.0);
-      if (doGapsFill) {
+      inpaint = any(mskF==0.0) ? st.inpaint : ZEROES ;
+      if (inpaint == Inpaint::AM) {
         if (!CL_isReady())
           throw_error(modname, "Dysfunctional OpenCL required to close mask gaps.");
         for (CLenv & env : clenvs)
           try{ envs.push_back(new ForCLdev(env, mskF)); } catch(...) {}
       }
+      #ifdef OPENCV_FOUND
+      else if (inpaint == Inpaint::NS || inpaint == Inpaint::AT) {
+        mskI = cv::Mat(cv::Size(ssh(1),ssh(0)), CV_8UC1);
+        blitz::Array<uchar,2>(mskI.ptr(), ssh, blitz::neverDeleteData) = where(mskF > 0, 0, 255);
+      }
+      #endif // OPENCV_FOUND
+
     }
 
 
@@ -556,6 +604,9 @@ class ProcProj {
   std::optional<Denoiser> denoiser;
   std::deque<Map> allIn;
   Map stitched, final;
+  #ifdef OPENCV_FOUND
+  cv::Mat cv_filled;
+  #endif // OPENCV_FOUND
   std::deque<Map> res; // will all reference final
 
 public:
@@ -609,17 +660,30 @@ public:
       }
       stitched *= values.swght;
     }
-    if (!values.doGapsFill)
-      return res;
-    while (true) {
-      for ( FamilyValues::ForCLdev * env : values.envs ) {
-        const bool reced = env->process(stitched);
-        values.locker.unlock();
-        if (reced)
-          return res;
+
+    // Filling the gaps
+    if ( Inpaint::AM == values.inpaint ) {
+      while (true) {
+        for ( FamilyValues::ForCLdev * env : values.envs ) {
+          const bool reced = env->process(stitched);
+          values.locker.unlock();
+          if (reced)
+            return res;
+        }
+        values.locker.lock();
       }
-      values.locker.lock();
     }
+    #ifdef OPENCV_FOUND
+    else if ( Inpaint::NS == values.inpaint  ||  Inpaint::AT == values.inpaint ) {
+      Map stitched_cont = safe(stitched);
+      cv::Mat cv_stitched(cv::Size(values.ssh(1),values.ssh(0)), CV_32FC1, stitched.data());
+      cv::inpaint( cv_stitched, values.mskI, cv_filled, 8
+                 , Inpaint::AT == values.inpaint ? cv::INPAINT_TELEA : cv::INPAINT_NS);
+      stitched = Map((float*)cv_filled.ptr(), values.ssh, blitz::neverDeleteData);
+    }
+    #endif // OPENCV_FOUND
+
+    return res;
 
   }
 

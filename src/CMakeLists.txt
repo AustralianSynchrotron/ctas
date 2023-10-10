@@ -4,9 +4,17 @@ include_directories("${OpenCL_INCLUDE_DIRS}")
 add_definitions(-DOPENCL_FOUND)
 add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
 set(OPENCL_LL "OpenCL")
+
 find_package(clFFT REQUIRED)
 include_directories("${CLFFT_INCLUDE_DIRS}")
 set(CLFFT_LL "clFFT")
+
+find_package(OpenCV)
+if (OpenCV_FOUND)
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_definitions(-DOPENCV_FOUND)
+endif()
+
 
 macro (target_clsrc trg clf)
 set( CLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${clf}" )

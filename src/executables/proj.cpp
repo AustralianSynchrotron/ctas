@@ -30,12 +30,25 @@
 #include "../common/poptmx.h"
 #include "../common/external.world.h"
 #include "../common/parallel.world.h"
+#include "../common/magic_enum.hpp"
+
+#ifdef OPENCV_FOUND
+#include <opencv2/photo.hpp> // for inpainting
+#endif // OPENCV_FOUND
 
 
 using namespace std;
 
 
 
+enum Inpaint {
+  ZEROES=0,
+  #ifdef OPENCV_FOUND
+  NS, // Navier-Stokes
+  AT, // Alexandru Telea
+  #endif // OPENCV_FOUND
+  AM  // antonmx
+};
 
 
 
@@ -56,6 +69,7 @@ struct StitchRules {
   bool flip;               ///< indicates if originF was given in options.
   std::deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
+  Inpaint inpaint = Inpaint::ZEROES;
 
   StitchRules()
   : nofIn(0)
@@ -82,7 +96,6 @@ void StitchRules::slot(int cur, int* cur1, int* cur2, int* curF) const {
   if (cur2) *cur2 = cur / origin1size;
   if (cur1) *cur1 = cur % origin1size;
 }
-
 
 
 
@@ -124,6 +137,15 @@ clargs(int argc, char *argv[])
 {
 
   deque<ImagePath> iimages;
+  const string allInpaints = [](){
+    string toRet;
+    for( auto str : magic_enum::enum_names<Inpaint>() )
+      toRet += string(str) + ", ";
+    if (toRet.size())
+      toRet.erase(toRet.size()-2);
+    return toRet;
+  }();
+  string inpaint_str;
 
   table
     .add(poptmx::NOTE, "ARGUMENTS:")
@@ -168,6 +190,9 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &denoiseThr, 'N', "noise-thr", "Noise threshold.",
          "If positive, then gives maximum absolute deviation from the average;"
          " if negative, then negated value is maximum relative deviation.")
+    .add(poptmx::OPTION, &inpaint_str, 'I', "fill", "Type of gap fill algorithm.",
+         "If mask is set and after all stitching some gaps are left, they are filled using one of the following methods: "
+         + allInpaints + ".", string(magic_enum::enum_name<Inpaint>(st.inpaint)) )
     .add(poptmx::OPTION, &testMe, 't', "test", "Produces interim images.",
          "Uses output name with suffixes to store results. In case of multiple projections provides"
          " slice index to test; ignored for single image mode.")
@@ -278,6 +303,14 @@ clargs(int argc, char *argv[])
       + table.desc(&st.origin2size) + "(" + toString(st.origin2size) + ")" +
       (st.flip ? " and/or " + table.desc(&st.flip) : "") + "." );
 
+  if ( table.count(&inpaint_str) ) {
+    auto inp = magic_enum::enum_cast<Inpaint>(inpaint_str, magic_enum::case_insensitive);
+    if ( ! inp.has_value() )
+      throw_error(command,   "Unknown string \""+inpaint_str+"\" for option " + table.desc(&inpaint_str)
+                           + ". Possible values are: " + allInpaints + ".");
+    st.inpaint = inp.value();
+  }
+
 }
 
 
@@ -367,6 +400,11 @@ class ProcProj {
   Map swght;
   std::deque<PointF<2>> origins;
   Map mskF;
+  #ifdef OPENCV_FOUND
+  blitz::Array<uchar,2> mskI; // for OpenCV::inpaint
+  cv::Mat cv_filled;
+  #endif // OPENCV_FOUND
+  Inpaint inpaint=ZEROES;
   CLmem maskCL;
 
   // own
@@ -375,7 +413,6 @@ class ProcProj {
   std::deque<Map> allIn;
   Map stitched, final;
   std::deque<Map> res; // will all reference final
-  bool doGapsFill;
   CLprogram oclProgram;
   CLkernel gaussCL;
   CLmem iomCL;
@@ -407,7 +444,7 @@ const string ProcProj::modname="ProcProj";
 
 void ProcProj::initCL() {
 
-  if (!doGapsFill)
+  if (inpaint != Inpaint::AM)
     return;
 
   static const string oclsrc = {
@@ -444,7 +481,6 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
   , iproc(strl.angle, strl.crp, strl.bnn, ish)
   , allIn(strl.nofIn)
   , res(oshs.size())
-  , doGapsFill(false)
 {
 
   if ( ! size(ish) )
@@ -580,7 +616,7 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
       if (strl.splits.empty())
         SaveDenan(saveMasks.dtitle() + ".tif", mskF);
       else {
-        if (doGapsFill || strl.fcrp)
+        if (strl.fcrp)
           SaveDenan(saveMasks.dtitle() + "_Y.tif", mskF);
         const string svformat = mask2format("_Z@", strl.splits.size() );
         const int vsplit = strl.splits.at(0) ? 0 : 1;
@@ -596,8 +632,16 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
     }
   }
 
-  doGapsFill = any(mskF==0.0);
-  initCL();
+  inpaint = any(mskF==0.0) ? strl.inpaint : ZEROES ;
+  if (inpaint == Inpaint::AM) {
+    initCL();
+  }
+  #ifdef OPENCV_FOUND
+  else if (inpaint == Inpaint::NS || inpaint == Inpaint::AT) {
+    mskI.resize(ssh);
+    mskI = where(mskF > 0, 0, 255);
+  }
+  #endif // OPENCV_FOUND
 
 }
 
@@ -618,9 +662,11 @@ ProcProj::ProcProj(const ProcProj & other)
   , iproc(other.iproc)
   , allIn(other.allIn.size())
   , res(other.oshs.size())
-  , doGapsFill(other.doGapsFill)
+  #ifdef OPENCV_FOUND
+  , mskI(other.mskI)
+  #endif // OPENCV_FOUND
 {
-  if (doGapsFill)
+  if ( other.inpaint == Inpaint::AM )
     initCL();
 }
 
@@ -792,11 +838,21 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
   }
 
   // closing gaps left after superimposition
-  if (doGapsFill) {
+  if ( Inpaint::AM == inpaint ) {
     blitz2cl<cl_float>(stitched, iomCL());
     gaussCL.exec(stitched.shape());
     cl2blitz(iomCL(), stitched);
   }
+  #ifdef OPENCV_FOUND
+  else if ( Inpaint::NS == inpaint  ||  Inpaint::AT == inpaint ) {
+    Map stitched_cont = safe(stitched);
+    cv::Mat cv_stitched(cv::Size(ssh(1),ssh(0)), CV_32FC1, stitched.data());
+    cv::Mat cv_mask(cv::Size(ssh(1),ssh(0)), CV_8UC1, mskI.data() );
+    cv::inpaint( cv_stitched, cv_mask, cv_filled, 8
+               , Inpaint::AT == inpaint ? cv::INPAINT_TELEA : cv::INPAINT_NS);
+    stitched = Map((float*)cv_filled.ptr(), ssh, blitz::neverDeleteData);
+  }
+  #endif // OPENCV_FOUND
 
   // final crop
   const Shape<2> fssh(strl.fcrp.shape(ssh));
@@ -809,7 +865,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
   if ( strl.splits.empty() ) {
     res[0].reference(final);
   } else {
-    if (! interim_name.empty() && (doGapsFill || strl.fcrp) )
+    if (! interim_name.empty() && (inpaint || strl.fcrp) )
       SaveDenan( interim_name.dtitle() + "_Y.tif", final);
     const string svformat = mask2format("_Z@", strl.splits.size() );
     const int vsplit = strl.splits.at(0) ? 0 : 1;

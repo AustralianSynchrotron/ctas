@@ -1,5 +1,4 @@
 
-
 link_directories(${CMAKE_BINARY_DIR}/src/common)
 
 add_executable(ct ct.cpp)
@@ -80,6 +79,7 @@ target_clsrc(proj projection.cl)
 target_link_libraries(proj
   common
   poptmx
+  ${OpenCV_LIBS}
 )
 
 add_executable(mosaic mosaic.cpp)
@@ -87,6 +87,7 @@ target_clsrc(mosaic projection.cl)
 target_link_libraries(mosaic
   common
   poptmx
+  ${OpenCV_LIBS}
 )
 
 

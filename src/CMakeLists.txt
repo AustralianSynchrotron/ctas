@@ -9,7 +9,7 @@ find_package(clFFT REQUIRED)
 include_directories("${CLFFT_INCLUDE_DIRS}")
 set(CLFFT_LL "clFFT")
 
-find_package(OpenCV)
+find_package(OpenCV CONFIG)
 if (OpenCV_FOUND)
   include_directories( ${OpenCV_INCLUDE_DIRS} )
   add_definitions(-DOPENCV_FOUND)

@@ -17,17 +17,17 @@ endif()
 
 
 macro (target_clsrc trg clf)
-set( CLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${clf}" )
-set( CLINC "${CMAKE_CURRENT_BINARY_DIR}/${clf}.includeme" )
-add_custom_command(
-  OUTPUT ${CLINC}
-  COMMAND cat ${CLSRC} | xxd -i > ${CLINC}
-  DEPENDS ${CLSRC}
-)
-target_include_directories(${trg} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_sources( ${trg} PRIVATE ${CLINC} )
-unset(CLSRC)
-unset(CLINC)
+  set( CLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${clf}" )
+  set( CLINC "${CMAKE_CURRENT_BINARY_DIR}/${clf}.includeme" )
+  add_custom_command(
+    OUTPUT ${CLINC}
+    COMMAND cat ${CLSRC} | xxd -i > ${CLINC}
+    DEPENDS ${CLSRC}
+  )
+  target_include_directories(${trg} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+  target_sources( ${trg} PRIVATE ${CLINC} )
+  unset(CLSRC)
+  unset(CLINC)
 endmacro()
 
 add_subdirectory(blitz64)

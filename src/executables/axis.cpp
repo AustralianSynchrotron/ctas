@@ -184,10 +184,11 @@ int main(int argc, char *argv[]) { {
         return;
       const Shape<2> ish = pr0.shape();
       const int shft = 2*cent;
-      Map result(ish(0),ish(1)+shft);
+      const int ashft = abs(shft);
+      Map result(ish(0),ish(1)+ashft);
       result=0;
       result(all, blitz::Range(0,ish(1))) += shft > 0 ? pr0 : pr180;
-      result(all, blitz::Range(shft,ish(1)+shft)) += shft > 0 ? pr180 : pr0;
+      result(all, blitz::Range(ashft,ish(1)+ashft)) += shft > 0 ? pr180 : pr0;
       result /= 2;
       Path ofile = toString(mask2format(args.outmask,1),num);
       SaveImage( ofile.dtitle() + "_" + toString("%+f", cent) + "." + ofile.ext() , result);

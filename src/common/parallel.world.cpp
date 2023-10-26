@@ -474,7 +474,8 @@ CLprogram & CLprogram::operator()(const string & source, cl_context context) {
       return 0;
     }
 
-    err = clBuildProgram( program, 0, 0, "", 0, 0);
+    const char options[] = "" ; // "-cl-fast-relaxed-math";
+    err = clBuildProgram( program, 0, 0, options, 0, 0);
     if (err != CL_SUCCESS) {
 
       warn(modname, (string) "Could not build OpenCL program: " + toString(err) +
@@ -552,7 +553,8 @@ void CLprogram::free() {
 const string CLkernel::modname = "CLkernel";
 
 
-CLkernel & CLkernel::operator()(const CLprogram & program, const std::string & name) {
+CLkernel & CLkernel::operator()(const CLprogram & program, const std::string & name, bool _fixedWGsize) {
+  fixedWGsize = _fixedWGsize;
   if ( ! program || name.empty() ) {
     if (kern)
       clReleaseKernel(kern) ;
@@ -565,6 +567,7 @@ CLkernel & CLkernel::operator()(const CLprogram & program, const std::string & n
     kern = 0;
     throw_error(modname, "Could not create OpenCL kernel \"" + name + "\": " + toString(clerr));
   }
+
   return *this;
 }
 
@@ -607,15 +610,38 @@ cl_context CLkernel::context() const {
 
 
 cl_int CLkernel::exec(size_t dims, size_t * sizes, cl_command_queue clque) const {
+
   if (!kern)
     return CL_SUCCESS;
-  cl_int clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, sizes, 0, 0, 0, 0);
+  cl_int clerr;
+  cl_device_id device;
+  size_t pgSize;
+
+  // first will try to resize workgroup ranges to match preferred kernel size
+  if ( ! fixedWGsize
+       && CL_SUCCESS == clGetCommandQueueInfo(
+         clque, CL_QUEUE_DEVICE, sizeof(cl_device_id), &device, 0)
+       && CL_SUCCESS == clGetKernelWorkGroupInfo(
+         kern, device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &pgSize, 0) )
+  {
+    size_t lsizes[dims];
+    size_t gsizes[dims];
+    for (size_t dim = 0 ; dim < dims ; dim++) {
+      gsizes[dim] = sizes[dim] % pgSize  ?  (1 + sizes[dim] / pgSize ) * pgSize  :  sizes[dim];
+      lsizes[dim] = pgSize;
+    }
+    clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, gsizes, lsizes, 0, 0, 0);
+  } else {
+    clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, sizes, 0, 0, 0, 0);
+  }
   if (clerr != CL_SUCCESS)
     throw_error(modname, "Failed to execute OpenCL kernel \"" + name() + "\": " + toString(clerr));
+
   clerr = clFinish(clque);
   if (clerr != CL_SUCCESS)
     throw_error(modname, "Failed to finish OpenCL kernel \"" + name() + "\": " + toString(clerr));
   return clerr;
+
 }
 
 

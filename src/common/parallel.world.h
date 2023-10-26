@@ -183,17 +183,18 @@ private:
 
   cl_kernel kern = 0;
   cl_int exec(size_t dims, size_t * sizes, cl_command_queue clque) const;
+  bool fixedWGsize=true;
   static const std::string modname;
 
 public:
 
   inline CLkernel() {}
-  inline CLkernel(const CLprogram & program, const std::string & _name = std::string()){
-    this->operator()(program, _name);
+  inline CLkernel(const CLprogram & program, const std::string & _name, bool _fixedWGsize=true){
+    this->operator()(program, _name, _fixedWGsize);
   }
   inline ~CLkernel() { free(); }
   void free() {if (kern) clReleaseKernel(kern) ; kern=0;}
-  CLkernel & operator()(const CLprogram & program, const std::string & name = std::string());
+  CLkernel & operator()(const CLprogram & program, const std::string & name, bool _fixedWGsize=true);
   inline operator bool() const { return kern; }
   std::string name() const;
   cl_context context() const;

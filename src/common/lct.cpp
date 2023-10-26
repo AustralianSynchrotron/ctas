@@ -371,7 +371,7 @@ public:
     : cl(cl)
     , parent(_parent)
     , program(oclsrc, cl.cont)
-    , kernelSino(program, "fbp")
+    , kernelSino(program, "fbp", false)
     , clAngles(0)
     , clSino(0)
     , clSlice(0)
@@ -398,10 +398,10 @@ public:
     try{
       if (!checkReady())
         throw 0;
+      slice.resize(parent.osh);
       blitz2cl<cl_float>(fsin, clSino(), cl.que);
       kernelSino.setArg(5, (cl_float) center);
       kernelSino.exec(parent.osh, cl.que);
-      slice.resize(parent.osh);
       cl2blitz(clSlice(), slice, cl.que);
       toRet=1;
     } catch (...) {}

@@ -33,6 +33,7 @@
 #include <functional>
 #include <unistd.h>
 #include <stdarg.h>
+#include <chrono>
 
 using namespace std;
 
@@ -76,17 +77,22 @@ toString(const string fmt, ...){
 
 const clock_t startTV = clock();
 clock_t prevTV = startTV;
-const time_t startTM = time(0);
-time_t prevTM = startTM;
+const chrono::time_point startTM = chrono::steady_clock::now();
+chrono::time_point prevTM = startTM;
+
+void rsdn() {
+  prevTV = clock();
+  prevTM = chrono::steady_clock::now();
+}
 
 void prdn( const string & str ) {
-  clock_t nowTV = clock();
-  double start_elapsed_tv = double( nowTV - startTV ) / CLOCKS_PER_SEC;
-  double prev_elapsed_tv = double( nowTV - prevTV ) / CLOCKS_PER_SEC;
-  time_t nowTM = time(0);
-  int start_elapsed_tm = nowTM - startTM;
-  int prev_elapsed_tm = nowTM - prevTM;
-  printf("DONE %s:  %i(%f)  %i(%f)\n", str.c_str(),
+  const clock_t nowTV = clock();
+  const float start_elapsed_tv = float( nowTV - startTV ) / CLOCKS_PER_SEC;
+  const float prev_elapsed_tv  = float( nowTV - prevTV  ) / CLOCKS_PER_SEC;
+  const chrono::time_point nowTM = chrono::steady_clock::now();
+  const float start_elapsed_tm = chrono::duration_cast<chrono::milliseconds>(nowTM - startTM).count() / 1000.0;
+  const float prev_elapsed_tm  = chrono::duration_cast<chrono::milliseconds>(nowTM - prevTM ).count() / 1000.0;
+  printf("DONE %s:  %.3f(%.3f)  %.3f(%.3f)\n", str.c_str(),
          prev_elapsed_tm, prev_elapsed_tv, start_elapsed_tm, start_elapsed_tv);
   fflush(stdout);
   prevTV=nowTV;

@@ -13,6 +13,8 @@ kernel void fbp (
 {
   const int i = get_global_id(0);
   const int j = get_global_id(1);
+  if (i>=pixels || j >= thetas)
+    return;
   const int idx = i + j*pixels;
   const int hp = pixels / 2 ;
   const float acent = fabs(center);

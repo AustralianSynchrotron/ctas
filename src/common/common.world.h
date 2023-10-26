@@ -122,7 +122,7 @@ inline std::string toString (long unsigned n)   { return toString("%u", n); }
 inline std::string toString (unsigned      n)   { return toString("%u", n); }
 
 
-
+void rsdn();
 void prdn( const std::string & str = std::string() );
 //void prdn(const std::string fmt = std::string(), ...);
 template<class T> void prdn( const T & val ) { prdn(toString(val)); } ;

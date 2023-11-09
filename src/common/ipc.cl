@@ -22,8 +22,8 @@ kernel void applyPhsFilter (
     return;
   const float filter = d2b * calc(i, j, xx, yy) + 1 ;
   if (filter != 0.0) {
-    mid[2*index] /= filter;
-    mid[2*index+1] /= filter;
+    mid[2*idx] /= filter;
+    mid[2*idx+1] /= filter;
   }
 }
 

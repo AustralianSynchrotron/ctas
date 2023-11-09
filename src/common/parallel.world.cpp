@@ -624,13 +624,14 @@ cl_int CLkernel::exec(size_t dims, size_t * sizes, cl_command_queue clque) const
        && CL_SUCCESS == clGetKernelWorkGroupInfo(
          kern, device, CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, sizeof(size_t), &pgSize, 0) )
   {
-    size_t lsizes[dims];
     size_t gsizes[dims];
+    //size_t lsizes[dims];
     for (size_t dim = 0 ; dim < dims ; dim++) {
       gsizes[dim] = sizes[dim] % pgSize  ?  (1 + sizes[dim] / pgSize ) * pgSize  :  sizes[dim];
-      lsizes[dim] = pgSize;
+      //lsizes[dim] = pgSize;
     }
-    clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, gsizes, lsizes, 0, 0, 0);
+    //clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, gsizes, lsizes, 0, 0, 0);
+    clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, gsizes, 0, 0, 0, 0);
   } else {
     clerr = clEnqueueNDRangeKernel( clque, kern, dims, 0, sizes, 0, 0, 0, 0);
   }

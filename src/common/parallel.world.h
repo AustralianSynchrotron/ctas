@@ -189,12 +189,12 @@ private:
 public:
 
   inline CLkernel() {}
-  inline CLkernel(const CLprogram & program, const std::string & _name, bool _fixedWGsize=true){
+  inline CLkernel(const CLprogram & program, const std::string & _name, bool _fixedWGsize=false){
     this->operator()(program, _name, _fixedWGsize);
   }
   inline ~CLkernel() { free(); }
   void free() {if (kern) clReleaseKernel(kern) ; kern=0;}
-  CLkernel & operator()(const CLprogram & program, const std::string & name, bool _fixedWGsize=true);
+  CLkernel & operator()(const CLprogram & program, const std::string & name, bool _fixedWGsize=false);
   inline operator bool() const { return kern; }
   std::string name() const;
   cl_context context() const;

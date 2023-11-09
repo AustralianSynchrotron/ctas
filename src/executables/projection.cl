@@ -7,6 +7,8 @@ kernel void  gauss (
 {
   const int idx = get_global_id(0);
   const int idy = get_global_id(1);
+  if ( idx >= Xs || idy >= Ys )
+    return;
   const int idi = idx + idy * Xs;
   if (mask[idi] != 0.0)
     return;

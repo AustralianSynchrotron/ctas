@@ -9,6 +9,8 @@ kernel void  binn2(
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
+  if ( x >= iszx || y >= iszy )
+    return;
   const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
   const int oszy = by ? ( iszy + by - 1 ) / by : 1;
   const int bbx = min(iszx, (x+1)*bx) - x*bx;
@@ -37,6 +39,8 @@ kernel void  binn3(
   const int x = get_global_id(0);
   const int y = get_global_id(1);
   const int z = get_global_id(2);
+  if ( x >= iszx || y >= iszy || z >= iszz )
+    return;
   const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
   const int oszy = by ? ( iszy + by - 1 ) / by : 1;
   const int oszz = bz ? ( iszz + bz - 1 ) / bz : 1;
@@ -59,18 +63,25 @@ kernel void  binn3(
 
 kernel void  addToSecond(
   global const float*    in,
-  global float*          inout)
+  global float*          inout,
+  int                    len  )
 {
   const int idx = get_global_id(0);
+  if (idx>=len)
+    return;
   inout[idx] += in[idx];
 }
 
 
 kernel void  multiplyArray(
   global float*      inout,
-  float              coeff)
+  float              coeff,
+  int                len )
 {
-  inout[get_global_id(0)] *= coeff;
+  const int idx = get_global_id(0);
+  if (idx>=len)
+    return;
+  inout[idx] *= coeff;
 }
 
 
@@ -89,6 +100,8 @@ kernel void  rotate2(
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
+  if ( x >= iszx || y >= iszy )
+    return;
   const int oshft = x+y*oszx;
   const int vflx = flx[oshft];
   const int vfly = fly[oshft];

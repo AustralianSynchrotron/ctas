@@ -1,7 +1,7 @@
 
 
 kernel void  formframe (
-             global float*  out,
+  global float*  out,
   global const float*  im0,
   global const float*  im1,
   global const float*  gaps0,
@@ -99,6 +99,8 @@ kernel void  gapfill (
 {
   const int idx = get_global_id(0);
   const int idy = get_global_id(1);
+  if ( idx >= Xs || idy >= Ys )
+    return;
   const int idi = idx + idy * Xs;
   if (oim[idi]!=0.0)
     return;

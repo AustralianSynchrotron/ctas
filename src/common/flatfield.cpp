@@ -35,12 +35,13 @@ FlatFieldProc::FlatFieldProc( const Map & _bg, const Map & _df
     #include "ff.cl.includeme"
   };
   ffProgram = initProgram(oclsrc, ffProgram, "Flat field on OCL");
-  kernel(ffProgram, "ffm");
-  kernel.setArg(0, io());
-  kernel.setArg(1, bg());
-  kernel.setArg(2, df());
-  kernel.setArg(3, dg());
-  kernel.setArg(4, ms());
+  kernel(ffProgram, "ffm", false);
+  kernel.setArg(0, area(sh));
+  kernel.setArg(1, io());
+  kernel.setArg(2, bg());
+  kernel.setArg(3, df());
+  kernel.setArg(4, dg());
+  kernel.setArg(5, ms());
 }
 
 
@@ -54,12 +55,13 @@ FlatFieldProc::FlatFieldProc(const FlatFieldProc & other)
 {
   if (!area(sh))
     return;
-  kernel(ffProgram, "ffm");
-  kernel.setArg(0, io());
-  kernel.setArg(1, bg());
-  kernel.setArg(2, df());
-  kernel.setArg(3, dg());
-  kernel.setArg(4, ms());
+  kernel(ffProgram, "ffm", false);
+  kernel.setArg(0, area(sh));
+  kernel.setArg(1, io());
+  kernel.setArg(2, bg());
+  kernel.setArg(3, df());
+  kernel.setArg(4, dg());
+  kernel.setArg(5, ms());
 }
 
 

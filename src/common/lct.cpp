@@ -371,7 +371,7 @@ public:
     : cl(cl)
     , parent(_parent)
     , program(oclsrc, cl.cont)
-    , kernelSino(program, "fbp", false)
+    , kernelSino(program, "fbp")
     , clAngles(0)
     , clSino(0)
     , clSlice(0)

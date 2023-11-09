@@ -227,15 +227,18 @@ struct BinnProc::Accumulator::BinnAcc {
       #include "../common/matrix.cl.includeme"
     };
     binnProgram(oclsrc);
-    resmem(clAllocArray<float>(size(mish)));
-    addmem(clAllocArray<float>(size(mish), CL_MEM_READ_ONLY) );
+    const cl_int mish_sz = size(mish);
+    resmem(clAllocArray<float>(mish_sz));
+    addmem(clAllocArray<float>(mish_sz, CL_MEM_READ_ONLY) );
     addKernel(binnProgram, "addToSecond");
     addKernel.setArg(0, addmem());
     addKernel.setArg(1, resmem());
-    fillClArray<float>(resmem(), size(mish), 0);
+    addKernel.setArg(2, mish_sz);
+    fillClArray<float>(resmem(), mish_sz, 0);
     divKernel(binnProgram, "multiplyArray");
     divKernel.setArg(0, resmem());
     divKernel.setArg(1, (float)1.0/bn);
+    divKernel.setArg(2, mish_sz);
 
   }
 
@@ -530,10 +533,12 @@ template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr
     CLkernel kernelAddTo(binnProgram, "addToSecond");
     kernelAddTo.setArg(0, cltmpslice());
     kernelAddTo.setArg(1, cloutslice());
+    kernelAddTo.setArg(2, sosz);
 
     CLkernel kernelMulti(binnProgram, "multiplyArray");
     kernelMulti.setArg(0, cloutslice());
     kernelMulti.setArg(1, (cl_float) zbnn);
+    kernelMulti.setArg(2, sosz);
 
     for (int z = 0  ;  z < osh(0)  ;  z++ ) {
       fillClArray(cloutslice(), sosz, 0);

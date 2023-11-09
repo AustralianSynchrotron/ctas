@@ -1,17 +1,20 @@
-__kernel void ff(__global float* fg,
-                 __global float* bg1,
-                 __global float* bg2,
-                 __global float* df1,
-                 __global float* df2,
-                 const float bgw,
-                 const float dfw,
-                 const float cutOff)
+__kernel void ff(
+    constant const size_t maxelement,
+    global float* fg,
+    global float* bg1,
+    global float* bg2,
+    global float* df1,
+    global float* df2,
+    const float bgw,
+    const float dfw,
+    const float cutOff)
 {
 
-  int l = get_global_id(0);
+  size_t l = get_global_id(0);
+  if (l>=maxelement)
+    return;
 
   float fgg = fg[l];
-
   float bg;
   if (bg1 && bg2)
     bg = bg1[l] * bgw + bg2[l] * (1-bgw);
@@ -47,6 +50,7 @@ __kernel void ff(__global float* fg,
 
 
 __kernel void ffm(
+    constant const size_t maxelement,
     global float * io,
     constant const float * bg,
     constant const float * df,
@@ -54,7 +58,9 @@ __kernel void ffm(
     constant const float * mask )
 {
 
-  int idx = get_global_id(0);
+  const size_t idx = get_global_id(0);
+  if (idx>=maxelement)
+    return;
 
   float midx = mask ? mask[idx] : 1.0f;
   if (midx==0.0) {

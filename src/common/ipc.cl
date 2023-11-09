@@ -1,6 +1,4 @@
-float calc( int idx, int xx, int yy) {
-  const int j = idx / xx;
-  const int i = idx % xx;
+float calc( int i, int j, int xx, int yy) {
   float ei = i / (float) xx;
   float ej = j / (float) yy;
   if (ei>0.5) ei = 1.0 - ei;
@@ -18,7 +16,11 @@ kernel void applyPhsFilter (
   const int index = get_global_id(0);
   if (!index)
     return;
-  const float filter = d2b * calc(index, xx, yy) + 1 ;
+  const int j = idx / xx;
+  const int i = idx % xx;
+  if (i >= xx || j >= yy)
+    return;
+  const float filter = d2b * calc(i, j, xx, yy) + 1 ;
   if (filter != 0.0) {
     mid[2*index] /= filter;
     mid[2*index+1] /= filter;
@@ -38,7 +40,11 @@ kernel void applyPhsFilter (
 //    mid[1] = 0.0;
 //    return;
 //  }
-//  const float aconst = d2b * calc(index, xx, yy);
+//  const int j = idx / xx;
+//  const int i = idx % xx;
+//  if (i >= xx || j >= yy)
+//    return;
+//  const float aconst = d2b * calc(i, j, xx, yy);
 //  const float filter = aconst / ( aconst + 1 );
 //  mid[2*index] *= filter;
 //  mid[2*index+1] *= filter;

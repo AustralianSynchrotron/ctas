@@ -199,7 +199,10 @@ public:
   std::string name() const;
   cl_context context() const;
   cl_program program() const;
-  cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const { return exec(1, &size, clque);}
+
+  cl_int exec(size_t size=1, cl_command_queue clque=CL_queue()) const {
+    return exec(1, &size, clque);
+  }
 
   template <int Dim> cl_int exec(const Shape<Dim> & sh, cl_command_queue clque=CL_queue()) const {
     size_t sizes[Dim];

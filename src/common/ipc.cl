@@ -13,8 +13,8 @@ kernel void applyPhsFilter (
   int                      yy,
   float                    d2b)
 {
-  const int index = get_global_id(0);
-  if (!index)
+  const int idx = get_global_id(0);
+  if (!idx)
     return;
   const int j = idx / xx;
   const int i = idx % xx;

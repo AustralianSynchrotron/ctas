@@ -13,7 +13,7 @@ kernel void fbp (
 {
   const int i = get_global_id(0);
   const int j = get_global_id(1);
-  if (i>=pixels || j >= thetas)
+  if (i>=pixels || j >= pixels)
     return;
   const int idx = i + j*pixels;
   const int hp = pixels / 2 ;

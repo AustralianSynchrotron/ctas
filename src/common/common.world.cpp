@@ -563,9 +563,9 @@ slice_str2vec(const string & sliceS, int hight){
         rangeE = str2n( (*subSVi).substr(minuspos+1) );
       if (rangeE < 0) // hight <= 0 and open end
         rangeE = hight ? rangeB-hight-1 : rangeB;
-      else if ( rangeB == rangeE )
-        warn("slice string", "One of the substrings with ranges in the string describing set of slices"
-                             " has equal ends of the ranges. Is it what you meant?");
+      //else if ( rangeB == rangeE )
+      //  warn("slice string", "One of the substrings with ranges in the string describing set of slices"
+      //                       " has equal ends of the ranges. Is it what you meant?");
       const int inc  =  rangeE < rangeB  ?  -1  :  1;
       for (int curS = rangeB ; (rangeE-curS)*inc >=0  ; curS+= inc)
         rmadd(sliceV, curS, negatethis);

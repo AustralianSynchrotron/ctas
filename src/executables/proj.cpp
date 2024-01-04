@@ -614,10 +614,10 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
     if (saveMasks.length()) {
       Map mskSV(strl.fcrp.apply(mskF));
       if (strl.splits.empty())
-        SaveDenan(saveMasks.dtitle() + ".tif", mskF);
+        SaveDenan(saveMasks.dtitle() + ".tif", mskSV);
       else {
         if (strl.fcrp)
-          SaveDenan(saveMasks.dtitle() + "_Y.tif", mskF);
+          SaveDenan(saveMasks.dtitle() + "_Y.tif", mskSV);
         const string svformat = mask2format("_Z@", strl.splits.size() );
         const int vsplit = strl.splits.at(0) ? 0 : 1;
         int fLine=0;
@@ -1049,8 +1049,9 @@ int main(int argc, char *argv[]) { {
   // Prepare read factories
   deque<ReadVolumeBySlice> allInRd(nofIn);
   for ( int curI = 0 ; curI < nofIn ; curI++) {
-    allInRd.at(curI).add(args.images.at(curI));
-    int cSls = allInRd.at(curI).slices();
+    ReadVolumeBySlice & curRd = allInRd.at(curI);
+    curRd.add(args.images.at(curI));
+    const int cSls = curRd.slices();
     if (!cSls)
       exit_on_error(args.command, "No images in input "+ toString(curI) +".");
     if (curI && allInRd.at(0).slices() != cSls)

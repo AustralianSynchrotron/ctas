@@ -9,14 +9,16 @@ find_package(clFFT REQUIRED)
 include_directories("${CLFFT_INCLUDE_DIRS}")
 set(CLFFT_LL "clFFT")
 
+cmake_policy(SET CMP0146 OLD)
 find_package(OpenCV CONFIG)
+cmake_policy(SET CMP0146 NEW)
 if (OpenCV_FOUND)
   include_directories( ${OpenCV_INCLUDE_DIRS} )
   add_definitions(-DOPENCV_FOUND)
 endif()
 
 
-macro (target_clsrc trg clf)
+macro (target_opencl trg clf)
   set( CLSRC "${CMAKE_CURRENT_SOURCE_DIR}/${clf}" )
   set( CLINC "${CMAKE_CURRENT_BINARY_DIR}/${clf}.includeme" )
   add_custom_command(

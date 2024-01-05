@@ -8,15 +8,12 @@ target_link_libraries(ct
   lct
 )
 
-
 add_executable(ring ring.cpp)
 target_link_libraries(ring
   common
   poptmx
   lct
 )
-
-
 
 add_executable(ax axis.cpp)
 target_link_libraries(ax
@@ -75,7 +72,7 @@ target_link_libraries(norm
 )
 
 add_executable(proj proj.cpp)
-target_clsrc(proj projection.cl)
+target_opencl(proj projection.cl)
 target_link_libraries(proj
   common
   poptmx
@@ -83,7 +80,7 @@ target_link_libraries(proj
 )
 
 add_executable(mosaic mosaic.cpp)
-target_clsrc(mosaic projection.cl)
+target_opencl(mosaic projection.cl)
 target_link_libraries(mosaic
   common
   poptmx
@@ -93,7 +90,7 @@ target_link_libraries(mosaic
 
 
 add_executable(v2v vol2vol.cpp)
-target_clsrc(v2v ../common/matrix.cl)
+target_opencl(v2v ../common/matrix.cl)
 target_link_libraries(v2v
   common
   poptmx
@@ -118,22 +115,22 @@ install(TARGETS ${all_targets}
 )
 
 
-#foreach(targ ${all_targets})
-#
-#    set(manout "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-${targ}.1")
-#    add_custom_command( TARGET "${targ}" POST_BUILD
-#      COMMAND LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_BINARY_DIR}/src/common "./${targ}" -very-long-key-phrase-to-output-man-pages >> ${manout}
-#    )
-#    install(FILES "${manout}" DESTINATION "${MAN_DESTINATION}")
-#
-#
-#    set(htmlout "${CMAKE_HOME_DIRECTORY}/doc/site/userdoc/${PROJECT_NAME}-${targ}.1.html")
-#    add_custom_target("${targ}_man_html"
-#      COMMAND man2html -r ${manout} | sed -e "s:../man1/::g" > "${htmlout}"
-#    )
-#    add_dependencies(doc "${targ}_man_html")
-#
-#endforeach(targ)
+foreach(targ ${all_targets})
+
+    set(manout "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-${targ}.1")
+    add_custom_command( TARGET "${targ}" POST_BUILD
+      COMMAND LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_BINARY_DIR}/src/common "./${targ}" -very-long-key-phrase-to-output-man-pages >> ${manout}
+    )
+    install(FILES "${manout}" DESTINATION "${MAN_DESTINATION}")
+
+
+    set(htmlout "${CMAKE_HOME_DIRECTORY}/doc/site/userdoc/${PROJECT_NAME}-${targ}.1.html")
+    add_custom_target("${targ}_man_html"
+      COMMAND man2html -r ${manout} | sed -e "s:../man1/::g" > "${htmlout}"
+    )
+    add_dependencies(doc "${targ}_man_html")
+
+endforeach(targ)
 
 
 

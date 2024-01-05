@@ -548,8 +548,8 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
       PointF<2> curP( strl.origin1(0) * cur1 + strl.origin2(0) * cur2
                     , strl.origin1(1) * cur1 + strl.origin2(1) * cur2);
       if (curF) {
-        curP(1) = strl.originF(1) + maxXshift - curP(1);
         curP(0) += strl.originF(0);
+        curP(1) = strl.originF(1) + maxXshift - curP(1);
       }
       origins.push_back(curP);
       const float
@@ -1055,7 +1055,9 @@ int main(int argc, char *argv[]) { {
     if (!cSls)
       exit_on_error(args.command, "No images in input "+ toString(curI) +".");
     if (curI && allInRd.at(0).slices() != cSls)
-      exit_on_error(args.command, "Not matching slices in input "+ toString(curI) +".");
+      exit_on_error(args.command,
+                    "Not matching slices in input "+ toString(curI) + ": "
+                    + toString(allInRd.at(0).slices()) +" != "+ toString(cSls) +".");
   }
   const int nofProj = allInRd.at(0).slices();
   const int nofOuts = binnOne(nofProj, args.zbinn);

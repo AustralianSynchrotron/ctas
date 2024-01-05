@@ -10,17 +10,31 @@ set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math -pthread")
 set(CMAKE_CXX_FLAGS "$ENV{CPPFLAGS} ${CMAKE_CXX_FLAGS} -ffast-math -pthread")
 
-add_custom_target(
-  dist
-  COMMAND git archive --prefix=${PROJECT_NAME}.${VERSION}/ HEAD | bzip2 >
-          ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${VERSION}.tar.bz2
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+# uninstall target
+if(NOT TARGET uninstall)
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY)
+
+  add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+endif()
+
+# dist target
+if(NOT TARGET dist)
+  add_custom_target(dist
+    COMMAND git archive --prefix=${PROJECT_NAME}.${VERSION}/ HEAD | bzip2 >
+    ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${VERSION}.tar.bz2
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
 
 include(CheckIncludeFile)
 include(CheckLibraryExists)
 
 set(LIBEXEC_DESTINATION "libexec/${PROJECT_NAME}")
 set(LIB_DESTINATION "lib/${PROJECT_NAME}")
+set(INC_DESTINATION "include/${PROJECT_NAME}")
 set(MAN_DESTINATION "man/man1")
 add_custom_target(doc)
 

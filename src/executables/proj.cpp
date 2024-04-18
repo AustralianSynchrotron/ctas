@@ -662,6 +662,7 @@ ProcProj::ProcProj(const ProcProj & other)
   , iproc(other.iproc)
   , allIn(other.allIn.size())
   , res(other.oshs.size())
+  , inpaint(other.inpaint)
   #ifdef OPENCV_FOUND
   , mskI(other.mskI)
   #endif // OPENCV_FOUND

@@ -1018,9 +1018,9 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     throw_error("load image IM", "Could not read image file\""+filename+"\"."
                 " Caught Magick++ exception: \""+error.what()+"\".");
   }
-  if ( imag.type() != Magick::GrayscaleType )
+  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != Magick::GrayscaleMatteType )
     warn("load image IM",
-         "Input image \"" + filename + "\" is not grayscale.");
+         "Input image \"" + filename + "\" is not grayscale type: " + toString(imag.type()) + ".");
 
   const int
     width = imag.columns(),

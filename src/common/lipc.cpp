@@ -209,8 +209,8 @@ const string IPCprocess::ForCLdev::oclsrc({
 
 IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b)
   : sh(_sh)
-  , msh(closest_factorable(sh(0), {2,3,5,7}),
-        closest_factorable(sh(1), {2,3,5,7}))
+  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
+        closest_factorable(2*sh(1), {2,3,5,7}))
   , d2b(_d2b)
   , phsFilter(msh)
   , mid(msh)

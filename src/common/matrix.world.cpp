@@ -216,6 +216,7 @@ struct BinnProc::Accumulator::BinnAcc {
     , bn(abs(_bn))
     , odx(-1)
     , cnt(0)
+    , binnProgram(matrixOCLprogram())
     , locker(PTHREAD_MUTEX_INITIALIZER)
   {
     if (!bn)
@@ -223,10 +224,6 @@ struct BinnProc::Accumulator::BinnAcc {
     if (bn==1)
       return;
 
-    static const string oclsrc = {
-      #include "../common/matrix.cl.includeme"
-    };
-    binnProgram(oclsrc);
     const cl_int mish_sz = size(mish);
     resmem(clAllocArray<float>(mish_sz));
     addmem(clAllocArray<float>(mish_sz, CL_MEM_READ_ONLY) );
@@ -507,10 +504,10 @@ template<> ArrayF<3> Binn<3>::subapply( const ArrayF<3> & iarr, ArrayF<3> & oarr
   }  catch (...) { // probably full volume was too big for the gpu
 
     warn("Binning", "Trying second method.");
-    const Shape<2> sish(copyMost<2>(ish));
-    const Binn<2> sbnn(copyMost<2>(rbnn));
+    const Shape<2> sish(copyTail<2>(ish));
+    const Binn<2> sbnn(copyTail<2>(rbnn));
     const ssize_t zbnn = rbnn(0);
-    const Shape<2> sosh(copyMost<2>(osh));
+    const Shape<2> sosh(copyTail<2>(osh));
     const size_t sosz(size(osh));
 
     Map tmpslice(sosh);
@@ -950,3 +947,142 @@ void Denoiser::proc(Map & iom) const {
   }
 
 }
+
+
+
+
+
+const string SumProc::modname = "SumProc";
+
+class SumProc::ForCLdev {
+
+  static const std::string modname;
+  static const int maxLen = 2;
+  const SumProc * parent;
+  CLenv & cl;
+  CLkernel kernelSum;
+  CLmem clarr;
+  pthread_mutex_t locker;
+  Map partRes;
+
+public:
+
+  int useCounter=0;
+
+  ForCLdev(CLenv & cl, const SumProc * parent)
+    : parent(parent)
+    , cl(cl)
+    , locker(PTHREAD_MUTEX_INITIALIZER)
+    , partRes(maxLen/2,2)
+  {
+    if (!parent)
+      throw_bug("Zerro pointer to SumProc");
+  }
+
+  ~ForCLdev(){
+    pthread_mutex_destroy(&locker);
+  }
+
+  pair<float,int> apply(const float * data) {
+
+    if( pthread_mutex_trylock(&locker) )
+      return make_pair<float,int>(0,-1);
+    useCounter++;
+
+    try {
+
+      if (!kernelSum) { // OpenCL infrastructure is created on first call.
+        clarr(clAllocArray<cl_float>(parent->_size, cl.cont));
+        kernelSum(matrixOCLprogram(cl.cont), "limitedSum");
+        kernelSum.setArg(0, clarr());
+        kernelSum.setArg(3, (cl_float) parent->lo);
+        kernelSum.setArg(4, (cl_float) parent->hi);
+      }
+
+      arr2cl(data, parent->_size, clarr(), cl.que);
+      int offset = 1;
+      int len = parent->_size;
+      while (len >= maxLen) {
+        kernelSum.setArg(1, (cl_int) len);
+        kernelSum.setArg(2, (cl_int) offset);
+        kernelSum.exec(len/2, cl.que);
+        len /=2;
+        offset *= 2;
+      }
+      cl2blitz(clarr(), Shape<2>(len,offset), partRes, PointI<2>(), cl.que);
+
+    } catch (...) {
+      pthread_mutex_unlock(&locker);
+      throw_error(modname, "Failed operation.");
+    }
+    pthread_mutex_unlock(&locker);
+    return pair<float,int>( sum(partRes(all,0)), sum(partRes(all,1)) );
+
+  }
+
+};
+const string SumProc::ForCLdev::modname = SumProc::modname + "OCL";
+
+
+
+SumProc::SumProc(size_t size, float lo, float hi)
+  : _size(size)
+  , lo(lo)
+  , hi(hi)
+  , envs(_envs)
+{
+  if (!size)
+    return;
+  if (!CL_isReady())
+    warn(modname, "OpenCL is not functional.");
+  else
+    for (CLenv & env : clenvs)
+      try{ _envs.emplace_back( new ForCLdev(env, this) ); } catch(...) {}
+}
+
+
+SumProc::~SumProc() {
+  for (ForCLdev * env : _envs)
+    if (env) {
+      // prdn(env->useCounter);
+      delete env;
+    }
+}
+
+
+pair<float,int> SumProc::proc(float const * data) const {
+
+  auto addMe = [this](const float val) {
+    if (lo == hi) return val == hi;
+    if (lo<hi)    return val >= lo  &&  val <= hi;
+    else          return val >= lo  ||  val <= hi;
+  };
+
+  if (_size<1)
+    return make_pair<float,int>(0,0);
+  if (_size==1)
+    return addMe(*data) ? pair<float,int>(*data,1) : make_pair<float,int>(0,0) ;
+
+  // try on GPU
+  for (ForCLdev * env : envs) {
+    if (env) {
+      std::pair<float,int> res = env->apply(data);
+      if (res.second>=0)
+        return res;
+    }
+  }
+  //// Do on CPU
+  int counter=0;
+  float sum = 0;
+  const float * curData = data;
+  for (size_t cur = 0 ; cur < _size ; ++cur) {
+    if (addMe(*data)) {
+      ++counter;
+      sum += *data;
+    }
+    ++data;
+  }
+  return pair(sum, counter);
+
+}
+

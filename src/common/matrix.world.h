@@ -10,6 +10,7 @@
 #define BZ_THREADSAFE
 //#define BZ_DEBUG_LOG_REFERENCES
 #include "../blitz64/blitz/array.h"
+#include "../blitz64/blitz/tinyvec-et.h"
 //#include <blitz/array.h>
 
 
@@ -67,8 +68,9 @@ inline std::string toString (const blitz::TinyVector<T,Dim> & shp) {
   return toRet;
 }
 
+
 template<class Ts, class Tt, int DimS, int DimT>
-blitz::TinyVector<Tt,DimT> & copyMost( const blitz::TinyVector<Ts,DimS> & source
+blitz::TinyVector<Tt,DimT> & copyTail( const blitz::TinyVector<Ts,DimS> & source
                                      ,       blitz::TinyVector<Tt,DimT> & target) {
   for (int dim = 0; dim < DimT && dim < DimS; ++dim)
     target(DimT-1-dim) = source(DimS-1-dim);
@@ -76,9 +78,32 @@ blitz::TinyVector<Tt,DimT> & copyMost( const blitz::TinyVector<Ts,DimS> & source
 } ;
 
 template<int DimT, int DimS, class T>
-blitz::TinyVector<T,DimT> copyMost(const blitz::TinyVector<T,DimS> & source) {
+blitz::TinyVector<T,DimT> copyTail(const blitz::TinyVector<T,DimS> & source) {
   blitz::TinyVector<T,DimT> toRet;
-  return copyMost(source, toRet);
+  return copyTail(source, toRet);
+} ;
+
+
+template<class Ts, class Tt, int DimS, int DimT>
+blitz::TinyVector<Tt,DimT> & copyHead( const blitz::TinyVector<Ts,DimS> & source
+                                     ,       blitz::TinyVector<Tt,DimT> & target) {
+  for (int dim = 0; dim < DimT && dim < DimS; ++dim)
+    target(dim) = source(dim);
+  return target;
+} ;
+
+template<int DimT, int DimS, class T>
+blitz::TinyVector<T,DimT> copyHead(const blitz::TinyVector<T,DimS> & source) {
+  blitz::TinyVector<T,DimT> toRet;
+  return copyHead(source, toRet);
+} ;
+
+template<int Dim, class T>
+blitz::TinyVector<T,Dim> reverse(const blitz::TinyVector<T,Dim> & source) {
+  blitz::TinyVector<T,Dim> toRet;
+  for (int dm=0 ; dm<Dim ; dm++)
+    toRet[dm] = source[Dim-dm-1];
+  return toRet;
 } ;
 
 
@@ -217,6 +242,8 @@ using Shape = blitz::TinyVector<ssize_t,Dim>;
 //  // above template does not instantinate automatically to produce below assign operator
 //  Shape& operator=(const Shape & other) { return this->operator=<ssize_t>(other); }
 //};
+
+
 
 template<int Dim>
 ssize_t size(const Shape<Dim> sh) {
@@ -439,6 +466,59 @@ public:
 
 
 
+
+class SumProc {
+
+private:
+  static const std::string modname;
+  const size_t _size;
+  const float lo;
+  const float hi;
+  class ForCLdev;
+  std::list<ForCLdev*>  _envs;
+  std::list<ForCLdev*> & envs;
+  std::pair<float,int> proc(const float * data) const ;
+
+public:
+
+  SumProc(size_t size,
+          const float lo=std::numeric_limits<float>::lowest(),
+          const float hi=std::numeric_limits<float>::max() );
+
+  SumProc(const SumProc & other)
+    : _size(other._size)
+    , lo(other.lo)
+    , hi(other.hi)
+    , envs(other.envs)
+  {};
+
+  ~SumProc();
+
+  inline size_t size() {return _size;}
+
+  bool operator==(const SumProc & other) const {
+    return std::addressof(envs)==std::addressof(other.envs);
+  } ;
+
+  template<int Dim> std::pair<float,int> operator()(const ArrayF<Dim> & iarr) const {
+    if (iarr.size() != _size)
+      throw_error(modname,
+                  "Missmatch of input shape ("+toString(iarr.shape())+") of size "
+                  +toString(iarr.size())+" with expected size "+toString(_size)+".");
+    ArrayF<Dim> safeIarr = safe(iarr);
+    Line lineArr(safeIarr.data(), Shape<1>(iarr.size()), blitz::neverDeleteData );
+    return proc(safeIarr.data());
+  } ;
+
+  template<int Dim> static std::pair<float,int> proc(
+      const ArrayF<Dim> & iarr,
+      const float lo=std::numeric_limits<float>::lowest(),
+      const float hi=std::numeric_limits<float>::max())
+  {
+    return SumProc(iarr.size(), lo, hi)(iarr);
+  } ;
+
+};
 
 
 #endif // MATRIX_H

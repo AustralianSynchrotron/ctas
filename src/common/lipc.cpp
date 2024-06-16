@@ -92,8 +92,8 @@ public:
 
 IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b)
   : sh(sh)
-  , msh(closest_factorable(sh(0), {2,3,5,7}),
-        closest_factorable(sh(1), {2,3,5,7}))
+  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
+        closest_factorable(2*sh(1), {2,3,5,7}))
   , d2b(d2b)
   , cl(cl)
   , clmid(0)

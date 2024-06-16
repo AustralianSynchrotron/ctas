@@ -866,7 +866,7 @@ std::deque<Map> & ProcProj::process(deque<Map> & allInR, const ImagePath & inter
   if ( strl.splits.empty() ) {
     res[0].reference(final);
   } else {
-    if (! interim_name.empty() && (inpaint || strl.fcrp) )
+    if ( ! interim_name.empty() && (inpaint || (bool) strl.fcrp ) )
       SaveDenan( interim_name.dtitle() + "_Y.tif", final);
     const string svformat = mask2format("_Z@", strl.splits.size() );
     const int vsplit = strl.splits.at(0) ? 0 : 1;

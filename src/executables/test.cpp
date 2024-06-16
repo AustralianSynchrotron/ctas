@@ -75,13 +75,14 @@ int main(int argc, char *argv[]) { {
 
   const clargs args(argc, argv) ;
 
-  Map arr(1200,1000), res;
-  MapProc pr1(1, Crop<2>("100-100,100+200"), Binn<2>(2), arr.shape() );
-  Map r1 = pr1.apply(arr);
-
-  /*
   Map arr;
   ReadImage(args.in_name, arr);
+  prdn("Start");
+  std::pair<float,int> res = SumProc::proc(arr);
+  prdn("Done");
+  cout << res.first << " " << res.second << "\n";
+  prdn(sum(arr));
+  /*
   Map mrr;
   ReadImage(args.ms_name, mrr);
   Trans trans(arr.shape(), args.angle, Crop(), PointF<2>(), mrr);

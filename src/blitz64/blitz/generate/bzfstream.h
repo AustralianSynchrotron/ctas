@@ -68,7 +68,7 @@ public:
 
     void include(const char* filename)
     {
-        (*this) << "#include "blitz/" << filename << """ << std::endl;
+        (*this) << "#include \"blitz/" << filename << "\"" << std::endl;
     }
 
     void beginNamespace()

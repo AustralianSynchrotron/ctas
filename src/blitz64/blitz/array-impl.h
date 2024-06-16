@@ -1675,295 +1675,131 @@ public:
             + index[10] * stride_[10]];
     }
 
-#if BZ_SIZEOF_INT != BZ_SIZEOF_MYINDEXTYPE
-/*-------------------------------------------------------------------------
- *  operator() for direct indexing up to dim 11 using integer indices
- *  to avoid that the end user has to explicitely give longs as indices on
- *  64Bit machines. This is nevertheless ugly! Mixed types are not supported.
- *  - If not given, we get an ambiguity between the ssize_t variants and
- *    the full template for mixed parameters
- *-------------------------------------------------------------------------*/
-    const T_numtype& restrict operator()(int i0) const
-    {
-        assertInRange(i0);
-        return data_[i0 * stride_[0]];
-    }
-
-    T_numtype& restrict operator()(int i0)
-    {
-        assertInRange(i0);
-        return data_[i0 * stride_[0]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1) const
-    {
-        assertInRange(i0, i1);
-        return data_[i0 * stride_[0] + i1 * stride_[1]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1)
-    {
-        assertInRange(i0, i1);
-        return data_[i0 * stride_[0] + i1 * stride_[1]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2) const
-    {
-        assertInRange(i0, i1, i2);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2)
-    {
-        assertInRange(i0, i1, i2);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3) const
-    {
-        assertInRange(i0, i1, i2, i3);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3)
-    {
-        assertInRange(i0, i1, i2, i3);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4) const
-    {
-        assertInRange(i0, i1, i2, i3, i4);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4)
-    {
-        assertInRange(i0, i1, i2, i3, i4);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5) const
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5)
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6) const
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6)
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7) const
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7)
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7, int i8) const
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
-            + i8 * stride_[8]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7, int i8)
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
-            + i8 * stride_[8]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7, int i8, int i9) const
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
-            + i8 * stride_[8] + i9 * stride_[9]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7, int i8, int i9)
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
-            + i8 * stride_[8] + i9 * stride_[9]];
-    }
-
-    const T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7, int i8, int i9, int i10) const
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
-            i9, i10);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
-            + i8 * stride_[8] + i9 * stride_[9] + i10 * stride_[10]];
-    }
-
-    T_numtype& restrict operator()(int i0, int i1, int i2, int i3,
-        int i4, int i5, int i6, int i7, int i8, int i9, int i10)
-    {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
-            i9, i10);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
-            + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
-            + i8 * stride_[8] + i9 * stride_[9] + i10 * stride_[10]];
-    }
-#endif
 
 /*-------------------------------------------------------------------------
- *  operator() for direct indexing up to dim 11 using machine length indices
+ *  operator() for direct indexing up to dim 11
  *-------------------------------------------------------------------------*/
-    const T_numtype& restrict operator()(ssize_t i0) const
+
+    template< typename T,
+              std::enable_if_t<  std::is_integral<T>::value, bool> = true >
+    const T_numtype& restrict operator()(T i0) const
     {
         assertInRange(i0);
         return data_[i0 * stride_[0]];
     }
 
-    T_numtype& restrict operator()(ssize_t i0)
+    template< typename T,
+              std::enable_if_t<  std::is_integral<T>::value, bool> = true >
+    T_numtype& restrict operator()(T i0)
     {
         assertInRange(i0);
         return data_[i0 * stride_[0]];
     }
 
-    template< typename T1, typename T2
-            , std::enable_if_t<  std::is_integral<T1>::value &&
-                                 std::is_integral<T2>::value
+    template< typename T0, typename T1
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value
                               , bool> = true >
-    const T_numtype& restrict operator()(T1 i0, T2 i1) const
+    T_numtype& restrict operator()(T0 i0, T1 i1)
     {
         assertInRange(i0, i1);
         return data_[i0 * stride_[0] + i1 * stride_[1]];
     }
 
-    template< typename T1, typename T2
-            , std::enable_if_t<  std::is_integral<T1>::value &&
-                                 std::is_integral<T2>::value
+    template< typename T0, typename T1
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value
                               , bool> = true >
-    T_numtype& restrict operator()(T1 i0, T2 i1)
+    const T_numtype& restrict operator()(T0 i0, T1 i1) const
     {
         assertInRange(i0, i1);
         return data_[i0 * stride_[0] + i1 * stride_[1]];
     }
 
-    template< typename T1, typename T2, typename T3
-            , std::enable_if_t<  std::is_integral<T1>::value &&
+    template< typename T0, typename T1, typename T2
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2)
+    {
+        assertInRange(i0, i1, i2);
+        return data_[i0 * stride_[0] + i1 * stride_[1] + i2 * stride_[2]];
+    }
+
+    template< typename T0, typename T1, typename T2
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2) const
+    {
+        assertInRange(i0, i1, i2);
+        return data_[i0 * stride_[0] + i1 * stride_[1] + i2 * stride_[2]];
+    }
+
+    template< typename T0, typename T1, typename T2, typename T3
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
                                  std::is_integral<T2>::value &&
                                  std::is_integral<T3>::value
                               , bool> = true >
-    const T_numtype& restrict operator()(T1 i0, T2 i1, T3 i2) const
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3)
     {
-        assertInRange(i0, i1, i2);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2]];
+        assertInRange(i0, i1, i2, i3);
+        return data_[i0 * stride_[0] + i1 * stride_[1] + i2 * stride_[2] + i3 * stride_[3]];
     }
 
-    template< typename T1, typename T2, typename T3
-            , std::enable_if_t<  std::is_integral<T1>::value &&
+    template< typename T0, typename T1, typename T2, typename T3
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
                                  std::is_integral<T2>::value &&
                                  std::is_integral<T3>::value
                               , bool> = true >
-    T_numtype& restrict operator()(T1 i0, T2 i1, T3 i2)
-    {
-        assertInRange(i0, i1, i2);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2]];
-    }
-
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3) const
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3) const
     {
         assertInRange(i0, i1, i2, i3);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3]];
+        return data_[i0 * stride_[0] + i1 * stride_[1] + i2 * stride_[2] + i3 * stride_[3]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3)
-    {
-        assertInRange(i0, i1, i2, i3);
-        return data_[i0 * stride_[0] + i1 * stride_[1]
-            + i2 * stride_[2] + i3 * stride_[3]];
-    }
-
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4) const
+    template< typename T0, typename T1, typename T2, typename T3, typename T4
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4)
     {
         assertInRange(i0, i1, i2, i3, i4);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4) const
     {
         assertInRange(i0, i1, i2, i3, i4);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]];
     }
 
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5) const
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5)
     {
         assertInRange(i0, i1, i2, i3, i4, i5);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1971,9 +1807,16 @@ public:
             + i5 * stride_[5]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1981,9 +1824,19 @@ public:
             + i5 * stride_[5]];
     }
 
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6) const
+
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                   T6 i6)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -1991,9 +1844,18 @@ public:
             + i5 * stride_[5] + i6 * stride_[6]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                         T6 i6) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2001,9 +1863,20 @@ public:
             + i5 * stride_[5] + i6 * stride_[6]];
     }
 
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7) const
+
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                   T6 i6, T7 i7)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2011,9 +1884,19 @@ public:
             + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                         T6 i6, T7 i7) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2021,10 +1904,20 @@ public:
             + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]];
     }
 
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8) const
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7, typename T8
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value &&
+                                 std::is_integral<T8>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                   T6 i6, T7 i7, T8 i8)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2033,10 +1926,20 @@ public:
             + i8 * stride_[8]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7, typename T8
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value &&
+                                 std::is_integral<T8>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                         T6 i6, T7 i7, T8 i8) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2045,10 +1948,21 @@ public:
             + i8 * stride_[8]];
     }
 
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9) const
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7, typename T8, typename T9
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value &&
+                                 std::is_integral<T8>::value &&
+                                 std::is_integral<T9>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                   T6 i6, T7 i7, T8 i8, T9 i9)
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2057,10 +1971,21 @@ public:
             + i8 * stride_[8] + i9 * stride_[9]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7, typename T8, typename T9
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value &&
+                                 std::is_integral<T8>::value &&
+                                 std::is_integral<T9>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                         T6 i6, T7 i7, T8 i8, T9 i9) const
     {
         assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9);
         return data_[i0 * stride_[0] + i1 * stride_[1]
@@ -2069,31 +1994,57 @@ public:
             + i8 * stride_[8] + i9 * stride_[9]];
     }
 
-    const T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9, ssize_t i10) const
+
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7, typename T8, typename T9,
+              typename T10
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value &&
+                                 std::is_integral<T8>::value &&
+                                 std::is_integral<T9>::value &&
+                                 std::is_integral<T10>::value
+                              , bool> = true >
+    T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                   T6 i6, T7 i7, T8 i8, T9 i9, T10 i10)
     {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
-            i9, i10);
+        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
             + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
             + i8 * stride_[8] + i9 * stride_[9] + i10 * stride_[10]];
     }
 
-    T_numtype& restrict operator()(
-        ssize_t i0, ssize_t i1, ssize_t i2, ssize_t i3,
-        ssize_t i4, ssize_t i5, ssize_t i6, ssize_t i7,
-        ssize_t i8, ssize_t i9, ssize_t i10)
+    template< typename T0, typename T1, typename T2, typename T3, typename T4,
+              typename T5, typename T6, typename T7, typename T8, typename T9,
+              typename T10
+            , std::enable_if_t<  std::is_integral<T0>::value &&
+                                 std::is_integral<T1>::value &&
+                                 std::is_integral<T2>::value &&
+                                 std::is_integral<T3>::value &&
+                                 std::is_integral<T4>::value &&
+                                 std::is_integral<T5>::value &&
+                                 std::is_integral<T6>::value &&
+                                 std::is_integral<T7>::value &&
+                                 std::is_integral<T8>::value &&
+                                 std::is_integral<T9>::value &&
+                                 std::is_integral<T10>::value
+                              , bool> = true >
+    const T_numtype& restrict operator()(T0 i0, T1 i1, T2 i2, T3 i3, T4 i4, T5 i5,
+                                         T6 i6, T7 i7, T8 i8, T9 i9, T10 i10) const
     {
-        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8,
-            i9, i10);
+        assertInRange(i0, i1, i2, i3, i4, i5, i6, i7, i8, i9, i10);
         return data_[i0 * stride_[0] + i1 * stride_[1]
             + i2 * stride_[2] + i3 * stride_[3] + i4 * stride_[4]
             + i5 * stride_[5] + i6 * stride_[6] + i7 * stride_[7]
             + i8 * stride_[8] + i9 * stride_[9] + i10 * stride_[10]];
     }
+
 
     /*
      * Slicing to produce subarrays.  If the number of Range arguments is
@@ -2216,100 +2167,181 @@ public:
 
 
     template<typename T1, typename T2, typename T3
-    , std::enable_if_t< ! std::is_integral<T1>::value ||
-                        ! std::is_integral<T2>::value ||
-                        ! std::is_integral<T3>::value
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value
                       , bool> = true>
     typename SliceInfo<T_numtype,T1,T2,T3>::T_slice
     operator()(T1 r1, T2 r2, T3 r3) const
     {
         typedef typename SliceInfo<T_numtype,T1,T2,T3>::T_slice slice;
-        return slice(noConst(), r1, r2, r3, nilArraySection(),
+        return slice(noConst(), r1, r2, r3,
+                     nilArraySection(), nilArraySection(), nilArraySection(),
+                     nilArraySection(), nilArraySection(), nilArraySection(),
+                     nilArraySection(), nilArraySection());
+    }
+
+    template<typename T1, typename T2, typename T3, typename T4
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value
+                                 , bool> = true>
+    typename SliceInfo<T_numtype,T1,T2,T3,T4>::T_slice
+    operator()(T1 r1, T2 r2, T3 r3, T4 r4) const
+    {
+        typedef typename
+            SliceInfo<T_numtype,T1,T2,T3,T4>::T_slice
+            slice;
+        return slice(noConst(), r1, r2, r3, r4,
                      nilArraySection(), nilArraySection(), nilArraySection(),
                      nilArraySection(), nilArraySection(), nilArraySection(),
                      nilArraySection());
     }
 
-    template<typename T1, typename T2, typename T3, typename T4>
-    typename SliceInfo<T_numtype,T1,T2,T3,T4>::T_slice
-    operator()(T1 r1, T2 r2, T3 r3, T4 r4) const
+    template<typename T1, typename T2, typename T3, typename T4, typename T5
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value
+                                 , bool> = true>
+    typename SliceInfo<T_numtype,T1,T2,T3,T4,T5>::T_slice
+    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5) const
     {
-        typedef typename SliceInfo<T_numtype,T1,T2,T3,T4>::T_slice slice;
-        return slice(noConst(), r1, r2, r3, r4, nilArraySection(),
+        typedef typename
+            SliceInfo<T_numtype,T1,T2,T3,T4,T5>::T_slice
+            slice;
+        return slice(noConst(), r1, r2, r3, r4, r5,
                      nilArraySection(), nilArraySection(), nilArraySection(),
                      nilArraySection(), nilArraySection(), nilArraySection());
     }
 
-    template<typename T1, typename T2, typename T3, typename T4, typename T5>
-    typename SliceInfo<T_numtype,T1,T2,T3,T4,T5>::T_slice
-    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5) const
+    template<typename T1, typename T2, typename T3, typename T4, typename T5,
+             typename T6
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value ||
+                                 ! std::is_integral<T6>::value
+                                 , bool> = true>
+    typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6>::T_slice
+    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6) const
     {
-        typedef typename SliceInfo<T_numtype,T1,T2,T3,T4,T5>::T_slice slice;
-        return slice(noConst(), r1, r2, r3, r4, r5, nilArraySection(),
+        typedef typename
+            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6>::T_slice
+            slice;
+        return slice(noConst(), r1, r2, r3, r4, r5, r6,
                      nilArraySection(), nilArraySection(), nilArraySection(),
                      nilArraySection(), nilArraySection());
     }
 
     template<typename T1, typename T2, typename T3, typename T4, typename T5,
-             typename T6>
-    typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6>::T_slice
-    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6) const
+             typename T6, typename T7
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value ||
+                                 ! std::is_integral<T6>::value ||
+                                 ! std::is_integral<T7>::value
+                                 , bool> = true>
+    typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7>::T_slice
+    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7) const
     {
-        typedef typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6>::T_slice slice;
-        return slice(noConst(), r1, r2, r3, r4, r5, r6, nilArraySection(),
+        typedef typename
+            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7>::T_slice
+            slice;
+        return slice(noConst(), r1, r2, r3, r4, r5, r6, r7,
                      nilArraySection(), nilArraySection(), nilArraySection(),
                      nilArraySection());
     }
 
     template<typename T1, typename T2, typename T3, typename T4, typename T5,
-             typename T6, typename T7>
-    typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7>::T_slice
-    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7) const
-    {
-        typedef typename
-            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7>::T_slice slice;
-        return slice(noConst(), r1, r2, r3, r4, r5, r6, r7, nilArraySection(),
-                     nilArraySection(), nilArraySection(), nilArraySection());
-    }
-
-    template<typename T1, typename T2, typename T3, typename T4, typename T5,
-             typename T6, typename T7, typename T8>
+             typename T6, typename T7, typename T8
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value ||
+                                 ! std::is_integral<T6>::value ||
+                                 ! std::is_integral<T7>::value ||
+                                 ! std::is_integral<T8>::value
+                                 , bool> = true>
     typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8>::T_slice
     operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7, T8 r8) const
     {
         typedef typename
-            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8>::T_slice slice;
+            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8>::T_slice
+            slice;
         return slice(noConst(), r1, r2, r3, r4, r5, r6, r7, r8,
                      nilArraySection(), nilArraySection(), nilArraySection());
     }
 
+
     template<typename T1, typename T2, typename T3, typename T4, typename T5,
-             typename T6, typename T7, typename T8, typename T9>
+             typename T6, typename T7, typename T8, typename T9
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value ||
+                                 ! std::is_integral<T6>::value ||
+                                 ! std::is_integral<T7>::value ||
+                                 ! std::is_integral<T8>::value ||
+                                 ! std::is_integral<T9>::value
+                                 , bool> = true>
     typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9>::T_slice
-    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7, T8 r8, T9 r9)
-        const
+    operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7, T8 r8, T9 r9) const
     {
         typedef typename
-            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9>::T_slice slice;
+            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9>::T_slice
+            slice;
         return slice(noConst(), r1, r2, r3, r4, r5, r6, r7, r8, r9,
                      nilArraySection(), nilArraySection());
     }
 
     template<typename T1, typename T2, typename T3, typename T4, typename T5,
-             typename T6, typename T7, typename T8, typename T9, typename T10>
+             typename T6, typename T7, typename T8, typename T9, typename T10
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value ||
+                                 ! std::is_integral<T6>::value ||
+                                 ! std::is_integral<T7>::value ||
+                                 ! std::is_integral<T8>::value ||
+                                 ! std::is_integral<T9>::value ||
+                                 ! std::is_integral<T10>::value
+                                 , bool> = true>
     typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>::T_slice
     operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7, T8 r8, T9 r9,
                T10 r10) const
     {
         typedef typename
-            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>::T_slice slice;
+            SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>::T_slice
+            slice;
         return slice(noConst(), r1, r2, r3, r4, r5, r6, r7, r8, r9, r10,
                      nilArraySection());
     }
 
+
     template<typename T1, typename T2, typename T3, typename T4, typename T5,
              typename T6, typename T7, typename T8, typename T9, typename T10,
-             typename T11>
+             typename T11
+             , std::enable_if_t< ! std::is_integral<T1>::value ||
+                                 ! std::is_integral<T2>::value ||
+                                 ! std::is_integral<T3>::value ||
+                                 ! std::is_integral<T4>::value ||
+                                 ! std::is_integral<T5>::value ||
+                                 ! std::is_integral<T6>::value ||
+                                 ! std::is_integral<T7>::value ||
+                                 ! std::is_integral<T8>::value ||
+                                 ! std::is_integral<T9>::value ||
+                                 ! std::is_integral<T10>::value ||
+                                 ! std::is_integral<T11>::value
+                                 , bool> = true>
     typename SliceInfo<T_numtype,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>::T_slice
     operator()(T1 r1, T2 r2, T3 r3, T4 r4, T5 r5, T6 r6, T7 r7, T8 r8, T9 r9,
                T10 r10, T11 r11) const
@@ -2319,6 +2351,9 @@ public:
             slice;
         return slice(noConst(), r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
     }
+
+
+
 
 #endif // BZ_HAVE_PARTIAL_ORDERING
 

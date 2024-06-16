@@ -21,8 +21,6 @@ using namespace std;
 #define MAGICKCORE_HDRI_ENABLE 1
 #include<Magick++.h>
 
-
-
 /// \brief initializes image IO libraries
 ///
 /// ImageMagick: allow reading up to 10k x 10k into memory, not HDD.
@@ -35,7 +33,6 @@ initImageIO(){
 #else
   using namespace MagickCore;
 #endif
-
   Magick::InitializeMagick(nullptr);
   //MagickSizeType Msz = (numeric_limits<MagickSizeType>::max)();
   //SetMagickResourceLimit ( AreaResource , 10000 * 10000 * 4);
@@ -1018,9 +1015,16 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     throw_error("load image IM", "Could not read image file\""+filename+"\"."
                 " Caught Magick++ exception: \""+error.what()+"\".");
   }
-  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != Magick::GrayscaleMatteType )
+  Magick::ImageType anothergray =
+    #if MagickLibVersion < 0x700
+      Magick::GrayscaleMatteType
+    #else
+      Magick::GrayscaleAlphaType
+    #endif
+    ;
+  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != anothergray  )
     warn("load image IM",
-         "Input image \"" + filename + "\" is not grayscale type: " + toString(imag.type()) + ".");
+         "Input image \"" + filename + "\" is not grayscale type.");
 
   const int
     width = imag.columns(),

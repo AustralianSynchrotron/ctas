@@ -31,6 +31,7 @@
 // These are compile-time expensive things not included
 // by <blitz/vector.h>, but needed if we want vector expressions.
 
+//#include "blitz/vecexpr.h"
 #include "blitz/vecbops.cc"         // Operators with two operands
 #include "blitz/vecuops.cc"         // Functions with one argument
 #include "blitz/vecbfn.cc"          // Functions with two arguments

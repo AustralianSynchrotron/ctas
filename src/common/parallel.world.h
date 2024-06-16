@@ -163,8 +163,10 @@ public:
 
 class CLprogram {
     cl_program prog = 0;
+    cl_program * realprog = 0;
 public:
     inline CLprogram() {};
+    inline CLprogram(const CLprogram & other) {prog = other.prog;};
     inline explicit CLprogram(const std::string & source, cl_context context=CL_context()) {
       this->operator()(source, context);
     };
@@ -246,14 +248,25 @@ cl_mem clAllocArray(size_t arrSize, cl_context context) {
 }
 
 
+template <typename T>
+cl_mem arr2cl( const T* storage, size_t size, cl_mem clStorage,
+               cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+  cl_int err = clEnqueueWriteBuffer( clque, clStorage, CL_TRUE, 0, sizeof(T) * size, storage, 0, 0, 0);
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
+  return clStorage;
+}
+
+template <typename T>
+cl_mem arr2cl( const T* storage, size_t size, cl_mem clStorage, cl_command_queue clque) {
+  return arr2cl(storage, size, clStorage, CL_MEM_READ_WRITE, clque);
+}
+
 template <typename T, int N>
 cl_mem _blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
                 , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
   blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueWriteBuffer( clque, clStorage, CL_TRUE, 0, sizeof(T) * _storage.size()
-                                     , _storage.data(), 0, 0, 0);
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
+  arr2cl(_storage.data(), _storage.size(), clStorage, flag, clque);
   return clStorage;
 }
 
@@ -269,8 +282,8 @@ template <typename CT, typename T, int N>
 cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
                , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
   return std::is_same<CT, T>::value
-      ? _blitz2cl<T,N>(storage, clStorage, CL_MEM_READ_WRITE, clque)
-      : _blitz2cl<CT,T,N>(storage, clStorage, CL_MEM_READ_WRITE, clque);
+      ? _blitz2cl<T,N>(storage, clStorage, flag, clque)
+      : _blitz2cl<CT,T,N>(storage, clStorage, flag, clque);
 }
 
 template <typename CT, typename T, int N>
@@ -295,18 +308,68 @@ cl_mem blitz2cl(const blitz::Array<T,N> & storage, cl_command_queue clque) {
 }
 
 
+template <typename T>
+T* cl2arr(cl_mem clbuffer, T* storage, size_t size, cl_command_queue clque=CL_queue()) {
+  cl_int err = clEnqueueReadBuffer(clque, clbuffer, CL_TRUE, 0,
+                                   sizeof(T) * size, storage, 0, 0, 0 );
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
+  return storage;
+}
+
 template <typename T, int N>
 blitz::Array<T,N> & cl2blitz(cl_mem clbuffer, blitz::Array<T,N> & storage, cl_command_queue clque=CL_queue()) {
   blitz::Array<T,N> _storage(safe(storage));
-  cl_int err = clEnqueueReadBuffer(clque, clbuffer, CL_TRUE, 0,
-                                   sizeof(T) * _storage.size(),
-                                   _storage.data(), 0, 0, 0 );
-  if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not read OpenCL buffer: " + toString(err) );
+  cl2arr(clbuffer, _storage.data(), _storage.size(), clque);
   if ( storage.data() != _storage.data() )
     storage = _storage;
   return storage;
 }
+
+
+template <typename T, int Dim>
+blitz::Array<T,Dim> & cl2blitz(cl_mem clbuffer, const Shape<Dim> & shBuffer,
+                               blitz::Array<T,Dim> & storage, const PointI<Dim> & from = PointI<Dim>(),
+                               cl_command_queue clque=CL_queue()) {
+  if (Dim>3)
+    throw_error("OpenCL", "Impossible dimension "+toString(Dim)+ ". "
+                "Reading rectangular region is only defined for up to 3 dimensions.");
+  const size_t szT = sizeof(T);
+  const Shape<Dim> sh = storage.shape();
+  for (int dm=0 ; dm<Dim ; dm++)
+    if ( shBuffer[dm] < sh[dm] + from[dm] )
+      throw_error("cl2blitz",
+                  "Shape of the CL array " + toString(shBuffer) + " is not enough "
+                  "for the ROI " + toString(from) + "-" + toString(from+sh) + "." );
+  blitz::Array<T,Dim> _storage(safe(storage));
+  cl_int err;
+  if (Dim == 1) {
+    err = clEnqueueReadBuffer(clque, clbuffer, CL_TRUE, szT * from[0],
+                              szT * sh[0], _storage.data(), 0, 0, 0 );
+  } else {
+    Point<size_t,3> buffer_origin, host_origin, region;
+    copyHead(reverse(from), buffer_origin)  ;
+    buffer_origin *= szT;
+    copyHead(reverse(sh), region);
+    region[0] *= szT; // width is in bytes
+    if (Dim<3)
+      region[2] = 1;
+    Point<size_t,2> buffer_pitch( szT * shBuffer[Dim-1] * Point<size_t,2>(1, shBuffer[Dim-2]) );
+    err = clEnqueueReadBufferRect(
+            clque, clbuffer, CL_TRUE,
+            buffer_origin.data(), host_origin.data(), region.data(),
+            buffer_pitch[0], buffer_pitch[1], 0, 0, _storage.data(), 0, 0, 0);
+  }
+  if (err != CL_SUCCESS)
+    throw_error("OpenCL", "Could not read OpenCL buffer ROI: " + toString(err) );
+  if ( storage.data() != _storage.data() )
+    storage = _storage;
+  return storage;
+}
+
+
+
+
 
 
 template <typename T>

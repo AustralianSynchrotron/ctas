@@ -214,7 +214,8 @@ public:
     , ivolRd(new ReadVolumeBySlice(args.images))
     , ish(ivolRd->face())
     , isz(ivolRd->slices())
-    , canonImgProc(ish, bg, df, dg, Map(), args.ang, copyMost<2>(args.crp), copyMost<2>(args.bnn), args.reNAN)
+    , canonImgProc(ish, bg, df, dg, Map(), args.ang,
+                   copyTail<2>(args.crp), copyTail<2>(args.bnn), args.reNAN)
     , bnz( args.bnn(0) ? args.bnn(0) : isz )
     , osh( canonImgProc.shape() )
     , osz( binnOne(isz, bnz) )

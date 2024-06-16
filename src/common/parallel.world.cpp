@@ -525,6 +525,7 @@ CLprogram & CLprogram::operator()(const string & source, cl_context context) {
   pthread_mutex_unlock(&protectProgramCompilation);
   if (!prog)
     throw_error(modname, "Failed to compile.");
+  realprog = &prog;
   return *this;
 
 }
@@ -544,6 +545,9 @@ cl_context CLprogram::context() const {
 void CLprogram::free() {
   cl_program toDel = prog;
   prog=0;
+  if (!realprog)
+    return;
+  realprog=0;
   if (toDel)
     clReleaseProgram(toDel);
 }

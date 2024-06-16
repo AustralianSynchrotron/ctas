@@ -115,3 +115,62 @@ kernel void  rotate2(
   }
 }
 
+
+
+
+bool addMe(float val, float lo, float hi) {
+  if (lo == hi)
+    return val == hi;
+  if (lo<hi)
+    return val >= lo  &&  val <= hi;
+  else
+    return val >= lo  ||  val <= hi;
+}
+
+kernel void limitedSum(
+  global float *input,
+  int len,
+  int offset,
+  float lo,
+  float hi
+)
+{
+
+  const uint idx = get_global_id(0);
+  const int myIdx = idx*2;
+  if (myIdx >= len-1)
+    return;
+
+  if ( offset == 1 ) {
+
+    int items=0;
+    if ( addMe(input[myIdx], lo, hi) )
+      ++items;
+    else
+      input[myIdx] = 0;
+    if ( addMe(input[myIdx+1], lo, hi) ) {
+      ++items;
+      input[myIdx] += input[myIdx+1];
+    }
+    if ( myIdx == len-3  &&  addMe(input[myIdx+2], lo, hi) )  { // last element
+      ++items;
+      input[myIdx] += input[myIdx+2];
+    }
+    input[myIdx+1] = items;
+
+  } else {
+
+    const int myOff = myIdx*offset;
+    input[myOff]   += input[myOff+offset];
+    input[myOff+1] += input[myOff+offset+1];
+    if ( myIdx == len-3 ) {  // last element
+      input[myOff]   += input[myOff+2*offset];
+      input[myOff+1] += input[myOff+2*offset+1];
+    }
+
+  }
+
+}
+
+
+

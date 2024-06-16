@@ -1,8 +1,8 @@
 include(ExternalProject)
 
-ExternalProject_Add(blitz-long
+ExternalProject_Add(blitz64
 #  PREFIX .
-  SOURCE_DIR .
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
   BUILD_IN_SOURCE 1
   LOG_CONFIGURE 1
   CONFIGURE_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/configure"
@@ -12,6 +12,6 @@ ExternalProject_Add(blitz-long
 
 FILE(GLOB_RECURSE Headers "*.h")
 add_custom_target(.blitzheaders SOURCES ${Headers})
-FILE(GLOB_RECURSE Sources "*.cc")
+FILE(GLOB_RECURSE Sources "*.cc" "*.cpp")
 add_custom_target(.blitzsources SOURCES ${Sources})
 

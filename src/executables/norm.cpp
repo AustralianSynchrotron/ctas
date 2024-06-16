@@ -37,10 +37,11 @@ using namespace std;
 /// \CLARGS
 struct clargs {
   Path command;               ///< Command name as it was invoked.
-  Path in_name;               ///< Name of the input file.
-  Path out_name;              ///< Name of the output file.
-  string columndesc;
-  float norm;
+  deque<ImagePath> images;        ///< input image
+  ImagePath outmask;              ///< Name of the output image.
+  deque<Crop<2>> rois;                  ///< Crop input projection image>
+  float loThreshold;         ///< Black intensity.
+  float hiThreshold;         ///< White intensity.
   bool beverbose;
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -49,28 +50,27 @@ struct clargs {
 
 clargs::
 clargs(int argc, char *argv[]) :
-  beverbose(false),
-  out_name("<input>"),
-  norm(0)
+  loThreshold(std::numeric_limits<float>::lowest()),         ///< Black intensity.
+  hiThreshold(std::numeric_limits<float>::max()),         ///< White intensity.
+  beverbose(false)
 {
 
   poptmx::OptionTable table
-  ("Normalizes the stripe of the image.",
-   "Normalizes the rows of the input image in accordance with the columns mean value.");
+  ("Normalizes stack of images.",
+   "Normolizes stack of grayscale images over the average intensity of the selected ROI's.");
 
   table
   .add(poptmx::NOTE, "ARGUMENTS:")
-  .add(poptmx::ARGUMENT, &in_name, "input", "Input image.", "")
-  .add(poptmx::ARGUMENT, &out_name, "output", "Output image.",
-       "", out_name)
+      .add(poptmx::ARGUMENT, &images,    "images", "Input combination of 2D and 3D images.",
+           "Either 2D images understood by the IM or HDF5. HDF5 format as follows:\n"
+           "    file:dataset[:[slice dimension][slice(s)]]\n" + DimSliceOptionDesc )
 
   .add(poptmx::NOTE, "OPTIONS:")
-  .add(poptmx::OPTION, &columndesc, 'c', "column",
-       "Reference columns.",
-       "Columns which are used as the reference in the normalization." +
-       SliceOptionDesc, "<all>")
-  .add(poptmx::OPTION, &norm, 'n', "norm",
-       "The normal level.", "" , "<auto>")
+  .add(poptmx::OPTION, &outmask, 'o', "output", "Output result mask or filename.",
+       "Output filename if output is a single file. Output mask otherwise. " + MaskDesc, outmask)
+  .add(poptmx::OPTION, &rois, 'r', "roi", "Region of interest(s) on the selected image.", CropOptionDesc)
+  .add(poptmx::OPTION, &loThreshold, 'm', "min", "Low threshold.", "Pixel below this value are not considered.")
+  .add(poptmx::OPTION, &hiThreshold, 'M', "max", "High threshold.", "Pixel above this value are not considered.")
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -81,47 +81,109 @@ clargs(int argc, char *argv[]) :
     exit(0);
   }
 
-
   command = table.name();
-
-  // <input> : one required argument.
-  if ( ! table.count(&in_name) )
-    exit_on_error(command, string () +
-    "Missing required argument: "+table.desc(&in_name)+".");
-  // <output> : one more argument may or may not exist
-  if ( ! table.count(&out_name) )
-    out_name = in_name;
-  if ( table.count(&norm)  &&  norm == 0.0 )
-    exit_on_error(command, "Zero norm.");
+  if ( ! table.count(&images) )
+    exit_on_error(command, "No input image given.");
 
 }
 
 
+class ProcInThread : public InThread {
 
+  ReadVolumeBySlice allIn;
+  //SaveVolumeBySlice * allOut;
+  const deque<Crop<2>> & rois;
+  SumProc refProc;
+  unordered_map<pthread_t, SumProc*> procs;
+  unordered_map<pthread_t, Map*> iomaps;
+  unordered_map<pthread_t, Line*> sumlines;
 
-/// \MAIN{ct}
-int main(int argc, char *argv[]) { {
+  bool inThread(long int idx) {
+    if (idx >= allIn.slices())
+      return false;
 
-  const clargs args(argc, argv) ;
+    SumProc * myProc;
+    Map myImage;
+    Line myLine;
+    const pthread_t me = pthread_self();
+    if ( ! procs.count(me) ) {
+      myProc = new SumProc(refProc);
+      Map * eimap = new Map(allIn.face());
+      myImage.reference(*eimap);
+      Line * eiline = new Line( rois.size() ? refProc.size() : 0);
+      myLine.reference(*eiline);
+      lock();
+      procs.emplace(me,myProc);
+      iomaps.emplace(me,eimap);
+      sumlines.emplace(me,eiline);
+    } else {
+      lock();
+      myProc = procs.at(me);
+      myImage.reference(*iomaps.at(me));
+      myLine.reference(*sumlines.at(me));
+    }
+    unlock();
 
-  Map arr;
-  ReadImage( args.in_name, arr );
-  const Shape<2> sh = arr.shape();
-  deque<int> columns = slice_str2vec( args.columndesc, sh(1) );
-
-  Line norm(sh(0));
-  for (ssize_t rcur=0; rcur<sh(0); rcur++) {
-    float sum=0;
-    for (int icur=0; icur<columns.size(); icur++ )
-      sum += arr(rcur, (ssize_t) columns[icur]);
-    norm(rcur) = (sum==0.0) ? 1.0 : sum / columns.size() ;
+    allIn.readTo(idx, myImage);
+    pair<float,int> res;
+    if (rois.size()) {
+      size_t curPos=0;
+      for ( const Crop<2> & crp : rois) {
+        Map roi(crp.apply(myImage));
+        const Shape<2> & csh = roi.shape();
+        for ( int ln = 0 ; ln < csh[0] ; ln++) {
+          myLine( blitz::Range(curPos,curPos+csh[1]-1)) = roi(ln, all);
+          curPos += csh[1];
+        }
+      }
+      res = (*myProc)(myLine);
+    } else
+      res = (*myProc)(myImage);
+    lock();
+    cout << idx << ": " << res.first << " / " << res.second << " = "
+         << ( res.second ? res.first/res.second : 0 ) << std::endl;
+    unlock();
+    bar.update();
+    return true;
   }
-  const float averagenorm = (args.norm==0.0)  ?
-                            sum(norm)/sh(0)  :  args.norm;
 
-  for (ssize_t rcur=0; rcur<sh(0); rcur++)
-    arr(rcur, all) *= averagenorm / norm(rcur) ;
+public:
 
-  SaveImage(args.out_name, arr);
+  ProcInThread(const clargs & args)
+    : InThread(args.beverbose, "Calculating average")
+    , allIn(args.images)
+    , rois(args.rois)
+    , refProc( [this]() {
+                 if (rois.size()) {
+                   ssize_t sumSize=0;
+                   for (const Crop<2> & crp : rois)
+                     sumSize += size(crp.shape(allIn.face()));
+                   return sumSize;
+                 } else
+                   return size(allIn.face());
+               } ()
+               , args.loThreshold, args.hiThreshold )
+  {
+    bar.setSteps(allIn.slices());
+  }
 
+  ~ProcInThread() {
+    auto dlnl = [&](auto pntr) { if (pntr) { delete pntr; pntr=0; } } ;
+    for (auto celem : procs) dlnl(celem.second);
+    for (auto celem : iomaps) dlnl(celem.second);
+    for (auto celem : sumlines) dlnl(celem.second);
+  }
+
+};
+
+
+
+
+
+
+
+/// \MAIN{norm}
+int main(int argc, char *argv[]) { {
+  const clargs args(argc, argv) ;
+  ProcInThread(args).execute();
 } exit(0); }

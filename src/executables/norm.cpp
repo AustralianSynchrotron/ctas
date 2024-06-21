@@ -111,8 +111,7 @@ clargs(int argc, char *argv[]) :
   else if ( table.count(&norma.first) )
     norma.second = 0;
   if ( outmask.empty() && ! print )
-    exit_on_error(command, "Neither normalization of input via "+table.desc(&outmask)+
-                           ", nor statistitcs via "+table.desc(&print)+" requested.");
+    print = true;
 
 }
 

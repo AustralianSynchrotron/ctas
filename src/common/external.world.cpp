@@ -25,6 +25,14 @@ using namespace std;
 #endif
 #include<Magick++.h>
 
+#include <opencv2/opencv.hpp>
+
+bool asdf() {
+
+
+
+}
+
 /// \brief initializes image IO libraries
 ///
 /// ImageMagick: allow reading up to 10k x 10k into memory, not HDD.

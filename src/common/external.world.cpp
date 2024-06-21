@@ -17,8 +17,12 @@ using namespace std;
 #  define STATIC_MAGICK
 #  define MAGICK_STATIC_LINK
 #endif
+#ifndef MAGICKCORE_QUANTUM_DEPTH
 #define MAGICKCORE_QUANTUM_DEPTH 32
+#endif
+#ifndef MAGICKCORE_HDRI_ENABLE
 #define MAGICKCORE_HDRI_ENABLE 1
+#endif
 #include<Magick++.h>
 
 /// \brief initializes image IO libraries
@@ -1015,16 +1019,22 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     throw_error("load image IM", "Could not read image file\""+filename+"\"."
                 " Caught Magick++ exception: \""+error.what()+"\".");
   }
-  Magick::ImageType anothergray =
-    #if MagickLibVersion < 0x700
-      Magick::GrayscaleMatteType
-    #else
-      Magick::GrayscaleAlphaType
-    #endif
-    ;
-  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != anothergray  )
+
+  /*
+  size_t channels;
+  Magick::ImageType addgrey;
+  #if MagickLibVersion < 0x700
+    channels = MagickCore::GetImageChannels(imag.image());
+    addgrey = Magick::GrayscaleMatteType;
+  #else
+    channels = imag.channels();
+    addgrey = Magick::GrayscaleAlphaType;
+  #endif
+  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != addgrey )
     warn("load image IM",
-         "Input image \"" + filename + "\" is not grayscale type.");
+         "Input image \"" + filename + "\" is not grayscale type "+toString(imag.type())+": "
+         +toString(Magick::PaletteType)+" "+toString(Magick::GrayscaleType)+" "+toString(addgrey)+".");
+  /**/
 
   const int
     width = imag.columns(),
@@ -1043,7 +1053,10 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     for (ssize_t curw = crp(1).begin() ; curw < crp(1).end(width) ; curw++)
       storage(curh-crp(0).begin(), curw-crp(1).begin()) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
   // end replacement *
-
+  float mins = min(storage);
+  float maxs = max(storage);
+  auto pix = imag.pixelColor(width/2, hight/2);
+  return;
 }
 
 
@@ -1307,6 +1320,10 @@ void ReadVolumeBySlice::readTo(uint sl, Map& trg, const Crop<2> & crp) {
 
 bool ReadVolumeBySlice::write(uint sl, Map& trg) {
   return ((_ReadVolBySlice*) guts)->write(sl, trg);
+}
+
+bool ReadVolumeBySlice::writable() const {
+  return ((_ReadVolBySlice*) guts)->writable;
 }
 
 size_t ReadVolumeBySlice::slices() const {

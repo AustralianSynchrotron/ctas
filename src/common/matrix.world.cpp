@@ -957,11 +957,13 @@ const string SumProc::modname = "SumProc";
 class SumProc::ForCLdev {
 
   static const std::string modname;
-  static const int maxLen = 2;
+  static const size_t maxLen = 2;
   const SumProc * parent;
   CLenv & cl;
   CLkernel kernelSum;
+  CLkernel kernelMult;
   CLmem clarr;
+  CLmem pararr;
   pthread_mutex_t locker;
   Map partRes;
 
@@ -983,40 +985,62 @@ public:
     pthread_mutex_destroy(&locker);
   }
 
-  pair<float,int> apply(const float * data) {
+  Stat apply(float * data) {
 
     if( pthread_mutex_trylock(&locker) )
-      return make_pair<float,int>(0,-1);
+      return Stat(0,-1);
     useCounter++;
+    Stat toRet;
 
     try {
 
       if (!kernelSum) { // OpenCL infrastructure is created on first call.
+
         clarr(clAllocArray<cl_float>(parent->_size, cl.cont));
+        if ( ! iszero(parent->norma.first) )
+          pararr(clarr);
+        else
+          pararr(clAllocArray<cl_float>(parent->_size, cl.cont));
+
         kernelSum(matrixOCLprogram(cl.cont), "limitedSum");
         kernelSum.setArg(0, clarr());
-        kernelSum.setArg(3, (cl_float) parent->lo);
-        kernelSum.setArg(4, (cl_float) parent->hi);
+        kernelSum.setArg(1, pararr());
+        kernelSum.setArg(4, (cl_float) parent->lo);
+        kernelSum.setArg(5, (cl_float) parent->hi);
+
+        if ( ! iszero(parent->norma.first) ) {
+          kernelMult(matrixOCLprogram(cl.cont), "multiplyArray");
+          kernelSum.setArg(0, clarr());
+          kernelSum.setArg(2, (cl_ulong) parent->_size);
+        }
+
       }
 
       arr2cl(data, parent->_size, clarr(), cl.que);
-      int offset = 1;
-      int len = parent->_size;
+      cl_ulong offset = 1;
+      cl_ulong len = parent->_size;
       while (len >= maxLen) {
-        kernelSum.setArg(1, (cl_int) len);
-        kernelSum.setArg(2, (cl_int) offset);
+        kernelSum.setArg(2, len);
+        kernelSum.setArg(3, offset);
         kernelSum.exec(len/2, cl.que);
         len /=2;
         offset *= 2;
       }
-      cl2blitz(clarr(), Shape<2>(len,offset), partRes, PointI<2>(), cl.que);
+      cl2blitz(pararr(), Shape<2>(len,offset), partRes, PointI<2>(), cl.que);
+      toRet = Stat( sum(partRes(all,0)), sum(partRes(all,1)) );
+      const float mult = normMult(parent->norma, toRet);
+      if ( ! iszero(mult) && mult != 1.0f ) {
+        kernelMult.setArg(1, (cl_float) mult  );
+        kernelMult.exec(parent->_size, cl.que);
+        cl2arr(clarr(), data, parent->_size, cl.que);
+      }
 
     } catch (...) {
       pthread_mutex_unlock(&locker);
       throw_error(modname, "Failed operation.");
     }
     pthread_mutex_unlock(&locker);
-    return pair<float,int>( sum(partRes(all,0)), sum(partRes(all,1)) );
+    return toRet;
 
   }
 
@@ -1025,10 +1049,11 @@ const string SumProc::ForCLdev::modname = SumProc::modname + "OCL";
 
 
 
-SumProc::SumProc(size_t size, float lo, float hi)
+SumProc::SumProc(size_t size, const Stat & norma, float lo, float hi)
   : _size(size)
   , lo(lo)
   , hi(hi)
+  , norma(norma)
   , envs(_envs)
 {
   if (!size)
@@ -1044,29 +1069,31 @@ SumProc::SumProc(size_t size, float lo, float hi)
 SumProc::~SumProc() {
   for (ForCLdev * env : _envs)
     if (env) {
-      // prdn(env->useCounter);
+      // cout << env->useCounter << " " ;
       delete env;
     }
+  //if (_envs.size())
+  //  cout << " - Total" << std::endl;
 }
 
 
-pair<float,int> SumProc::proc(float const * data) const {
+SumProc::Stat SumProc::proc(float * data) const {
 
   auto addMe = [this](const float val) {
     if (lo == hi) return val == hi;
-    if (lo<hi)    return val >= lo  &&  val <= hi;
+    if (lo < hi)  return val >= lo  &&  val <= hi;
     else          return val >= lo  ||  val <= hi;
   };
 
   if (_size<1)
-    return make_pair<float,int>(0,0);
+    return Stat(0,0);
   if (_size==1)
-    return addMe(*data) ? pair<float,int>(*data,1) : make_pair<float,int>(0,0) ;
+    return addMe(*data) ? Stat(*data,1) : Stat(0,0) ;
 
   // try on GPU
   for (ForCLdev * env : envs) {
     if (env) {
-      std::pair<float,int> res = env->apply(data);
+      Stat res = env->apply(data);
       if (res.second>=0)
         return res;
     }
@@ -1074,15 +1101,33 @@ pair<float,int> SumProc::proc(float const * data) const {
   //// Do on CPU
   int counter=0;
   float sum = 0;
-  const float * curData = data;
+  Stat res(0,0);
+  float * curData = data;
   for (size_t cur = 0 ; cur < _size ; ++cur) {
-    if (addMe(*data)) {
-      ++counter;
-      sum += *data;
+    if (addMe(*curData)) {
+      ++res.second;
+      res.first += *curData;
     }
-    ++data;
+    ++curData;
   }
-  return pair(sum, counter);
+  const float mult = normMult(norma, res);
+  if ( ! iszero(mult) && mult != 1.0f ) {
+    curData = data;
+    for (size_t cur = 0 ; cur < _size ; ++cur)
+      *curData++ *= norma.first * counter / sum;
+  }
+  return res;
 
 }
 
+
+float SumProc::normMult(const Stat & norma, const Stat & res) {
+  if (norma.second < 0)
+    return 0.0;
+  float mult = 1.0;
+  if ( ! iszero(norma.first) )
+    mult *= norma.first;
+  if ( ( ! norma.second || res.second >= norma.second ) && res.first != 0 )
+    mult *= res.second / res.first ;
+  return mult;
+}

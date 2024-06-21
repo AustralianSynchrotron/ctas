@@ -127,7 +127,57 @@ bool addMe(float val, float lo, float hi) {
     return val >= lo  ||  val <= hi;
 }
 
+
 kernel void limitedSum(
+  global float *input,
+  global float *part,
+  ulong len,
+  ulong offset,
+  float lo,
+  float hi
+)
+{
+
+  const ulong idx = get_global_id(0);
+  const int myIdx = idx*2;
+  if (myIdx >= len-1)
+    return;
+
+  if ( offset == 1 ) {
+
+    int items=0;
+    if ( addMe(input[myIdx], lo, hi) )
+      ++items;
+    else
+      part[myIdx] = 0;
+    if ( addMe(input[myIdx+1], lo, hi) ) {
+      ++items;
+      part[myIdx] += input[myIdx+1];
+    }
+    if ( myIdx == len-3  &&  addMe(input[myIdx+2], lo, hi) )  { // last element
+      ++items;
+      part[myIdx] += input[myIdx+2];
+    }
+    part[idx+1] = items;
+
+  } else {
+
+    const int myOff = myIdx*offset;
+    part[myOff]   += part[myOff+offset];
+    part[myOff+1] += part[myOff+offset+1];
+    if ( myIdx == len-3 ) {  // last element
+      part[myOff]   += part[myOff+2*offset];
+      part[myOff+1] += part[myOff+2*offset+1];
+    }
+
+  }
+
+}
+
+
+
+/*
+kernel void _limitedSum(
   global float *input,
   int len,
   int offset,
@@ -171,6 +221,4 @@ kernel void limitedSum(
   }
 
 }
-
-
-
+*/

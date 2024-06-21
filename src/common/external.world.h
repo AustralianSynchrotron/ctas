@@ -184,6 +184,7 @@ public:
   Map read(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
   void readTo(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
   bool write(uint sl, Map & out);
+  bool writable() const;
   size_t slices() const;
   Shape<2> face() const;
   Shape<3> shape() const;

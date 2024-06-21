@@ -469,19 +469,24 @@ public:
 
 class SumProc {
 
+public:
+  typedef std::pair<float,ssize_t> Stat;
+
 private:
   static const std::string modname;
   const size_t _size;
   const float lo;
   const float hi;
+  const Stat norma;
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
   std::list<ForCLdev*> & envs;
-  std::pair<float,int> proc(const float * data) const ;
+  Stat proc(float * data) const ;
 
 public:
 
-  SumProc(size_t size,
+
+  SumProc(size_t size, const Stat & norma = Stat(0,-1),
           const float lo=std::numeric_limits<float>::lowest(),
           const float hi=std::numeric_limits<float>::max() );
 
@@ -489,18 +494,19 @@ public:
     : _size(other._size)
     , lo(other.lo)
     , hi(other.hi)
+    , norma(other.norma)
     , envs(other.envs)
   {};
 
   ~SumProc();
 
-  inline size_t size() {return _size;}
+  inline size_t size() const {return _size;}
 
   bool operator==(const SumProc & other) const {
     return std::addressof(envs)==std::addressof(other.envs);
   } ;
 
-  template<int Dim> std::pair<float,int> operator()(const ArrayF<Dim> & iarr) const {
+  template<int Dim> Stat operator()(const ArrayF<Dim> & iarr) const {
     if (iarr.size() != _size)
       throw_error(modname,
                   "Missmatch of input shape ("+toString(iarr.shape())+") of size "
@@ -510,13 +516,16 @@ public:
     return proc(safeIarr.data());
   } ;
 
-  template<int Dim> static std::pair<float,int> proc(
+  template<int Dim> static Stat proc(
       const ArrayF<Dim> & iarr,
+      const Stat & norma = Stat(0,-1),
       const float lo=std::numeric_limits<float>::lowest(),
       const float hi=std::numeric_limits<float>::max())
   {
-    return SumProc(iarr.size(), lo, hi)(iarr);
+    return SumProc(iarr.size(), norma, lo, hi)(iarr);
   } ;
+
+  static float normMult(const Stat & norma, const Stat & res);
 
 };
 

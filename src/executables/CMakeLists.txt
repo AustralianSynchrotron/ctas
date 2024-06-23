@@ -1,6 +1,18 @@
 
 link_directories(${CMAKE_BINARY_DIR}/src/common)
 
+if(POLICY CMP0146)
+  cmake_policy(SET CMP0146 OLD)
+endif()
+find_package(OpenCV CONFIG)
+if(POLICY CMP0146)
+  cmake_policy(SET CMP0146 NEW)
+endif()
+if (OpenCV_FOUND)
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_definitions(-DOPENCV_FOUND)
+endif()
+
 add_executable(ct ct.cpp)
 target_link_libraries(ct
   common

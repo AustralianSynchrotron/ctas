@@ -13,6 +13,8 @@ kernel void  binn2(
     return;
   const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
   const int oszy = by ? ( iszy + by - 1 ) / by : 1;
+  if ( x >= oszx || y >= oszy )
+    return;
   const int bbx = min(iszx, (x+1)*bx) - x*bx;
   const int bby = min(iszy, (y+1)*by) - y*by;
   float sum = 0;
@@ -44,6 +46,8 @@ kernel void  binn3(
   const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
   const int oszy = by ? ( iszy + by - 1 ) / by : 1;
   const int oszz = bz ? ( iszz + bz - 1 ) / bz : 1;
+  if ( x >= oszx || y >= oszy || z >= oszz )
+    return;
   const int bbx = min(iszx, (x+1)*bx) - x*bx;
   const int bby = min(iszy, (y+1)*by) - y*by;
   const int bbz = min(iszz, (z+1)*bz) - z*bz;

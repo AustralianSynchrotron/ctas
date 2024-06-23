@@ -249,46 +249,35 @@ cl_mem clAllocArray(size_t arrSize, cl_context context) {
 
 
 template <typename T>
-cl_mem arr2cl( const T* storage, size_t size, cl_mem clStorage,
-               cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+cl_mem arr2cl( const T* storage, size_t size, cl_mem clStorage, cl_command_queue clque=CL_queue()) {
   cl_int err = clEnqueueWriteBuffer( clque, clStorage, CL_TRUE, 0, sizeof(T) * size, storage, 0, 0, 0);
   if (err != CL_SUCCESS)
-    throw_error("OpenCL", "Could not write OpenCL buffer: " + toString(err) );
+    throw_error("OpenCL", "Could not write memory block to OpenCL buffer: " + toString(err) );
   return clStorage;
-}
-
-template <typename T>
-cl_mem arr2cl( const T* storage, size_t size, cl_mem clStorage, cl_command_queue clque) {
-  return arr2cl(storage, size, clStorage, CL_MEM_READ_WRITE, clque);
 }
 
 template <typename T, int N>
 cl_mem _blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
-                , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+                , cl_command_queue clque=CL_queue()) {
   blitz::Array<T,N> _storage(safe(storage));
-  arr2cl(_storage.data(), _storage.size(), clStorage, flag, clque);
+  arr2cl(_storage.data(), _storage.size(), clStorage, clque);
   return clStorage;
 }
 
 template <typename CT, typename T, int N>
 cl_mem _blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
-                , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+                , cl_command_queue clque=CL_queue()) {
   blitz::Array<CT,N> _storage(storage.shape());
   _storage = blitz::cast<CT>(storage);
-  return _blitz2cl(_storage, clStorage, flag, clque);
+  return _blitz2cl(_storage, clStorage, clque);
 }
 
 template <typename CT, typename T, int N>
 cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage
-               , cl_mem_flags flag=CL_MEM_READ_WRITE, cl_command_queue clque=CL_queue()) {
+               , cl_command_queue clque=CL_queue()) {
   return std::is_same<CT, T>::value
-      ? _blitz2cl<T,N>(storage, clStorage, flag, clque)
-      : _blitz2cl<CT,T,N>(storage, clStorage, flag, clque);
-}
-
-template <typename CT, typename T, int N>
-cl_mem blitz2cl( const blitz::Array<T,N> & storage, cl_mem clStorage, cl_command_queue clque) {
-  return blitz2cl<CT,T,N>(storage, clStorage, CL_MEM_READ_WRITE, clque);
+      ? _blitz2cl<T,N>(storage, clStorage, clque)
+      : _blitz2cl<CT,T,N>(storage, clStorage, clque);
 }
 
 template <typename CT, typename T, int N>
@@ -299,7 +288,7 @@ cl_mem blitz2cl( const blitz::Array<T,N> & storage
   if (err != CL_SUCCESS)
     throw_error("OpenCL", "Could not get context from queue: " + toString(err));
   cl_mem clStorage = clAllocArray<CT>(storage.size(), flag, context);
-  return blitz2cl<CT,T,N>(storage, clStorage, flag, clque);
+  return blitz2cl<CT,T,N>(storage, clStorage, clque);
 }
 
 template <typename CT, typename T, int N>

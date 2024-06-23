@@ -405,7 +405,7 @@
 
 /* date */
 #ifndef BZ__config_date 
-#define BZ__config_date  "Tue Jun 18 14:15:53 AEST 2024" 
+#define BZ__config_date  "Fri Jun 21 14:41:51 AEST 2024" 
 #endif
 
 /* uname -a */

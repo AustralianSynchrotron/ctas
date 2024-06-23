@@ -167,8 +167,8 @@ public:
 
       if (!kernelBinn) { // OpenCL infrastructure is created on first call.
         kernelBinn(matrixOCLprogram(cl.cont), "binn2");
-        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
-        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
+        clinarr(clAllocArray<cl_float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
+        cloutarr(clAllocArray<cl_float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
         if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
           throw 1;
         kernelBinn.setArg(0, clinarr());

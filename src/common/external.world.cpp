@@ -25,13 +25,7 @@ using namespace std;
 #endif
 #include<Magick++.h>
 
-#include <opencv2/opencv.hpp>
-
-bool asdf() {
-
-
-
-}
+//#include <opencv2/opencv.hpp>
 
 /// \brief initializes image IO libraries
 ///

@@ -46,7 +46,8 @@ target_opencl(common matrix.cl)
 target_link_libraries(common
   ${HDF5_LIBRARIES}
   ${OpenCL_LIBRARIES}
-  ImageMagick::Magick++
+  #ImageMagick::Magick++
+  ${ImageMagick_LIBRARIES}
   TIFF::TIFF
   Threads::Threads
   flatfield

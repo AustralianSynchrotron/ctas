@@ -998,7 +998,7 @@ public:
       if (!kernelSum) { // OpenCL infrastructure is created on first call.
 
         clarr(clAllocArray<cl_float>(parent->_size, cl.cont));
-        if ( ! iszero(parent->norma.first) )
+        if ( parent->norma.first != 0.0 )
           pararr(clarr);
         else
           pararr(clAllocArray<cl_float>(parent->_size, cl.cont));
@@ -1009,7 +1009,7 @@ public:
         kernelSum.setArg(4, (cl_float) parent->lo);
         kernelSum.setArg(5, (cl_float) parent->hi);
 
-        if ( ! iszero(parent->norma.first) ) {
+        if ( parent->norma.first != 0.0 ) {
           kernelMult(matrixOCLprogram(cl.cont), "multiplyArray");
           kernelSum.setArg(0, clarr());
           kernelSum.setArg(2, (cl_ulong) parent->_size);
@@ -1030,7 +1030,7 @@ public:
       cl2blitz(pararr(), Shape<2>(len,offset), partRes, PointI<2>(), cl.que);
       toRet = Stat( sum(partRes(all,0)), sum(partRes(all,1)) );
       const float mult = normMult(parent->norma, toRet);
-      if ( ! iszero(mult) && mult != 1.0f ) {
+      if ( mult != 0.0 && mult != 1.0f ) {
         kernelMult.setArg(1, (cl_float) mult  );
         kernelMult.exec(parent->_size, cl.que);
         cl2arr(clarr(), data, parent->_size, cl.que);
@@ -1112,7 +1112,7 @@ SumProc::Stat SumProc::proc(float * data) const {
     ++curData;
   }
   const float mult = normMult(norma, res);
-  if ( ! iszero(mult) && mult != 1.0f ) {
+  if ( mult != 0.0 && mult != 1.0f ) {
     curData = data;
     for (size_t cur = 0 ; cur < _size ; ++cur)
       *curData++ *= norma.first * counter / sum;
@@ -1126,7 +1126,7 @@ float SumProc::normMult(const Stat & norma, const Stat & res) {
   if (norma.second < 0)
     return 0.0;
   float mult = 1.0;
-  if ( ! iszero(norma.first) )
+  if ( norma.first != 0.0 )
     mult *= norma.first;
   if ( ( ! norma.second || res.second >= norma.second ) && res.first != 0 )
     mult *= res.second / res.first ;

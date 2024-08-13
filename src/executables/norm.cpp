@@ -169,13 +169,13 @@ class ProcInThread : public InThread {
       }
       res = myGoods->proc(myGoods->summe);
       const float mult = SumProc::normMult(norma, res);
-      if ( ! iszero(mult) && mult != 1.0f ) // with roi(s) image is never normalized;
+      if ( mult != 0.0 && mult != 1.0f ) // with roi(s) image is never normalized;
         myGoods->iomap *= mult;
     } else {
       res = myGoods->proc(myGoods->iomap);
     }
 
-    if ( ! iszero(norma.first) && norma.second >= 0 && res.second >= norma.second) {
+    if ( norma.first != 0.0 && norma.second >= 0 && res.second >= norma.second) {
       if ( allIn.writable() )
         allIn.write(idx, myGoods->iomap);
       else if (allOut)
@@ -256,17 +256,17 @@ public:
       warn("ProcInThread", "No considered pixels in the whole volume.");
       return;
     }
-    if ( iszero(norma.first) && iszero(tot.first) ) {
+    if ( norma.first == 0.0 && tot.first == 0.0 ) {
       warn("ProcInThread", "Average of the whole volume is exactly zero. Will not normalize further.");
       return;
     }
 
-    float multN = iszero(norma.first) ? tot.second/tot.first : 1.0f ;
+    float multN = norma.first == 0.0 ? tot.second/tot.first : 1.0f ;
     auto inthread = [this,&tot,multN](size_t idx) {
       const SumProc::Stat & res = reses.at(idx);
-      if ( ! iszero(norma.first) && ! iszero(res.first) && res.second >= norma.second)
+      if ( norma.first != 0.0 && res.first != 0.0 && res.second >= norma.second)
         return true; // already normalized
-      if ( iszero(norma.first) && ( iszero(res.first) || res.second < norma.second ) )
+      if ( norma.first == 0.0 && ( res.first == 0.0 || res.second < norma.second ) )
         return true; // no need to normalize - effect will cancel self;
       const float mult = multN * tot.first / tot.second;
       Map iomap;

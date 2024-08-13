@@ -97,6 +97,7 @@ kernel void  rotate2(
   int                      iszx,
   int                      iszy,
   int                      oszx,
+  int                      oszy,
   global const float*     xf,
   global const float*     yf,
   global const int*       flx,
@@ -104,7 +105,7 @@ kernel void  rotate2(
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  if ( x >= iszx || y >= iszy )
+  if ( x >= oszx || y >= oszy )
     return;
   const int oshft = x+y*oszx;
   const int vflx = flx[oshft];

@@ -654,13 +654,14 @@ public:
         kernelRotate.setArg(0, clinarr());
         kernelRotate.setArg(1, cloutarr());
         //kernelRotate.setArg(2, (cl_float) 0.0); // BG
-        kernelRotate.setArg(3, (cl_int) parent->ish(1));
-        kernelRotate.setArg(4, (cl_int) parent->ish(0));
-        kernelRotate.setArg(5, (cl_int) parent->osh(1));
-        kernelRotate.setArg(6, clxf());
-        kernelRotate.setArg(7, clyf());
-        kernelRotate.setArg(8, clflx());
-        kernelRotate.setArg(9, clfly());
+        kernelRotate.setArg(3,  (cl_int) parent->ish(1));
+        kernelRotate.setArg(4,  (cl_int) parent->ish(0));
+        kernelRotate.setArg(5,  (cl_int) parent->osh(1));
+        kernelRotate.setArg(6,  (cl_int) parent->osh(0));
+        kernelRotate.setArg(7,  clxf());
+        kernelRotate.setArg(8,  clyf());
+        kernelRotate.setArg(9,  clflx());
+        kernelRotate.setArg(10, clfly());
       }
 
       kernelRotate.setArg(2, (cl_float) bg);

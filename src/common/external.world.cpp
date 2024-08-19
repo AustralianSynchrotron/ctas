@@ -967,7 +967,7 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop<2> & crp = Crop
     //pthread_mutex_unlock(&mut);
 
     #define blitzArrayFromData(type) \
-      blitz::Array<type,1> ( ((type*)buf) + crp(0).begin(), blitz::shape(osh(1)), blitz::neverDeleteData)
+      blitz::Array<type,1> ( ((type*)buf) + crp(1).begin(), blitz::shape(osh(1)), blitz::neverDeleteData)
     switch (fmt) {
     case SAMPLEFORMAT_UINT :
       if (bps==8)

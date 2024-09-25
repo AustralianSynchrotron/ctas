@@ -28,7 +28,7 @@
  #error <blitz/array/stencils.h> must be included after <blitz/array.h>
 #endif
 
-#include "blitz/array/stencilops.h"
+#include "../array/stencilops.h"
 
 // NEEDS_WORK: currently stencilExtent returns int(1).  What if the
 // stencil contains calls to math functions, or divisions, etc.?
@@ -336,7 +336,7 @@ inline bool areShapesConformable(const T_shape1&, const dummyArray&) {
 
 BZ_NAMESPACE_END
 
-#include "blitz/array/stencils.cc"
+#include "../array/stencils.cc"
 
 #endif // BZ_ARRAYSTENCILS_H
 

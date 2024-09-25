@@ -11,7 +11,7 @@
 #define BZ_TINYVECIO_CC
 
 #ifndef BZ_TINYVEC_H
- #include <blitz/tinyvec.h>
+ #include "tinyvec.h"
 #endif
 
 BZ_NAMESPACE(blitz)

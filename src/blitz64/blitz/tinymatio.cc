@@ -9,7 +9,7 @@
 #define BZ_TINYMATIO_CC
 
 #ifndef BZ_TINYMAT_H
- #include <blitz/tinymat.h>
+ #include "tinymat.h"
 #endif
 
 BZ_NAMESPACE(blitz)

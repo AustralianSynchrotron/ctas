@@ -27,7 +27,7 @@
  #error <blitz/array/resize.cc> must be included via <blitz/array.h>
 #endif
 
-#include <blitz/minmax.h>
+#include "../minmax.h"
 
 BZ_NAMESPACE(blitz)
 

@@ -6,7 +6,7 @@
  */
 
 #ifndef BZ_ZERO_H
- #include <blitz/zero.h>
+ #include "zero.h"
 #endif
 
 #ifndef BZ_ZERO_CC

@@ -12,7 +12,7 @@
  #error <blitz/benchext.cc> must be included via <blitz/benchext.h>
 #endif
 
-#include <blitz/vector-et.h>
+#include "vector-et.h"
 
 #ifdef BZ_HAVE_STD
  #include <fstream>

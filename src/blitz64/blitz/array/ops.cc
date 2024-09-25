@@ -27,7 +27,7 @@
  #error <blitz/array/ops.cc> must be included via <blitz/array.h>
 #endif
 
-#include <blitz/update.h>
+#include "../update.h"
 
 BZ_NAMESPACE(blitz)
 

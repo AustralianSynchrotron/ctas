@@ -28,10 +28,10 @@
  #error <blitz/array/expr.h> must be included via <blitz/array.h>
 #endif
 
-#include "blitz/ops.h"
-#include "blitz/prettyprint.h"
-#include "blitz/shapecheck.h"
-#include "blitz/numinquire.h"
+#include "../ops.h"
+#include "../prettyprint.h"
+#include "../shapecheck.h"
+#include "../numinquire.h"
 
 /*
  * The array expression templates iterator interface is followed by
@@ -897,7 +897,7 @@ protected:
 
 BZ_NAMESPACE_END
 
-#include "blitz/array/asexpr.h"
+#include "../array/asexpr.h"
 
 #endif // BZ_ARRAYEXPR_H
 

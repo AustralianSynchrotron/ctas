@@ -1,7 +1,7 @@
 
 
+#include <poptmx.h>
 #include "../common/ctas.h"
-#include "../common/poptmx.h"
 
 
 using namespace std;

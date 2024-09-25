@@ -32,7 +32,7 @@
 
 #include "../common/ctas.h"
 #include "../common/ipc.h"
-#include "../common/poptmx.h"
+#include <poptmx.h>
 
 #define _USE_MATH_DEFINES // for M_PI
 

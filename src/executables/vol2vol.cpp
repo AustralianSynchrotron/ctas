@@ -26,9 +26,8 @@
 /// @brief %Forms projection from multiple images.
 ///
 
-
+#include <poptmx.h>
 #include "../common/ctas.h"
-#include "../common/poptmx.h"
 #include "../common/flatfield.h"
 #include <algorithm>
 #include <string.h>

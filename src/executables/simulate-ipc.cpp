@@ -1,5 +1,5 @@
+#include <poptmx.h>
 #include "../common/ctas.h"
-#include "../common/poptmx.h"
 #include "../common/ipc.h"
 
 #define _USE_MATH_DEFINES // for M_PI

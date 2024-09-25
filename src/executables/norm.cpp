@@ -26,10 +26,9 @@
 /// @brief %Normalizes an image per using selected stripe.
 ///
 
-
-#include "../common/ctas.h"
-#include "../common/poptmx.h"
+#include <poptmx.h>
 #include <math.h>
+#include "../common/ctas.h"
 
 using namespace std;
 

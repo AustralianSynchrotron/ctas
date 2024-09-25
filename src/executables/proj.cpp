@@ -27,7 +27,7 @@
 ///
 
 #include <unistd.h>
-#include "../common/poptmx.h"
+#include <poptmx.h>
 #include "../common/external.world.h"
 #include "../common/parallel.world.h"
 #include "../common/magic_enum.hpp"

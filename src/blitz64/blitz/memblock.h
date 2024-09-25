@@ -27,7 +27,7 @@
 #ifndef BZ_MEMBLOCK_H
 #define BZ_MEMBLOCK_H
 
-#include "blitz/blitz.h"
+#include "blitz.h"
 
 #include <stddef.h>     // ptrdiff_t
 

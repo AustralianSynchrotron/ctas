@@ -30,7 +30,7 @@
  #error <blitz/matexpr.h> must be included via <blitz/matrix.h>
 #endif
 
-#include "blitz/applics.h"
+#include "applics.h"
 
 BZ_NAMESPACE(blitz)
 
@@ -166,8 +166,8 @@ private:
 
 BZ_NAMESPACE_END
 
-#include "blitz/matref.h"
-#include "blitz/matbops.h"
-#include "blitz/matuops.h"
+#include "matref.h"
+#include "matbops.h"
+#include "matuops.h"
 
 #endif // BZ_MATEXPR_H

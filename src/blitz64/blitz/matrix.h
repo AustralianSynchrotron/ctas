@@ -27,15 +27,15 @@
 #define BZ_MATRIX_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz/blitz.h"
+ #include "blitz.h"
 #endif
 
 #ifndef BZ_MEMBLOCK_H
- #include "blitz/memblock.h"
+ #include "memblock.h"
 #endif
 
 #ifndef BZ_MSTRUCT_H
- #include "blitz/mstruct.h"
+ #include "mstruct.h"
 #endif
 
 BZ_NAMESPACE(blitz)
@@ -210,7 +210,7 @@ istream& operator>>(istream& is, Matrix<P_numtype, P_structure>& matrix);
 
 BZ_NAMESPACE_END
 
-#include "blitz/matrix.cc"
-#include "blitz/matexpr.h"
+#include "matrix.cc"
+#include "matexpr.h"
 
 #endif // BZ_MATRIX_H

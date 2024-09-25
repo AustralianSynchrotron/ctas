@@ -55,7 +55,7 @@
 #define BZ_ZERO_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz/blitz.h"
+ #include "blitz.h"
 #endif
 
 BZ_NAMESPACE(blitz)

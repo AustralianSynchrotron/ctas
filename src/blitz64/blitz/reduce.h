@@ -29,15 +29,15 @@
 #define BZ_REDUCE_H
 
 #ifndef BZ_BLITZ_H
- #include "blitz/blitz.h"
+ #include "blitz.h"
 #endif
 
 #ifndef BZ_NUMTRAIT_H
- #include "blitz/numtrait.h"
+ #include "numtrait.h"
 #endif
 
 #ifndef BZ_NUMINQUIRE_H
- #include "blitz/numinquire.h"
+ #include "numinquire.h"
 #endif
 
 BZ_NAMESPACE(blitz)

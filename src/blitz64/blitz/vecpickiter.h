@@ -29,7 +29,7 @@
 #define BZ_VECPICKITER_H
 
 #ifndef BZ_VECPICK_H
- #include "blitz/vecpick.h"
+ #include "vecpick.h"
 #endif
 
 BZ_NAMESPACE(blitz)

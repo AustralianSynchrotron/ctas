@@ -31,7 +31,7 @@
  #error <blitz/mathf2.h> should be included via <blitz/applics.h>
 #endif
 
-#include "blitz/prettyprint.h"
+#include "prettyprint.h"
 
 BZ_NAMESPACE(blitz)
 

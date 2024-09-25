@@ -10,7 +10,7 @@
 
 
 #ifndef BZ_PRETTYPRINT_H
- #include "blitz/prettyprint.h"
+ #include "prettyprint.h"
 #endif
 
 BZ_NAMESPACE(blitz)

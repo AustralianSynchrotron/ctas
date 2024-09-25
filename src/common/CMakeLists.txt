@@ -26,7 +26,6 @@ function(target_headers target)
 endfunction()
 
 
-add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED
   common.world.cpp
@@ -35,6 +34,7 @@ add_library(common SHARED
   physical.world.cpp
   external.world.cpp
 )
+add_dependencies(common blitz64)
 target_headers(common
   ctas.h
   common.world.h
@@ -54,6 +54,7 @@ target_link_libraries(common
 )
 
 add_library(flatfield SHARED flatfield.cpp)
+add_dependencies(flatfield blitz64)
 target_headers(flatfield flatfield.h)
 target_opencl(flatfield ff.cl)
 
@@ -65,6 +66,7 @@ target_link_libraries(lct
   FFTW::Float
   GSL::gsl
   GSL::gslcblas)
+add_dependencies(lct blitz64)
 
 add_library(lipc SHARED lipc.cpp)
 target_headers(lipc ipc.h)
@@ -72,15 +74,17 @@ target_opencl(lipc ipc.cl)
 target_link_libraries(lipc
   FFTW::Float
   ${CLFFT_LL})
+add_dependencies(lipc blitz64)
 
 add_library(ldei SHARED ldei.cpp)
 target_headers(ldei dei.h)
+add_dependencies(ldei blitz64)
 
 add_library(ledei SHARED ledei.cpp)
+add_dependencies(ledei blitz64)
 
 install(
-  TARGETS poptmx
-          common
+  TARGETS common
           lct
           lipc
           ldei

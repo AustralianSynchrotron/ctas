@@ -405,12 +405,12 @@
 
 /* date */
 #ifndef BZ__config_date 
-#define BZ__config_date  "Fri Jun 21 14:41:51 AEST 2024" 
+#define BZ__config_date  "Wed Sep 25 12:35:58 AEST 2024" 
 #endif
 
 /* uname -a */
 #ifndef BZ__os_name 
-#define BZ__os_name  "Linux dj-station 6.8.0-35-generic #35-Ubuntu SMP PREEMPT_DYNAMIC Mon May 20 15:51:52 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux" 
+#define BZ__os_name  "Linux dj-station 6.8.0-45-generic #45-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug 30 12:02:04 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux" 
 #endif
 
 /* target */

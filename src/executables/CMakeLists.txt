@@ -13,6 +13,10 @@ if (OpenCV_FOUND)
   add_definitions(-DOPENCV_FOUND)
 endif()
 
+find_library(POPTL poptmx)
+find_path(POPTH poptmx.h REQUIRED)
+
+
 add_executable(ct ct.cpp)
 target_link_libraries(ct
   common
@@ -99,8 +103,6 @@ target_link_libraries(mosaic
   ${OpenCV_LIBS}
 )
 
-
-
 add_executable(v2v vol2vol.cpp)
 target_opencl(v2v ../common/matrix.cl)
 target_link_libraries(v2v
@@ -109,12 +111,12 @@ target_link_libraries(v2v
   flatfield
 )
 
-
 add_executable(test test.cpp)
 target_link_libraries(test
   common
   poptmx
 )
+
 
 
 set( all_targets

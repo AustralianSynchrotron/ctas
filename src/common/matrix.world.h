@@ -8,10 +8,8 @@
 #include <CL/cl.h>
 
 #define BZ_THREADSAFE
-//#define BZ_DEBUG_LOG_REFERENCES
-#include "../blitz64/blitz/array.h"
-#include "../blitz64/blitz/tinyvec-et.h"
-//#include <blitz/array.h>
+#include "blitz/array.h"
+#include "blitz/tinyvec-et.h"
 
 
 

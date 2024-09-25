@@ -24,7 +24,7 @@ macro (target_opencl trg clf)
 endmacro()
 
 add_subdirectory(blitz64)
-include_directories("blitz64")
+include_directories("${blitz_include}")
 add_subdirectory(common)
 add_subdirectory(executables)
 

@@ -768,11 +768,11 @@ Map RotateProc::apply(const Map & imap, Map & tmap, float bg) const {
     if ( ! (nof90%2) ) { //180deg
       toRet.reverseSelf(blitz::firstDim);
       toRet.reverseSelf(blitz::secondDim);
-    } else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) ) {  // 270deg
-      toRet.transposeSelf(blitz::firstDim, blitz::secondDim);
+    } else if (  ( nof90 > 0 && ! (nof90%3) ) || ( nof90 < 0 && ! (1-nof90%4) ) ) {  // 270deg
+      toRet.transposeSelf(blitz::secondDim, blitz::firstDim);
       toRet.reverseSelf(blitz::secondDim);
     } else { // 90deg
-      toRet.transposeSelf(blitz::firstDim, blitz::secondDim);
+      toRet.transposeSelf(blitz::secondDim, blitz::firstDim);
       toRet.reverseSelf(blitz::firstDim);
     }
     return toRet;

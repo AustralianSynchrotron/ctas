@@ -213,9 +213,7 @@
 #endif
 
 /* Define to 1 if you have the <stdio.h> header file. */
-#ifndef BZ_HAVE_STDIO_H 
-#define BZ_HAVE_STDIO_H  1 
-#endif
+/* #undef BZ_HAVE_STDIO_H */
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #ifndef BZ_HAVE_STDLIB_H 
@@ -405,12 +403,12 @@
 
 /* date */
 #ifndef BZ__config_date 
-#define BZ__config_date  "Wed Sep 25 19:31:53 AEST 2024" 
+#define BZ__config_date  "Thu Sep 26 13:21:35 AEST 2024" 
 #endif
 
 /* uname -a */
 #ifndef BZ__os_name 
-#define BZ__os_name  "Linux dj-station 6.8.0-45-generic #45-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug 30 12:02:04 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux" 
+#define BZ__os_name  "Linux asci 5.15.74-flatcar #1 SMP Tue Nov 15 18:22:02 -00 2022 x86_64 x86_64 x86_64 GNU/Linux" 
 #endif
 
 /* target */

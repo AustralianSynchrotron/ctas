@@ -42,7 +42,7 @@ using namespace std;
 
 
 enum Inpaint {
-  ZEROES=0,
+  NO=0,
   #ifdef OPENCV_FOUND
   NS, // Navier-Stokes
   AT, // Alexandru Telea
@@ -69,7 +69,7 @@ struct StitchRules {
   bool flip;               ///< indicates if originF was given in options.
   std::deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
-  Inpaint inpaint = Inpaint::ZEROES;
+  Inpaint inpaint = Inpaint::NO;
 
   StitchRules()
   : nofIn(0)
@@ -404,7 +404,7 @@ class ProcProj {
   blitz::Array<uchar,2> mskI; // for OpenCV::inpaint
   cv::Mat cv_filled;
   #endif // OPENCV_FOUND
-  Inpaint inpaint=ZEROES;
+  Inpaint inpaint=Inpaint::NO;
   CLmem maskCL;
 
   // own
@@ -655,7 +655,7 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
     }
   }
 
-  inpaint = any(mskF==0.0) ? strl.inpaint : ZEROES ;
+  inpaint = any(mskF==0.0) ? strl.inpaint : Inpaint::NO ;
   if (inpaint == Inpaint::AM) {
     initCL();
   }

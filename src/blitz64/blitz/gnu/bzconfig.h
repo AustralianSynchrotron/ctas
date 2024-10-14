@@ -140,6 +140,11 @@
 #define BZ_HAVE_MEMBER_TEMPLATES_OUTSIDE_CLASS  /**/ 
 #endif
 
+/* Define to 1 if you have the <memory.h> header file. */
+#ifndef BZ_HAVE_MEMORY_H 
+#define BZ_HAVE_MEMORY_H  1 
+#endif
+
 /* define if the compiler supports the mutable keyword */
 #ifndef BZ_HAVE_MUTABLE 
 #define BZ_HAVE_MUTABLE  /**/ 
@@ -211,9 +216,6 @@
 #ifndef BZ_HAVE_STDINT_H 
 #define BZ_HAVE_STDINT_H  1 
 #endif
-
-/* Define to 1 if you have the <stdio.h> header file. */
-/* #undef BZ_HAVE_STDIO_H */
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #ifndef BZ_HAVE_STDLIB_H 
@@ -376,9 +378,7 @@
 #define BZ_SIZEOF_SSIZE_T  8 
 #endif
 
-/* Define to 1 if all of the C90 standard headers exist (not just the ones
-   required in a freestanding environment). This macro is provided for
-   backward compatibility; new code need not use it. */
+/* Define to 1 if you have the ANSI C header files. */
 #ifndef BZ_STDC_HEADERS 
 #define BZ_STDC_HEADERS  1 
 #endif
@@ -403,12 +403,12 @@
 
 /* date */
 #ifndef BZ__config_date 
-#define BZ__config_date  "Thu Sep 26 13:21:35 AEST 2024" 
+#define BZ__config_date  "Mon Oct 14 19:14:23 AEDT 2024" 
 #endif
 
 /* uname -a */
 #ifndef BZ__os_name 
-#define BZ__os_name  "Linux asci 5.15.74-flatcar #1 SMP Tue Nov 15 18:22:02 -00 2022 x86_64 x86_64 x86_64 GNU/Linux" 
+#define BZ__os_name  "Linux dj-station 6.8.0-45-generic #45-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug 30 12:02:04 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux" 
 #endif
 
 /* target */

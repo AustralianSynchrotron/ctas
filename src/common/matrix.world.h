@@ -307,7 +307,19 @@ public:
   Crop(const std::string & str) ;
   explicit operator bool() const { return std::any_of( whole(*this), [](const Segment & seg){return bool(seg);}); }
   Shape<Dim> shape(const Shape<Dim> & ish) const ;
-  ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
+  template<class Dtype> blitz::Array<Dtype,Dim>
+  apply(const blitz::Array<Dtype,Dim> & iarr) const {
+    if (!bool(*this))
+      return iarr;
+    const Shape<Dim> osh = shape(iarr.shape());
+    blitz::TinyVector<size_t,Dim> ubound;
+    blitz::TinyVector<size_t,Dim> lbound;
+    for (uint curD=0; curD<Dim; ++curD) {
+      ubound[curD] = (*this)[curD].begin();
+      lbound[curD] = ubound[curD] + osh[curD] - 1;
+    }
+    return iarr(blitz::RectDomain<Dim>(ubound, lbound));
+  }
 };
 
 template<int Dim>

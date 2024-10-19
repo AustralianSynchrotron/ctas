@@ -77,21 +77,6 @@ Shape<Dim> Crop<Dim>::shape(const Shape<Dim> & ish) const {
   return osh;
 }
 
-template<int Dim>
-ArrayF<Dim> Crop<Dim>::apply(const ArrayF<Dim> & iarr) const {
-  if (!bool(*this))
-    return iarr;
-  const Shape<Dim> osh = shape(iarr.shape());
-  blitz::TinyVector<size_t,Dim> ubound;
-  blitz::TinyVector<size_t,Dim> lbound;
-  for (uint curD=0; curD<Dim; ++curD) {
-    ubound[curD] = (*this)[curD].begin();
-    lbound[curD] = ubound[curD] + osh[curD] - 1;
-  }
-  return iarr(blitz::RectDomain<Dim>(ubound, lbound));
-}
-
-
 template class Crop<1>;
 template class Crop<2>;
 template class Crop<3>;

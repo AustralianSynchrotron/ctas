@@ -1783,7 +1783,7 @@ SaveData ( const Path filename, ... ) {
 
 
 void
-LoadData ( const Path filename, ... ) {
+LoadDataM ( const Path filename, ... ) {
 
   vector<Line*> storage;
 

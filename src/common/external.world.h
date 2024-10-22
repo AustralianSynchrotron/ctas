@@ -235,7 +235,7 @@ public:
 // Don't use the reference type "const Path &" here: will
 // not work on Windows
 void
-LoadData(const Path filename, ... );
+LoadDataM(const Path filename, ... );
 
 void
 LoadData ( const Path filename, Map & storage );

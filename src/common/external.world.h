@@ -240,6 +240,12 @@ LoadData(const Path filename, ... );
 void
 LoadData ( const Path filename, Map & storage );
 
+inline Map
+LoadData (const Path filename) {
+  Map out;
+  LoadData(filename, out);
+  return out;
+}
 
 
 /// \brief Save any amount of lines into data file.

@@ -150,7 +150,7 @@ IPCprocess::ForCLdev::extract(Map & in) {
       size_t clfftTmpBufSize = 0;
       clfftSetupData fftSetup;
       const size_t mshs[2] = {(size_t) msh(1), (size_t) msh(0)};
-      if ( CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) ||
+      if ( /* CL_SUCCESS != (err = clfftInitSetupData(&fftSetup) ) || */
            CL_SUCCESS != (err = clfftSetup(&fftSetup) ) ||
            CL_SUCCESS != (err = clfftCreateDefaultPlan(&clfft_plan, cl.cont, CLFFT_2D, mshs)) ||
            //CL_SUCCESS != (err = clfftSetPlanPrecision(clfft_plan, CLFFT_SINGLE_FAST)) ||

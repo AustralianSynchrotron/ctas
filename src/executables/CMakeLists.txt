@@ -34,6 +34,7 @@ target_link_libraries(ipc
   common
   poptmx
   lipc
+  ${CLFFT_LL}
 )
 
 add_executable(dei dei.cpp)
@@ -63,6 +64,7 @@ target_link_libraries(simulate-ipc
   common
   poptmx
   lipc
+  ${CLFFT_LL}
 )
 
 add_executable(norm norm.cpp)

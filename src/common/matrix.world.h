@@ -436,6 +436,8 @@ public:
 
 
 
+Map subPixShift(const Map & im, PointF<2> shift);
+
 
 class MapProc {
 protected:

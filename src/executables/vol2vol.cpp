@@ -28,7 +28,7 @@
 
 #include <poptmx.h>
 #include "../common/ctas.h"
-#include "../common/flatfield.h"
+#include "../common/flat.world.h"
 #include <algorithm>
 #include <string.h>
 

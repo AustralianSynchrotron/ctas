@@ -33,6 +33,7 @@ add_library(common SHARED
   parallel.world.cpp
   physical.world.cpp
   external.world.cpp
+  flat.world.cpp
 )
 add_dependencies(common blitz64)
 target_headers(common
@@ -41,7 +42,8 @@ target_headers(common
   matrix.world.h
   parallel.world.h
   physical.world.h
-  external.world.h)
+  external.world.h
+  flat.world.h)
 target_opencl(common matrix.cl)
 target_link_libraries(common
   ${HDF5_LIBRARIES}
@@ -50,13 +52,7 @@ target_link_libraries(common
   ${ImageMagick_LIBRARIES}
   TIFF::TIFF
   Threads::Threads
-  flatfield
 )
-
-add_library(flatfield SHARED flatfield.cpp)
-add_dependencies(flatfield blitz64)
-target_headers(flatfield flatfield.h)
-target_opencl(flatfield ff.cl)
 
 add_library(lct SHARED lct.cpp)
 target_headers(lct ct.h)
@@ -89,7 +85,6 @@ install(
           lipc
           ldei
           ledei
-          flatfield
   LIBRARY DESTINATION ${LIB_DESTINATION}
   PUBLIC_HEADER DESTINATION ${INC_DESTINATION}
 )

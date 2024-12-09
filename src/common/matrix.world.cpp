@@ -798,6 +798,19 @@ const string RotateProc::modname = "RotateProc";
 
 
 
+Map subPixShift(const Map & im, PointF<2> shift) {
+  if ( abs(shift(0))>0.5 or abs(shift(1))>0.5)
+    throw_error(__func__, "Sub-pixel shifts (" + toString(shift) + ") must be below 0.5");
+  Map sim(im.shape());
+  return sim;
+}
+
+
+
+
+
+
+
 MapProc::MapProc(float ang, const Crop<2> & crp, const Binn<2> & bnn, const Shape<2> & ish, float reNAN)
   : ish(ish)
   , rotProc(ish, ang)

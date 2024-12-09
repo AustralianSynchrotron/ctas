@@ -4,14 +4,14 @@ link_directories(${CMAKE_BINARY_DIR}/src/common)
 if(POLICY CMP0146)
   cmake_policy(SET CMP0146 OLD)
 endif()
-find_package(OpenCV CONFIG)
-if(POLICY CMP0146)
-  cmake_policy(SET CMP0146 NEW)
-endif()
-if (OpenCV_FOUND)
-  include_directories( ${OpenCV_INCLUDE_DIRS} )
-  add_definitions(-DOPENCV_FOUND)
-endif()
+#find_package(OpenCV CONFIG)
+#if(POLICY CMP0146)
+#  cmake_policy(SET CMP0146 NEW)
+#endif()
+#if (OpenCV_FOUND)
+#  include_directories( ${OpenCV_INCLUDE_DIRS} )
+#  add_definitions(-DOPENCV_FOUND)
+#endif()
 
 find_library(POPTL poptmx)
 find_path(POPTH poptmx.h REQUIRED)
@@ -107,7 +107,6 @@ add_executable(v2v vol2vol.cpp)
 target_opencl(v2v ../common/matrix.cl)
 target_link_libraries(v2v
   common
-  flatfield
   ${POPTL}
 )
 

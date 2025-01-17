@@ -483,6 +483,8 @@ slice_str2vec(const string & sliceS, const int hight){
     int start=0;
     int stop=0;
     int step=0;
+    bool emptyStart=false;
+    bool emptyStop=false;
     string source = "";
   };
   deque<Sl> ranges;
@@ -504,8 +506,8 @@ slice_str2vec(const string & sliceS, const int hight){
     };
 
     // parse start
-    const bool emptyStart = rem.at(0)==delim;
-    if (emptyStart) {
+    range.emptyStart = rem.at(0)==delim;
+    if (range.emptyStart) {
       endPos = 0;
       range.start = 0;
     } else {
@@ -529,26 +531,18 @@ slice_str2vec(const string & sliceS, const int hight){
 
       endPos = posAfterInt(rem);
       string stopString = rem.substr(0, endPos);
-      const bool emptyStop = stopString.empty();
-      if (emptyStop) {
-        range.stop = range.start; // special case!
+      range.emptyStop = stopString.empty();
+      if (range.emptyStop) {
+        range.stop = minsz;
         range.step = (link == '-') ? -1 : 1;
-        //if (emptyStart)
-        //  range.step = 0;
-        //else if (link == '-')
-        //  range.step = -1;
-        //else
-        //  range.step = 1;
       } else {
         if (link != delim)
           stopString = link + stopString;
         range.stop = str2n(stopString);
-        if (emptyStart)
-          range.start = range.stop; // special case
-        else if (link != delim)
+        if ( ! range.emptyStart  and  link != delim )
           range.stop += range.start;
       }
-      minsz = max( { minsz, -range.stop-1, range.stop+1 } );
+      minsz = max( { minsz, -range.stop, range.stop } );
       rem = endPos == string::npos ? string() : rem.substr(endPos);
 
       // parse step
@@ -564,11 +558,6 @@ slice_str2vec(const string & sliceS, const int hight){
         range.step = str2n(rem.substr(0, endPos));
         if (range.step == 0)
           throw_error("slice string", "Zero step" + descErr() );
-        if (range.start == range.stop)
-          if (emptyStart and emptyStop) {
-            range.start = range.step > 0  ?  0 : -1 ;
-            range.stop = range.start;
-          }
         if ( endPos != string::npos )
           warn("slice string", "Unexpected characters \""+rem.substr(endPos)+"\" in the end of the range string \""+rangeD+"\".");
         if ( ( range.stop - range.start ) * range.step < 0 )
@@ -581,22 +570,29 @@ slice_str2vec(const string & sliceS, const int hight){
 
   }
 
-  if (hight and minsz > hight) {
+  if (hight>0 and minsz > hight) {
     warn("slice string", "Range selection suggests larger size ("+toString(minsz)+") than existing ("+toString(hight)+").");
     minsz = hight;
-  }
+  } else if (hight<0)
+    minsz = max(minsz, -hight);
   deque<int> sliceV; // the array to be returned as the result.
   for ( Sl range : ranges ) {
     range.start += range.start < 0 ? minsz : 0;
     range.stop += range.stop < 0 ? minsz : 0;
-    if (range.start == range.stop) // special case
-      if (range.step > 0)
-        range.stop = minsz;
-      else if (range.step < 0)
+    if (range.emptyStart and range.emptyStop) {
+      if (range.step<0) {
+        range.start = minsz-1;
         range.stop = -1;
-      else  // neither start, stop nor range given
-        range.step = 1; // no slices in the range
-    else if ( ! range.step )
+      } else {
+        range.start = 0;
+        range.stop = minsz;
+      }
+    } else if (range.emptyStop) {
+      range.stop = (range.step<0) ? -1 : minsz;
+    } else if (range.emptyStart) {
+      range.start = (range.step<0) ? minsz-1 : 0 ;
+    }
+    if ( ! range.step )
       range.step = range.start < range.stop ? 1 : -1;
 
     for (int curS = range.start ; (range.stop-curS)*range.step > 0 ; curS += range.step)

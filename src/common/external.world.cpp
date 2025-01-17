@@ -348,9 +348,14 @@ class HDFwrapper {
     , data(components(filedesc)[0])
     , slicesStr( [&filedesc](){
         deque<string> hdfRd = components(filedesc);
-        string toRet  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   "Z"  :  hdfRd[1] ;
-        if ( 0 == toRet.find_first_of("xXyYzZ") )
-          toRet.erase(0,1);
+        string toRet;
+        if ( hdfRd.size() > 1 ) {
+          for (int i = 1 ; i<hdfRd.size() ; i++ )
+            toRet += ":" + hdfRd[i];
+          toRet.erase(0,1); // to remove first ':'
+          if ( 0 == toRet.find_first_of("xXyYzZ") )
+            toRet.erase(0,1);
+        }
         return toRet;
       }() )
     , sliceDim ( [&filedesc](){

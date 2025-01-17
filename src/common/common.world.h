@@ -383,7 +383,7 @@ cdpath(const Path & dir, const Path & file);
 ///         The vector is sorted and duplicates are removed.
 ///
 std::deque<int>
-slice_str2vec(const std::string & sliceS, int hight);
+slice_str2vec(const std::string & sliceS, int hight=0);
 
 
 /// \brief CLI progress bar (PB).

@@ -798,10 +798,34 @@ const string RotateProc::modname = "RotateProc";
 
 
 
-Map subPixShift(const Map & im, PointF<2> shift) {
+Map subPixShift(const Map & im, const PointF<2> & shift) {
   if ( abs(shift(0))>0.5 or abs(shift(1))>0.5)
     throw_error(__func__, "Sub-pixel shifts (" + toString(shift) + ") must be below 0.5");
-  Map sim(im.shape());
+  const Shape<2> sh = im.shape();
+  Map sim(sh);
+  const PointF<2> ashift(abs(shift(0)), abs(shift(1)));
+  const PointI<2> sig( shift(0) < 0 ? -1 : 1 , shift(1) < 0 ? -1 : 1);
+  for ( ssize_t y=0 ; y < sh(0) ; y++) {
+    for ( ssize_t x=0 ; x < sh(1) ; x++) {
+      float sum = im(y,x) * ashift(0) * ashift(1);
+      int cnt=1;
+      int xs = x + sig(1);
+      int ys = y + sig(0);
+      if ( xs >= 0 and xs < sh(1) ) {
+        sum += im(y, xs) * ashift(0) * ( 1 - ashift(1) );
+        cnt++;
+      }
+      if ( ys >= 0 and ys < sh(1) ) {
+        sum += im(ys, x) * (1 - ashift(0)) * ashift(1);
+        cnt++;
+      }
+      if ( xs >= 0 and xs < sh(1) and ys >= 0 and ys < sh(1) ) {
+        sum += im(ys, xs) * (1 - ashift(0)) * (1 - ashift(1));
+        cnt++;
+      }
+      sim(y,x) = sum / cnt;
+    }
+  }
   return sim;
 }
 

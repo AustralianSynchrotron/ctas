@@ -466,6 +466,151 @@ static inline int str2n(const string & str){
 
 
 deque<int>
+slice_str2vec(const string & sliceS, const int hight){
+
+  if ( sliceS.empty() ) {
+    deque<int> ret(abs(hight));
+    for (int slice = 0 ; slice < abs(hight) ; slice++)
+      ret[slice]=slice;
+    return ret;
+  }
+
+  const char delim = ':';
+  const string digs="0123456789";
+  int minsz = hight;
+  deque<string> rangesDesc  = split(sliceS, ",");
+  struct Sl {
+    int start=0;
+    int stop=0;
+    int step=0;
+    string source = "";
+  };
+  deque<Sl> ranges;
+
+  for ( const string & rangeD : rangesDesc ) {
+    Sl range;
+    range.source = rangeD;
+    string rem = rangeD.empty() ? string{delim} : rangeD ;
+    string::size_type endPos;
+
+    auto posAfterInt = [&digs](const string & tosearch) {
+      string::size_type toRet;
+      toRet = tosearch.find_first_not_of("+-");
+      toRet = tosearch.find_first_not_of(digs, toRet);
+      return toRet;
+    };
+    auto descErr = [&rem, &rangeD](){
+      return string(" in the beginning of sub-string \""+rem+"\" of range string \""+rangeD+"\".");
+    };
+
+    // parse start
+    const bool emptyStart = rem.at(0)==delim;
+    if (emptyStart) {
+      endPos = 0;
+      range.start = 0;
+    } else {
+      endPos = posAfterInt(rem);
+      if ( ! endPos )
+        throw_error("slice string", "Range string \""+rem+"\" must start with an integer.");
+      range.start = str2n(rem.substr(0,endPos));
+    }
+    minsz = max( { minsz, -range.start, range.start+1 } );
+
+    // parse stop
+    rem = endPos == string::npos ? string() : rem.substr(endPos);
+    if (rem.empty()) {
+      range.stop = range.start+copysign(1,range.start);
+    } else {
+
+      const char link = rem.at(0);
+      if ( (string("+-")+delim).find(link) == string::npos)
+        throw_error("slice string", string("Expected [+-")+delim+"]" + descErr() );
+      rem = rem.substr(1);
+
+      endPos = posAfterInt(rem);
+      string stopString = rem.substr(0, endPos);
+      const bool emptyStop = stopString.empty();
+      if (emptyStop) {
+        range.stop = range.start; // special case!
+        range.step = (link == '-') ? -1 : 1;
+        //if (emptyStart)
+        //  range.step = 0;
+        //else if (link == '-')
+        //  range.step = -1;
+        //else
+        //  range.step = 1;
+      } else {
+        if (link != delim)
+          stopString = link + stopString;
+        range.stop = str2n(stopString);
+        if (emptyStart)
+          range.start = range.stop; // special case
+        else if (link != delim)
+          range.stop += range.start;
+      }
+      minsz = max( { minsz, -range.stop-1, range.stop+1 } );
+      rem = endPos == string::npos ? string() : rem.substr(endPos);
+
+      // parse step
+      if ( ! rem.empty() ) {
+        if ( rem.at(0) != delim )
+          throw_error("slice string", "Expected delim" + descErr() );
+        rem = rem.substr(1);
+      }
+      if ( ! rem.empty() ) {
+        endPos = posAfterInt(rem);
+        if ( ! endPos )
+          throw_error("slice string", "Can't parse integer" + descErr() );
+        range.step = str2n(rem.substr(0, endPos));
+        if (range.step == 0)
+          throw_error("slice string", "Zero step" + descErr() );
+        if (range.start == range.stop)
+          if (emptyStart and emptyStop) {
+            range.start = range.step > 0  ?  0 : -1 ;
+            range.stop = range.start;
+          }
+        if ( endPos != string::npos )
+          warn("slice string", "Unexpected characters \""+rem.substr(endPos)+"\" in the end of the range string \""+rangeD+"\".");
+        if ( ( range.stop - range.start ) * range.step < 0 )
+          warn("slice string", "Range string \""+rangeD+"\" describes no range due to the step sign opposite to the range.");
+      }
+
+    }
+
+    ranges.push_back(range);
+
+  }
+
+  if (hight and minsz > hight) {
+    warn("slice string", "Range selection suggests larger size ("+toString(minsz)+") than existing ("+toString(hight)+").");
+    minsz = hight;
+  }
+  deque<int> sliceV; // the array to be returned as the result.
+  for ( Sl range : ranges ) {
+    range.start += range.start < 0 ? minsz : 0;
+    range.stop += range.stop < 0 ? minsz : 0;
+    if (range.start == range.stop) // special case
+      if (range.step > 0)
+        range.stop = minsz;
+      else if (range.step < 0)
+        range.stop = -1;
+      else  // neither start, stop nor range given
+        range.step = 1; // no slices in the range
+    else if ( ! range.step )
+      range.step = range.start < range.stop ? 1 : -1;
+
+    for (int curS = range.start ; (range.stop-curS)*range.step > 0 ; curS += range.step)
+      sliceV.push_back(curS);
+
+  }
+
+  return sliceV;
+
+}
+
+
+/*
+deque<int>
 slice_str2vec(const string & sliceS, int hight){
   // empty string
   if ( sliceS.empty() ) {
@@ -591,7 +736,7 @@ slice_str2vec(const string & sliceS, int hight){
   return sliceV;
 
 }
-
+*/
 
 
 

@@ -464,7 +464,9 @@ static inline int str2n(const string & str){
 
 
 
-
+// negative hight suggests that the maximum size of the array may exceed the
+// -hight if larger slices are found in the sliceS. Positive hight will trit this
+// as warning and restrict self to the hight provided.
 deque<int>
 slice_str2vec(const string & sliceS, const int hight){
 

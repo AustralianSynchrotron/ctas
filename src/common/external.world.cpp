@@ -323,7 +323,7 @@ class HDFwrapper {
   }
 
   static deque<string> components(const ImagePath & filedesc) {
-    const string desc = trim(filedesc.desc(), ":");
+    const string desc = string(filedesc.desc()).erase(0,1); // to remove first delimiter
     return desc.empty() ? deque<string>(1) : split(desc, ":");
   }
 
@@ -632,7 +632,7 @@ public:
     if ( ! hdfFile )
       throw_error(modname, "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
-      throw_error(modname, "Index is beyond slices to read from " + name + ".");
+      throw_error(modname, "Index "+toString(idx)+" is beyond slices to read from " + name + ".");
 
     const ssize_t idxme = indices.at(idx);
 
@@ -712,7 +712,7 @@ public:
     if ( ! (intent & H5F_ACC_RDWR) || ! writable )
       throw_error(modname, "Can't write into " + name + " which was open read-only.");
     if ( idx >= indices.size() )
-      throw_error(modname, "Index is beyond slices to write to " + name + ".");
+      throw_error(modname, "Index "+toString(idx)+" is beyond slices to write to " + name + ".");
     if ( storage.shape() != face() )
       throw_error(modname, "Shape of the slice to write " + toString(storage.shape())
                   + " is different from existing shape" + toString(face()) + ".");
@@ -1880,29 +1880,11 @@ const string IntOptionDesc =
   " TIFF and HDF5 file formats.";
 
 const string SliceOptionDesc=
-  "The string describing the slices in the image stack which are to be"
-  " processed. Must be a string consisting only of numbers, commas ','"
-  " minus signs '-' and the character 'n'. First the string is divided"
-  " into the substrings separated by comas and each substring is"
-  " processed on it's own:\n"
-  "    The string consisting only of numbers is read as the integer and"
-  " added to the list of the reconstructed slices.\n"
-  "    The string with the minus sign surrounded by the numbers adds all"
-  " slices in the range into the list.\n"
-  "    If the string starts with the minus then the range start is"
-  " assumed to be 0.\n"
-  "    If minus is the last character in the string then the range"
-  " finishes at the maximum slice number - 1.\n"
-  "    If the string has negation prefix 'n' then the slice(s) are"
-  " excluded from the previously formed list.\n"
-  "    If all substrings have 'n' prefix or the first substring contains"
-  " only it, then the meaning of the whole string is \"all except ...\".\n"
-  "    Two and more negations are interpreted as a single one.\n"
-  "    If no slice string is given then all slices are reconstructed.\n"
-  "For example the following string:\n"
-  "    9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915\n"
-  "requests processing of the slices with numbers 0, 1, 2, 4, 6, 9, 20 to 400,"
-  " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
+  "The string describing indexes in the range. Syntax is very similar to"
+  " numpy basic indexing start:stop:step, including use of negative indeces."
+  " Main difference is the possibility to use '+' or '-' in the place of the "
+  " first delimiter ':' between start and stop. In this case stop is calculated as "
+  " stop = start +/- stop.";
 
 const string DimSliceOptionDesc = "[slice dimension][slice(s)],"
 " with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"

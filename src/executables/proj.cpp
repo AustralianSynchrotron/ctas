@@ -518,7 +518,7 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
   }
 
   // prepare processed masks
-  wghts.resize(msas.size(), psh);
+  wghts.resize(msas.size());
   Map zmask(ish), zpmask(psh);
   for (int curI = 0; curI < msas.size() ; curI++) {
     Map & wghtI = wghts[curI];

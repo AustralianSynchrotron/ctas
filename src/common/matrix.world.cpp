@@ -49,6 +49,65 @@ ssize_t Segment::size(size_t orgsz) const {
   return sz;
 }
 
+/*
+Segment::Segment(const string & str)
+  : Segment()
+{
+  if (!str.size())
+    return;
+
+  static const string spltChars = "+-:";
+  string tail;
+  if (str.at(0)==':') {
+    tail = str.substr(1);
+  } else {
+    tail = parse_num(str, &_from, true);
+    if ( tail.size() == str.size() )
+      throw_error(modname, "Could not parse string \""+tail+"\" as starting with an integer.");
+  }
+  if (tail.size()) {
+    bool toadd = true;
+    if (tail.at(0)==':') {
+      tail = tail.substr(1);
+      toadd=false;
+    }
+    if (tail.size()) {
+      ssize_t sto;
+      tail = parse_num(tail, &sto, true);
+      if ( tail.size() )
+        throw_error(modname, "Could not parse string \""+str+"\"."
+                             " Must follow pattern [UINT][<"+spltChars+">UINT].");
+      _to = toadd ? _from + sto : sto;
+    }
+  }
+  check_throw();
+}
+
+void Segment::check_throw() {
+  //if (_from < 0)
+  //  throw_error(modname, "Negative starting point ("+toString(_to)+").");
+  //if (_to>0 && _to<=_from) || (_to<0)
+  //  throw_error(modname,
+  //    "End ("+toString(_to)+") is less or equal than start ("+toString(_from)+").");
+}
+
+
+ssize_t Segment::size(size_t orgsz) const {
+  const ssize_t rfrom = _from > 0 ? _from : orgsz + _from;
+  const ssize_t rto = _to > 0 ? _to : orgsz + _to;
+  const ssize_t sz = rto - rfrom ;
+  if (rfrom < 0 || rto < 0)
+    throw_error("Range size", "Negative range(s) in ["+toString(_from)+","+toString(_to)+"]"
+                + " with original size " + toString(orgsz) + "." );
+  if (sz<=0)
+    throw_error("Range size", "Negative size for range ["+toString(_from)+","+toString(_to)+"]"
+                + " with original size "+toString(orgsz) + "." );
+  if ( rto > orgsz )
+    throw_error("Range size", "Range ["+toString(_from)+","+toString(_to)+"]"
+                + " is larger than original size "+toString(orgsz)+ "." );
+  return sz;
+}
+*/
 
 template<int Dim>
 const string Crop<Dim>::modname = toString(Dim)+"D-segment";

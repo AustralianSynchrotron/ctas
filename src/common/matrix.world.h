@@ -281,11 +281,14 @@ public:
   Segment(ssize_t _from=0, ssize_t _to=0) : _from(_from), _to(_to) {check_throw();}
   Segment(const std::string & str);
   ssize_t begin() const {return _from;}
+  //ssize_t begin(size_t orgsz=0) const {return _from >=0 ? _from : orgsz+_from;}
   ssize_t end(size_t orgsz=0) const { return _from + size(orgsz); }
   ssize_t size(size_t orgsz=0) const;
   explicit operator bool() const {return _from || _to;} ;
   std::string print() const { return toString("%u%c%u", _from, _to > 0 ? ':' : '-' , abs(_to) ); }
 };
+
+
 
 inline std::string toString(const Segment & seg) {
   return seg.print();

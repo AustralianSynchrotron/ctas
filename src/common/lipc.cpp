@@ -323,7 +323,7 @@ IPCprocess::extract(const Map & in, Map & out) {
     mid *= phsFilter;
     fftwf_execute(fft_b);
   }
-  out = mid(r0_1, r1_1);
+  out = mid(blitz::Range(0, sh(0)-1), blitz::Range(0, sh(1)-1));
 
 
   //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );

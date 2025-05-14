@@ -303,10 +303,17 @@ IPCprocess::extract(const Map & in, Map & out) {
   if (d2b<=0)
     return;
 
-  const blitz::Range r0_1(0, sh(0)-1), r1_1(0, sh(1)-1);
   deAbs(out);
   mid = 0.0;
-  mid(r0_1, r1_1) = out;
+  //const blitz::Range r0_1(0, sh(0)-1), r1_1(0, sh(1)-1);
+  //mid(r0_1, r1_1) = out;
+  mid(blitz::Range(0, sh(0)-1), blitz::Range(0, sh(1)-1)) = out;
+  mid(blitz::Range(0, sh(0)-1), blitz::Range(sh(1), 2*sh(1)-1))
+      = out.reverse(blitz::secondDim);
+  mid(blitz::Range(sh(0), 2*sh(0)-1), blitz::Range(0, sh(1)-1))
+      = out.reverse(blitz::firstDim);
+  mid(blitz::Range(sh(0), 2*sh(0)-1), blitz::Range(sh(1), 2*sh(1)-1))
+      = out.reverse(blitz::firstDim).reverse(blitz::secondDim);
   bool doneOnGPU = false;
   for (ForCLdev * env : envs)
     if ((doneOnGPU = env->extract(mid)))

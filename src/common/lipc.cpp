@@ -92,8 +92,9 @@ public:
 
 IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b)
   : sh(sh)
-  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
-        closest_factorable(2*sh(1), {2,3,5,7}))
+  , msh(2*sh(0), 2*sh(1))
+//  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
+//        closest_factorable(2*sh(1), {2,3,5,7}))
   , d2b(d2b)
   , cl(cl)
   , clmid(0)
@@ -209,8 +210,9 @@ const string IPCprocess::ForCLdev::oclsrc({
 
 IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b)
   : sh(_sh)
-  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
-        closest_factorable(2*sh(1), {2,3,5,7}))
+  , msh(2*sh(0), 2*sh(1))
+//  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
+//        closest_factorable(2*sh(1), {2,3,5,7}))
   , d2b(_d2b)
   , phsFilter(msh)
   , mid(msh)

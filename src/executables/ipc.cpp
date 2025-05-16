@@ -49,8 +49,9 @@ struct clargs {
   float lambda;                 ///< Wavelength.
   float dist;                   ///< Object-to-detector distance.
   bool phsExp;
-  int bpp;				///< Be verbose flag
-  bool beverbose;             ///< Save image as 16-bit integer.
+  bool fastPadding;
+  int bpp;               ///< Save image as 16-bit integer.
+  bool beverbose; ///< Be verbose flag
 
   /// \CLARGSF
   clargs(int argc, char *argv[]);
@@ -63,6 +64,7 @@ clargs::clargs(int argc, char *argv[]) :
   lambda(1.0),
   dist(1.0),
   phsExp(false),
+  fastPadding(true),
   bpp(0),
   beverbose(false)
 {
@@ -87,6 +89,9 @@ clargs::clargs(int argc, char *argv[]) :
        "Only needed together with " + table.desc(&d2b) + ".", toString(lambda))
   .add(poptmx::OPTION, &phsExp,'e', "exp", "Outputs exponent of phase contrast.",
        "Useful for further CT processing of output as absorption contrast.")
+  .add(poptmx::OPTION, &fastPadding, 'p', "pad", "Uses reflection-padding instead of 0-padding in DFFT operations.",
+           "Reflection padding eliminates FFT artefacts on the edges of the image. However, it can be slower because "
+           "enforces the size of the FFT array, thus inhibiting some optimizations and GPU utilization.")
   .add(poptmx::OPTION, &bpp,'i', "int",
        "Bits per pixel to output image(s) as integer.", IntOptionDesc)
   .add_standard_options(&beverbose)
@@ -133,6 +138,7 @@ class ProcInThread : public InThread {
   const clargs & args;
   ReadVolumeBySlice allIn;
   const Shape<2> sh;
+  const bool fastPadding;
   const uint sz;
   const float d2bN;
   SaveVolumeBySlice * allOut;
@@ -147,7 +153,7 @@ class ProcInThread : public InThread {
     IPCprocess * ipcproc;
     Map * iomap;
     try {
-      ipcproc = procs.empty() ? new IPCprocess(sh, d2bN)
+      ipcproc = procs.empty() ? new IPCprocess(sh, d2bN, fastPadding)
                               : new IPCprocess(*(procs.begin()->second));
       iomap = new Map(sh);
     } catch (...) {
@@ -197,6 +203,7 @@ public:
     , allIn(args.images, args.oname.empty())
     , sh(allIn.face())
     , sz(allIn.slices())
+    , fastPadding(args.fastPadding)
     , allOut(0)
     , d2bN( IPCprocess::d2bNorm(args.d2b, args.dd, args.dist, args.lambda) )
   {

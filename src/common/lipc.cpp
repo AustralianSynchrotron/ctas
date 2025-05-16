@@ -82,7 +82,7 @@ class IPCprocess::ForCLdev {
   static const std::string oclsrc;
   int useCounter=0;
 public:
-  ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b);
+  ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b, bool fastPadding = true);
   ~ForCLdev();
   bool extract(Map & in);
 };
@@ -90,11 +90,12 @@ public:
 
 
 
-IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b)
+IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b, bool fastPadding)
   : sh(sh)
-  , msh(2*sh(0), 2*sh(1))
-//  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
-//        closest_factorable(2*sh(1), {2,3,5,7}))
+  , msh( fastPadding
+         ? Shape<2>(closest_factorable(2*sh(0), {2,3,5,7}),
+                    closest_factorable(2*sh(1), {2,3,5,7}))
+         : Shape<2>(2*sh(0), 2*sh(1)) )
   , d2b(d2b)
   , cl(cl)
   , clmid(0)
@@ -163,7 +164,8 @@ IPCprocess::ForCLdev::extract(Map & in) {
           clfftDestroyPlan(&clfft_plan);
           clfft_plan=0;
         }
-        throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
+        throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) + "."
+                              " Will proceed with fftw on CPU." );
       }
       if (clfftTmpBufSize)
         clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize, cl.cont));
@@ -208,11 +210,12 @@ const string IPCprocess::ForCLdev::oclsrc({
 
 
 
-IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b)
+IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b, bool fastPadding)
   : sh(_sh)
-  , msh(2*sh(0), 2*sh(1))
-//  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
-//        closest_factorable(2*sh(1), {2,3,5,7}))
+  , msh( fastPadding
+         ? Shape<2>(closest_factorable(2*sh(0), {2,3,5,7}),
+                    closest_factorable(2*sh(1), {2,3,5,7}))
+         : Shape<2>(2*sh(0), 2*sh(1)) )
   , d2b(_d2b)
   , phsFilter(msh)
   , mid(msh)

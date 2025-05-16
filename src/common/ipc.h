@@ -140,7 +140,7 @@ public:
   /// @param _sh Shape of the input contrasts.
   /// @param d2b Ratio of the (\f$\delta/\beta\f$). Must be supplied multiplied by
   ///            M_PI * dist * lambda / dd^2
-  IPCprocess(const Shape<2> & _sh, float _d2b);
+  IPCprocess(const Shape<2> & _sh, float _d2b, bool fastPadding=false);
 
   IPCprocess(const IPCprocess & other);
 

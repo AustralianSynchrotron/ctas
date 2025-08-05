@@ -560,10 +560,11 @@ slice_str2vec(const string & sliceS, const int hight){
         range.step = str2n(rem.substr(0, endPos));
         if (range.step == 0)
           throw_error("slice string", "Zero step" + descErr() );
+        //range.stop = range.start + ( range.stop-range.start ) * range.step;
+        if ( ( range.stop - range.start ) * range.step < 0 )
+          throw_error("slice string", "Range string \""+rangeD+"\" describes no range due to the step sign opposite to the range.");
         if ( endPos != string::npos )
           warn("slice string", "Unexpected characters \""+rem.substr(endPos)+"\" in the end of the range string \""+rangeD+"\".");
-        if ( ( range.stop - range.start ) * range.step < 0 )
-          warn("slice string", "Range string \""+rangeD+"\" describes no range due to the step sign opposite to the range.");
       }
 
     }
@@ -581,18 +582,19 @@ slice_str2vec(const string & sliceS, const int hight){
   for ( Sl range : ranges ) {
     range.start += range.start < 0 ? minsz : 0;
     range.stop += range.stop < 0 ? minsz : 0;
+    const int my_minsz = minsz * range.step;
     if (range.emptyStart and range.emptyStop) {
       if (range.step<0) {
-        range.start = minsz-1;
+        range.start = - my_minsz - 1;
         range.stop = -1;
       } else {
         range.start = 0;
-        range.stop = minsz;
+        range.stop = my_minsz;
       }
     } else if (range.emptyStop) {
-      range.stop = (range.step<0) ? -1 : minsz;
+      range.stop = (range.step<0) ? -1 : my_minsz ;
     } else if (range.emptyStart) {
-      range.start = (range.step<0) ? minsz-1 : 0 ;
+      range.start = (range.step<0) ? - my_minsz - 1 : 0 ;
     }
     if ( ! range.step )
       range.step = range.start < range.stop ? 1 : -1;

@@ -218,7 +218,7 @@ public:
     , temp(ringBox ? width : 0)
   {}
 
-  void apply(Map & sinogram);
+  void apply(Map & sinogram, const Line & mask = defaultLine );
 
 };
 

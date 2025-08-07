@@ -114,6 +114,7 @@ using ArrayF = blitz::Array<float,Dim>;
 /// One dimensional array of the ::float elements.
 /// Used for filters, sinogram's lines and so on.
 typedef ArrayF<1> Line;
+static const Line defaultLine;
 
 /// \brief 2D Array with data.
 ///

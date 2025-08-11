@@ -8,7 +8,7 @@
 #ifndef BZ_MEMBLOCK_CC
 #define BZ_MEMBLOCK_CC
 
-#include <blitz/numtrait.h>
+#include "numtrait.h"
 
 BZ_NAMESPACE(blitz)
 

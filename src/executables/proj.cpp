@@ -27,7 +27,7 @@
 ///
 
 #include <unistd.h>
-#include "../common/poptmx.h"
+#include <poptmx.h>
 #include "../common/external.world.h"
 #include "../common/parallel.world.h"
 #include "../common/magic_enum.hpp"
@@ -42,7 +42,7 @@ using namespace std;
 
 
 enum Inpaint {
-  ZEROES=0,
+  NO=0,
   #ifdef OPENCV_FOUND
   NS, // Navier-Stokes
   AT, // Alexandru Telea
@@ -69,7 +69,7 @@ struct StitchRules {
   bool flip;               ///< indicates if originF was given in options.
   std::deque<uint> splits;          ///< Split pooints to separate samples.
   uint edge;               ///< blur of mask and image edges.
-  Inpaint inpaint = Inpaint::ZEROES;
+  Inpaint inpaint = Inpaint::NO;
 
   StitchRules()
   : nofIn(0)
@@ -404,7 +404,7 @@ class ProcProj {
   blitz::Array<uchar,2> mskI; // for OpenCV::inpaint
   cv::Mat cv_filled;
   #endif // OPENCV_FOUND
-  Inpaint inpaint=ZEROES;
+  Inpaint inpaint=Inpaint::NO;
   CLmem maskCL;
 
   // own
@@ -518,7 +518,7 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
   }
 
   // prepare processed masks
-  wghts.resize(msas.size(), psh);
+  wghts.resize(msas.size());
   Map zmask(ish), zpmask(psh);
   for (int curI = 0; curI < msas.size() ; curI++) {
     Map & wghtI = wghts[curI];
@@ -541,16 +541,11 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
 
     // prepare origins for each input image
     int maxx(0), maxy(0), minx(0), miny(0);
-    const int maxXshift = abs(strl.origin1(1) * (strl.origin1size-1)) + abs(strl.origin2(1) * (strl.origin2size-1));
     for (int curI = 0; curI < strl.nofIn ; curI++) {
       int cur1, cur2, curF;
       strl.slot(curI, &cur1, &cur2, &curF);
       PointF<2> curP( strl.origin1(0) * cur1 + strl.origin2(0) * cur2
                     , strl.origin1(1) * cur1 + strl.origin2(1) * cur2);
-      if (curF) {
-        curP(0) += strl.originF(0);
-        curP(1) = strl.originF(1) + maxXshift - curP(1);
-      }
       origins.push_back(curP);
       const float
           orgx = curP(1),
@@ -562,11 +557,39 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
       if (orgy < miny) miny = orgy;
       if (tily > maxy) maxy = tily;
     }
+    if (strl.flip) {
+      const int shiftD = - minx;
+      const int shiftF = maxx+1;
+      maxx=0; maxy=0; minx=0; miny=0;
+      origins.clear();
+      for (int curI = 0; curI < strl.nofIn ; curI++) {
+        int cur1, cur2, curF;
+        strl.slot(curI, &cur1, &cur2, &curF);
+        PointF<2> curP( strl.origin1(0) * cur1 + strl.origin2(0) * cur2
+                      , strl.origin1(1) * cur1 + strl.origin2(1) * cur2);
+        if (curF) {
+          curP(0) += strl.originF(0);
+          curP(1) = -curP(1)-psh(1) + shiftF + strl.originF(1);
+        } else {
+          curP(1) = curP(1) + shiftD;
+        }
+        origins.push_back(curP);
+        const float
+            orgx = curP(1),
+            orgy = curP(0),
+            tilx = orgx + psh(1)-1,
+            tily = orgy + psh(0)-1;
+        if (orgx < minx) minx = orgx;
+        if (tilx > maxx) maxx = tilx;
+        if (orgy < miny) miny = orgy;
+        if (tily > maxy) maxy = tily;
+      }
+    }
     for (int curI = 0; curI < strl.nofIn ; curI++)
       origins[curI] -= PointF<2>(miny, minx);
     if ( ssh != Shape<2>(maxy-miny+1, maxx-minx+1) )
       throw_bug(modname + " Mistake in calculating stitched shape: "
-                +toString(ssh)+" != "+toString(ssh)+".");
+                +toString(ssh)+" != "+toString(Shape<2>(maxy-miny+1, maxx-minx+1))+".");
 
     // prepare weights image
     Map wght(psh);
@@ -632,7 +655,7 @@ ProcProj::ProcProj( const StitchRules & st, const Shape<2> & ish
     }
   }
 
-  inpaint = any(mskF==0.0) ? strl.inpaint : ZEROES ;
+  inpaint = any(mskF==0.0) ? strl.inpaint : Inpaint::NO ;
   if (inpaint == Inpaint::AM) {
     initCL();
   }

@@ -92,9 +92,9 @@
  #error <blitz/array/functorExpr.h> must be included via <blitz/array.h>
 #endif
 
-#include "blitz/prettyprint.h"
-#include "blitz/shapecheck.h"
-#include "blitz/tinyvec.h"
+#include "../prettyprint.h"
+#include "../shapecheck.h"
+#include "../tinyvec.h"
 
 BZ_NAMESPACE(blitz)
 

@@ -32,9 +32,9 @@
 
 #define _USE_MATH_DEFINES // for M_PI
 
+#include <poptmx.h>
 #include "../common/ctas.h"
 #include "../common/ct.h"
-#include "../common/poptmx.h"
 
 using namespace std;
 

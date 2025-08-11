@@ -49,6 +49,65 @@ ssize_t Segment::size(size_t orgsz) const {
   return sz;
 }
 
+/*
+Segment::Segment(const string & str)
+  : Segment()
+{
+  if (!str.size())
+    return;
+
+  static const string spltChars = "+-:";
+  string tail;
+  if (str.at(0)==':') {
+    tail = str.substr(1);
+  } else {
+    tail = parse_num(str, &_from, true);
+    if ( tail.size() == str.size() )
+      throw_error(modname, "Could not parse string \""+tail+"\" as starting with an integer.");
+  }
+  if (tail.size()) {
+    bool toadd = true;
+    if (tail.at(0)==':') {
+      tail = tail.substr(1);
+      toadd=false;
+    }
+    if (tail.size()) {
+      ssize_t sto;
+      tail = parse_num(tail, &sto, true);
+      if ( tail.size() )
+        throw_error(modname, "Could not parse string \""+str+"\"."
+                             " Must follow pattern [UINT][<"+spltChars+">UINT].");
+      _to = toadd ? _from + sto : sto;
+    }
+  }
+  check_throw();
+}
+
+void Segment::check_throw() {
+  //if (_from < 0)
+  //  throw_error(modname, "Negative starting point ("+toString(_to)+").");
+  //if (_to>0 && _to<=_from) || (_to<0)
+  //  throw_error(modname,
+  //    "End ("+toString(_to)+") is less or equal than start ("+toString(_from)+").");
+}
+
+
+ssize_t Segment::size(size_t orgsz) const {
+  const ssize_t rfrom = _from > 0 ? _from : orgsz + _from;
+  const ssize_t rto = _to > 0 ? _to : orgsz + _to;
+  const ssize_t sz = rto - rfrom ;
+  if (rfrom < 0 || rto < 0)
+    throw_error("Range size", "Negative range(s) in ["+toString(_from)+","+toString(_to)+"]"
+                + " with original size " + toString(orgsz) + "." );
+  if (sz<=0)
+    throw_error("Range size", "Negative size for range ["+toString(_from)+","+toString(_to)+"]"
+                + " with original size "+toString(orgsz) + "." );
+  if ( rto > orgsz )
+    throw_error("Range size", "Range ["+toString(_from)+","+toString(_to)+"]"
+                + " is larger than original size "+toString(orgsz)+ "." );
+  return sz;
+}
+*/
 
 template<int Dim>
 const string Crop<Dim>::modname = toString(Dim)+"D-segment";
@@ -76,21 +135,6 @@ Shape<Dim> Crop<Dim>::shape(const Shape<Dim> & ish) const {
     osh(curD) = (*this)(curD).size(ish(curD));
   return osh;
 }
-
-template<int Dim>
-ArrayF<Dim> Crop<Dim>::apply(const ArrayF<Dim> & iarr) const {
-  if (!bool(*this))
-    return iarr;
-  const Shape<Dim> osh = shape(iarr.shape());
-  blitz::TinyVector<size_t,Dim> ubound;
-  blitz::TinyVector<size_t,Dim> lbound;
-  for (uint curD=0; curD<Dim; ++curD) {
-    ubound[curD] = (*this)[curD].begin();
-    lbound[curD] = ubound[curD] + osh[curD] - 1;
-  }
-  return iarr(blitz::RectDomain<Dim>(ubound, lbound));
-}
-
 
 template class Crop<1>;
 template class Crop<2>;
@@ -167,8 +211,8 @@ public:
 
       if (!kernelBinn) { // OpenCL infrastructure is created on first call.
         kernelBinn(matrixOCLprogram(cl.cont), "binn2");
-        clinarr(clAllocArray<float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
-        cloutarr(clAllocArray<float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
+        clinarr(clAllocArray<cl_float>(size(ish), CL_MEM_READ_ONLY, cl.cont));
+        cloutarr(clAllocArray<cl_float>(size(osh), CL_MEM_WRITE_ONLY, cl.cont));
         if ( ! kernelBinn || ! clinarr() || ! cloutarr() )
           throw 1;
         kernelBinn.setArg(0, clinarr());
@@ -654,13 +698,14 @@ public:
         kernelRotate.setArg(0, clinarr());
         kernelRotate.setArg(1, cloutarr());
         //kernelRotate.setArg(2, (cl_float) 0.0); // BG
-        kernelRotate.setArg(3, (cl_int) parent->ish(1));
-        kernelRotate.setArg(4, (cl_int) parent->ish(0));
-        kernelRotate.setArg(5, (cl_int) parent->osh(1));
-        kernelRotate.setArg(6, clxf());
-        kernelRotate.setArg(7, clyf());
-        kernelRotate.setArg(8, clflx());
-        kernelRotate.setArg(9, clfly());
+        kernelRotate.setArg(3,  (cl_int) parent->ish(1));
+        kernelRotate.setArg(4,  (cl_int) parent->ish(0));
+        kernelRotate.setArg(5,  (cl_int) parent->osh(1));
+        kernelRotate.setArg(6,  (cl_int) parent->osh(0));
+        kernelRotate.setArg(7,  clxf());
+        kernelRotate.setArg(8,  clyf());
+        kernelRotate.setArg(9,  clflx());
+        kernelRotate.setArg(10, clfly());
       }
 
       kernelRotate.setArg(2, (cl_float) bg);
@@ -767,11 +812,11 @@ Map RotateProc::apply(const Map & imap, Map & tmap, float bg) const {
     if ( ! (nof90%2) ) { //180deg
       toRet.reverseSelf(blitz::firstDim);
       toRet.reverseSelf(blitz::secondDim);
-    } else if (  ( nof90 > 0 && (nof90%3) ) || ( nof90 < 0 && ! (nof90%3) ) ) {  // 270deg
-      toRet.transposeSelf(blitz::firstDim, blitz::secondDim);
+    } else if (  ( nof90 > 0 && ! (nof90%3) ) || ( nof90 < 0 && ! (1-nof90%4) ) ) {  // 270deg
+      toRet.transposeSelf(blitz::secondDim, blitz::firstDim);
       toRet.reverseSelf(blitz::secondDim);
     } else { // 90deg
-      toRet.transposeSelf(blitz::firstDim, blitz::secondDim);
+      toRet.transposeSelf(blitz::secondDim, blitz::firstDim);
       toRet.reverseSelf(blitz::firstDim);
     }
     return toRet;
@@ -808,6 +853,43 @@ Map RotateProc::apply(const Map & imap, Map & tmap, float bg) const {
 }
 
 const string RotateProc::modname = "RotateProc";
+
+
+
+
+Map subPixShift(const Map & im, const PointF<2> & shift) {
+  if ( abs(shift(0))>0.5 or abs(shift(1))>0.5)
+    throw_error(__func__, "Sub-pixel shifts (" + toString(shift) + ") must be below 0.5");
+  const Shape<2> sh = im.shape();
+  Map sim(sh);
+  const PointF<2> ashift(abs(shift(0)), abs(shift(1)));
+  const PointI<2> sig( shift(0) < 0 ? -1 : 1 , shift(1) < 0 ? -1 : 1);
+  for ( ssize_t y=0 ; y < sh(0) ; y++) {
+    for ( ssize_t x=0 ; x < sh(1) ; x++) {
+      float sum = im(y,x) * ashift(0) * ashift(1);
+      int cnt=1;
+      int xs = x + sig(1);
+      int ys = y + sig(0);
+      if ( xs >= 0 and xs < sh(1) ) {
+        sum += im(y, xs) * ashift(0) * ( 1 - ashift(1) );
+        cnt++;
+      }
+      if ( ys >= 0 and ys < sh(1) ) {
+        sum += im(ys, x) * (1 - ashift(0)) * ashift(1);
+        cnt++;
+      }
+      if ( xs >= 0 and xs < sh(1) and ys >= 0 and ys < sh(1) ) {
+        sum += im(ys, xs) * (1 - ashift(0)) * (1 - ashift(1));
+        cnt++;
+      }
+      sim(y,x) = sum / cnt;
+    }
+  }
+  return sim;
+}
+
+
+
 
 
 
@@ -957,11 +1039,13 @@ const string SumProc::modname = "SumProc";
 class SumProc::ForCLdev {
 
   static const std::string modname;
-  static const int maxLen = 2;
+  static const size_t maxLen = 2;
   const SumProc * parent;
   CLenv & cl;
   CLkernel kernelSum;
+  CLkernel kernelMult;
   CLmem clarr;
+  CLmem pararr;
   pthread_mutex_t locker;
   Map partRes;
 
@@ -983,40 +1067,62 @@ public:
     pthread_mutex_destroy(&locker);
   }
 
-  pair<float,int> apply(const float * data) {
+  Stat apply(float * data) {
 
     if( pthread_mutex_trylock(&locker) )
-      return make_pair<float,int>(0,-1);
+      return Stat(0,-1);
     useCounter++;
+    Stat toRet;
 
     try {
 
       if (!kernelSum) { // OpenCL infrastructure is created on first call.
+
         clarr(clAllocArray<cl_float>(parent->_size, cl.cont));
+        if ( parent->norma.first != 0.0 )
+          pararr(clarr);
+        else
+          pararr(clAllocArray<cl_float>(parent->_size, cl.cont));
+
         kernelSum(matrixOCLprogram(cl.cont), "limitedSum");
         kernelSum.setArg(0, clarr());
-        kernelSum.setArg(3, (cl_float) parent->lo);
-        kernelSum.setArg(4, (cl_float) parent->hi);
+        kernelSum.setArg(1, pararr());
+        kernelSum.setArg(4, (cl_float) parent->lo);
+        kernelSum.setArg(5, (cl_float) parent->hi);
+
+        if ( parent->norma.first != 0.0 ) {
+          kernelMult(matrixOCLprogram(cl.cont), "multiplyArray");
+          kernelSum.setArg(0, clarr());
+          kernelSum.setArg(2, (cl_ulong) parent->_size);
+        }
+
       }
 
       arr2cl(data, parent->_size, clarr(), cl.que);
-      int offset = 1;
-      int len = parent->_size;
+      cl_ulong offset = 1;
+      cl_ulong len = parent->_size;
       while (len >= maxLen) {
-        kernelSum.setArg(1, (cl_int) len);
-        kernelSum.setArg(2, (cl_int) offset);
+        kernelSum.setArg(2, len);
+        kernelSum.setArg(3, offset);
         kernelSum.exec(len/2, cl.que);
         len /=2;
         offset *= 2;
       }
-      cl2blitz(clarr(), Shape<2>(len,offset), partRes, PointI<2>(), cl.que);
+      cl2blitz(pararr(), Shape<2>(len,offset), partRes, PointI<2>(), cl.que);
+      toRet = Stat( sum(partRes(all,0)), sum(partRes(all,1)) );
+      const float mult = normMult(parent->norma, toRet);
+      if ( mult != 0.0 && mult != 1.0f ) {
+        kernelMult.setArg(1, (cl_float) mult  );
+        kernelMult.exec(parent->_size, cl.que);
+        cl2arr(clarr(), data, parent->_size, cl.que);
+      }
 
     } catch (...) {
       pthread_mutex_unlock(&locker);
       throw_error(modname, "Failed operation.");
     }
     pthread_mutex_unlock(&locker);
-    return pair<float,int>( sum(partRes(all,0)), sum(partRes(all,1)) );
+    return toRet;
 
   }
 
@@ -1025,10 +1131,11 @@ const string SumProc::ForCLdev::modname = SumProc::modname + "OCL";
 
 
 
-SumProc::SumProc(size_t size, float lo, float hi)
+SumProc::SumProc(size_t size, const Stat & norma, float lo, float hi)
   : _size(size)
   , lo(lo)
   , hi(hi)
+  , norma(norma)
   , envs(_envs)
 {
   if (!size)
@@ -1044,29 +1151,31 @@ SumProc::SumProc(size_t size, float lo, float hi)
 SumProc::~SumProc() {
   for (ForCLdev * env : _envs)
     if (env) {
-      // prdn(env->useCounter);
+      // cout << env->useCounter << " " ;
       delete env;
     }
+  //if (_envs.size())
+  //  cout << " - Total" << std::endl;
 }
 
 
-pair<float,int> SumProc::proc(float const * data) const {
+SumProc::Stat SumProc::proc(float * data) const {
 
   auto addMe = [this](const float val) {
     if (lo == hi) return val == hi;
-    if (lo<hi)    return val >= lo  &&  val <= hi;
+    if (lo < hi)  return val >= lo  &&  val <= hi;
     else          return val >= lo  ||  val <= hi;
   };
 
   if (_size<1)
-    return make_pair<float,int>(0,0);
+    return Stat(0,0);
   if (_size==1)
-    return addMe(*data) ? pair<float,int>(*data,1) : make_pair<float,int>(0,0) ;
+    return addMe(*data) ? Stat(*data,1) : Stat(0,0) ;
 
   // try on GPU
   for (ForCLdev * env : envs) {
     if (env) {
-      std::pair<float,int> res = env->apply(data);
+      Stat res = env->apply(data);
       if (res.second>=0)
         return res;
     }
@@ -1074,15 +1183,33 @@ pair<float,int> SumProc::proc(float const * data) const {
   //// Do on CPU
   int counter=0;
   float sum = 0;
-  const float * curData = data;
+  Stat res(0,0);
+  float * curData = data;
   for (size_t cur = 0 ; cur < _size ; ++cur) {
-    if (addMe(*data)) {
-      ++counter;
-      sum += *data;
+    if (addMe(*curData)) {
+      ++res.second;
+      res.first += *curData;
     }
-    ++data;
+    ++curData;
   }
-  return pair(sum, counter);
+  const float mult = normMult(norma, res);
+  if ( mult != 0.0 && mult != 1.0f ) {
+    curData = data;
+    for (size_t cur = 0 ; cur < _size ; ++cur)
+      *curData++ *= norma.first * counter / sum;
+  }
+  return res;
 
 }
 
+
+float SumProc::normMult(const Stat & norma, const Stat & res) {
+  if (norma.second < 0)
+    return 0.0;
+  float mult = 1.0;
+  if ( norma.first != 0.0 )
+    mult *= norma.first;
+  if ( ( ! norma.second || res.second >= norma.second ) && res.first != 0 )
+    mult *= res.second / res.first ;
+  return mult;
+}

@@ -8,10 +8,8 @@
 #include <CL/cl.h>
 
 #define BZ_THREADSAFE
-//#define BZ_DEBUG_LOG_REFERENCES
-#include "../blitz64/blitz/array.h"
-#include "../blitz64/blitz/tinyvec-et.h"
-//#include <blitz/array.h>
+#include "blitz/array.h"
+#include "blitz/tinyvec-et.h"
 
 
 
@@ -116,6 +114,7 @@ using ArrayF = blitz::Array<float,Dim>;
 /// One dimensional array of the ::float elements.
 /// Used for filters, sinogram's lines and so on.
 typedef ArrayF<1> Line;
+static const Line defaultLine;
 
 /// \brief 2D Array with data.
 ///
@@ -283,11 +282,14 @@ public:
   Segment(ssize_t _from=0, ssize_t _to=0) : _from(_from), _to(_to) {check_throw();}
   Segment(const std::string & str);
   ssize_t begin() const {return _from;}
+  //ssize_t begin(size_t orgsz=0) const {return _from >=0 ? _from : orgsz+_from;}
   ssize_t end(size_t orgsz=0) const { return _from + size(orgsz); }
   ssize_t size(size_t orgsz=0) const;
   explicit operator bool() const {return _from || _to;} ;
   std::string print() const { return toString("%u%c%u", _from, _to > 0 ? ':' : '-' , abs(_to) ); }
 };
+
+
 
 inline std::string toString(const Segment & seg) {
   return seg.print();
@@ -309,7 +311,19 @@ public:
   Crop(const std::string & str) ;
   explicit operator bool() const { return std::any_of( whole(*this), [](const Segment & seg){return bool(seg);}); }
   Shape<Dim> shape(const Shape<Dim> & ish) const ;
-  ArrayF<Dim> apply(const ArrayF<Dim> & iarr) const ;
+  template<class Dtype> blitz::Array<Dtype,Dim>
+  apply(const blitz::Array<Dtype,Dim> & iarr) const {
+    if (!bool(*this))
+      return iarr;
+    const Shape<Dim> osh = shape(iarr.shape());
+    blitz::TinyVector<size_t,Dim> ubound;
+    blitz::TinyVector<size_t,Dim> lbound;
+    for (uint curD=0; curD<Dim; ++curD) {
+      ubound[curD] = (*this)[curD].begin();
+      lbound[curD] = ubound[curD] + osh[curD] - 1;
+    }
+    return iarr(blitz::RectDomain<Dim>(ubound, lbound));
+  }
 };
 
 template<int Dim>
@@ -426,6 +440,8 @@ public:
 
 
 
+Map subPixShift(const Map & im, PointF<2> shift);
+
 
 class MapProc {
 protected:
@@ -469,19 +485,24 @@ public:
 
 class SumProc {
 
+public:
+  typedef std::pair<float,ssize_t> Stat;
+
 private:
   static const std::string modname;
   const size_t _size;
   const float lo;
   const float hi;
+  const Stat norma;
   class ForCLdev;
   std::list<ForCLdev*>  _envs;
   std::list<ForCLdev*> & envs;
-  std::pair<float,int> proc(const float * data) const ;
+  Stat proc(float * data) const ;
 
 public:
 
-  SumProc(size_t size,
+
+  SumProc(size_t size, const Stat & norma = Stat(0,-1),
           const float lo=std::numeric_limits<float>::lowest(),
           const float hi=std::numeric_limits<float>::max() );
 
@@ -489,18 +510,19 @@ public:
     : _size(other._size)
     , lo(other.lo)
     , hi(other.hi)
+    , norma(other.norma)
     , envs(other.envs)
   {};
 
   ~SumProc();
 
-  inline size_t size() {return _size;}
+  inline size_t size() const {return _size;}
 
   bool operator==(const SumProc & other) const {
     return std::addressof(envs)==std::addressof(other.envs);
   } ;
 
-  template<int Dim> std::pair<float,int> operator()(const ArrayF<Dim> & iarr) const {
+  template<int Dim> Stat operator()(const ArrayF<Dim> & iarr) const {
     if (iarr.size() != _size)
       throw_error(modname,
                   "Missmatch of input shape ("+toString(iarr.shape())+") of size "
@@ -510,13 +532,16 @@ public:
     return proc(safeIarr.data());
   } ;
 
-  template<int Dim> static std::pair<float,int> proc(
+  template<int Dim> static Stat proc(
       const ArrayF<Dim> & iarr,
+      const Stat & norma = Stat(0,-1),
       const float lo=std::numeric_limits<float>::lowest(),
       const float hi=std::numeric_limits<float>::max())
   {
-    return SumProc(iarr.size(), lo, hi)(iarr);
+    return SumProc(iarr.size(), norma, lo, hi)(iarr);
   } ;
+
+  static float normMult(const Stat & norma, const Stat & res);
 
 };
 

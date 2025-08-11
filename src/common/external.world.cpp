@@ -17,9 +17,15 @@ using namespace std;
 #  define STATIC_MAGICK
 #  define MAGICK_STATIC_LINK
 #endif
+#ifndef MAGICKCORE_QUANTUM_DEPTH
 #define MAGICKCORE_QUANTUM_DEPTH 32
+#endif
+#ifndef MAGICKCORE_HDRI_ENABLE
 #define MAGICKCORE_HDRI_ENABLE 1
+#endif
 #include<Magick++.h>
+
+//#include <opencv2/opencv.hpp>
 
 /// \brief initializes image IO libraries
 ///
@@ -317,7 +323,7 @@ class HDFwrapper {
   }
 
   static deque<string> components(const ImagePath & filedesc) {
-    const string desc = trim(filedesc.desc(), ":");
+    const string desc = string(filedesc.desc()).erase(0,1); // to remove first delimiter
     return desc.empty() ? deque<string>(1) : split(desc, ":");
   }
 
@@ -342,9 +348,14 @@ class HDFwrapper {
     , data(components(filedesc)[0])
     , slicesStr( [&filedesc](){
         deque<string> hdfRd = components(filedesc);
-        string toRet  =  hdfRd.size() < 2  ||  hdfRd[1].empty()   ?   "Z"  :  hdfRd[1] ;
-        if ( 0 == toRet.find_first_of("xXyYzZ") )
-          toRet.erase(0,1);
+        string toRet;
+        if ( hdfRd.size() > 1 ) {
+          for (int i = 1 ; i<hdfRd.size() ; i++ )
+            toRet += ":" + hdfRd[i];
+          toRet.erase(0,1); // to remove first ':'
+          if ( 0 == toRet.find_first_of("xXyYzZ") )
+            toRet.erase(0,1);
+        }
         return toRet;
       }() )
     , sliceDim ( [&filedesc](){
@@ -621,7 +632,7 @@ public:
     if ( ! hdfFile )
       throw_error(modname, "File " + name + " was previously closed.");
     if ( idx >= indices.size() )
-      throw_error(modname, "Index is beyond slices to read from " + name + ".");
+      throw_error(modname, "Index "+toString(idx)+" is beyond slices to read from " + name + ".");
 
     const ssize_t idxme = indices.at(idx);
 
@@ -701,7 +712,7 @@ public:
     if ( ! (intent & H5F_ACC_RDWR) || ! writable )
       throw_error(modname, "Can't write into " + name + " which was open read-only.");
     if ( idx >= indices.size() )
-      throw_error(modname, "Index is beyond slices to write to " + name + ".");
+      throw_error(modname, "Index "+toString(idx)+" is beyond slices to write to " + name + ".");
     if ( storage.shape() != face() )
       throw_error(modname, "Shape of the slice to write " + toString(storage.shape())
                   + " is different from existing shape" + toString(face()) + ".");
@@ -961,7 +972,7 @@ ReadImage_TIFF (const Path & filename, Map & storage, const Crop<2> & crp = Crop
     //pthread_mutex_unlock(&mut);
 
     #define blitzArrayFromData(type) \
-      blitz::Array<type,1> ( ((type*)buf) + crp(0).begin(), blitz::shape(osh(1)), blitz::neverDeleteData)
+      blitz::Array<type,1> ( ((type*)buf) + crp(1).begin(), blitz::shape(osh(1)), blitz::neverDeleteData)
     switch (fmt) {
     case SAMPLEFORMAT_UINT :
       if (bps==8)
@@ -1015,16 +1026,22 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     throw_error("load image IM", "Could not read image file\""+filename+"\"."
                 " Caught Magick++ exception: \""+error.what()+"\".");
   }
-  Magick::ImageType anothergray =
-    #if MagickLibVersion < 0x700
-      Magick::GrayscaleMatteType
-    #else
-      Magick::GrayscaleAlphaType
-    #endif
-    ;
-  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != anothergray  )
+
+  /*
+  size_t channels;
+  Magick::ImageType addgrey;
+  #if MagickLibVersion < 0x700
+    channels = MagickCore::GetImageChannels(imag.image());
+    addgrey = Magick::GrayscaleMatteType;
+  #else
+    channels = imag.channels();
+    addgrey = Magick::GrayscaleAlphaType;
+  #endif
+  if ( imag.type() != Magick::GrayscaleType  &&  imag.type() != addgrey )
     warn("load image IM",
-         "Input image \"" + filename + "\" is not grayscale type.");
+         "Input image \"" + filename + "\" is not grayscale type "+toString(imag.type())+": "
+         +toString(Magick::PaletteType)+" "+toString(Magick::GrayscaleType)+" "+toString(addgrey)+".");
+  /**/
 
   const int
     width = imag.columns(),
@@ -1043,7 +1060,10 @@ ReadImage_IM (const Path & filename, Map & storage, const Crop<2> & crp = Crop<2
     for (ssize_t curw = crp(1).begin() ; curw < crp(1).end(width) ; curw++)
       storage(curh-crp(0).begin(), curw-crp(1).begin()) = Magick::ColorGray(imag.pixelColor(curw, curh)).shade();
   // end replacement *
-
+  float mins = min(storage);
+  float maxs = max(storage);
+  auto pix = imag.pixelColor(width/2, hight/2);
+  return;
 }
 
 
@@ -1307,6 +1327,10 @@ void ReadVolumeBySlice::readTo(uint sl, Map& trg, const Crop<2> & crp) {
 
 bool ReadVolumeBySlice::write(uint sl, Map& trg) {
   return ((_ReadVolBySlice*) guts)->write(sl, trg);
+}
+
+bool ReadVolumeBySlice::writable() const {
+  return ((_ReadVolBySlice*) guts)->writable;
 }
 
 size_t ReadVolumeBySlice::slices() const {
@@ -1764,7 +1788,7 @@ SaveData ( const Path filename, ... ) {
 
 
 void
-LoadData ( const Path filename, ... ) {
+LoadDataM ( const Path filename, ... ) {
 
   vector<Line*> storage;
 
@@ -1856,29 +1880,11 @@ const string IntOptionDesc =
   " TIFF and HDF5 file formats.";
 
 const string SliceOptionDesc=
-  "The string describing the slices in the image stack which are to be"
-  " processed. Must be a string consisting only of numbers, commas ','"
-  " minus signs '-' and the character 'n'. First the string is divided"
-  " into the substrings separated by comas and each substring is"
-  " processed on it's own:\n"
-  "    The string consisting only of numbers is read as the integer and"
-  " added to the list of the reconstructed slices.\n"
-  "    The string with the minus sign surrounded by the numbers adds all"
-  " slices in the range into the list.\n"
-  "    If the string starts with the minus then the range start is"
-  " assumed to be 0.\n"
-  "    If minus is the last character in the string then the range"
-  " finishes at the maximum slice number - 1.\n"
-  "    If the string has negation prefix 'n' then the slice(s) are"
-  " excluded from the previously formed list.\n"
-  "    If all substrings have 'n' prefix or the first substring contains"
-  " only it, then the meaning of the whole string is \"all except ...\".\n"
-  "    Two and more negations are interpreted as a single one.\n"
-  "    If no slice string is given then all slices are reconstructed.\n"
-  "For example the following string:\n"
-  "    9,-4,6,20-400,n3,500-440,n450-470,800-,n920-910,915\n"
-  "requests processing of the slices with numbers 0, 1, 2, 4, 6, 9, 20 to 400,"
-  " 440 to 449, 471 to 500, 800 to 909, 915 and 921 to the end.";
+  "The string describing indexes in the range. Syntax is very similar to"
+  " numpy basic indexing start:stop:step, including use of negative indeces."
+  " Main difference is the possibility to use '+' or '-' in the place of the "
+  " first delimiter ':' between start and stop. In this case stop is calculated as "
+  " stop = start +/- stop.";
 
 const string DimSliceOptionDesc = "[slice dimension][slice(s)],"
 " with [slice dimension] either x, y or z (default) being the perpendicular to the slicing plane"

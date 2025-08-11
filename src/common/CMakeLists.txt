@@ -26,7 +26,6 @@ function(target_headers target)
 endfunction()
 
 
-add_library(poptmx SHARED poptmx.cpp)
 
 add_library(common SHARED
   common.world.cpp
@@ -34,27 +33,26 @@ add_library(common SHARED
   parallel.world.cpp
   physical.world.cpp
   external.world.cpp
+  flat.world.cpp
 )
+add_dependencies(common blitz64)
 target_headers(common
   ctas.h
   common.world.h
   matrix.world.h
   parallel.world.h
   physical.world.h
-  external.world.h)
+  external.world.h
+  flat.world.h)
 target_opencl(common matrix.cl)
 target_link_libraries(common
   ${HDF5_LIBRARIES}
   ${OpenCL_LIBRARIES}
-  ImageMagick::Magick++
+  #ImageMagick::Magick++
+  ${ImageMagick_LIBRARIES}
   TIFF::TIFF
   Threads::Threads
-  flatfield
 )
-
-add_library(flatfield SHARED flatfield.cpp)
-target_headers(flatfield flatfield.h)
-target_opencl(flatfield ff.cl)
 
 add_library(lct SHARED lct.cpp)
 target_headers(lct ct.h)
@@ -64,6 +62,7 @@ target_link_libraries(lct
   FFTW::Float
   GSL::gsl
   GSL::gslcblas)
+add_dependencies(lct blitz64)
 
 add_library(lipc SHARED lipc.cpp)
 target_headers(lipc ipc.h)
@@ -71,20 +70,21 @@ target_opencl(lipc ipc.cl)
 target_link_libraries(lipc
   FFTW::Float
   ${CLFFT_LL})
+add_dependencies(lipc blitz64)
 
 add_library(ldei SHARED ldei.cpp)
 target_headers(ldei dei.h)
+add_dependencies(ldei blitz64)
 
 add_library(ledei SHARED ledei.cpp)
+add_dependencies(ledei blitz64)
 
 install(
-  TARGETS poptmx
-          common
+  TARGETS common
           lct
           lipc
           ldei
           ledei
-          flatfield
   LIBRARY DESTINATION ${LIB_DESTINATION}
   PUBLIC_HEADER DESTINATION ${INC_DESTINATION}
 )

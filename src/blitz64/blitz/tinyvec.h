@@ -27,10 +27,10 @@
 #ifndef BZ_TINYVEC_H
 #define BZ_TINYVEC_H
 
-#include "blitz/blitz.h"
-#include "blitz/range.h"
-#include "blitz/listinit.h"
-#include "blitz/tiny.h"
+#include "blitz.h"
+#include "range.h"
+#include "listinit.h"
+#include "tiny.h"
 
 #ifdef BZ_HAVE_CSTRING
 #include <cstring> // For memcpy
@@ -429,11 +429,11 @@ class TinyVector<T,0> {
 
 BZ_NAMESPACE_END
 
-#include "blitz/tinyveciter.h"  // Iterators
-#include "blitz/tvecglobs.h"    // Global functions
-#include "blitz/vector.h"       // Expression templates
-#include "blitz/tinyvec.cc"     // Member functions
-#include "blitz/tinyvecio.cc"   // I/O functions
+#include "tinyveciter.h"  // Iterators
+#include "tvecglobs.h"    // Global functions
+#include "vector.h"       // Expression templates
+#include "tinyvec.cc"     // Member functions
+#include "tinyvecio.cc"   // I/O functions
 
 #endif // BZ_TINYVEC_H
 

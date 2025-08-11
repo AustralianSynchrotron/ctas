@@ -40,17 +40,17 @@
 #define BZ_NUMINQUIRE_H
 
 #ifndef BZ_BLITZ_H
-  #include "blitz/blitz.h"
+  #include "blitz.h"
 #endif
 
 #ifndef BZ_HAVE_NUMERIC_LIMITS
-  #include "blitz/limits-hack.h"
+  #include "limits-hack.h"
 #else
   #include <limits>
 #endif
 
 #ifndef BZ_RANGE_H
- #include "blitz/range.h"
+ #include "range.h"
 #endif
 
 BZ_NAMESPACE(blitz)

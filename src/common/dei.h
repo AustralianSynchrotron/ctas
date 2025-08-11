@@ -31,7 +31,7 @@
 #define _H_DEI_H_
 
 #include "../common/ctas.h"
-#include "../common/poptmx.h"
+#include <poptmx.h>
 
 
 

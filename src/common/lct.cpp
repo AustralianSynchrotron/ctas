@@ -289,18 +289,21 @@ filter_line(Line &ln, const Line &f_win,
   if ( !areSame(ln, _ln) )
     ln = _ln;
 }
+ 
 
 
-
-void RingFilter::apply(Map & sinogram) {
+void RingFilter::apply(Map & sinogram, const Line & mask) {
   if ( !box || ! average.size() )
     return;
   const Shape<2> sh(sinogram.shape());
+  if (!sh(0))
+    throw_error("RingFilter", "Empty sinogram.");
   if (sh(1) != average.size())
     throw_error("RingFilter", "Wrong sinogram width "+toString(sh(1))+
                               " where "+toString(average.size())+" is expected.");
-  if (!sh(0))
-    throw_error("RingFilter", "Empty sinogram.");
+  if (mask.size() and mask.size() != average.size())
+    throw_error("RingFilter", "Wrong mask size "+toString(mask.size())+
+                              " where "+toString(average.size())+" is expected.");
 
   average=0;
   for(int idx = 0; idx < sh(0); idx++)
@@ -316,9 +319,11 @@ void RingFilter::apply(Map & sinogram) {
     temp(sh(1)-1-ii) /= box+ii+1;
   }
   temp -= average;
-  for(int idx = 0; idx < sh(0); idx++)
+  if ( mask.size() )
+    temp *= 1-mask ;
+  for(int idx = 0; idx < sh(0); idx++) {
     sinogram(idx, all) += temp;
-
+  }
 }
 
 

@@ -1,110 +1,123 @@
 
 link_directories(${CMAKE_BINARY_DIR}/src/common)
 
+if(POLICY CMP0146)
+  cmake_policy(SET CMP0146 OLD)
+endif()
+find_package(OpenCV CONFIG)
+if(POLICY CMP0146)
+  cmake_policy(SET CMP0146 NEW)
+endif()
+if (OpenCV_FOUND)
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+  add_definitions(-DOPENCV_FOUND)
+endif()
+
+find_library(POPTL poptmx)
+find_path(POPTH poptmx.h REQUIRED)
+
+
 add_executable(ct ct.cpp)
 target_link_libraries(ct
   common
-  poptmx
   lct
+  ${POPTL}
 )
 
 add_executable(ring ring.cpp)
 target_link_libraries(ring
   common
-  poptmx
   lct
+  ${POPTL}
 )
 
 add_executable(ax axis.cpp)
 target_link_libraries(ax
   common
-  poptmx
   lct
+  ${POPTL}
 )
 
 add_executable(rc2fd rc2fd.cpp)
 target_link_libraries(rc2fd
   common
-  poptmx
   ledei
+  ${POPTL}
 )
 
 add_executable(ipc ipc.cpp)
 target_link_libraries(ipc
   common
-  poptmx
   lipc
   ${CLFFT_LL}
+  ${POPTL}
 )
 
 add_executable(dei dei.cpp)
 target_link_libraries(dei
   common
-  poptmx
   ldei
+  ${POPTL}
 )
 
 add_executable(edei edei.cpp)
 target_link_libraries(edei
   common
-  poptmx
   ledei
+  ${POPTL}
 )
 
 add_executable(ts ts.cpp)
 target_link_libraries(ts
   common
-  poptmx
   lct
+  ${POPTL}
 )
 
 
 add_executable(simulate-ipc simulate-ipc.cpp)
 target_link_libraries(simulate-ipc
   common
-  poptmx
   lipc
   ${CLFFT_LL}
+  ${POPTL}
 )
 
 add_executable(norm norm.cpp)
 target_link_libraries(norm
   common
-  poptmx
+  ${POPTL}
 )
 
 add_executable(proj proj.cpp)
 target_opencl(proj projection.cl)
 target_link_libraries(proj
   common
-  poptmx
   ${OpenCV_LIBS}
+  ${POPTL}
 )
 
 add_executable(mosaic mosaic.cpp)
 target_opencl(mosaic projection.cl)
 target_link_libraries(mosaic
   common
-  poptmx
   ${OpenCV_LIBS}
+  ${POPTL}
 )
-
-
 
 add_executable(v2v vol2vol.cpp)
 target_opencl(v2v ../common/matrix.cl)
 target_link_libraries(v2v
   common
-  poptmx
-  flatfield
+  ${POPTL}
 )
-
 
 add_executable(test test.cpp)
 target_link_libraries(test
   common
-  poptmx
+  ${POPTL}
 )
+
 
 
 set( all_targets

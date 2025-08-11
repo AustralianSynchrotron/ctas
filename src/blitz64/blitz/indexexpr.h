@@ -27,10 +27,10 @@
 #ifndef BZ_INDEXEXPR_H
 #define BZ_INDEXEXPR_H
 
-#include "blitz/numinquire.h" // For tiny(ssize_t())
-#include "blitz/tinyvec.h"
-#include "blitz/prettyprint.h"
-#include "blitz/etbase.h"
+#include "numinquire.h" // For tiny(ssize_t())
+#include "tinyvec.h"
+#include "prettyprint.h"
+#include "etbase.h"
 
 BZ_NAMESPACE(blitz)
 

@@ -31,8 +31,8 @@
  #error <blitz/meta/matmat.h> must be included via <blitz/tinymat.h>
 #endif
 
-#include "blitz/meta/metaprog.h"
-#include "blitz/tinymatexpr.h"
+#include "../meta/metaprog.h"
+#include "../tinymatexpr.h"
 
 BZ_NAMESPACE(blitz)
 

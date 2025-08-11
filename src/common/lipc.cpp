@@ -82,7 +82,7 @@ class IPCprocess::ForCLdev {
   static const std::string oclsrc;
   int useCounter=0;
 public:
-  ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b);
+  ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b, bool fastPadding = true);
   ~ForCLdev();
   bool extract(Map & in);
 };
@@ -90,10 +90,12 @@ public:
 
 
 
-IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b)
+IPCprocess::ForCLdev::ForCLdev(CLenv & cl, const Shape<2> & sh, float d2b, bool fastPadding)
   : sh(sh)
-  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
-        closest_factorable(2*sh(1), {2,3,5,7}))
+  , msh( fastPadding
+         ? Shape<2>(closest_factorable(2*sh(0), {2,3,5,7}),
+                    closest_factorable(2*sh(1), {2,3,5,7}))
+         : Shape<2>(2*sh(0), 2*sh(1)) )
   , d2b(d2b)
   , cl(cl)
   , clmid(0)
@@ -162,7 +164,8 @@ IPCprocess::ForCLdev::extract(Map & in) {
           clfftDestroyPlan(&clfft_plan);
           clfft_plan=0;
         }
-        throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) );
+        throw_error(modname,  "Failed to prepare the clFFT: " + toString(err) + "."
+                              " Will proceed with fftw on CPU." );
       }
       if (clfftTmpBufSize)
         clfftTmpBuff(clAllocArray<float>(clfftTmpBufSize, cl.cont));
@@ -207,10 +210,12 @@ const string IPCprocess::ForCLdev::oclsrc({
 
 
 
-IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b)
+IPCprocess::IPCprocess(const Shape<2> & _sh, float _d2b, bool fastPadding)
   : sh(_sh)
-  , msh(closest_factorable(2*sh(0), {2,3,5,7}),
-        closest_factorable(2*sh(1), {2,3,5,7}))
+  , msh( fastPadding
+         ? Shape<2>(closest_factorable(2*sh(0), {2,3,5,7}),
+                    closest_factorable(2*sh(1), {2,3,5,7}))
+         : Shape<2>(2*sh(0), 2*sh(1)) )
   , d2b(_d2b)
   , phsFilter(msh)
   , mid(msh)
@@ -303,10 +308,17 @@ IPCprocess::extract(const Map & in, Map & out) {
   if (d2b<=0)
     return;
 
-  const blitz::Range r0_1(0, sh(0)-1), r1_1(0, sh(1)-1);
   deAbs(out);
   mid = 0.0;
-  mid(r0_1, r1_1) = out;
+  //const blitz::Range r0_1(0, sh(0)-1), r1_1(0, sh(1)-1);
+  //mid(r0_1, r1_1) = out;
+  mid(blitz::Range(0, sh(0)-1), blitz::Range(0, sh(1)-1)) = out;
+  mid(blitz::Range(0, sh(0)-1), blitz::Range(sh(1), 2*sh(1)-1))
+      = out.reverse(blitz::secondDim);
+  mid(blitz::Range(sh(0), 2*sh(0)-1), blitz::Range(0, sh(1)-1))
+      = out.reverse(blitz::firstDim);
+  mid(blitz::Range(sh(0), 2*sh(0)-1), blitz::Range(sh(1), 2*sh(1)-1))
+      = out.reverse(blitz::firstDim).reverse(blitz::secondDim);
   bool doneOnGPU = false;
   for (ForCLdev * env : envs)
     if ((doneOnGPU = env->extract(mid)))
@@ -316,7 +328,7 @@ IPCprocess::extract(const Map & in, Map & out) {
     mid *= phsFilter;
     fftwf_execute(fft_b);
   }
-  out = mid(r0_1, r1_1);
+  out = mid(blitz::Range(0, sh(0)-1), blitz::Range(0, sh(1)-1));
 
 
   //const Shape opnt( (msh(0)-sh(0))/2 , (msh(1)-sh(1))/2 );

@@ -13,6 +13,8 @@ kernel void  binn2(
     return;
   const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
   const int oszy = by ? ( iszy + by - 1 ) / by : 1;
+  if ( x >= oszx || y >= oszy )
+    return;
   const int bbx = min(iszx, (x+1)*bx) - x*bx;
   const int bby = min(iszy, (y+1)*by) - y*by;
   float sum = 0;
@@ -44,6 +46,8 @@ kernel void  binn3(
   const int oszx = bx ? ( iszx + bx - 1 ) / bx : 1;
   const int oszy = by ? ( iszy + by - 1 ) / by : 1;
   const int oszz = bz ? ( iszz + bz - 1 ) / bz : 1;
+  if ( x >= oszx || y >= oszy || z >= oszz )
+    return;
   const int bbx = min(iszx, (x+1)*bx) - x*bx;
   const int bby = min(iszy, (y+1)*by) - y*by;
   const int bbz = min(iszz, (z+1)*bz) - z*bz;
@@ -93,6 +97,7 @@ kernel void  rotate2(
   int                      iszx,
   int                      iszy,
   int                      oszx,
+  int                      oszy,
   global const float*     xf,
   global const float*     yf,
   global const int*       flx,
@@ -100,7 +105,7 @@ kernel void  rotate2(
 {
   const int x = get_global_id(0);
   const int y = get_global_id(1);
-  if ( x >= iszx || y >= iszy )
+  if ( x >= oszx || y >= oszy )
     return;
   const int oshft = x+y*oszx;
   const int vflx = flx[oshft];
@@ -127,7 +132,57 @@ bool addMe(float val, float lo, float hi) {
     return val >= lo  ||  val <= hi;
 }
 
+
 kernel void limitedSum(
+  global float *input,
+  global float *part,
+  ulong len,
+  ulong offset,
+  float lo,
+  float hi
+)
+{
+
+  const ulong idx = get_global_id(0);
+  const int myIdx = idx*2;
+  if (myIdx >= len-1)
+    return;
+
+  if ( offset == 1 ) {
+
+    int items=0;
+    if ( addMe(input[myIdx], lo, hi) )
+      ++items;
+    else
+      part[myIdx] = 0;
+    if ( addMe(input[myIdx+1], lo, hi) ) {
+      ++items;
+      part[myIdx] += input[myIdx+1];
+    }
+    if ( myIdx == len-3  &&  addMe(input[myIdx+2], lo, hi) )  { // last element
+      ++items;
+      part[myIdx] += input[myIdx+2];
+    }
+    part[idx+1] = items;
+
+  } else {
+
+    const int myOff = myIdx*offset;
+    part[myOff]   += part[myOff+offset];
+    part[myOff+1] += part[myOff+offset+1];
+    if ( myIdx == len-3 ) {  // last element
+      part[myOff]   += part[myOff+2*offset];
+      part[myOff+1] += part[myOff+2*offset+1];
+    }
+
+  }
+
+}
+
+
+
+/*
+kernel void _limitedSum(
   global float *input,
   int len,
   int offset,
@@ -171,6 +226,4 @@ kernel void limitedSum(
   }
 
 }
-
-
-
+*/

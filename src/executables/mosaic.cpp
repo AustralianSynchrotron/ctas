@@ -28,8 +28,8 @@
 
 #include <optional>
 #include <unistd.h>
+#include <poptmx.h>
 #include "../common/ctas.h"
-#include "../common/poptmx.h"
 #include "../common/magic_enum.hpp"
 
 
@@ -128,7 +128,7 @@ clargs(int argc, char *argv[])
     .add(poptmx::OPTION, &mss, 'M', "mask", "Mask image(s)",
          "Image where values are weights of corresponding pixels in superimposition operations."
          " F.e. 0 values exclude corresponding or affected pixels from further use.")
-    .add(poptmx::OPTION, &out_name, 'o', "output", "Template fo output image(s)."
+    .add(poptmx::OPTION, &out_name, 'o', "output", "Template for output image(s)."
          , "If more than one is provided, then equal number of final crops must be given.", "")
     .add(poptmx::OPTION, &out_range, 'O', "select", "Slices to process. All if not used.",
          SliceOptionDesc + ". Only makes sense in multiple projections.", "all")

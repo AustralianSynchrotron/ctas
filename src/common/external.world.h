@@ -4,7 +4,7 @@
 
 #include "common.world.h"
 #include "matrix.world.h"
-#include "flatfield.h"
+#include "flat.world.h"
 #include <functional>
 
 
@@ -184,6 +184,7 @@ public:
   Map read(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
   void readTo(uint sl, Map & trg, const Crop<2> & crp = Crop<2>());
   bool write(uint sl, Map & out);
+  bool writable() const;
   size_t slices() const;
   Shape<2> face() const;
   Shape<3> shape() const;
@@ -234,11 +235,17 @@ public:
 // Don't use the reference type "const Path &" here: will
 // not work on Windows
 void
-LoadData(const Path filename, ... );
+LoadDataM(const Path filename, ... );
 
 void
 LoadData ( const Path filename, Map & storage );
 
+inline Map
+LoadData (const Path filename) {
+  Map out;
+  LoadData(filename, out);
+  return out;
+}
 
 
 /// \brief Save any amount of lines into data file.

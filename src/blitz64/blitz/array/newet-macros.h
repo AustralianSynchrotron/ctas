@@ -24,7 +24,7 @@
 #ifndef BZ_NEWET_MACROS_H
 #define BZ_NEWET_MACROS_H
 
-#include "blitz/array/asexpr.h"
+#include "../array/asexpr.h"
 
 BZ_NAMESPACE(blitz)
 

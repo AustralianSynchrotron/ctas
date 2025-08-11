@@ -48,8 +48,8 @@ Interp::name() const {
   case REFLECT:    return "reflectivity";
   case INTENS:   return "intensity";
   default :
-	  throw_bug(__FUNCTION__);
-	  return "";
+    throw_bug(__FUNCTION__);
+    return "";
   }
 }
 
@@ -73,7 +73,7 @@ Interp::Interp(const string & _name) {
   else if ( name == "R" || name == "REFLECTIVITY" ) mpinter = REFLECT;
   else if ( name == "I" || name == "INTENSITY" ) mpinter = INTENS;
   else throw_error("point interpretation", "The string \""+ _name +"\""
-				   " does not describe any known point interpretation.");
+           " does not describe any known point interpretation.");
 }
 
 const std::string Interp::optionDesc =
@@ -238,48 +238,48 @@ find_minus( float Gm, Interp mpinter,
 
   if ( mpinter == Interp::ALPHA ) {
 
-	if ( Gm <= alpha(0)  ||  Gm >= alpha(maxlocRC) )
-	  throw_error("points",
-				  "Specified \\alpha of the minus point (" + toString(Gm) + ")"
-				  " is outside the RC minus slope"
-				  " [" + toString( Shape<2>(alpha(0), alpha(maxlocRC)) ) + "].");
-	while ( alpha(icur) < Gm )
-	  icur++;
-	return ( alpha(icur) - Gm > Gm - alpha(icur-1) ) ?
-	  icur - 1 : icur ;
+  if ( Gm <= alpha(0)  ||  Gm >= alpha(maxlocRC) )
+    throw_error("points",
+          "Specified \\alpha of the minus point (" + toString(Gm) + ")"
+          " is outside the RC minus slope"
+          " [" + toString( Shape<2>(alpha(0), alpha(maxlocRC)) ) + "].");
+  while ( alpha(icur) < Gm )
+    icur++;
+  return ( alpha(icur) - Gm > Gm - alpha(icur-1) ) ?
+    icur - 1 : icur ;
 
   } else if ( mpinter == Interp::NUMBER ) {
 
-	if ( Gm <= 1 || Gm >= maxlocRC )
-	  throw_error("points",
-				  "Specified position of the minus point (" + toString(Gm) + ")"
-				  " is outside the RC minus slope [1, " + toString(maxlocRC) + "].");
-	return int( Gm-1 );
+  if ( Gm <= 1 || Gm >= maxlocRC )
+    throw_error("points",
+          "Specified position of the minus point (" + toString(Gm) + ")"
+          " is outside the RC minus slope [1, " + toString(maxlocRC) + "].");
+  return int( Gm-1 );
 
   } else if ( mpinter == Interp::REFLECT) {
 
-	if ( Gm <= minRC/maxRC || Gm >= 1.0 )
-	  throw_error("points",
-				  "Specified reflectivity of the minus point (" + toString(Gm) + ")"
-				  " is outside the RC ranges [" + toString(minRC/maxRC) + ", 1].");
-	return find_minus( Gm*maxRC, Interp::INTENS, alpha, RC );
+  if ( Gm <= minRC/maxRC || Gm >= 1.0 )
+    throw_error("points",
+          "Specified reflectivity of the minus point (" + toString(Gm) + ")"
+          " is outside the RC ranges [" + toString(minRC/maxRC) + ", 1].");
+  return find_minus( Gm*maxRC, Interp::INTENS, alpha, RC );
 
   } else if ( mpinter == Interp::INTENS ) {
 
-	if ( Gm < minRC || Gm > maxRC )
-	  throw_error("points",
-				  "Specified intensity of the minus point (" + toString(Gm) + ") is"
-				  " outside the RC ranges [" + toString(Shape<2>(minRC, maxRC)) + "].");
-	while ( RC( icur ) < Gm )
-	  icur++;
-	return RC(icur) - Gm > Gm - RC(icur-1) ?
-	  icur - 1 : icur;
+  if ( Gm < minRC || Gm > maxRC )
+    throw_error("points",
+          "Specified intensity of the minus point (" + toString(Gm) + ") is"
+          " outside the RC ranges [" + toString(Shape<2>(minRC, maxRC)) + "].");
+  while ( RC( icur ) < Gm )
+    icur++;
+  return RC(icur) - Gm > Gm - RC(icur-1) ?
+    icur - 1 : icur;
 
   } else {
 
-	  throw_bug(__FUNCTION__);
-	  return 0;
-  
+    throw_bug(__FUNCTION__);
+    return 0;
+
   }
 
 }
@@ -308,9 +308,9 @@ find_plus( float Gp, Interp mpinter,
 
     if ( Gp <= alpha(maxlocRC) || Gp >= alpha(size-1) )
       throw_error("points",
-				  "Specified \\alpha of the plus point (" + toString(Gp) + ")"
-				  " is outside the RC plus slope"
-				  " [" + toString( Shape<2>( alpha(maxlocRC), alpha(size-1)) ) + "].");
+          "Specified \\alpha of the plus point (" + toString(Gp) + ")"
+          " is outside the RC plus slope"
+          " [" + toString( Shape<2>( alpha(maxlocRC), alpha(size-1)) ) + "].");
     while ( alpha(icur) < Gp )
       icur++;
     return alpha(icur) - Gp > Gp - alpha(icur-1)  ?
@@ -319,25 +319,25 @@ find_plus( float Gp, Interp mpinter,
   } else if ( mpinter == Interp::NUMBER ) {
 
     if ( Gp <= maxlocRC || Gp >= size )
-	  throw_error("points",
-				  "Specified position of the plus point (" + toString(Gp) + ")"
-				  " is outside the RC plus slope"
-				  " [" + toString( Shape<2> (maxlocRC, size-1 ) ) + "].");
+    throw_error("points",
+          "Specified position of the plus point (" + toString(Gp) + ")"
+          " is outside the RC plus slope"
+          " [" + toString( Shape<2> (maxlocRC, size-1 ) ) + "].");
     return int( Gp-1 );
 
   } else if ( mpinter == Interp::REFLECT ) {
 
     if ( Gp <= minRC/maxRC || Gp >= 1.0 )
       throw_error("points",
-				  "Specified reflectivity of the plus point (" + toString(Gp) + ")"
-				  " is outside the RC ranges [" + toString(minRC/maxRC) + ", 1].");
+          "Specified reflectivity of the plus point (" + toString(Gp) + ")"
+          " is outside the RC ranges [" + toString(minRC/maxRC) + ", 1].");
     return find_plus( Gp*maxRC, Interp::INTENS, alpha, RC );
 
   } else if ( mpinter == Interp::INTENS ) {
     if ( Gp < minRC || Gp > maxRC )
       throw_error("points",
-				  "Specified intensity of the plus point (" + toString(Gp) + ") is"
-				  " outside the RC ranges [" + toString(Shape<2>(minRC, maxRC)) + "].");
+          "Specified intensity of the plus point (" + toString(Gp) + ") is"
+          " outside the RC ranges [" + toString(Shape<2>(minRC, maxRC)) + "].");
     while ( RC( icur ) > Gp )
       icur++;
     return Gp - RC(icur) > RC(icur-1) - Gp ?
@@ -345,9 +345,9 @@ find_plus( float Gp, Interp mpinter,
 
   } else {
 
-	  throw_bug(__FUNCTION__);
-	  return 0;
-  
+    throw_bug(__FUNCTION__);
+    return 0;
+
   }
 
 }
@@ -436,7 +436,7 @@ findindex(float val, const Line & arr){
     return m + (val-arr(m)) / (arr(M)-arr(m));
   }
 }
- 
+
 
 /// Returns the value of the array.
 ///
@@ -508,7 +508,7 @@ EDEIprocess::EDEIprocess(const Path & RCname, float _Gm, float _Gp, Interp _mpin
   AL.resize(function_size);
   PM.resize(function_size);
   if ( RCname.empty() )
-	throw_error(modname, "RC is empty.");
+  throw_error(modname, "RC is empty.");
   loadRC(RCname);
 }
 
@@ -538,15 +538,15 @@ EDEIprocess::extract(float minus, float plus, Component comp) const {
 /// Loads \RC, processes it and makes the class ready for the data extraction.
 ///
 /// @param filename \RC file
-///                                                                            
+///
 void EDEIprocess::
 loadRC(const Path & filename) const {
 
   if (!acof)
-	throw_error( modname, "Alpha axes scale factor is zero.");
+  throw_error( modname, "Alpha axes scale factor is zero.");
 
   Line alpha, RC;
-  LoadData(filename, &alpha, &RC, (Line*) 0);
+  LoadDataM(filename, &alpha, &RC, (Line*) 0);
   alpha *= acof ? acof : 1.0 ;
 
   int size = RC.size();
@@ -570,8 +570,8 @@ loadRC(const Path & filename) const {
   }
 
   int
-	Pminus = find_minus(tGm, mpinter, alpha, RC),
-	Pplus  = find_plus (tGp,  mpinter, alpha, RC);
+  Pminus = find_minus(tGm, mpinter, alpha, RC),
+  Pplus  = find_plus (tGp,  mpinter, alpha, RC);
 
   // trivial check and RC normalization
   if( min(RC) < 0.0 )
@@ -624,7 +624,7 @@ EDEIprocess::saveFD(const Path & filename) const {
   SaveData(filename, &AL, &PM, 0);
 }
 
-const std::string EDEIprocess::componentDesc = 
+const std::string EDEIprocess::componentDesc =
   "Must be one of the following strings (case insensitive):\n"
   "A, ABS, ABSORPTION - for the absorption component\n"
   "R, REF, REFRACTION - for the refraction component";

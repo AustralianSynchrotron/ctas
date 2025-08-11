@@ -14,7 +14,7 @@
  #error <blitz/vecnorm1.cc> must be included via <blitz/vecglobs.h>
 #endif
 
-#include <blitz/applics.h>
+#include "applics.h"
 
 BZ_NAMESPACE(blitz)
 

@@ -36,7 +36,7 @@
 #define _H_EDEI_H_
 
 #include "../common/ctas.h"
-#include "../common/poptmx.h"
+#include <poptmx.h>
 
 
 
@@ -71,10 +71,10 @@ public:
 
   /// \brief Determines the meaning of the input +/- points in the EDEIprocess::mpinter.
   enum inter_tp {
-	ALPHA,                 ///< Angle \f$\alpha\f$ (x-axis).
-	NUMBER,                ///< Number of the string in the \RC file.
-	REFLECT,               ///< Reflectivity (y-axis).
-	INTENS                 ///< Intensity (y-axis).
+  ALPHA,                 ///< Angle \f$\alpha\f$ (x-axis).
+  NUMBER,                ///< Number of the string in the \RC file.
+  REFLECT,               ///< Reflectivity (y-axis).
+  INTENS                 ///< Intensity (y-axis).
   };
 
 private:

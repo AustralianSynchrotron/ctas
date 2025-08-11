@@ -9,7 +9,7 @@
 #define BZ_MATRIX_CC
 
 #ifndef BZ_MATRIX_H
- #include <blitz/matrix.h>
+ #include "matrix.h"
 #endif
 
 BZ_NAMESPACE(blitz)

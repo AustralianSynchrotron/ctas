@@ -19,10 +19,9 @@
  ******************************************************************************/
 
 
-
+#include <poptmx.h>
 #include "../common/ctas.h"
 #include "../common/ct.h"
-#include "../common/poptmx.h"
 
 using namespace std;
 
@@ -32,6 +31,7 @@ struct clargs {
   Path command;               ///< Command name as it was invoked.
   deque<ImagePath> sinograms;         ///< Name of the sinogram file.
   ImagePath outmask;           ///< Name of the file to save the result to.
+  ImagePath mask;
   uint ringBox;
   bool beverbose;				///< Be verbose flag
   /// \CLARGSF
@@ -56,9 +56,11 @@ clargs(int argc, char *argv[])
 
   .add(poptmx::NOTE, "OPTIONS:")
   .add(poptmx::OPTION, &outmask, 'o', "output",
-       "Mask to output reconstructed image(s).", "", "<input>")
+       "Output file name or name template for multiple images.", "", "<input>")
   .add(poptmx::OPTION, &ringBox, 'R', "ring",
            "Half size of the ring filter.", "", toString(ringBox))
+  .add(poptmx::OPTION, &mask, 'm', "mask",
+           "Mask of the areas to filter.", "Must be an image of size [<input width>, <number of inputs>].", toString(ringBox))
   .add_standard_options(&beverbose)
   .add(poptmx::MAN, "SEE ALSO:", SeeAlsoList);
 
@@ -81,6 +83,7 @@ class RingInThread : public InThread {
 
   const clargs & args;
   ReadVolumeBySlice ivolRd;
+  Map mask;
   const Shape<2> sh;
   SaveVolumeBySlice * ovolSv;
   unordered_map<pthread_t, RingFilter*> filters;
@@ -105,9 +108,10 @@ class RingInThread : public InThread {
     RingFilter & myRing = *filters.at(me);
     Map & myMap = *iomaps.at(me);
     unlock();
+    const Line & myMask = mask.size() ? mask(idx,all) : defaultLine;
 
     ivolRd.readTo(idx, myMap);
-    myRing.apply(myMap);
+    myRing.apply(myMap, myMask);
     if (ovolSv)
       ovolSv->save(idx, myMap);
     else
@@ -129,6 +133,15 @@ public:
   {
     if (!args.outmask.empty())
       ovolSv = new SaveVolumeBySlice(args.outmask, ivolRd.shape());
+    if (!args.mask.empty()) {
+      ReadImage(args.mask, mask, Shape<2>(ivolRd.slices(), sh(1)));
+      const float vmin = min(mask);
+      const float delta = max(mask) - vmin;
+      if (delta==0.0)
+        mask = 1.0;
+      else
+        mask = (mask-vmin)/delta;
+    }
     bar.setSteps(ivolRd.slices());
   }
 

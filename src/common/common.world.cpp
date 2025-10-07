@@ -582,19 +582,18 @@ slice_str2vec(const string & sliceS, const int hight){
   for ( Sl range : ranges ) {
     range.start += range.start < 0 ? minsz : 0;
     range.stop += range.stop < 0 ? minsz : 0;
-    const int my_minsz = minsz * range.step;
     if (range.emptyStart and range.emptyStop) {
       if (range.step<0) {
-        range.start = - my_minsz - 1;
+        range.start = - minsz - 1;
         range.stop = -1;
       } else {
         range.start = 0;
-        range.stop = my_minsz;
+        range.stop = minsz;
       }
     } else if (range.emptyStop) {
-      range.stop = (range.step<0) ? -1 : my_minsz ;
+      range.stop = (range.step<0) ? -1 : minsz ;
     } else if (range.emptyStart) {
-      range.start = (range.step<0) ? - my_minsz - 1 : 0 ;
+      range.start = (range.step<0) ? - minsz - 1 : 0 ;
     }
     if ( ! range.step )
       range.step = range.start < range.stop ? 1 : -1;

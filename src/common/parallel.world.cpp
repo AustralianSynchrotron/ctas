@@ -6,27 +6,24 @@
 using namespace std;
 
 long nof_threads(long _threads) {
-  if (_threads)
+  if (_threads) // already defined
     return _threads;
-
-#ifdef _WIN32
-#ifndef _SC_NPROCESSORS_ONLN
-  SYSTEM_INFO info;
-  GetSystemInfo(&info);
-#define sysconf(a) info.dwNumberOfProcessors
-#define _SC_NPROCESSORS_ONLN
-#endif
-#endif
-
-  long nProcessorsOnline = sysconf(_SC_NPROCESSORS_ONLN);
-  if (nProcessorsOnline == -1) {
-    warn ("thread number",
-          "Unable to read online processor count.");
-    return 1;
-  } else {
-    return nProcessorsOnline;
+  long val;
+  const char * valstr = getenv("CTAS_MAXTHREADS");
+  if (valstr) { // from environment variable
+    if ( ! parse_num(valstr, &val) or val <= 0 )
+      throw_error("thread number",
+                  "Value \"" + string(valstr) + "\" of environment variable "
+                  "\"CTAS_MAXTHREADS\" must be a positive integer.");
+  } else { // from CPU count
+    val = sysconf(_SC_NPROCESSORS_ONLN);
+    if (val == -1) {
+      warn ("thread number",
+            "Unable to read online processor count.");
+      val = 1;
+    }
   }
-
+  return val;
 }
 
 static const int run_threads = nof_threads();
